@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Doküman Madde 2: Özel Renklerimizi v4 tarzında buraya da ekleyebiliriz */
+@theme {
+  --color-deep-indigo: #1a237e;
+  --color-amber-gold: #ffc107;
+  --font-montserrat: "Montserrat", sans-serif;
+}
