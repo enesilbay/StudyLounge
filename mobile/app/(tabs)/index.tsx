@@ -1,98 +1,104 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { io, Socket } from 'socket.io-client';
+import { Accelerometer } from 'expo-sensors';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const SOCKET_URL = 'http://192.168.1.5:3000';
 
-export default function HomeScreen() {
+export default function App() {
+  const [status, setStatus] = useState<string>('Bağlanıyor... ⏳');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isAtDesk, setIsAtDesk] = useState<boolean>(false);
+
+  // Telefonun bir önceki durumunu hafızada tutarız (aynı veriyi saniyede bir göndermemek için)
+  const previousDeskState = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    // 1. Backend Bağlantısı
+    const newSocket: Socket = io(SOCKET_URL, {
+      transports: ['websocket'],
+    });
+
+    newSocket.on('connect', () => setStatus('Sunucuya Bağlandı! 🟢'));
+    newSocket.on('disconnect', () => setStatus('Bağlantı Koptu 🔴'));
+    setSocket(newSocket);
+
+    // 2. İvmeölçer (Sensör) Ayarları
+    Accelerometer.setUpdateInterval(1000); // Saniyede sadece 1 kez kontrol et (Batarya dostu)
+
+    const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      // Formül: Z ekseni 0.8'den büyük (yerçekimi kuvvetli) VE X, Y eksenleri 0.3'ten küçük (eğim yok)
+      const isFlat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
+
+      setIsAtDesk(isFlat);
+
+      // 3. Durum DEĞİŞTİYSE backend'e canlı sinyal gönder
+      if (newSocket.connected && isFlat !== previousDeskState.current) {
+        console.log(`Durum değişti. Masada mı? : ${isFlat}`);
+        
+        newSocket.emit('update_presence', {
+          userId: 1, // Şimdilik test kullanıcımız
+          isAtDesk: isFlat,
+          roomName: 'kütüphane',
+        });
+        
+        previousDeskState.current = isFlat; // Yeni durumu hafızaya al
+      }
+    });
+
+    // Uygulama kapanırsa her şeyi temizle
+    return () => {
+      newSocket.disconnect();
+      subscription.remove();
+    };
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    // Telefon masadaysa arka plan yeşil (odak), elindeyse kırmızı (dikkat dağınık) olur
+    <View style={[styles.container, { backgroundColor: isAtDesk ? '#10B981' : '#EF4444' }]}>
+      <Text style={styles.title}>StudyLounge Sensör</Text>
+      <Text style={styles.status}>{status}</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.card}>
+        <Text style={styles.deskStatus}>
+          {isAtDesk ? '📚 ŞU AN MASADA (ODAKLANILDI)' : '📱 TELEFON ELDE (DİKKAT DAĞINIK)'}
+        </Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#FFF',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  status: {
+    fontSize: 16,
+    marginBottom: 40,
+    color: '#FFF',
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 30,
+    borderRadius: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  deskStatus: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1E1B4B',
+    textAlign: 'center',
   },
 });
