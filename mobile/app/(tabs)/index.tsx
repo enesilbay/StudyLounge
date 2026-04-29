@@ -1,104 +1,144 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { io, Socket } from 'socket.io-client';
-import { Accelerometer } from 'expo-sensors';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 
-const SOCKET_URL = 'http://192.168.1.5:3000';
+// Kendi yerel IP adresini buraya yazdığından emin ol
+const BACKEND_URL = 'http://192.168.1.5:3000';
 
-export default function App() {
-  const [status, setStatus] = useState<string>('Bağlanıyor... ⏳');
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isAtDesk, setIsAtDesk] = useState<boolean>(false);
+export default function AuthScreen() {
+  const [isLoginMode, setIsLoginMode] = useState(true); 
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState(''); // YENİ: Şifre state'i eklendi
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const router = useRouter();
 
-  // Telefonun bir önceki durumunu hafızada tutarız (aynı veriyi saniyede bir göndermemek için)
-  const previousDeskState = useRef<boolean | null>(null);
+  const handleSubmit = async () => {
+    if (!email || !password || (!isLoginMode && !fullName)) {
+      Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
 
-  useEffect(() => {
-    // 1. Backend Bağlantısı
-    const newSocket: Socket = io(SOCKET_URL, {
-      transports: ['websocket'],
-    });
+    setIsLoading(true);
 
-    newSocket.on('connect', () => setStatus('Sunucuya Bağlandı! 🟢'));
-    newSocket.on('disconnect', () => setStatus('Bağlantı Koptu 🔴'));
-    setSocket(newSocket);
+    try {
+      const endpoint = isLoginMode ? '/users/login' : '/users/register';
+      const bodyData = isLoginMode 
+        ? { email, password } 
+        : { fullName, email, password, isPremium: false };
 
-    // 2. İvmeölçer (Sensör) Ayarları
-    Accelerometer.setUpdateInterval(1000); // Saniyede sadece 1 kez kontrol et (Batarya dostu)
+      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData),
+      });
 
-    const subscription = Accelerometer.addListener(({ x, y, z }) => {
-      // Formül: Z ekseni 0.8'den büyük (yerçekimi kuvvetli) VE X, Y eksenleri 0.3'ten küçük (eğim yok)
-      const isFlat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
-
-      setIsAtDesk(isFlat);
-
-      // 3. Durum DEĞİŞTİYSE backend'e canlı sinyal gönder
-      if (newSocket.connected && isFlat !== previousDeskState.current) {
-        console.log(`Durum değişti. Masada mı? : ${isFlat}`);
+      if (response.ok) {
+        const user = await response.json();
         
-        newSocket.emit('update_presence', {
-          userId: 1, // Şimdilik test kullanıcımız
-          isAtDesk: isFlat,
-          roomName: 'kütüphane',
-        });
-        
-        previousDeskState.current = isFlat; // Yeni durumu hafızaya al
+        if (isLoginMode) {
+          // GİRİŞ YAPILDIYSA: Sensör sayfasına git
+          console.log('Giriş Başarılı:', user);
+          router.replace('/sensor'); 
+        } else {
+          // KAYIT OLUNDUYSA: Modu değiştir ve giriş yapmasını iste
+          Alert.alert('Başarılı! 🎉', 'Kaydınız oluşturuldu. Lütfen şimdi giriş yapın.');
+          setIsLoginMode(true); // Giriş moduna geçir
+          setFullName(''); // İsim alanını temizle
+        }
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Hata', errorData.message || 'Bir sorun oluştu.');
       }
-    });
-
-    // Uygulama kapanırsa her şeyi temizle
-    return () => {
-      newSocket.disconnect();
-      subscription.remove();
-    };
-  }, []);
+    } catch (error) {
+      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    // Telefon masadaysa arka plan yeşil (odak), elindeyse kırmızı (dikkat dağınık) olur
-    <View style={[styles.container, { backgroundColor: isAtDesk ? '#10B981' : '#EF4444' }]}>
-      <Text style={styles.title}>StudyLounge Sensör</Text>
-      <Text style={styles.status}>{status}</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.deskStatus}>
-          {isAtDesk ? '📚 ŞU AN MASADA (ODAKLANILDI)' : '📱 TELEFON ELDE (DİKKAT DAĞINIK)'}
+    <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.logoText}>StudyLounge</Text>
+        <Text style={styles.subtitle}>
+          {isLoginMode ? 'Tekrar Hoş Geldin! 👋' : 'Aramıza Katıl 🚀'}
         </Text>
+      </View>
+
+      <View style={styles.formContainer}>
+        
+        {!isLoginMode && (
+          <TextInput
+            style={styles.input}
+            placeholder="Adınız Soyadınız"
+            placeholderTextColor="#9CA3AF"
+            value={fullName}
+            onChangeText={setFullName}
+          />
+        )}
+        
+        <TextInput
+          style={styles.input}
+          placeholder="E-posta Adresiniz"
+          placeholderTextColor="#9CA3AF"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+        />
+
+        {/* YENİ: Şifre Kutucuğu */}
+        <TextInput
+          style={styles.input}
+          placeholder="Şifreniz"
+          placeholderTextColor="#9CA3AF"
+          secureTextEntry={true} // Şifreyi *** şeklinde gizler
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleSubmit} 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isLoginMode ? 'Giriş Yap' : 'Kayıt Ol'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.switchModeButton}
+          onPress={() => setIsLoginMode(!isLoginMode)}
+        >
+          <Text style={styles.switchModeText}>
+            {isLoginMode 
+              ? 'Hesabın yok mu? Yeni kayıt oluştur.' 
+              : 'Zaten hesabın var mı? Giriş yap.'}
+          </Text>
+        </TouchableOpacity>
+
       </View>
     </View>
   );
 }
 
+// ... Stiller (styles) bir öncekiyle tamamen aynı kalacak
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#FFF',
-  },
-  status: {
-    fontSize: 16,
-    marginBottom: 40,
-    color: '#FFF',
-  },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 30,
-    borderRadius: 20,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  deskStatus: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E1B4B',
-    textAlign: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#F3F4F6', justifyContent: 'center', padding: 20 },
+  headerContainer: { alignItems: 'center', marginBottom: 40 },
+  logoText: { fontSize: 36, fontWeight: '900', color: '#1E1B4B', letterSpacing: 1 },
+  subtitle: { fontSize: 18, color: '#6B7280', marginTop: 8, fontWeight: '500' },
+  formContainer: { backgroundColor: '#FFF', padding: 24, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, padding: 16, marginBottom: 16, fontSize: 16, color: '#1F2937' },
+  button: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  buttonText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  switchModeButton: { marginTop: 20, alignItems: 'center' },
+  switchModeText: { color: '#4F46E5', fontSize: 15, fontWeight: '600' }
 });

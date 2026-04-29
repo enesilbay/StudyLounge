@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
 
@@ -6,15 +6,32 @@ import { User } from './user.entity';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // POST localhost:3000/users/register
   @Post('register')
-  async register(@Body() userData: Partial<User>) {
-    return this.usersService.create(userData);
+  async register(@Body() userData: Partial<User>): Promise<User> {
+    try {
+      return await this.usersService.create(userData);
+    } catch (error: any) {
+      // Servisten gelen hataları (Örn: Email zaten var) mobil uygulamaya düzgün ilet
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
   }
 
-  // GET localhost:3000/users
+  @Post('login')
+  async login(@Body() body: { email: string; password?: string }) {
+    // TypeScript onayı: Eğer mobilden şifre gelmezse direkt reddet
+    if (!body.password) {
+      throw new HttpException('Şifre alanı gereklidir.', HttpStatus.BAD_REQUEST);
+    }
+
+    const user = await this.usersService.login(body.email, body.password);
+    if (!user) {
+      throw new HttpException('E-posta veya şifre hatalı.', HttpStatus.UNAUTHORIZED);
+    }
+    return user;
+  }
+
   @Get()
-  async getAllUsers() {
+  async findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }
 }

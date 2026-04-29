@@ -11,6 +11,9 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column({ nullable: true })
+  password?: string;
+
   @Column({ default: false })
   isPremium: boolean;
 
