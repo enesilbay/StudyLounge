@@ -40,7 +40,18 @@ export default function AuthScreen() {
         if (isLoginMode) {
           // GİRİŞ YAPILDIYSA: Sensör sayfasına git
           console.log('Giriş Başarılı:', user);
-          router.replace('/sensor'); 
+          // Giriş veya kayıt başarılı olduğunda:
+        console.log('İşlem Başarılı:', user);
+        
+        // Sadece sayfaya gitme, kullanıcının verilerini de yanında götür!
+        router.replace({
+          pathname: '/lobbies' as any,
+          params: { 
+            id: user.id, 
+            fullName: user.fullName, 
+            score: user.totalFocusMinutes 
+          }
+        });
         } else {
           // KAYIT OLUNDUYSA: Modu değiştir ve giriş yapmasını iste
           Alert.alert('Başarılı! 🎉', 'Kaydınız oluşturuldu. Lütfen şimdi giriş yapın.');
