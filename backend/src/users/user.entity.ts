@@ -3,14 +3,18 @@ import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id!: number; // ! işareti TypeScript'e "bu boş kalmayacak, güven bana" der.
-
-  @Column({ unique: true })
-  email!: string;
+  id: number;
 
   @Column()
-  fullName!: string;
+  fullName: string;
+
+  @Column({ unique: true })
+  email: string;
 
   @Column({ default: false })
-  isPremium!: boolean;
+  isPremium: boolean;
+
+  // Yeni eklediğimiz sütun: Toplam odaklanma süresi (dakika cinsinden)
+  @Column({ default: 0 })
+  totalFocusMinutes: number;
 }

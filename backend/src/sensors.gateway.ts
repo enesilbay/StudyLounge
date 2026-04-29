@@ -6,38 +6,42 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { UsersService } from './users/users.service';
 
-@WebSocketGateway({
-  cors: {
-    origin: '*', // Her yerden bağlantıya izin ver
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-  transports: ['websocket', 'polling'], // Hem ham websocket hem de Socket.io desteği
-})
+@WebSocketGateway({ cors: { origin: '*' } })
 export class SensorsGateway {
-  @WebSocketServer()
-  server!: Server;
+  @WebSocketServer() server!: Server;
 
-  // Bir kullanıcı lobiye bağlandığında
-  handleConnection(client: Socket) {
-    console.log(`Yeni bir bağlantı: ${client.id}`);
-  }
+  // Aktif oturumları tutmak için bir Map (userId -> Başlangıç Zamanı)
+  private activeSessions = new Map<number, number>();
 
-  // Kullanıcı "Masadayım" veya "Ayrıldım" sinyali gönderdiğinde
+  constructor(private readonly usersService: UsersService) {}
+
   @SubscribeMessage('update_presence')
-  handlePresenceUpdate(
-    @MessageBody() payload: any,
-    @ConnectedSocket() client: Socket,
-  ) {
-    // 1. Güvenlik Katmanı: Gelen veri metin (string) ise, onu JSON objesine çevir.
-    // Eğer zaten objeyse (örneğin mobilden düzgün gelirse) dokunma.
+  async handlePresenceUpdate(@MessageBody() payload: any) {
     const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    const { userId, isAtDesk } = data;
 
-    // 2. Artık data içindeki verilere güvenle ulaşabiliriz.
-    console.log(`Kullanıcı ${data?.userId} durumu: ${data?.isAtDesk}`);
-    
-    // 3. Bu bilgiyi odadaki (veya genel) diğer herkese yayınla
+    if (isAtDesk) {
+      // 🟢 Masa Oturma: Başlangıç zamanını kaydet
+      this.activeSessions.set(userId, Date.now());
+      console.log(`Kullanıcı ${userId} odaklanmaya başladı.`);
+    } else {
+      // 🔴 Masadan Kalkma: Süreyi hesapla
+      const startTime = this.activeSessions.get(userId);
+      if (startTime) {
+        const endTime = Date.now();
+        const durationMs = endTime - startTime;
+        const durationMinutes = Math.round(durationMs / 60000); // Milisaniyeyi dakikaya çevir
+
+        if (durationMinutes > 0) {
+          await this.usersService.addFocusTime(userId, durationMinutes);
+        }
+        this.activeSessions.delete(userId);
+        console.log(`Kullanıcı ${userId} kalktı. Süre: ${durationMinutes} dk.`);
+      }
+    }
+
     this.server.emit('presence_changed', data);
   }
 }

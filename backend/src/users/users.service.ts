@@ -20,4 +20,13 @@ export class UsersService {
   async findAll(): Promise<User[]> {
     return await this.usersRepository.find();
   }
+
+  async addFocusTime(userId: number, minutes: number) {
+  const user = await this.usersRepository.findOneBy({ id: userId });
+  if (user) {
+    user.totalFocusMinutes += minutes;
+    console.log(`${user.fullName} için ${minutes} dakika eklendi. Yeni Toplam: ${user.totalFocusMinutes}`);
+    return await this.usersRepository.save(user);
+  }
+}
 }
