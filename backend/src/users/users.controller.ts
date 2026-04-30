@@ -34,4 +34,10 @@ export class UsersController {
   async findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }
+
+  @Get('leaderboard')
+  async getLeaderboard() {
+    return this.usersService.getLeaderboard();
+  }
+
 }

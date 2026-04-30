@@ -63,4 +63,16 @@ export class UsersService {
   async findAll(): Promise<User[]> {
     return await this.usersRepository.find();
   }
+
+  async getLeaderboard(): Promise<User[]> {
+    return this.usersRepository.find({
+      order: {
+        totalFocusMinutes: 'DESC', // Puanları büyükten küçüğe sırala
+      },
+      take: 10, // Sadece ilk 10 kişiyi (Top 10) al
+      select: ['id', 'fullName', 'totalFocusMinutes', 'isPremium'] // Şifre gibi gizli verileri çekme
+    });
+  }
+
+
 }
