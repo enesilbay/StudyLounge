@@ -28,8 +28,6 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 
 ## Tamamlananlar
 
-Şu ana kadar uygulamanın iskeletini ve çekirdek fonksiyonlarını başarıyla tamamladık:
-
 - **[Backend]** NestJS ve PostgreSQL altyapısı kuruldu, veritabanı bağlantısı sağlandı.
 - **[Security]** `bcrypt` ile güvenli kayıt ve şifreli giriş (login) sistemi entegre edildi.
 - **[Sensor]** Accelerometer (ivmeölçer) verileriyle telefonun masadaki duruşunu algılayan algoritma yazıldı.
@@ -38,16 +36,18 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[Global-Chat]** Lobi bazlı izole mesajlaşma sistemi (Socket.io) tamamlandı.
 - **[Audio]** Lobiye giriş yapıldığında ve odaklanma başladığında çalan Atmosfer Sesleri (`expo-av`) eklendi.
 - **[UI/UX]** Proje renk paletine (Deep Indigo & Amber Gold) uygun profesyonel ikonlu arayüz tasarlandı.
+- **[Liderlik-Tablosu]** En çok odaklanan kullanıcıların sıralandığı "Günün En Çalışkanları" listesi.
+- **[Beni-Hatırla]** Uygulama her açıldığında tekrar giriş yapma zorunluluğunun kaldırılması.
+- **[Dashboard&Analitik]** Haftalık ve aylık odaklanma grafiklerinin kullanıcıya sunulması.
 
 ---
 
 ## Yapılacaklar
 
-- [ ] **Dashboard & Analitik:** Haftalık ve aylık odaklanma grafiklerinin kullanıcıya sunulması.
 - [ ] **Premium Üyelik Sistemi:** Ödeme entegrasyonu ve Premium rozetlerin tanımlanması.
-- [ ] **Beni Hatırla (Auth Persistence):** Uygulama her açıldığında tekrar giriş yapma zorunluluğunun kaldırılması.
-- [ ] **Liderlik Tablosu:** En çok odaklanan kullanıcıların sıralandığı "Günün En Çalışkanları" listesi.
 - [ ] **Bildirim Sistemi:** Arkadaşın masaya oturduğunda veya çalışma süren dolduğunda gelecek bildirimler.
+- [ ] **Web Sitesi**
+- [ ] **Arayüz Geliştirmesi**
 
 ---
 
