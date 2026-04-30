@@ -34,7 +34,8 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[Security]** `bcrypt` ile güvenli kayıt ve şifreli giriş (login) sistemi entegre edildi.
 - **[Sensor]** Accelerometer (ivmeölçer) verileriyle telefonun masadaki duruşunu algılayan algoritma yazıldı.
 - **[Real-time]** Socket.io kullanılarak sensör verileri ve puanların anlık senkronizasyonu sağlandı.
-- **[Lobbies]** Lobi seçim ekranı tasarlandı ve "Odalara Katılma" (Room join) mantığı eklendi.
+- **[Lobby-System]** Dinamik lobi oluşturma ve listeleme API'ları entegre edildi.
+- **[Global-Chat]** Lobi bazlı izole mesajlaşma sistemi (Socket.io) tamamlandı.
 - **[Audio]** Lobiye giriş yapıldığında ve odaklanma başladığında çalan Atmosfer Sesleri (`expo-av`) eklendi.
 - **[UI/UX]** Proje renk paletine (Deep Indigo & Amber Gold) uygun profesyonel ikonlu arayüz tasarlandı.
 
@@ -42,8 +43,6 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 
 ## Yapılacaklar
 
-- [ ] **Lobi Kurma Özelliği:** Kullanıcıların kendi özel çalışma odalarını oluşturabilmesi.
-- [ ] **Global Chat:** Lobi içindeyken diğer kullanıcılarla iletişim kurulabilecek anlık mesajlaşma sistemi.
 - [ ] **Dashboard & Analitik:** Haftalık ve aylık odaklanma grafiklerinin kullanıcıya sunulması.
 - [ ] **Premium Üyelik Sistemi:** Ödeme entegrasyonu ve Premium rozetlerin tanımlanması.
 - [ ] **Beni Hatırla (Auth Persistence):** Uygulama her açıldığında tekrar giriş yapma zorunluluğunun kaldırılması.
