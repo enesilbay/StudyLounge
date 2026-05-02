@@ -1,20 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  StyleSheet, Text, View, TouchableOpacity, FlatList, 
-  SafeAreaView, TextInput, Modal, Alert 
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  StyleSheet, Text, View, TouchableOpacity, FlatList,
+  TextInput, Modal, Alert, Animated, Dimensions,
+  Platform, KeyboardAvoidingView, StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 
-// Marka Kimliği Renkleri[cite: 1]
-const COLORS = {
-  deepIndigo: '#1A237E',
-  amberGold: '#FFC107',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMuted: '#6B7280',
-  white: '#FFFFFF'
+const BACKEND_URL = 'http://192.168.1.5:3000';
+const { width } = Dimensions.get('window');
+
+// ── StudyLounge Kurumsal Tema Paleti ──
+const C = {
+  bg: '#0F172A',            // Arka Plan: Gece Mavisi
+  cardBg: '#FFFFFF',        // Kartlar: Bembeyaz
+  primary: '#FFC107',       // Vurgu: Amber Gold
+  primaryDark: '#F59E0B',   // Koyu Sarı (Gradient için)
+  secondary: '#1A237E',     // Başlıklar ve Buton Yazıları: Derin Lacivert
+  border: '#E2E8F0',        // İnce gri kenarlıklar
+  inputBg: '#F8FAFC',       // Input arka planı
+  success: '#10B981',       // Aktif yeşili
+  danger: '#FEE2E2',        // Kırmızı arka plan (Çıkış butonu için)
+  dangerIcon: '#EF4444',    // Kırmızı ikon
+  textDark: '#1E293B',      // Koyu metin
+  textMuted: '#64748B',     // Gri alt metin
+  white: '#FFFFFF',
 };
 
 interface Lobby {
@@ -22,239 +35,301 @@ interface Lobby {
   name: string;
   icon: string;
   description: string;
+  memberCount?: number;
+  isActive?: boolean;
 }
 
-const BACKEND_URL = 'http://192.168.1.5:3000';
+// ── Lobi Kartı (Beyaz & Soft Gölgeli) ──
+function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void; index: number; }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay: index * 80, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 12, delay: index * 80, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const pressIn = () => Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true, tension: 150 }).start();
+  const pressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 150 }).start();
+
+  const memberCount = item.memberCount ?? Math.floor(Math.random() * 15) + 1;
+  const isActive = item.isActive !== false;
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
+      <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={0.9}>
+        <View style={card.wrap}>
+          
+          {/* İkon Kutusu (Sarımtırak) */}
+          <View style={card.iconBox}>
+            <FontAwesome5 name={item.icon || 'users'} size={20} color={C.primaryDark} />
+          </View>
+
+          {/* İçerik */}
+          <View style={card.body}>
+            <Text style={card.name} numberOfLines={1}>{item.name}</Text>
+            <Text style={card.desc} numberOfLines={1}>{item.description}</Text>
+            <View style={card.meta}>
+              <View style={[card.dot, { backgroundColor: isActive ? C.success : '#94A3B8' }]} />
+              <Text style={card.metaText}>{memberCount} kişi odaklanıyor</Text>
+            </View>
+          </View>
+
+          {/* Sağ Ok */}
+          <FontAwesome5 name="chevron-right" size={14} color={C.textMuted} style={{ opacity: 0.5 }} />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+// ── Header İkon Butonu ──
+function IconBtn({ name, onPress, danger }: { name: string; onPress: () => void; danger?: boolean; }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[hdr.iconBtn, danger && { backgroundColor: C.danger, borderColor: C.danger }]}
+    >
+      <FontAwesome5 name={name} size={15} color={danger ? C.dangerIcon : C.primary} />
+    </TouchableOpacity>
+  );
+}
+
+// ── Ana Ekran ──
 export default function LobbiesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams(); 
-  
-  // State Tanımlamaları
+  const params = useLocalSearchParams();
+
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
-  
-  // Yeni Lobi Formu State'leri
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
-  // 1. Backend'den Lobileri Çekme
+  const headerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    fetchLobbies();
+  }, []);
+
   const fetchLobbies = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/lobbies`);
       const data = await response.json();
       setLobbies(data);
-    } catch (error) {
-      console.error("Lobi listesi yüklenemedi:", error);
+    } catch {
+      console.error('Lobi listesi yüklenemedi');
     }
   };
 
-  useEffect(() => {
-    fetchLobbies();
-  }, []);
-
-  // 2. Yeni Lobi Oluşturma
   const handleCreateLobby = async () => {
     if (!newName.trim()) {
-      Alert.alert("Hata", "Lütfen bir lobi ismi girin.");
+      Alert.alert('Eksik Bilgi', 'Lütfen bir lobi ismi girin.');
       return;
     }
-
     try {
-      const response = await fetch(`${BACKEND_URL}/lobbies`, {
+      const res = await fetch(`${BACKEND_URL}/lobbies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName,
-          description: newDesc,
-          icon: 'users', 
-        }),
+        body: JSON.stringify({ name: newName, description: newDesc, icon: 'users' }),
       });
-
-      if (response.ok) {
+      if (res.ok) {
         setIsModalVisible(false);
         setNewName('');
         setNewDesc('');
-        fetchLobbies(); // Listeyi güncelle
+        fetchLobbies();
       } else {
-        Alert.alert("Hata", "Lobi oluşturulamadı.");
+        Alert.alert('Hata', 'Lobi oluşturulamadı.');
       }
-    } catch (error) {
-      Alert.alert("Hata", "Sunucu bağlantı hatası.");
+    } catch {
+      Alert.alert('Hata', 'Sunucu bağlantı hatası.');
     }
   };
 
-  // 3. Çıkış Yapma İşlemi
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('user_data'); // Hafızayı temizle
-      router.replace('/'); // Giriş ekranına yönlendir (index.tsx)
-    } catch (error) {
-      console.error("Çıkış yapılırken hata oluştu:", error);
+      await AsyncStorage.removeItem('user_data');
+      router.replace('/');
+    } catch (e) {
+      console.error('Çıkış hatası:', e);
     }
   };
 
-  // Lobi Arama Filtresi
-  const filteredLobbies = lobbies.filter(lobby => 
-    lobby.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredLobbies = lobbies.filter((l) =>
+    l.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleJoinLobby = (roomName: string) => {
-    router.push({
-      pathname: '/sensor' as any,
-      params: { ...params, roomName }
-    });
-  };
+  const userName = typeof params.fullName === 'string' ? params.fullName.split(' ')[0] : 'Öğrenci';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        
-        {/* Header Alanı */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Lobiler</Text>
-          
-          <View style={styles.headerButtons}>
-            {/* YENİ: Liderlik Tablosu Butonu */}
-            <TouchableOpacity 
-              style={[styles.createButton, { backgroundColor: '#E0E7FF', paddingHorizontal: 12 }]} 
-              onPress={() => router.push('/leaderboard' as any)}
-            >
-              <FontAwesome5 name="trophy" size={14} color={COLORS.deepIndigo} />
-            </TouchableOpacity>
+    <SafeAreaView style={s.safe}>
+      <StatusBar barStyle="light-content" />
 
-            {/* Profil ve Analitik Butonu */}
-            <TouchableOpacity 
-              style={[styles.createButton, { backgroundColor: '#E0E7FF', paddingHorizontal: 12 }]} 
-              onPress={() => router.push('/profile' as any)}
-            >
-              <FontAwesome5 name="user-alt" size={14} color={COLORS.deepIndigo} />
-            </TouchableOpacity>
+      {/* Arka Plan Efekti */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={s.bgGlow} />
+      </View>
 
-            {/* Çıkış Yap Butonu */}
-            <TouchableOpacity 
-              style={[styles.createButton, { backgroundColor: '#FEE2E2', paddingHorizontal: 10 }]} 
-              onPress={handleLogout}
-            >
-              <FontAwesome5 name="sign-out-alt" size={14} color="#DC2626" />
-            </TouchableOpacity>
-
-            {/* Lobi Kur Butonu */}
-            <TouchableOpacity 
-              style={styles.createButton} 
-              onPress={() => setIsModalVisible(true)}
-            >
-              <FontAwesome5 name="plus" size={14} color={COLORS.deepIndigo} />
-              <Text style={styles.createButtonText}>Lobi Kur</Text>
-            </TouchableOpacity>
+      <View style={s.container}>
+        {/* ── HEADER ── */}
+        <Animated.View style={[s.header, { opacity: headerAnim }]}>
+          <View>
+            <Text style={s.greeting}>İyi Çalışmalar,</Text>
+            <Text style={s.pageTitle}>{userName}</Text>
           </View>
-        </View>
+          <View style={s.headerBtns}>
+            <IconBtn name="trophy" onPress={() => router.push('/leaderboard' as any)} />
+            <IconBtn name="user-alt" onPress={() => router.push('/profile' as any)} />
+            <IconBtn name="sign-out-alt" danger onPress={handleLogout} />
+          </View>
+        </Animated.View>
 
-        {/* Lobi Bul (Arama Çubuğu) */}
-        <View style={styles.searchSection}>
-          <FontAwesome5 name="search" size={16} color={COLORS.textMuted} style={styles.searchIcon} />
+        {/* ── ARAMA KUTUSU (Beyaz Cam Efekti) ── */}
+        <Animated.View style={[s.searchWrap, { opacity: headerAnim }]}>
+          <FontAwesome5 name="search" size={14} color={C.textMuted} style={{ marginRight: 12 }} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Lobi Bul..."
-            placeholderTextColor={COLORS.textMuted}
+            style={s.searchInput}
+            placeholder="Çalışma odası bul..."
+            placeholderTextColor={C.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-        </View>
+        </Animated.View>
 
-        {/* Dinamik Lobi Listesi */}
+        <Text style={s.sectionLabel}>AKTİF ODALAR</Text>
+
+        {/* ── LOBİ LİSTESİ ── */}
         <FlatList
           data={filteredLobbies}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => handleJoinLobby(item.name)}>
-              <View style={styles.iconContainer}>
-                <FontAwesome5 name={item.icon || 'users'} size={24} color={COLORS.amberGold} />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardDesc}>{item.description}</Text>
-              </View>
-              <FontAwesome5 name="chevron-right" size={14} color={COLORS.deepIndigo} style={{ opacity: 0.3 }} />
-            </TouchableOpacity>
+          contentContainerStyle={{ paddingBottom: 100, gap: 12 }}
+          renderItem={({ item, index }) => (
+            <LobbyCard item={item} index={index} onPress={() => router.push({ pathname: '/sensor' as any, params: { ...params, roomName: item.name } })} />
           )}
+          ListEmptyComponent={
+            <View style={s.emptyWrap}>
+              <FontAwesome5 name="door-open" size={40} color={C.textMuted} opacity={0.5} />
+              <Text style={s.emptyText}>Henüz lobi yok</Text>
+              <Text style={s.emptySubText}>İlk çalışma odasını sen kur!</Text>
+            </View>
+          }
         />
+      </View>
 
-        {/* Lobi Kurma Modalı */}
-        <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Yeni Lobi Kur</Text>
-              
+      {/* ── FAB: LOBİ KUR (Sarı Buton) ── */}
+      <TouchableOpacity style={s.fab} onPress={() => setIsModalVisible(true)} activeOpacity={0.85}>
+        <LinearGradient colors={[C.primary, C.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
+          <FontAwesome5 name="plus" size={14} color={C.secondary} />
+          <Text style={s.fabText}>ODA KUR</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* ── LOBİ KURMA MODALI ── */}
+      <Modal visible={isModalVisible} animationType="slide" transparent statusBarTranslucent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={mdl.overlay}>
+            <View style={mdl.sheet}>
+              <View style={mdl.handle} />
+              <Text style={mdl.title}>Yeni Çalışma Odası</Text>
+              <Text style={mdl.subtitle}>Arkadaşlarınla odaklanmak için bir oda oluştur.</Text>
+
               <TextInput
-                style={styles.modalInput}
-                placeholder="Lobi İsmi (Örn: Sınav Maratonu)"
-                placeholderTextColor={COLORS.textMuted}
+                style={mdl.input}
+                placeholder="Oda İsmi (Örn: Vize Maratonu)"
+                placeholderTextColor={C.textMuted}
                 value={newName}
                 onChangeText={setNewName}
               />
-              
               <TextInput
-                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
-                placeholder="Lobi Açıklaması"
-                placeholderTextColor={COLORS.textMuted}
-                multiline={true}
+                style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15 }]}
+                placeholder="Açıklama (Örn: Sadece sesli sessizlik)"
+                placeholderTextColor={C.textMuted}
                 value={newDesc}
                 onChangeText={setNewDesc}
+                multiline
               />
 
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: '#E5E7EB' }]} 
-                  onPress={() => setIsModalVisible(false)}
-                >
-                  <Text style={{ color: '#374151', fontWeight: 'bold' }}>İptal</Text>
+              <View style={mdl.btnRow}>
+                <TouchableOpacity style={mdl.cancelBtn} onPress={() => setIsModalVisible(false)}>
+                  <Text style={mdl.cancelText}>İptal</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: COLORS.amberGold }]} 
-                  onPress={handleCreateLobby}
-                >
-                  <Text style={{ color: COLORS.deepIndigo, fontWeight: 'bold' }}>Kur</Text>
+                <TouchableOpacity onPress={handleCreateLobby} style={{ flex: 1 }}>
+                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
+                    <Text style={mdl.createText}>Oluştur</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
-        </Modal>
-
-      </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
-  
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: '900', color: COLORS.deepIndigo },
-  headerButtons: { flexDirection: 'row', gap: 10 },
-  
-  createButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.amberGold, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-  createButtonText: { marginLeft: 6, fontWeight: 'bold', color: COLORS.deepIndigo, fontSize: 14 },
-  
-  searchSection: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 15, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3 },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, height: 45, color: '#000' },
-  
-  card: { flexDirection: 'row', backgroundColor: '#FFF', padding: 15, borderRadius: 18, marginBottom: 12, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
-  iconContainer: { width: 50, height: 50, borderRadius: 12, backgroundColor: 'rgba(255, 193, 7, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  cardText: { flex: 1 },
-  cardTitle: { fontSize: 17, fontWeight: 'bold', color: COLORS.deepIndigo },
-  cardDesc: { fontSize: 13, color: COLORS.textMuted },
-  
-  // Modal Stilleri
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FFF', width: '85%', padding: 25, borderRadius: 20, elevation: 10 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', color: COLORS.deepIndigo, marginBottom: 20 },
-  modalInput: { backgroundColor: '#F3F4F6', borderRadius: 10, padding: 12, marginBottom: 15, color: '#000' },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
-  actionButton: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, marginLeft: 10 }
+// ─────────────────────────────────────────────
+// STİLLER
+// ─────────────────────────────────────────────
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  bgGlow: {
+    position: 'absolute', top: -50, left: width / 2 - 150, width: 300, height: 300,
+    borderRadius: 150, backgroundColor: 'rgba(255, 193, 7, 0.05)',
+  },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  greeting: { fontSize: 13, color: C.primary, fontWeight: '600', letterSpacing: 0.5 },
+  pageTitle: { fontSize: 28, fontWeight: 'bold', color: C.white, marginTop: 2 },
+  headerBtns: { flexDirection: 'row', gap: 8 },
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.cardBg,
+    borderRadius: 16, paddingHorizontal: 16, height: 50, marginBottom: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
+  },
+  searchInput: { flex: 1, fontSize: 15, color: C.textDark, fontWeight: '500' },
+  sectionLabel: { fontSize: 11, color: C.textMuted, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12 },
+  emptyWrap: { alignItems: 'center', paddingVertical: 80, gap: 10 },
+  emptyText: { fontSize: 18, color: C.white, fontWeight: 'bold', marginTop: 10 },
+  emptySubText: { fontSize: 14, color: C.textMuted },
+  fab: { position: 'absolute', bottom: 30, right: 20, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 10 },
+  fabGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 15 },
+  fabText: { fontSize: 14, fontWeight: 'bold', color: C.secondary, letterSpacing: 1 },
+});
+
+const hdr = StyleSheet.create({
+  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+});
+
+const card = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.cardBg, borderRadius: 20,
+    padding: 16, gap: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 3,
+  },
+  iconBox: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(255, 193, 7, 0.15)', alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1 },
+  name: { fontSize: 16, fontWeight: 'bold', color: C.secondary, marginBottom: 3 },
+  desc: { fontSize: 13, color: C.textMuted, marginBottom: 6 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  metaText: { fontSize: 12, color: C.textMuted, fontWeight: '600' },
+});
+
+const mdl = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: C.cardBg, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
+  handle: { width: 50, height: 5, borderRadius: 3, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: 'bold', color: C.secondary },
+  subtitle: { fontSize: 14, color: C.textMuted, marginTop: -5, marginBottom: 10 },
+  input: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 15, fontSize: 15, color: C.textDark },
+  btnRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
+  cancelBtn: { flex: 1, height: 55, borderRadius: 16, backgroundColor: C.inputBg, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontSize: 15, fontWeight: 'bold', color: C.textMuted },
+  createBtn: { height: 55, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  createText: { fontSize: 16, fontWeight: 'bold', color: C.secondary, letterSpacing: 0.5 },
 });

@@ -1,231 +1,387 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet, Text, View, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  ScrollView, Animated, Dimensions, Image
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-// Marka Kimliği Renkleri[cite: 1]
-const COLORS = {
-  deepIndigo: '#1A237E',
-  amberGold: '#FFC107',
-  background: '#F8F9FA',
-  white: '#FFFFFF',
-  textMuted: '#6B7280'
+const BACKEND_URL = 'http://192.168.1.5:3000'; // Yerel IP adresin
+const { width } = Dimensions.get('window');
+
+// StudyLounge Modern Tema Renkleri
+const C = {
+  bg: '#0F172A',            // Arka plan: Koyu Gece Mavisi
+  cardBg: '#FFFFFF',        // İç kart: Bembeyaz
+  primary: '#FFC107',       // Vurgu: Amber Gold
+  primaryDark: '#F59E0B',   // Vurgu Koyu: Gradient için
+  secondary: '#1A237E',     // Derin Lacivert (Buton yazıları ve aktif tab için)
+  border: '#E2E8F0',        // Pasif input kenarlığı
+  inputBg: '#F8FAFC',       // Pasif input arka planı
+  inputFocusBg: '#FFFBEB',  // Odaklanınca hafif sarımtırak arka plan
+  textPrimary: '#1E293B',   // Koyu metin
+  textMuted: '#94A3B8',     // Açık gri/mavi metin
 };
 
-const BACKEND_URL = 'http://192.168.1.5:3000';
+// ── ANİMASYONLU INPUT BİLEŞENİ ──
+function InputField({
+  placeholder, value, onChangeText, secureTextEntry, keyboardType, autoCapitalize, iconName,
+}: {
+  placeholder: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: any;
+  autoCapitalize?: any;
+  iconName: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const anim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: focused ? 1 : 0,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }, [focused]);
+
+  const borderColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [C.border, C.primary],
+  });
+  
+  const bgColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [C.inputBg, C.inputFocusBg],
+  });
+
+  return (
+    <Animated.View style={[field.wrap, { borderColor, backgroundColor: bgColor }]}>
+      <View style={field.iconWrap}>
+        <FontAwesome5 
+          name={iconName} 
+          size={16} 
+          color={focused ? C.primaryDark : C.textMuted} 
+        />
+      </View>
+      <TextInput
+        style={field.input}
+        placeholder={placeholder}
+        placeholderTextColor={C.textMuted}
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize ?? 'none'}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+    </Animated.View>
+  );
+}
+
+// ── ANA EKRAN ──
 export default function AuthScreen() {
   const router = useRouter();
-  const [isLoginMode, setIsLoginMode] = useState(true); 
-  const [fullName, setFullName] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // "Beni Hatırla" kontrol state'i
+  const [fullName, setFullName] = useState('');
 
-  // 1. UYGULAMA AÇILDIĞINDA: Hafızayı Kontrol Et
+  // Giriş Animasyonları
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const tabAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const savedUser = await AsyncStorage.getItem('user_data');
-        if (savedUser) {
-          const userData = JSON.parse(savedUser);
-          // Kayıtlı veri varsa, bekletmeden Lobi ekranına at
-          router.replace({
-            pathname: '/lobbies' as any,
-            params: { 
-              id: userData.id, 
-              fullName: userData.fullName, 
-              score: userData.score 
-            }
-          });
-        } else {
-          setIsCheckingAuth(false); // Kayıt yoksa formu göster
-        }
-      } catch (error) {
-        setIsCheckingAuth(false);
-      }
-    };
-    
-    checkLoginStatus();
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
+    ]).start();
+    checkExistingLogin();
   }, []);
 
-  const handleSubmit = async () => {
-    if (!email || !password || (!isLoginMode && !fullName)) {
+  const switchTab = (toLogin: boolean) => {
+    setIsLogin(toLogin);
+    Animated.spring(tabAnim, {
+      toValue: toLogin ? 0 : 1,
+      tension: 80,
+      friction: 12,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const checkExistingLogin = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        router.replace({ pathname: '/lobbies' as any, params: parsed });
+      }
+    } catch (e) {}
+  };
+
+  const handleAuth = async () => {
+    if (!email || !password || (!isLogin && !fullName)) {
       Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.');
       return;
     }
-
     setIsLoading(true);
-
+    const endpoint = isLogin ? '/users/login' : '/users/register';
     try {
-      const endpoint = isLoginMode ? '/users/login' : '/users/register';
-      const bodyData = isLoginMode 
-        ? { email, password } 
-        : { fullName, email, password, isPremium: false };
-
       const response = await fetch(`${BACKEND_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData),
+        body: JSON.stringify(isLogin ? { email, password } : { fullName, email, password }),
       });
-
+      const data = await response.json();
       if (response.ok) {
-        const user = await response.json();
-        
-        if (isLoginMode) {
-          // 2. GİRİŞ BAŞARILI: Verileri Hafızaya Kaydet
-          const userDataToSave = {
-            id: user.id,
-            fullName: user.fullName,
-            score: user.totalFocusMinutes || 0
-          };
-          await AsyncStorage.setItem('user_data', JSON.stringify(userDataToSave));
-
-          router.replace({
-            pathname: '/lobbies' as any,
-            params: userDataToSave
-          });
-        } else {
-          // KAYIT BAŞARILI: Giriş moduna geçir
-          Alert.alert('Başarılı! 🎉', 'Kaydınız oluşturuldu. Lütfen şimdi giriş yapın.');
-          setIsLoginMode(true); 
-          setFullName(''); 
-          setPassword(''); // Güvenlik için şifreyi temizle
-        }
+        await AsyncStorage.setItem('user_data', JSON.stringify(data));
+        router.replace({ pathname: '/lobbies' as any, params: data });
       } else {
-        const errorData = await response.json();
-        Alert.alert('Hata', errorData.message || 'Bir sorun oluştu.');
+        Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Hafıza kontrol edilirken gösterilecek ekran
-  if (isCheckingAuth) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.deepIndigo} />
-        <Text style={{ marginTop: 15, color: COLORS.deepIndigo, fontWeight: 'bold' }}>
-          StudyLounge Yükleniyor...
-        </Text>
-      </View>
-    );
-  }
+  // Sekme Seçici Kaydırma Ayarı
+  const tabIndicatorLeft = tabAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['2%', '50%'],
+  });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <FontAwesome5 name="book-reader" size={50} color={COLORS.amberGold} style={{ marginBottom: 15 }} />
-        <Text style={styles.logoText}>StudyLounge</Text>
-        <Text style={styles.subtitle}>
-          {isLoginMode ? 'Ayrı Masalarda, Aynı Lobide.' : 'Akademik Ağına Katıl.'}
-        </Text>
+    <SafeAreaView style={s.safe}>
+      {/* Koyu Arka Plan */}
+      <View style={StyleSheet.absoluteFill}>
+        <View style={s.bgBase} />
+        <View style={s.bgGlow} />
       </View>
 
-      <View style={styles.formContainer}>
-        
-        {!isLoginMode && (
-          <TextInput
-            style={styles.input}
-            placeholder="Adınız Soyadınız"
-            placeholderTextColor={COLORS.textMuted}
-            value={fullName}
-            onChangeText={setFullName}
-          />
-        )}
-        
-        <TextInput
-          style={styles.input}
-          placeholder="E-posta Adresiniz"
-          placeholderTextColor={COLORS.textMuted}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          
+          <Animated.View style={[s.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            
+            {/* LOGO */}
+            <View style={s.logoContainer}>
+              <Image 
+                source={require('../../assets/images/logo-light.png')} 
+                style={s.logo} 
+                resizeMode="contain" 
+              />
+            </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Şifreniz"
-          placeholderTextColor={COLORS.textMuted}
-          secureTextEntry={true} 
-          value={password}
-          onChangeText={setPassword}
-        />
+            {/* SEKME (TAB) SEÇİCİ */}
+            <View style={s.tabContainer}>
+              <Animated.View style={[s.tabIndicator, { left: tabIndicatorLeft }]} />
+              <TouchableOpacity style={s.tabBtn} onPress={() => switchTab(true)} activeOpacity={0.8}>
+                <Text style={[s.tabText, isLogin && s.tabTextActive]}>Giriş Yap</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.tabBtn} onPress={() => switchTab(false)} activeOpacity={0.8}>
+                <Text style={[s.tabText, !isLogin && s.tabTextActive]}>Kayıt Ol</Text>
+              </TouchableOpacity>
+            </View>
 
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={handleSubmit} 
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={COLORS.deepIndigo} />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isLoginMode ? 'Giriş Yap' : 'Kayıt Ol'}
-            </Text>
-          )}
-        </TouchableOpacity>
+            {/* FORM ALANLARI */}
+            <View style={s.form}>
+              {!isLogin && (
+                <InputField
+                  placeholder="Ad Soyad"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  autoCapitalize="words"
+                  iconName="user"
+                />
+              )}
+              <InputField
+                placeholder="E-posta adresi"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                iconName="envelope"
+              />
+              <InputField
+                placeholder="Şifre"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                iconName="lock"
+              />
 
-        <TouchableOpacity 
-          style={styles.switchModeButton}
-          onPress={() => setIsLoginMode(!isLoginMode)}
-        >
-          <Text style={styles.switchModeText}>
-            {isLoginMode 
-              ? 'Hesabın yok mu? Yeni kayıt oluştur.' 
-              : 'Zaten hesabın var mı? Giriş yap.'}
-          </Text>
-        </TouchableOpacity>
+              {/* BUTON */}
+              <TouchableOpacity onPress={handleAuth} disabled={isLoading} activeOpacity={0.85} style={{ marginTop: 15 }}>
+                <LinearGradient
+                  colors={[C.primary, C.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.btn}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={C.secondary} />
+                  ) : (
+                    <>
+                      <Text style={s.btnText}>{isLogin ? 'GİRİŞ YAP' : 'KAYIT OL'}</Text>
+                      <FontAwesome5 name="arrow-right" size={14} color={C.secondary} style={{ marginLeft: 8 }} />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
 
-      </View>
-    </View>
+            {/* ALT YÖNLENDİRME METNİ */}
+            <TouchableOpacity style={s.switchRow} onPress={() => switchTab(!isLogin)} activeOpacity={0.7}>
+              <Text style={s.switchText}>
+                {isLogin ? 'Hesabın yok mu?  ' : 'Zaten üye misin?  '}
+                <Text style={s.switchAction}>
+                  {isLogin ? 'Kayıt Ol' : 'Giriş Yap'}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', padding: 20 },
-  headerContainer: { alignItems: 'center', marginBottom: 40 },
-  logoText: { fontSize: 34, fontWeight: '900', color: COLORS.deepIndigo, letterSpacing: 0.5 },
-  subtitle: { fontSize: 16, color: COLORS.textMuted, marginTop: 8, fontWeight: '500' },
-  
-  formContainer: { 
-    backgroundColor: COLORS.white, 
-    padding: 24, 
-    borderRadius: 20, 
-    elevation: 8,
-    shadowColor: COLORS.deepIndigo, 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 10 
+// ─────────────────────────────────────────────
+// STİLLER
+// ─────────────────────────────────────────────
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  bgBase: { ...StyleSheet.absoluteFillObject, backgroundColor: C.bg },
+  bgGlow: {
+    position: 'absolute',
+    top: -100,
+    left: width / 2 - 150,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255, 193, 7, 0.08)', // Arka planda çok hafif sarı bir parlama efekti
   },
-  
-  input: { 
-    backgroundColor: '#F3F4F6', 
-    borderWidth: 1, 
-    borderColor: '#E5E7EB', 
-    borderRadius: 12, 
-    padding: 16, 
-    marginBottom: 16, 
-    fontSize: 16, 
-    color: '#1F2937' 
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 32,
   },
-  
-  button: { 
-    backgroundColor: COLORS.amberGold, 
-    padding: 16, 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    marginTop: 8 
+  card: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: C.cardBg,
+    borderRadius: 30,
+    paddingVertical: 35,
+    paddingHorizontal: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.2,
+    shadowRadius: 25,
+    elevation: 10,
   },
-  buttonText: { color: COLORS.deepIndigo, fontSize: 18, fontWeight: 'bold' },
-  
-  switchModeButton: { marginTop: 20, alignItems: 'center' },
-  switchModeText: { color: COLORS.deepIndigo, fontSize: 15, fontWeight: '600', opacity: 0.8 }
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  logo: {
+    width: 190,
+    height: 75,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    padding: 5,
+    marginBottom: 25,
+    position: 'relative',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: 5,
+    bottom: 5,
+    width: '48%',
+    borderRadius: 12,
+    backgroundColor: C.cardBg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', zIndex: 1 },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.textMuted,
+  },
+  tabTextActive: { 
+    color: C.secondary, 
+    fontWeight: '800' 
+  },
+  form: { gap: 14 },
+  btn: {
+    height: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  btnText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: C.secondary, // Sarı buton üzerinde lacivert yazı
+    letterSpacing: 1.2,
+  },
+  switchRow: { marginTop: 25, alignItems: 'center' },
+  switchText: {
+    fontSize: 14,
+    color: C.textMuted,
+    fontWeight: '500',
+  },
+  switchAction: {
+    color: C.secondary,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+});
+
+const field = StyleSheet.create({
+  wrap: {
+    height: 58,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  iconWrap: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: C.textPrimary,
+    fontWeight: '500',
+    marginLeft: 5,
+  },
 });
