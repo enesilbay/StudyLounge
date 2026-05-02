@@ -1,43 +1,65 @@
-import { Controller, Post, Body, Get, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { User } from './user.entity';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  // ── 1. KAYIT OL (YENİ: Artık username zorunlu) ──
   @Post('register')
-  async register(@Body() userData: Partial<User>): Promise<User> {
-    try {
-      return await this.usersService.create(userData);
-    } catch (error: any) {
-      // Servisten gelen hataları (Örn: Email zaten var) mobil uygulamaya düzgün ilet
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+  async register(@Body() body: any) {
+    if (!body.username || !body.email || !body.password || !body.fullName) {
+      throw new BadRequestException('Kullanıcı adı, Ad Soyad, E-posta ve Şifre zorunludur!');
     }
+    return this.usersService.create(body);
   }
 
+  // ── 2. GİRİŞ YAP ──
   @Post('login')
-  async login(@Body() body: { email: string; password?: string }) {
-    // TypeScript onayı: Eğer mobilden şifre gelmezse direkt reddet
-    if (!body.password) {
-      throw new HttpException('Şifre alanı gereklidir.', HttpStatus.BAD_REQUEST);
-    }
-
+  async login(@Body() body: any) {
     const user = await this.usersService.login(body.email, body.password);
     if (!user) {
-      throw new HttpException('E-posta veya şifre hatalı.', HttpStatus.UNAUTHORIZED);
+      throw new UnauthorizedException('Hatalı e-posta veya şifre girdiniz.');
     }
-    return user;
+    return { success: true, user };
   }
 
-  @Get()
-  async findAll(): Promise<User[]> {
-    return this.usersService.findAll();
-  }
-
+  // ── 3. LİDERLİK TABLOSUNU GETİR ──
   @Get('leaderboard')
   async getLeaderboard() {
     return this.usersService.getLeaderboard();
   }
 
+  // ── 4. ARKADAŞLIK İSTEĞİ GÖNDER (YEPYENİ KAPIMIZ) ──
+  @Post('friend-request')
+  async sendRequest(@Body() body: { senderId: number; receiverUsername: string }) {
+    if (!body.senderId || !body.receiverUsername) {
+      throw new BadRequestException('Gönderen ID ve Alıcı Kullanıcı Adı eksik.');
+    }
+    
+    const request = await this.usersService.sendFriendRequest(body.senderId, body.receiverUsername);
+    return { success: true, message: 'Arkadaşlık isteği başarıyla gönderildi!', data: request };
+  }
+
+  // ── 5. BANA GELEN İSTEKLERİ GÖR ──
+  @Get('friend-requests/:userId')
+  async getRequests(@Param('userId') userId: string) {
+    return this.usersService.getPendingRequests(Number(userId));
+  }
+
+  // ── 6. İSTEĞİ YANITLA (Kabul/Red) ──
+  @Post('respond-request')
+  async respondRequest(@Body() body: { requestId: number; receiverId: number; status: 'accepted' | 'rejected' }) {
+    if (!body.requestId || !body.receiverId || !body.status) {
+      throw new BadRequestException('Eksik bilgi gönderildi.');
+    }
+    const result = await this.usersService.respondToRequest(body.requestId, body.receiverId, body.status);
+    return { success: true, message: `İstek ${body.status === 'accepted' ? 'kabul edildi' : 'reddedildi'}.`, data: result };
+  }
+
+  // ── 7. ARKADAŞ LİSTEMİ GETİR ──
+  @Get('friends/:userId')
+  async getFriends(@Param('userId') userId: string) {
+    return this.usersService.getFriends(Number(userId));
+  }
 }

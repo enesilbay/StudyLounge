@@ -3,13 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './user.entity';
+import { Friendship } from './friendship.entity'; // EKLENDİ
 
 @Module({
-  // Buradaki forFeature([User]) kısmı NestJS'e "Bu modül User tablosunu kullanacak" der.
-  imports: [TypeOrmModule.forFeature([User])], 
+  // EKLENDİ: Friendship tablosu TypeOrmModule içine yazıldı
+  imports: [TypeOrmModule.forFeature([User, Friendship])],
   providers: [UsersService],
   controllers: [UsersController],
-  // Diğer modüllerin (örneğin Auth) bu servise erişebilmesi için dışarı açıyoruz.
-  exports: [UsersService], 
+  exports: [UsersService],
 })
 export class UsersModule {}

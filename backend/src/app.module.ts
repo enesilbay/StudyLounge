@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './users/user.entity'; 
+import { Friendship } from './users/friendship.entity'; // 1. Friendship import edildi
 import { UsersModule } from './users/users.module';
-import { SensorsGateway } from './sensors.gateway'; // 1. Gateway import edildi
+import { SensorsGateway } from './sensors.gateway'; 
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
 
@@ -15,13 +16,16 @@ import { Lobby } from './lobbies/lobby.entity';
       username: 'enes_admin',
       password: 'studylounge_secret',
       database: 'studylounge',
-      entities: [User, Lobby], // Hem User hem de Lobby burada tanımlı olmalı
+      // 2. Friendship entity'si buraya eklendi
+      entities: [User, Lobby, Friendship], 
+      // 3. İleride yeni bir tablo eklersen bir daha hata vermesin diye bu ayar açıldı:
+      autoLoadEntities: true, 
       synchronize: true,
     }),
     UsersModule,
-    LobbiesModule, // LobbiesModule buraya eklendi
+    LobbiesModule, 
   ],
   controllers: [],
-  providers: [SensorsGateway], // Gateway buraya eklendi
+  providers: [SensorsGateway], 
 })
 export class AppModule {}

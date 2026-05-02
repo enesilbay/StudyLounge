@@ -5,6 +5,10 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // YENİ EKLENDİ: Benzersiz kullanıcı adı
+  @Column({ unique: true })
+  username: string;
+
   @Column()
   fullName: string;
 
@@ -17,7 +21,6 @@ export class User {
   @Column({ default: false })
   isPremium: boolean;
 
-  // Yeni eklediğimiz sütun: Toplam odaklanma süresi (dakika cinsinden)
   @Column({ default: 0 })
   totalFocusMinutes: number;
 }

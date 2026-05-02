@@ -94,6 +94,7 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState(''); // YENİ: Kullanıcı Adı State'i
 
   // Giriş Animasyonları
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -129,22 +130,37 @@ export default function AuthScreen() {
   };
 
   const handleAuth = async () => {
-    if (!email || !password || (!isLogin && !fullName)) {
+    // Boş alan kontrolü
+    if (!email || !password || (!isLogin && (!fullName || !username))) {
       Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.');
       return;
     }
+
+    // Kayıt olurken Kullanıcı Adı kural kontrolü (Boşluk yok, özel karakter yok)
+    if (!isLogin) {
+      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      if (!usernameRegex.test(username)) {
+        Alert.alert('Geçersiz Kullanıcı Adı', 'Kullanıcı adında boşluk veya özel karakter olamaz. Sadece harf, rakam ve alt çizgi (_) kullanın.');
+        return;
+      }
+    }
+
     setIsLoading(true);
     const endpoint = isLogin ? '/users/login' : '/users/register';
+    
     try {
       const response = await fetch(`${BACKEND_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isLogin ? { email, password } : { fullName, email, password }),
+        body: JSON.stringify(isLogin ? { email, password } : { username, fullName, email, password }),
       });
+      
       const data = await response.json();
+      
       if (response.ok) {
-        await AsyncStorage.setItem('user_data', JSON.stringify(data));
-        router.replace({ pathname: '/lobbies' as any, params: data });
+        // İleride lazım olacağı için 'username' verisini de AsyncStorage'a kaydediyoruz (data objesi içinde geliyor)
+        await AsyncStorage.setItem('user_data', JSON.stringify(data.user || data)); 
+        router.replace({ pathname: '/lobbies' as any, params: data.user || data });
       } else {
         Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
       }
@@ -197,13 +213,22 @@ export default function AuthScreen() {
             {/* FORM ALANLARI */}
             <View style={s.form}>
               {!isLogin && (
-                <InputField
-                  placeholder="Ad Soyad"
-                  value={fullName}
-                  onChangeText={setFullName}
-                  autoCapitalize="words"
-                  iconName="user"
-                />
+                <>
+                  <InputField
+                    placeholder="Ad Soyad"
+                    value={fullName}
+                    onChangeText={setFullName}
+                    autoCapitalize="words"
+                    iconName="address-card" // İkon güncellendi
+                  />
+                  <InputField
+                    placeholder="Kullanıcı Adı"
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    iconName="user" // Kullanıcı adı için ikon eklendi
+                  />
+                </>
               )}
               <InputField
                 placeholder="E-posta adresi"
@@ -270,7 +295,7 @@ const s = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(255, 193, 7, 0.08)', // Arka planda çok hafif sarı bir parlama efekti
+    backgroundColor: 'rgba(255, 193, 7, 0.08)', 
   },
   scroll: {
     flexGrow: 1,
@@ -347,7 +372,7 @@ const s = StyleSheet.create({
   btnText: {
     fontSize: 16,
     fontWeight: '900',
-    color: C.secondary, // Sarı buton üzerinde lacivert yazı
+    color: C.secondary,
     letterSpacing: 1.2,
   },
   switchRow: { marginTop: 25, alignItems: 'center' },
