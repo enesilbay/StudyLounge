@@ -39,15 +39,18 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[Liderlik-Tablosu]** En çok odaklanan kullanıcıların sıralandığı "Günün En Çalışkanları" listesi.
 - **[Beni-Hatırla]** Uygulama her açıldığında tekrar giriş yapma zorunluluğunun kaldırılması.
 - **[Dashboard&Analitik]** Haftalık ve aylık odaklanma grafiklerinin kullanıcıya sunulması.
+- **[User-Profile]** Sadece harf, rakam ve alt çizgiden oluşan benzersiz (unique) username (kullanıcı adı) sistemi ve güvenli doğrulama (Regex) entegre edildi.
+- **[Social-Backend]** Friendship veritabanı altyapısı kuruldu; arkadaşlık isteği gönderme, gelen istekleri yanıtlama (kabul/red) ve arkadaş listeleme API'leri yazıldı.
 
 ---
 
 ## Yapılacaklar
 
-- [ ] **Premium Üyelik Sistemi:** Ödeme entegrasyonu ve Premium rozetlerin tanımlanması.
-- [ ] **Bildirim Sistemi:** Arkadaşın masaya oturduğunda veya çalışma süren dolduğunda gelecek bildirimler.
+- [ ] **Premium Üyelik Sistemi:**
+- [ ] **Bildirim Sistemi:**
 - [ ] **Web Sitesi**
-- [ ] **Arayüz Geliştirmesi**
+- [ ] **Profil Özelleştirme (Avatar)**
+- [ ] **Bildirim Sistemi**
 
 ---
 
