@@ -4,20 +4,44 @@ import {
   MessageBody,
   WebSocketServer,
   ConnectedSocket,
+  OnGatewayDisconnect, // EKLENDİ: Kullanıcı çıkışlarını yakalamak için
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class SensorsGateway {
+export class SensorsGateway implements OnGatewayDisconnect {
   @WebSocketServer() server!: Server;
 
-  // Kullanıcıların aktif çalışma seanslarını takip etmek için
+  // Kullanıcıların aktif çalışma seanslarını takip etmek için (Puanlama için)
   private activeSessions = new Map<number, number>();
+
+  // EKLENDİ: Odalardaki anlık kullanıcı listesini ve "masada mı?" durumunu tutmak için
+  private connectedUsers = new Map<string, { userId: number; fullName: string; roomName: string; isAtDesk: boolean }>();
 
   constructor(private readonly usersService: UsersService) {}
 
-  // KULLANICIYI LOBİYE (ODAYA) ALMA
+  // ── KULLANICI UYGULAMAYI KAPATTIĞINDA / BAĞLANTI KOPTUĞUNDA ──
+  handleDisconnect(client: Socket) {
+    const user = this.connectedUsers.get(client.id);
+    if (user) {
+      this.connectedUsers.delete(client.id); // Listeden sil
+      this.broadcastRoomUsers(user.roomName); // Kalanlara güncel listeyi gönder
+      console.log(`[Bağlantı Koptu] ${user.fullName} lobiden ayrıldı.`);
+    }
+  }
+
+  // ── ODADAKİ HERKESE GÜNCEL LİSTEYİ GÖNDEREN YARDIMCI FONKSİYON ──
+  private broadcastRoomUsers(roomName: string) {
+    // Sadece o odadaki kişileri filtreleyip diziye çevir
+    const usersInRoom = Array.from(this.connectedUsers.values()).filter(
+      (u) => u.roomName === roomName
+    );
+    // Frontend'in beklediği 'room_users' kanalına bu diziyi gönder
+    this.server.to(roomName).emit('room_users', usersInRoom);
+  }
+
+  // ── KULLANICIYI LOBİYE (ODAYA) ALMA ──
   @SubscribeMessage('join_lobby')
   handleJoinLobby(
     @ConnectedSocket() client: Socket,
@@ -28,16 +52,23 @@ export class SensorsGateway {
 
     // Socket.io "Rooms" özelliğini kullanarak kullanıcıyı odaya dahil et
     client.join(roomName);
+    
+    // Kullanıcıyı anlık listemize ekle (Başlangıçta isAtDesk: false)
+    this.connectedUsers.set(client.id, { userId, fullName, roomName, isAtDesk: false });
+
     console.log(`[Lobi Katılım] ${fullName} (ID: ${userId}), '${roomName}' lobisine girdi.`);
 
-    // Odadaki diğer kullanıcılara yeni birinin geldiğini bildir
+    // EKLENDİ: Odaya yeni biri girdiği için odadaki herkese TAM LİSTEYİ gönder
+    this.broadcastRoomUsers(roomName);
+
+    // Odadaki diğer kullanıcılara yeni birinin geldiğini bildir (Geçmiş uyumluluk için bırakıldı)
     this.server.to(roomName).emit('user_joined_lobby', {
-      message: `${fullName} odaya katıldı.`,
+      fullName, 
       userId,
     });
   }
 
-  // GLOBAL CHAT - MESAJ GÖNDERME VE DAĞITMA
+  // ── GLOBAL CHAT - MESAJ GÖNDERME VE DAĞITMA ──
   @SubscribeMessage('send_message')
   handleSendMessage(
     @ConnectedSocket() client: Socket,
@@ -57,11 +88,24 @@ export class SensorsGateway {
     });
   }
 
-  // ODAKLANMA DURUMU VE PUANLAMA TAKİBİ
+  // ── ODAKLANMA DURUMU VE PUANLAMA TAKİBİ ──
   @SubscribeMessage('update_presence')
-  async handlePresenceUpdate(@MessageBody() payload: any) {
+  async handlePresenceUpdate(
+    @ConnectedSocket() client: Socket, // EKLENDİ: Client ID'ye ulaşmak için
+    @MessageBody() payload: any
+  ) {
     const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
     const { userId, isAtDesk, roomName } = data;
+
+    // EKLENDİ: Kullanıcının durumunu (isAtDesk) anlık listede güncelle
+    const user = this.connectedUsers.get(client.id);
+    if (user) {
+      user.isAtDesk = isAtDesk;
+      this.connectedUsers.set(client.id, user);
+      
+      // Birinin durumu (yeşil/gri nokta) değiştiği için odadaki herkese güncel listeyi gönder
+      this.broadcastRoomUsers(roomName);
+    }
 
     if (isAtDesk) {
       // Telefon masaya bırakıldığında süreyi başlat
@@ -91,7 +135,6 @@ export class SensorsGateway {
       }
     }
 
-    // Durum değişikliğini (masada/değil) sadece odadaki arkadaşlarına bildir
     if (roomName) {
       this.server.to(roomName).emit('presence_changed', data);
     }
