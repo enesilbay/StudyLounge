@@ -1,11 +1,14 @@
-import { Controller, Post, Body, Get, Param, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, BadRequestException, UnauthorizedException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // ── 1. KAYIT OL (YENİ: Artık username zorunlu) ──
+  // ── 1. KAYIT OL ──
   @Post('register')
   async register(@Body() body: any) {
     if (!body.username || !body.email || !body.password || !body.fullName) {
@@ -30,13 +33,12 @@ export class UsersController {
     return this.usersService.getLeaderboard();
   }
 
-  // ── 4. ARKADAŞLIK İSTEĞİ GÖNDER (YEPYENİ KAPIMIZ) ──
+  // ── 4. ARKADAŞLIK İSTEĞİ GÖNDER ──
   @Post('friend-request')
   async sendRequest(@Body() body: { senderId: number; receiverUsername: string }) {
     if (!body.senderId || !body.receiverUsername) {
       throw new BadRequestException('Gönderen ID ve Alıcı Kullanıcı Adı eksik.');
     }
-    
     const request = await this.usersService.sendFriendRequest(body.senderId, body.receiverUsername);
     return { success: true, message: 'Arkadaşlık isteği başarıyla gönderildi!', data: request };
   }
@@ -61,5 +63,25 @@ export class UsersController {
   @Get('friends/:userId')
   async getFriends(@Param('userId') userId: string) {
     return this.usersService.getFriends(Number(userId));
+  }
+
+  // ── 8. AVATAR YÜKLEME UCU (YENİ EKLENDİ) ──
+  @Post('avatar/:id')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, `avatar-${req.params.id}-${uniqueSuffix}${extname(file.originalname)}`);
+      }
+    })
+  }))
+  async uploadAvatar(@Param('id') id: string, @UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('Dosya yüklenemedi!');
+    }
+    const avatarUrl = `/uploads/${file.filename}`;
+    const updatedUser = await this.usersService.updateAvatar(Number(id), avatarUrl);
+    return { success: true, user: updatedUser };
   }
 }

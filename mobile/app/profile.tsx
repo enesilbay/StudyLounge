@@ -1,150 +1,207 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  StyleSheet, Text, View, TouchableOpacity,
+  Image, Alert, ActivityIndicator, Dimensions
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 
-// Marka Renkleri
-const COLORS = {
-  deepIndigo: '#1A237E',
-  amberGold: '#FFC107',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  textMuted: '#6B7280'
+const BACKEND_URL = 'http://192.168.1.5:3000';
+const { width } = Dimensions.get('window');
+
+const C = {
+  bg: '#0F172A',
+  cardBg: '#1E293B',
+  primary: '#FFC107',
+  primaryDark: '#F59E0B', // 👈 EKLENDİ
+  secondary: '#1A237E',
+  textMuted: '#94A3B8',
+  white: '#FFFFFF',
 };
-
-// Şimdilik görselleştirmek için örnek haftalık veri (İleride backend'den gelecek)
-const WEEKLY_DATA = [
-  { day: 'Pzt', minutes: 45 },
-  { day: 'Sal', minutes: 120 },
-  { day: 'Çar', minutes: 80 },
-  { day: 'Per', minutes: 150 },
-  { day: 'Cum', minutes: 90 },
-  { day: 'Cmt', minutes: 200 },
-  { day: 'Paz', minutes: 60 },
-];
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [userData, setUserData] = useState<any>(null);
+  const params = useLocalSearchParams();
+  const myUserId = Number(params.id);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const storedData = await AsyncStorage.getItem('user_data');
-      if (storedData) {
-        setUserData(JSON.parse(storedData));
+  const [user, setUser] = useState<any>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // ── Sayfaya her girildiğinde kullanıcı bilgilerini taze çek ──
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserData();
+    }, [myUserId])
+  );
+
+  const fetchUserData = async () => {
+    try {
+      // Backend'deki mevcut liderlik tablosu rotasını veya özel bir user rotasını kullanabiliriz.
+      // Hızlı çözüm için tüm kullanıcıları çekip kendimizi bulalım:
+      const res = await fetch(`${BACKEND_URL}/users/leaderboard`);
+      const allUsers = await res.json();
+      const me = allUsers.find((u: any) => u.id === myUserId);
+      
+      // Eğer liderlik tablosunda yoksak (puanımız 0 ise) veriyi Storage'dan alalım
+      if (me) {
+        setUser(me);
+      } else {
+        const stored = await AsyncStorage.getItem('user_data');
+        if (stored) setUser(JSON.parse(stored));
       }
-    };
-    loadUser();
-  }, []);
+    } catch (e) {
+      console.error('Kullanıcı bilgisi çekilemedi', e);
+    }
+  };
 
-  if (!userData) {
-    return (
-      <View style={styles.centerContent}>
-        <ActivityIndicator size="large" color={COLORS.deepIndigo} />
-      </View>
-    );
-  }
+  // ── 📸 GALERİDEN FOTOĞRAF SEÇME VE YÜKLEME ──
+  const handlePickAvatar = async () => {
+    // 1. Galeri izni iste
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      return Alert.alert('İzin Gerekli', 'Fotoğraf seçebilmek için galeri erişimine izin vermelisin.');
+    }
 
-  // Grafik yüksekliğini hesaplamak için en yüksek değeri bul
-  const maxVal = Math.max(...WEEKLY_DATA.map(d => d.minutes));
+    // 2. Fotoğrafı seç (Birebir kare oranında kırpma ekranı açar)
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5, // Boyutu çok büyütmemek için
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+    // 3. Fotoğrafı Backend'e Yükle
+    uploadAvatar(result.assets[0]);
+  };
+
+  const uploadAvatar = async (imageAsset: ImagePicker.ImagePickerAsset) => {
+    setIsUploading(true);
+    try {
+      // Dosyayı form verisine (FormData) dönüştür
+      const formData = new FormData();
+      formData.append('file', {
+        uri: imageAsset.uri,
+        name: 'avatar.jpg',
+        type: 'image/jpeg',
+      } as any);
+
+      // Backend'e gönder
+      const res = await fetch(`${BACKEND_URL}/users/avatar/${myUserId}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setUser(data.user); // Yeni fotoğraf url'sini state'e kaydet
+        // Storage'daki veriyi de güncelle ki çıkıp girince gitmesin
+        const stored = await AsyncStorage.getItem('user_data');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.avatarUrl = data.user.avatarUrl;
+          await AsyncStorage.setItem('user_data', JSON.stringify(parsed));
+        }
+      } else {
+        Alert.alert('Hata', 'Fotoğraf yüklenemedi.');
+      }
+    } catch (error) {
+      console.error('Yükleme Hatası:', error);
+      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  if (!user) return <View style={s.safe} />; // Yüklenirken boş ekran
+
+  // Fotoğraf URL'sini backend IP'si ile birleştiriyoruz
+  const fullAvatarUrl = user.avatarUrl ? `${BACKEND_URL}${user.avatarUrl}` : null;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <FontAwesome5 name="arrow-left" size={20} color={COLORS.deepIndigo} />
+    <SafeAreaView style={s.safe}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <FontAwesome5 name="arrow-left" size={20} color={C.white} />
         </TouchableOpacity>
-        <Text style={styles.title}>Profilim</Text>
-        <View style={styles.spacer} />
+        <Text style={s.headerTitle}>Profilim</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <View style={s.container}>
         
-        {/* Kullanıcı Bilgi Kartı */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <FontAwesome5 name="user-graduate" size={40} color={COLORS.amberGold} />
-          </View>
-          <Text style={styles.userName}>{userData.fullName}</Text>
-          <Text style={styles.userLevel}>
-            {userData.score > 500 ? '🔥 Kıdemli Çalışkan' : '🌱 Çaylak Odaklayıcı'}
-          </Text>
+        {/* ── AVATAR BÖLÜMÜ ── */}
+        <View style={s.avatarWrap}>
+          <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.8}>
+            <View style={s.avatarContainer}>
+              {fullAvatarUrl ? (
+                <Image source={{ uri: fullAvatarUrl }} style={s.avatarImage} />
+              ) : (
+                <Text style={s.avatarInitials}>{user.fullName?.charAt(0) || 'U'}</Text>
+              )}
+
+              {/* Yükleme animasyonu veya Kamera İkonu */}
+              <View style={s.editBadge}>
+                {isUploading ? (
+                  <ActivityIndicator size="small" color={C.white} />
+                ) : (
+                  <FontAwesome5 name="camera" size={14} color={C.white} />
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* İstatistik Özetleri */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <FontAwesome5 name="fire" size={24} color="#FF5722" />
-            <Text style={styles.statValue}>{userData.score}</Text>
-            <Text style={styles.statLabel}>Toplam Puan</Text>
-          </View>
-          <View style={styles.statBox}>
-            <FontAwesome5 name="clock" size={24} color={COLORS.deepIndigo} />
-            <Text style={styles.statValue}>{Math.floor(userData.score / 60)}s</Text>
-            <Text style={styles.statLabel}>Toplam Saat</Text>
-          </View>
+        {/* ── KULLANICI BİLGİLERİ ── */}
+        <View style={s.infoWrap}>
+          <Text style={s.name}>{user.fullName}</Text>
+          <Text style={s.username}>@{user.username || 'ogrenci'}</Text>
         </View>
 
-        {/* Haftalık Analitik Grafiği (Custom Bar Chart) */}
-        <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Haftalık Odaklanma (Dk)</Text>
-          <View style={styles.chartContainer}>
-            {WEEKLY_DATA.map((item, index) => {
-              const barHeight = (item.minutes / maxVal) * 100; // Yüzdelik olarak bar boyu
-              const isToday = item.day === 'Per'; // Örnek olarak Perşembe bugün olsun
-              
-              return (
-                <View key={index} style={styles.barWrapper}>
-                  <Text style={styles.barValue}>{item.minutes}</Text>
-                  <View style={styles.barBackground}>
-                    <View style={[
-                      styles.barFill, 
-                      { height: `${barHeight}%`, backgroundColor: isToday ? COLORS.amberGold : COLORS.deepIndigo }
-                    ]} />
-                  </View>
-                  <Text style={[styles.barLabel, isToday ? { fontWeight: 'bold', color: COLORS.deepIndigo } : {}]}>
-                    {item.day}
-                  </Text>
-                </View>
-              );
-            })}
+        {/* ── İSTATİSTİKLER ── */}
+        <View style={s.statsCard}>
+          {/* 👇 DÜZELTİLDİ: borderRadius style içine alındı 👇 */}
+          <LinearGradient colors={['rgba(255, 193, 7, 0.1)', 'transparent']} style={[StyleSheet.absoluteFill, { borderRadius: 20 }]} />
+          <View style={s.statItem}>
+            <FontAwesome5 name="fire" size={24} color="#EF4444" />
+            <Text style={s.statValue}>{user.totalFocusMinutes || 0}</Text>
+            <Text style={s.statLabel}>Dakika Odaklanma</Text>
           </View>
         </View>
 
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 15 },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#E5E7EB', borderRadius: 20 },
-  title: { fontSize: 22, fontWeight: '900', color: COLORS.deepIndigo },
-  spacer: { width: 40 },
-  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollContainer: { paddingHorizontal: 20, paddingBottom: 30 },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: C.white },
+  container: { flex: 1, paddingHorizontal: 20, alignItems: 'center' },
   
-  // Profil Kartı
-  profileCard: { backgroundColor: COLORS.deepIndigo, borderRadius: 20, padding: 30, alignItems: 'center', marginBottom: 20, elevation: 5 },
-  avatarContainer: { width: 80, height: 80, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  userName: { fontSize: 24, fontWeight: 'bold', color: '#FFF', marginBottom: 5 },
-  userLevel: { fontSize: 14, color: COLORS.amberGold, fontWeight: '600' },
-
-  // İstatistikler
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  statBox: { flex: 1, backgroundColor: COLORS.card, borderRadius: 15, padding: 20, alignItems: 'center', marginHorizontal: 5, elevation: 2 },
-  statValue: { fontSize: 22, fontWeight: 'bold', color: COLORS.deepIndigo, marginTop: 10 },
-  statLabel: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
-
-  // Grafik Kartı
-  chartCard: { backgroundColor: COLORS.card, borderRadius: 20, padding: 20, elevation: 2 },
-  chartTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.deepIndigo, marginBottom: 20 },
-  chartContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 180 },
-  barWrapper: { alignItems: 'center', width: 35 },
-  barValue: { fontSize: 10, color: COLORS.textMuted, marginBottom: 5 },
-  barBackground: { width: 12, height: 120, backgroundColor: '#F3F4F6', borderRadius: 6, justifyContent: 'flex-end', overflow: 'hidden' },
-  barFill: { width: '100%', borderRadius: 6 },
-  barLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 8 }
+  avatarWrap: { marginTop: 30, marginBottom: 20 },
+  avatarContainer: { width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255, 193, 7, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.primary, position: 'relative' },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 70 },
+  avatarInitials: { fontSize: 50, fontWeight: 'bold', color: C.primary },
+  editBadge: { position: 'absolute', bottom: 5, right: 5, backgroundColor: C.primaryDark, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.bg },
+  
+  infoWrap: { alignItems: 'center', marginBottom: 40 },
+  name: { fontSize: 26, fontWeight: 'bold', color: C.white, marginBottom: 5 },
+  username: { fontSize: 16, color: C.textMuted },
+  
+  statsCard: { width: '100%', backgroundColor: C.cardBg, borderRadius: 20, padding: 25, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  statItem: { alignItems: 'center', gap: 8 },
+  statValue: { fontSize: 32, fontWeight: '900', color: C.white },
+  statLabel: { fontSize: 14, color: C.textMuted, fontWeight: '600' }
 });

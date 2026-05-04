@@ -23,4 +23,8 @@ export class User {
 
   @Column({ default: 0 })
   totalFocusMinutes: number;
+
+  @Column({ nullable: true })
+  avatarUrl: string;
+
 }

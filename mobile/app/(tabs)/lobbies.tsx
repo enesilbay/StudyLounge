@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   TextInput, Modal, Alert, Animated, Dimensions,
   Platform, KeyboardAvoidingView, StatusBar, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -115,11 +115,18 @@ export default function LobbiesScreen() {
 
   const headerAnim = useRef(new Animated.Value(0)).current;
 
+  // 1. Animasyon (Sadece sayfa ilk yüklendiğinde bir kez çalışır)
   useEffect(() => {
     Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-    fetchLobbies();
-    loadSocialData(); // Sayfa açıldığında arkadaşları ve istekleri yükle
   }, []);
+
+  // 2. Canlı Yenileme (Sayfaya her odaklanıldığında verileri sessizce tazele)
+  useFocusEffect(
+    useCallback(() => {
+      fetchLobbies();
+      loadSocialData();
+    }, [myUserId])
+  );
 
   const fetchLobbies = async () => {
     try {
@@ -131,7 +138,6 @@ export default function LobbiesScreen() {
     }
   };
 
-  // ── YENİ: Sosyal Verileri (Arkadaşlar + İstekler) Yükleme ──
   const loadSocialData = async () => {
     if (!myUserId) return;
     try {
@@ -142,19 +148,16 @@ export default function LobbiesScreen() {
       const friendsData = await friendsRes.json();
       const reqsData = await reqsRes.json();
       
-      // 🛡️ HATA ÇÖZÜMÜ: Gelen veri dizi (array) değilse sistemi çökertmek yerine boş dizi ata.
       setFriends(Array.isArray(friendsData) ? friendsData : []);
       setRequests(Array.isArray(reqsData) ? reqsData : []);
       
     } catch (e) {
       console.error('Sosyal veriler yüklenirken hata:', e);
-      // Bağlantı koparsa da uygulamayı çökertmemesi için:
       setFriends([]);
       setRequests([]);
     }
   };
 
-  // ── YENİ: İsteği Kabul veya Reddetme ──
   const handleRespondRequest = async (requestId: number, status: 'accepted' | 'rejected') => {
     try {
       const res = await fetch(`${BACKEND_URL}/users/respond-request`, {
@@ -163,7 +166,7 @@ export default function LobbiesScreen() {
         body: JSON.stringify({ requestId, receiverId: myUserId, status }),
       });
       if (res.ok) {
-        loadSocialData(); // Başarılıysa listeleri hemen güncelle
+        loadSocialData(); 
       }
     } catch (e) {
       Alert.alert('Hata', 'İşlem gerçekleştirilemedi.');

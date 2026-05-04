@@ -14,15 +14,13 @@ export class UsersService {
     private friendshipRepository: Repository<Friendship>,
   ) {}
 
-  // ── 1. KAYIT OL (Şifreli ve Regex Korumalı) ──
+  // ── 1. KAYIT OL ──
   async create(userData: Partial<User>): Promise<User> {
-    // 1. Kullanıcı adı (username) kontrolü: Sadece harf, rakam ve alt çizgi. Boşluk YASAK!
     if (userData.username) {
       const usernameRegex = /^[a-zA-Z0-9_]+$/;
       if (!usernameRegex.test(userData.username)) {
         throw new BadRequestException('Kullanıcı adında boşluk veya geçersiz karakter olamaz! Sadece harf, rakam ve alt çizgi (_) kullanın.');
       }
-
       const existingUsername = await this.usersRepository.findOne({ where: { username: userData.username } });
       if (existingUsername) {
         throw new BadRequestException('Bu kullanıcı adı maalesef çoktan alınmış.');
@@ -31,26 +29,23 @@ export class UsersService {
       throw new BadRequestException('Kullanıcı adı alanı zorunludur.');
     }
 
-    // 2. Email kontrolü
     const existingEmail = await this.usersRepository.findOne({ where: { email: userData.email } });
     if (existingEmail) {
       throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor.');
     }
 
-    // 3. Şifre kontrolü ve Hashleme
     if (!userData.password) {
       throw new BadRequestException('Şifre alanı zorunludur.');
     }
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     
-    // 4. Kayıt İşlemi
     const newUser = this.usersRepository.create({
       ...userData,
       password: hashedPassword,
     });
     
     const savedUser = await this.usersRepository.save(newUser);
-    delete savedUser.password; // Şifreyi geri döndürme
+    delete savedUser.password;
     
     return savedUser;
   }
@@ -82,14 +77,14 @@ export class UsersService {
     return await this.usersRepository.find();
   }
 
-  // ── 5. LİDERLİK TABLOSU ──
+  // ── 5. LİDERLİK TABLOSU (Avatar Eklendi) ──
   async getLeaderboard(): Promise<User[]> {
     return this.usersRepository.find({
       order: {
         totalFocusMinutes: 'DESC',
       },
       take: 10,
-      select: ['id', 'username', 'fullName', 'totalFocusMinutes', 'isPremium'] 
+      select: ['id', 'username', 'fullName', 'totalFocusMinutes', 'isPremium', 'avatarUrl'] 
     });
   }
 
@@ -98,7 +93,6 @@ export class UsersService {
     const sender = await this.usersRepository.findOne({ where: { id: senderId } });
     const receiver = await this.usersRepository.findOne({ where: { username: receiverUsername } });
 
-    // HATA ÇÖZÜMÜ: Gönderen kişinin (sender) var olduğundan emin oluyoruz.
     if (!sender) {
       throw new NotFoundException('Gönderen kullanıcı bulunamadı (Oturum hatası).');
     }
@@ -111,7 +105,6 @@ export class UsersService {
       throw new BadRequestException('Kendinize arkadaşlık isteği gönderemezsiniz.');
     }
 
-    // Daha önce istek atılmış mı kontrolü
     const existingRequest = await this.friendshipRepository.findOne({
       where: [
         { sender: { id: sender.id }, receiver: { id: receiver.id } },
@@ -123,25 +116,24 @@ export class UsersService {
       throw new BadRequestException('Bu kişiyle zaten arkadaşsınız veya bekleyen bir isteğiniz var.');
     }
 
-    // İsteği oluştur
     const friendship = this.friendshipRepository.create({
       sender,
       receiver,
-      status: 'pending' // Beklemede
+      status: 'pending' 
     });
 
     return this.friendshipRepository.save(friendship);
   }
 
-  // ── 7. BANA GELEN İSTEKLERİ GETİR ──
+  // ── 7. BANA GELEN İSTEKLERİ GETİR (Avatar Eklendi) ──
   async getPendingRequests(userId: number) {
     return this.friendshipRepository.find({
       where: { receiver: { id: userId }, status: 'pending' },
-      relations: ['sender'], // İsteği atan kişinin bilgilerini de getir
+      relations: ['sender'], 
       select: {
         id: true,
         status: true,
-        sender: { id: true, username: true, fullName: true } // Sadece bu bilgileri al (Şifreyi alma)
+        sender: { id: true, username: true, fullName: true, avatarUrl: true } 
       }
     });
   }
@@ -160,9 +152,8 @@ export class UsersService {
     return this.friendshipRepository.save(request);
   }
 
-  // ── 9. ARKADAŞLARIMI LİSTELE ──
+  // ── 9. ARKADAŞLARIMI LİSTELE (Avatar Eklendi) ──
   async getFriends(userId: number) {
-    // Hem benim gönderip kabul edilenler, hem de bana gelip kabul ettiklerim
     const friendships = await this.friendshipRepository.find({
       where: [
         { sender: { id: userId }, status: 'accepted' },
@@ -171,15 +162,27 @@ export class UsersService {
       relations: ['sender', 'receiver']
     });
 
-    // Sadece arkadaşın bilgilerini ayıklayıp temiz bir liste döndürelim
     return friendships.map(f => {
       const friend = f.sender.id === userId ? f.receiver : f.sender;
       return {
         id: friend.id,
         username: friend.username,
         fullName: friend.fullName,
-        totalFocusMinutes: friend.totalFocusMinutes
+        totalFocusMinutes: friend.totalFocusMinutes,
+        avatarUrl: friend.avatarUrl
       };
     });
+  }
+
+  // ── 10. AVATAR GÜNCELLEME (YENİ EKLENDİ) ──
+  async updateAvatar(userId: number, avatarUrl: string) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+    user.avatarUrl = avatarUrl;
+    const updatedUser = await this.usersRepository.save(user);
+    delete updatedUser.password;
+    return updatedUser;
   }
 }
