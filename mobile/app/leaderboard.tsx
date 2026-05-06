@@ -75,7 +75,7 @@ export default function LeaderboardScreen() {
                   ) : null}
                 </View>
 
-                {/* 👇 YENİ: AVATAR KISMI EKLENDİ 👇 */}
+                {/* ── AVATAR KISMI ── */}
                 <View style={styles.avatarContainer}>
                   {item.avatarUrl ? (
                     <Image source={{ uri: `${BACKEND_URL}${item.avatarUrl}` }} style={styles.avatarImage} />
@@ -87,7 +87,17 @@ export default function LeaderboardScreen() {
                 </View>
 
                 <View style={styles.userInfo}>
-                  <Text style={[styles.userName, isTop3 ? { fontWeight: '900' } : {}]}>
+                  {/* 👇 YENİ: PREMIUM İSE ALTIN RENGİ VE PARLAMA EFEKTİ EKLENDİ 👇 */}
+                  <Text style={[
+                    styles.userName, 
+                    isTop3 ? { fontWeight: '900' } : {},
+                    item.isPremium ? { 
+                      color: '#FFD700', 
+                      textShadowColor: 'rgba(255, 215, 0, 0.6)', 
+                      textShadowOffset: { width: 0, height: 0 }, 
+                      textShadowRadius: 8 
+                    } : {}
+                  ]}>
                     {item.fullName} {item.isPremium ? '✨' : ''}
                   </Text>
                   <Text style={styles.scoreText}>
@@ -117,7 +127,6 @@ const styles = StyleSheet.create({
   rankContainer: { width: 40, alignItems: 'center', justifyContent: 'center' },
   rankText: { fontSize: 16, fontWeight: 'bold', color: COLORS.deepIndigo, marginTop: 4 },
   
-  // YENİ AVATAR STİLLERİ
   avatarContainer: {
     width: 44,
     height: 44,

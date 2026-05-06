@@ -98,6 +98,9 @@ export default function LobbiesScreen() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // 👇 YENİ: Premium Durumunu Tutan State 👇
+  const [isPremium, setIsPremium] = useState(false);
+
   // Lobi Kurma State'leri
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
@@ -108,7 +111,7 @@ export default function LobbiesScreen() {
   const [friendUsername, setFriendUsername] = useState('');
   const [isSendingFriendReq, setIsSendingFriendReq] = useState(false);
 
-  // YENİ: Arkadaş Listesi ve İstekler State'leri
+  // Arkadaş Listesi ve İstekler State'leri
   const [isSocialModalVisible, setIsSocialModalVisible] = useState(false);
   const [friends, setFriends] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
@@ -125,8 +128,22 @@ export default function LobbiesScreen() {
     useCallback(() => {
       fetchLobbies();
       loadSocialData();
+      checkPremiumStatus(); // 👈 Her girişte Premium olup olmadığını kontrol et
     }, [myUserId])
   );
+
+  // 👇 YENİ: AsyncStorage'dan Premium durumunu okuyan fonksiyon 👇
+  const checkPremiumStatus = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('user_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setIsPremium(parsed.isPremium === true);
+      }
+    } catch (e) {
+      console.error('Premium durumu çekilemedi', e);
+    }
+  };
 
   const fetchLobbies = async () => {
     try {
@@ -234,7 +251,7 @@ export default function LobbiesScreen() {
           </View>
           <View style={s.headerBtns}>
             
-            {/* YENİ: Bildirim Zili ve Badge */}
+            {/* Bildirim Zili ve Badge */}
             <TouchableOpacity onPress={() => setIsSocialModalVisible(true)} activeOpacity={0.7} style={hdr.iconBtn}>
               <FontAwesome5 name="bell" size={15} color={C.primary} />
               {requests.length > 0 && (
@@ -246,7 +263,11 @@ export default function LobbiesScreen() {
 
             <IconBtn name="user-plus" onPress={() => setIsFriendModalVisible(true)} />
             <IconBtn name="trophy" onPress={() => router.push('/leaderboard' as any)} />
-            {/* 👇 DÜZELTME BURADA: Profil sayfasına giderken ID numaramızı da yolluyoruz 👇 */}
+            
+            {/* Premium Mağaza Butonu */}
+            <IconBtn name="crown" onPress={() => router.push({ pathname: '/premium', params: { id: myUserId } } as any)} />
+            
+            {/* Profil Sayfası */}
             <IconBtn name="user-alt" onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} />
             <IconBtn name="sign-out-alt" danger onPress={handleLogout} />
           </View>
@@ -278,10 +299,22 @@ export default function LobbiesScreen() {
         />
       </View>
 
-      {/* ── FAB: LOBİ KUR ── */}
-      <TouchableOpacity style={s.fab} onPress={() => setIsModalVisible(true)} activeOpacity={0.85}>
+      {/* 👇 DÜZELTME: ODA KUR BUTONUNA PRO KİLİDİ 👇 */}
+      <TouchableOpacity 
+        style={s.fab} 
+        onPress={() => {
+          if (isPremium) {
+            setIsModalVisible(true);
+          } else {
+            // PRO değilse Premium Satın Alma ekranına yönlendir
+            router.push({ pathname: '/premium', params: { id: myUserId } } as any);
+          }
+        }} 
+        activeOpacity={0.85}
+      >
         <LinearGradient colors={[C.primary, C.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
-          <FontAwesome5 name="plus" size={14} color={C.secondary} />
+          {/* PRO değilse Kilit ikonu, PRO ise Artı ikonu göster */}
+          <FontAwesome5 name={isPremium ? "plus" : "lock"} size={14} color={C.secondary} />
           <Text style={s.fabText}>ODA KUR</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -329,7 +362,7 @@ export default function LobbiesScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── YENİ: SOSYAL (İSTEKLER & ARKADAŞLAR) MODALI ── */}
+      {/* ── SOSYAL (İSTEKLER & ARKADAŞLAR) MODALI ── */}
       <Modal visible={isSocialModalVisible} animationType="slide" transparent statusBarTranslucent>
         <View style={mdl.overlay}>
           <View style={[mdl.sheet, { height: '80%' }]}>
@@ -349,8 +382,6 @@ export default function LobbiesScreen() {
                   <Text style={flist.sectionTitle}>Bekleyen İstekler ({requests.length})</Text>
                   {requests.map((req) => (
                     <View key={req.id} style={flist.itemWrap}>
-                      
-                      {/* AVATAR BURADA GÜNCELLENDİ */}
                       <View style={flist.avatar}>
                         {req.sender.avatarUrl ? (
                           <Image source={{ uri: `${BACKEND_URL}${req.sender.avatarUrl}` }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
@@ -383,8 +414,6 @@ export default function LobbiesScreen() {
               ) : (
                 friends.map((friend) => (
                   <View key={friend.id} style={flist.itemWrap}>
-                    
-                    {/* AVATAR BURADA GÜNCELLENDİ */}
                     <View style={flist.avatar}>
                       {friend.avatarUrl ? (
                         <Image source={{ uri: `${BACKEND_URL}${friend.avatarUrl}` }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
@@ -467,7 +496,7 @@ const mdl = StyleSheet.create({
   createText: { fontSize: 16, fontWeight: 'bold', color: C.secondary, letterSpacing: 0.5 },
 });
 
-// YENİ: Arkadaşlar Listesi İçin Stiller
+// Arkadaşlar Listesi İçin Stiller
 const flist = StyleSheet.create({
   sectionTitle: { fontSize: 14, fontWeight: '800', color: C.secondary, letterSpacing: 0.5, marginBottom: 12 },
   itemWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.inputBg, padding: 12, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: C.border },

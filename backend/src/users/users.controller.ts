@@ -84,4 +84,11 @@ export class UsersController {
     const updatedUser = await this.usersService.updateAvatar(Number(id), avatarUrl);
     return { success: true, user: updatedUser };
   }
+
+  // ── 9. PREMIUM ABONELİK (YENİ EKLENDİ) ──
+  @Post('upgrade/:id')
+  async upgradeToPremium(@Param('id') id: string) {
+    const updatedUser = await this.usersService.upgradeToPremium(Number(id));
+    return { success: true, message: 'Premium aktif edildi!', user: updatedUser };
+  }
 }

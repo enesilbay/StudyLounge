@@ -185,4 +185,17 @@ export class UsersService {
     delete updatedUser.password;
     return updatedUser;
   }
+
+  // ── 11. PREMIUM YAP (YENİ EKLENDİ) ──
+  async upgradeToPremium(userId: number) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+    user.isPremium = true;
+    const updatedUser = await this.usersRepository.save(user);
+    delete updatedUser.password;
+    return updatedUser;
+  }
+
 }
