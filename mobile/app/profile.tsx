@@ -166,6 +166,24 @@ export default function ProfileScreen() {
             <Text style={s.statValue}>{user.totalFocusMinutes || 0}</Text>
             <Text style={s.statLabel}>Dakika Odaklanma</Text>
           </View>
+          
+          {/* 👇 YENİ: ANALİTİK BUTONU (SADECE PRO) 👇 */}
+          <TouchableOpacity 
+            style={{ marginTop: 25, width: '100%' }}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (user.isPremium) {
+                router.push('/analytics' as any);
+              } else {
+                router.push({ pathname: '/premium', params: { id: myUserId } } as any);
+              }
+            }}
+          >
+            <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', padding: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <FontAwesome5 name={user.isPremium ? "chart-pie" : "lock"} size={16} color={C.primary} />
+              <Text style={{ color: C.white, fontWeight: 'bold' }}>Detaylı Analitik (PRO)</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
       </View>
