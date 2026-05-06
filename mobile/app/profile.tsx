@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  Image, Alert, ActivityIndicator, Dimensions
+  Image, Alert, ActivityIndicator, Dimensions, Platform // 👈 Platform eklendi
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -17,7 +17,7 @@ const C = {
   bg: '#0F172A',
   cardBg: '#1E293B',
   primary: '#FFC107',
-  primaryDark: '#F59E0B', // 👈 EKLENDİ
+  primaryDark: '#F59E0B',
   secondary: '#1A237E',
   textMuted: '#94A3B8',
   white: '#FFFFFF',
@@ -40,13 +40,10 @@ export default function ProfileScreen() {
 
   const fetchUserData = async () => {
     try {
-      // Backend'deki mevcut liderlik tablosu rotasını veya özel bir user rotasını kullanabiliriz.
-      // Hızlı çözüm için tüm kullanıcıları çekip kendimizi bulalım:
       const res = await fetch(`${BACKEND_URL}/users/leaderboard`);
       const allUsers = await res.json();
       const me = allUsers.find((u: any) => u.id === myUserId);
       
-      // Eğer liderlik tablosunda yoksak (puanımız 0 ise) veriyi Storage'dan alalım
       if (me) {
         setUser(me);
       } else {
@@ -60,51 +57,47 @@ export default function ProfileScreen() {
 
   // ── 📸 GALERİDEN FOTOĞRAF SEÇME VE YÜKLEME ──
   const handlePickAvatar = async () => {
-    // 1. Galeri izni iste
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       return Alert.alert('İzin Gerekli', 'Fotoğraf seçebilmek için galeri erişimine izin vermelisin.');
     }
 
-    // 2. Fotoğrafı seç (Birebir kare oranında kırpma ekranı açar)
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5, // Boyutu çok büyütmemek için
+      quality: 0.5,
     });
 
     if (result.canceled || !result.assets || result.assets.length === 0) return;
 
-    // 3. Fotoğrafı Backend'e Yükle
     uploadAvatar(result.assets[0]);
   };
 
   const uploadAvatar = async (imageAsset: ImagePicker.ImagePickerAsset) => {
     setIsUploading(true);
     try {
-      // Dosyayı form verisine (FormData) dönüştür
       const formData = new FormData();
+      
+      // 👇 DÜZELTME 1: Platforma göre URI ayarı 👇
+      const fileUri = Platform.OS === 'android' ? imageAsset.uri : imageAsset.uri.replace('file://', '');
+
       formData.append('file', {
-        uri: imageAsset.uri,
+        uri: fileUri,
         name: 'avatar.jpg',
         type: 'image/jpeg',
       } as any);
 
-      // Backend'e gönder
+      // 👇 DÜZELTME 2: headers kısmı silindi 👇
       const res = await fetch(`${BACKEND_URL}/users/avatar/${myUserId}`, {
         method: 'POST',
         body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        setUser(data.user); // Yeni fotoğraf url'sini state'e kaydet
-        // Storage'daki veriyi de güncelle ki çıkıp girince gitmesin
+        setUser(data.user);
         const stored = await AsyncStorage.getItem('user_data');
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -122,9 +115,8 @@ export default function ProfileScreen() {
     }
   };
 
-  if (!user) return <View style={s.safe} />; // Yüklenirken boş ekran
+  if (!user) return <View style={s.safe} />;
 
-  // Fotoğraf URL'sini backend IP'si ile birleştiriyoruz
   const fullAvatarUrl = user.avatarUrl ? `${BACKEND_URL}${user.avatarUrl}` : null;
 
   return (
@@ -149,7 +141,6 @@ export default function ProfileScreen() {
                 <Text style={s.avatarInitials}>{user.fullName?.charAt(0) || 'U'}</Text>
               )}
 
-              {/* Yükleme animasyonu veya Kamera İkonu */}
               <View style={s.editBadge}>
                 {isUploading ? (
                   <ActivityIndicator size="small" color={C.white} />
@@ -169,7 +160,6 @@ export default function ProfileScreen() {
 
         {/* ── İSTATİSTİKLER ── */}
         <View style={s.statsCard}>
-          {/* 👇 DÜZELTİLDİ: borderRadius style içine alındı 👇 */}
           <LinearGradient colors={['rgba(255, 193, 7, 0.1)', 'transparent']} style={[StyleSheet.absoluteFill, { borderRadius: 20 }]} />
           <View style={s.statItem}>
             <FontAwesome5 name="fire" size={24} color="#EF4444" />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 
@@ -67,11 +67,23 @@ export default function LeaderboardScreen() {
             
             return (
               <View style={[styles.card, isTop3 ? styles.topCard : {}]}>
+                
                 <View style={styles.rankContainer}>
                   <FontAwesome5 name={rank.icon} size={20} color={rank.color} />
                   {!isTop3 ? (
                     <Text style={styles.rankText}>{String(index + 1)}</Text>
                   ) : null}
+                </View>
+
+                {/* 👇 YENİ: AVATAR KISMI EKLENDİ 👇 */}
+                <View style={styles.avatarContainer}>
+                  {item.avatarUrl ? (
+                    <Image source={{ uri: `${BACKEND_URL}${item.avatarUrl}` }} style={styles.avatarImage} />
+                  ) : (
+                    <Text style={styles.avatarInitials}>
+                      {item.fullName ? item.fullName.charAt(0).toUpperCase() : 'U'}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.userInfo}>
@@ -82,6 +94,7 @@ export default function LeaderboardScreen() {
                     {String(item.totalFocusMinutes)} Puan
                   </Text>
                 </View>
+                
               </View>
             );
           }}
@@ -103,7 +116,30 @@ const styles = StyleSheet.create({
   topCard: { borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.3)', backgroundColor: '#FFFAF0' },
   rankContainer: { width: 40, alignItems: 'center', justifyContent: 'center' },
   rankText: { fontSize: 16, fontWeight: 'bold', color: COLORS.deepIndigo, marginTop: 4 },
-  userInfo: { flex: 1, marginLeft: 10 },
+  
+  // YENİ AVATAR STİLLERİ
+  avatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 193, 7, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 5,
+    marginRight: 15,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
+  },
+  avatarInitials: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.amberGold,
+  },
+
+  userInfo: { flex: 1 },
   userName: { fontSize: 16, fontWeight: '700', color: COLORS.deepIndigo, marginBottom: 4 },
   scoreText: { fontSize: 14, color: COLORS.textMuted, fontWeight: '600' }
 });

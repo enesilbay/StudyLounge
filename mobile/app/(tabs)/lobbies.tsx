@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   TextInput, Modal, Alert, Animated, Dimensions,
-  Platform, KeyboardAvoidingView, StatusBar, ScrollView
+  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -246,7 +246,8 @@ export default function LobbiesScreen() {
 
             <IconBtn name="user-plus" onPress={() => setIsFriendModalVisible(true)} />
             <IconBtn name="trophy" onPress={() => router.push('/leaderboard' as any)} />
-            <IconBtn name="user-alt" onPress={() => router.push('/profile' as any)} />
+            {/* 👇 DÜZELTME BURADA: Profil sayfasına giderken ID numaramızı da yolluyoruz 👇 */}
+            <IconBtn name="user-alt" onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} />
             <IconBtn name="sign-out-alt" danger onPress={handleLogout} />
           </View>
         </Animated.View>
@@ -348,7 +349,16 @@ export default function LobbiesScreen() {
                   <Text style={flist.sectionTitle}>Bekleyen İstekler ({requests.length})</Text>
                   {requests.map((req) => (
                     <View key={req.id} style={flist.itemWrap}>
-                      <View style={flist.avatar}><Text style={flist.avatarText}>{req.sender.fullName.charAt(0)}</Text></View>
+                      
+                      {/* AVATAR BURADA GÜNCELLENDİ */}
+                      <View style={flist.avatar}>
+                        {req.sender.avatarUrl ? (
+                          <Image source={{ uri: `${BACKEND_URL}${req.sender.avatarUrl}` }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                        ) : (
+                          <Text style={flist.avatarText}>{req.sender.fullName.charAt(0)}</Text>
+                        )}
+                      </View>
+
                       <View style={flist.info}>
                         <Text style={flist.name}>{req.sender.fullName}</Text>
                         <Text style={flist.username}>@{req.sender.username}</Text>
@@ -373,7 +383,16 @@ export default function LobbiesScreen() {
               ) : (
                 friends.map((friend) => (
                   <View key={friend.id} style={flist.itemWrap}>
-                    <View style={flist.avatar}><Text style={flist.avatarText}>{friend.fullName.charAt(0)}</Text></View>
+                    
+                    {/* AVATAR BURADA GÜNCELLENDİ */}
+                    <View style={flist.avatar}>
+                      {friend.avatarUrl ? (
+                        <Image source={{ uri: `${BACKEND_URL}${friend.avatarUrl}` }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                      ) : (
+                        <Text style={flist.avatarText}>{friend.fullName.charAt(0)}</Text>
+                      )}
+                    </View>
+
                     <View style={flist.info}>
                       <Text style={flist.name}>{friend.fullName}</Text>
                       <Text style={flist.username}>@{friend.username}</Text>
