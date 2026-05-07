@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Lobby } from './lobby.entity';
@@ -19,5 +19,19 @@ export class LobbiesService {
   create(lobbyData: Partial<Lobby>): Promise<Lobby> {
     const newLobby = this.lobbiesRepository.create(lobbyData);
     return this.lobbiesRepository.save(newLobby);
+  }
+
+  // Şifre doğrulama
+  async verifyPassword(lobbyId: number, password?: string): Promise<{ success: boolean }> {
+    const lobby = await this.lobbiesRepository.findOne({ where: { id: lobbyId } });
+    if (!lobby) throw new NotFoundException('Lobi bulunamadı.');
+    
+    if (!lobby.isPrivate) return { success: true };
+    
+    if (lobby.password !== password) {
+      throw new UnauthorizedException('Şifre hatalı.');
+    }
+    
+    return { success: true };
   }
 }

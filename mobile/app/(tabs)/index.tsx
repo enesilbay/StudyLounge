@@ -10,25 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-import Constants from 'expo-constants';
-const hostUri = Constants.expoConfig?.hostUri;
-const IP = hostUri ? hostUri.split(':')[0] : '192.168.1.17';
-const BACKEND_URL = "http://${IP}:3000";
+const BACKEND_URL = "http://10.192.24.96:3000";
 const { width } = Dimensions.get('window');
 
-// StudyLounge Modern Tema Renkleri
-const C = {
-  bg: '#0F172A',            // Arka plan: Koyu Gece Mavisi
-  cardBg: '#FFFFFF',        // İç kart: Bembeyaz
-  primary: '#FFC107',       // Vurgu: Amber Gold
-  primaryDark: '#F59E0B',   // Vurgu Koyu: Gradient için
-  secondary: '#1A237E',     // Derin Lacivert (Buton yazıları ve aktif tab için)
-  border: '#E2E8F0',        // Pasif input kenarlığı
-  inputBg: '#F8FAFC',       // Pasif input arka planı
-  inputFocusBg: '#FFFBEB',  // Odaklanınca hafif sarımtırak arka plan
-  textPrimary: '#1E293B',   // Koyu metin
-  textMuted: '#94A3B8',     // Açık gri/mavi metin
-};
+import { C } from './sensor';
 
 // ── ANİMASYONLU INPUT BİLEŞENİ ──
 function InputField({
@@ -60,7 +45,7 @@ function InputField({
   
   const bgColor = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [C.inputBg, C.inputFocusBg],
+    outputRange: [C.surface, C.surfaceHigh],
   });
 
   return (
@@ -69,7 +54,7 @@ function InputField({
         <FontAwesome5 
           name={iconName} 
           size={16} 
-          color={focused ? C.primaryDark : C.textMuted} 
+          color={focused ? C.primary : C.textMuted} 
         />
       </View>
       <TextInput
@@ -310,13 +295,15 @@ const s = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: C.cardBg,
+    backgroundColor: C.surface,
+    borderColor: C.border,
+    borderWidth: 1,
     borderRadius: 30,
     paddingVertical: 35,
     paddingHorizontal: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.5,
     shadowRadius: 25,
     elevation: 10,
   },
@@ -330,7 +317,9 @@ const s = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: C.surface,
+    borderColor: C.border,
+    borderWidth: 1,
     borderRadius: 16,
     padding: 5,
     marginBottom: 25,
@@ -342,10 +331,12 @@ const s = StyleSheet.create({
     bottom: 5,
     width: '48%',
     borderRadius: 12,
-    backgroundColor: C.cardBg,
+    backgroundColor: C.surfaceHigh,
+    borderColor: C.border,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -356,7 +347,7 @@ const s = StyleSheet.create({
     color: C.textMuted,
   },
   tabTextActive: { 
-    color: C.secondary, 
+    color: C.primary, 
     fontWeight: '800' 
   },
   form: { gap: 14 },
@@ -375,7 +366,7 @@ const s = StyleSheet.create({
   btnText: {
     fontSize: 16,
     fontWeight: '900',
-    color: C.secondary,
+    color: C.secondaryDark,
     letterSpacing: 1.2,
   },
   switchRow: { marginTop: 25, alignItems: 'center' },
@@ -385,7 +376,7 @@ const s = StyleSheet.create({
     fontWeight: '500',
   },
   switchAction: {
-    color: C.secondary,
+    color: C.primary,
     fontWeight: '800',
     textDecorationLine: 'underline',
   },
@@ -408,7 +399,7 @@ const field = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: C.textPrimary,
+    color: C.text,
     fontWeight: '500',
     marginLeft: 5,
   },

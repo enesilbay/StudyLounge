@@ -5,17 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-const COLORS = {
-  deepIndigo: '#1A237E',
-  amberGold: '#FFC107',
-  background: '#F8F9FA',
-  card: '#FFFFFF',
-  silver: '#C0C0C0',
-  bronze: '#CD7F32',
-  textMuted: '#6B7280'
-};
+import { C } from './(tabs)/sensor';
 
-const BACKEND_URL = 'http://192.168.1.17:3000';
+const BACKEND_URL = 'http://10.192.24.96:3000';
 
 export default function LeaderboardScreen() {
   const router = useRouter();
@@ -41,25 +33,25 @@ export default function LeaderboardScreen() {
   }, []);
 
   const getRankStyle = (index: number) => {
-    if (index === 0) return { color: COLORS.amberGold, icon: 'medal' };
-    if (index === 1) return { color: COLORS.silver, icon: 'medal' };
-    if (index === 2) return { color: COLORS.bronze, icon: 'medal' };
-    return { color: COLORS.deepIndigo, icon: 'hashtag' };
+    if (index === 0) return { color: C.primary, icon: 'medal' };
+    if (index === 1) return { color: '#C0C0C0', icon: 'medal' };
+    if (index === 2) return { color: '#CD7F32', icon: 'medal' };
+    return { color: C.textMuted, icon: 'hashtag' };
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <FontAwesome5 name="arrow-left" size={20} color={COLORS.deepIndigo} />
+          <FontAwesome5 name="arrow-left" size={20} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Günün Çalışkanları</Text>
+        <Text style={styles.title}>Liderlik Tablosu</Text>
         <View style={styles.spacer} />
       </View>
 
       {isLoading ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={COLORS.amberGold} />
+          <ActivityIndicator size="large" color={C.primary} />
         </View>
       ) : (
         <FlatList
@@ -67,17 +59,16 @@ export default function LeaderboardScreen() {
           keyExtractor={(item) => item.id ? item.id.toString() : Math.random().toString()}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item, index }) => {
-            const rank = getRankStyle(index);
             const isTop3 = index < 3;
             
             return (
               <View style={[styles.card, isTop3 ? styles.topCard : {}]}>
                 
                 <View style={styles.rankContainer}>
-                  <FontAwesome5 name={rank.icon} size={20} color={rank.color} />
-                  {!isTop3 ? (
-                    <Text style={styles.rankText}>{String(index + 1)}</Text>
-                  ) : null}
+                    {index === 0 && <FontAwesome5 name="crown" size={24} color={C.primary} />}
+                    {index === 1 && <FontAwesome5 name="medal" size={24} color="#C0C0C0" />}
+                    {index === 2 && <FontAwesome5 name="medal" size={24} color="#CD7F32" />}
+                    {index > 2 && <Text style={styles.rankText}>{index + 1}</Text>}
                 </View>
 
                 {/* ── AVATAR KISMI ── */}
@@ -120,17 +111,17 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  safeArea: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 15 },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#E5E7EB', borderRadius: 20 },
-  title: { fontSize: 22, fontWeight: '900', color: COLORS.deepIndigo },
+  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border },
+  title: { fontSize: 22, fontWeight: '900', color: C.text },
   spacer: { width: 40 },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContainer: { paddingHorizontal: 20, paddingBottom: 20 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: 15, borderRadius: 15, marginBottom: 10, elevation: 2 },
-  topCard: { borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.3)', backgroundColor: '#FFFAF0' },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, padding: 15, borderRadius: 15, marginBottom: 10, borderWidth: 1, borderColor: C.border },
+  topCard: { borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.5)', backgroundColor: 'rgba(255, 193, 7, 0.05)' },
   rankContainer: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  rankText: { fontSize: 16, fontWeight: 'bold', color: COLORS.deepIndigo, marginTop: 4 },
+  rankText: { fontSize: 16, fontWeight: 'bold', color: C.textMuted, marginTop: 4 },
   
   avatarContainer: {
     width: 44,
@@ -150,10 +141,10 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.amberGold,
+    color: C.primary,
   },
 
   userInfo: { flex: 1 },
-  userName: { fontSize: 16, fontWeight: '700', color: COLORS.deepIndigo, marginBottom: 4 },
-  scoreText: { fontSize: 14, color: COLORS.textMuted, fontWeight: '600' }
+  userName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 4 },
+  scoreText: { fontSize: 14, color: C.textMuted, fontWeight: '600' }
 });

@@ -17,4 +17,9 @@ export class LobbiesController {
   async createLobby(@Body() lobbyData: Partial<Lobby>) {
     return this.lobbiesService.create(lobbyData);
   }
+
+  @Post('verify-password')
+  async verifyPassword(@Body() body: { lobbyId: number; password?: string }) {
+    return this.lobbiesService.verifyPassword(body.lobbyId, body.password);
+  }
 }

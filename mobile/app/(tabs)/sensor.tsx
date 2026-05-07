@@ -15,22 +15,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker'; // Yeni eklendi
 import * as ImagePicker from 'expo-image-picker';
 
-const SOCKET_URL = 'http://192.168.1.17:3000';
+const SOCKET_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
 
-const C = {
+export const C = {
   bg: '#0F172A',               
   surface: 'rgba(255,255,255,0.05)', 
   surfaceHigh: 'rgba(255,255,255,0.1)',
   border: 'rgba(255,255,255,0.1)',
   primary: '#FFC107',          
+  primaryDark: '#F59E0B',
   accent: '#F59E0B',           
-  secondaryDark: '#1A237E',    
+  secondaryDark: '#1A237E',
+  secondary: '#1A237E',
   green: '#10B981',            
   amber: '#FFC107',
   amberDim: 'rgba(255,193,7,0.15)',
   red: '#EF4444',
+  success: '#10B981',
+  danger: '#EF4444',
+  dangerIcon: '#EF4444',
   textPrimary: '#FFFFFF',
+  text: '#FFFFFF',
   textMuted: '#94A3B8',
   white: '#FFFFFF',
   myBubble: 'rgba(255,193,7,0.15)',      
@@ -155,7 +161,7 @@ export default function SensorScreen() {
     const name = fileAsset.name || fileAsset.fileName || fileAsset.uri.split('/').pop();
     const mimeType = fileAsset.mimeType || fileAsset.type || (explicitType === 'image' ? 'image/jpeg' : 'application/pdf');
     
-    formData.append('file', { uri: fileAsset.uri, name, type: mimeType });
+    formData.append('file', { uri: fileAsset.uri, name, type: mimeType } as any);
     formData.append('roomName', String(roomName));
     formData.append('userId', String(myUserId));
 
@@ -212,12 +218,17 @@ export default function SensorScreen() {
     const initSocket = async () => {
       const token = await AsyncStorage.getItem('access_token');
       socketRef.current = io(SOCKET_URL, { transports: ['websocket'], auth: { token } });
-      socketRef.current.on('connect', () => socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName }));
+      socketRef.current.on('connect', () => socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName, maxUsers: params.maxUsers }));
       socketRef.current.on('receive_message', (data: any) => {
         setChatList((prev) => [...prev, data]);
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       });
       socketRef.current.on('room_users', setRoomUsers);
+      socketRef.current.on('room_full', (data: any) => {
+        Alert.alert('Oda Dolu', data.message || 'Bu oda kapasitesine ulaştı!', [
+          { text: 'Tamam', onPress: () => router.back() }
+        ]);
+      });
     };
     initSocket();
     

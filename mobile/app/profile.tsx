@@ -10,19 +10,10 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const BACKEND_URL = 'http://192.168.1.17:3000';
+const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width } = Dimensions.get('window');
 
-const C = {
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  primary: '#FFC107',
-  primaryDark: '#F59E0B',
-  secondary: '#1A237E',
-  textMuted: '#94A3B8',
-  white: '#FFFFFF',
-};
-
+import { C } from './(tabs)/sensor';
 export default function ProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -149,9 +140,9 @@ export default function ProfileScreen() {
 
               <View style={s.editBadge}>
                 {isUploading ? (
-                  <ActivityIndicator size="small" color={C.white} />
+                  <ActivityIndicator size="small" color={C.text} />
                 ) : (
-                  <FontAwesome5 name="camera" size={14} color={C.white} />
+                  <FontAwesome5 name="camera" size={14} color={C.bg} />
                 )}
               </View>
             </View>
@@ -187,7 +178,7 @@ export default function ProfileScreen() {
           >
             <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', padding: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               <FontAwesome5 name={user.isPremium ? "chart-pie" : "lock"} size={16} color={C.primary} />
-              <Text style={{ color: C.white, fontWeight: 'bold' }}>Detaylı Analitik (PRO)</Text>
+              <Text style={{ color: C.text, fontWeight: 'bold' }}>Detaylı Analitik (PRO)</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -200,22 +191,22 @@ export default function ProfileScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: C.white },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: C.text },
   container: { flex: 1, paddingHorizontal: 20, alignItems: 'center' },
   
   avatarWrap: { marginTop: 30, marginBottom: 20 },
   avatarContainer: { width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255, 193, 7, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.primary, position: 'relative' },
   avatarImage: { width: '100%', height: '100%', borderRadius: 70 },
   avatarInitials: { fontSize: 50, fontWeight: 'bold', color: C.primary },
-  editBadge: { position: 'absolute', bottom: 5, right: 5, backgroundColor: C.primaryDark, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.bg },
+  editBadge: { position: 'absolute', bottom: 5, right: 5, backgroundColor: C.primary, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.bg },
   
   infoWrap: { alignItems: 'center', marginBottom: 40 },
-  name: { fontSize: 26, fontWeight: 'bold', color: C.white, marginBottom: 5 },
+  name: { fontSize: 26, fontWeight: 'bold', color: C.text, marginBottom: 5 },
   username: { fontSize: 16, color: C.textMuted },
   
-  statsCard: { width: '100%', backgroundColor: C.cardBg, borderRadius: 20, padding: 25, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  statsCard: { width: '100%', backgroundColor: C.surface, borderRadius: 20, padding: 25, alignItems: 'center', borderWidth: 1, borderColor: C.border },
   statItem: { alignItems: 'center', gap: 8 },
-  statValue: { fontSize: 32, fontWeight: '900', color: C.white },
+  statValue: { fontSize: 32, fontWeight: '900', color: C.text },
   statLabel: { fontSize: 14, color: C.textMuted, fontWeight: '600' }
 });

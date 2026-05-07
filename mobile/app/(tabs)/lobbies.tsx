@@ -2,33 +2,17 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   TextInput, Modal, Alert, Animated, Dimensions,
-  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Image
+  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Image, Switch, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { C } from './sensor';
 
-const BACKEND_URL = 'http://192.168.1.17:3000';
+const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width } = Dimensions.get('window');
-
-// ── StudyLounge Kurumsal Tema Paleti ──
-const C = {
-  bg: '#0F172A',            
-  cardBg: '#FFFFFF',        
-  primary: '#FFC107',       
-  primaryDark: '#F59E0B',   
-  secondary: '#1A237E',     
-  border: '#E2E8F0',        
-  inputBg: '#F8FAFC',       
-  success: '#10B981',       
-  danger: '#FEE2E2',        
-  dangerIcon: '#EF4444',    
-  textDark: '#1E293B',      
-  textMuted: '#64748B',     
-  white: '#FFFFFF',
-};
 
 interface Lobby {
   id: string;
@@ -37,6 +21,8 @@ interface Lobby {
   description: string;
   memberCount?: number;
   isActive?: boolean;
+  isPrivate?: boolean;
+  maxUsers?: number;
 }
 
 // ── Lobi Kartı (Beyaz & Soft Gölgeli) ──
@@ -63,7 +49,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
       <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={0.9}>
         <View style={card.wrap}>
           <View style={card.iconBox}>
-            <FontAwesome5 solid name={item.icon || 'users'} size={20} color={C.primaryDark} />
+            <FontAwesome5 solid name={item.isPrivate ? 'lock' : (item.icon || 'users')} size={20} color={C.primaryDark} />
           </View>
           <View style={card.body}>
             <Text style={card.name} numberOfLines={1}>{item.name}</Text>
@@ -105,6 +91,14 @@ export default function LobbiesScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [roomPassword, setRoomPassword] = useState('');
+
+  // Gizli Odaya Giriş State'leri
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [selectedLobby, setSelectedLobby] = useState<Lobby | null>(null);
+  const [enterPassword, setEnterPassword] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Arkadaş Ekleme State'leri
   const [isFriendModalVisible, setIsFriendModalVisible] = useState(false);
@@ -205,19 +199,57 @@ export default function LobbiesScreen() {
 
   const handleCreateLobby = async () => {
     if (!newName.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen bir lobi ismi girin.');
+    if (isPrivate && !roomPassword.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen gizli oda için bir şifre belirleyin.');
+    
+    const maxUsers = isPrivate ? (isPremium ? 5 : 2) : 50;
+
     try {
       const token = await getToken();
       const res = await fetch(`${BACKEND_URL}/lobbies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: newName, description: newDesc, icon: 'users' }),
+        body: JSON.stringify({ 
+          name: newName, 
+          description: newDesc, 
+          icon: 'users',
+          isPrivate,
+          password: isPrivate ? roomPassword : null,
+          maxUsers,
+          ownerId: myUserId
+        }),
       });
       if (res.ok) {
         setIsModalVisible(false);
-        setNewName(''); setNewDesc('');
+        setNewName(''); setNewDesc(''); setIsPrivate(false); setRoomPassword('');
         fetchLobbies();
       }
     } catch { Alert.alert('Hata', 'Sunucu bağlantı hatası.'); }
+  };
+
+  const handleVerifyPassword = async () => {
+    if (!selectedLobby) return;
+    if (!enterPassword.trim()) return Alert.alert('Hata', 'Lütfen şifre girin.');
+    setIsVerifying(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/lobbies/verify-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ lobbyId: selectedLobby.id, password: enterPassword }),
+      });
+      if (res.ok) {
+        setIsPasswordModalVisible(false);
+        setEnterPassword('');
+        router.push({ pathname: '/sensor' as any, params: { ...params, roomName: selectedLobby.name, maxUsers: selectedLobby.maxUsers || 50 } });
+      } else {
+        Alert.alert('Hata', 'Şifre hatalı!');
+      }
+    } catch (e) {
+      console.error('Verify password error:', e);
+      Alert.alert('Hata', 'Sunucu bağlantı hatası.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleSendFriendRequest = async () => {
@@ -302,7 +334,18 @@ export default function LobbiesScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100, gap: 12 }}
           renderItem={({ item, index }) => (
-            <LobbyCard item={item} index={index} onPress={() => router.push({ pathname: '/sensor' as any, params: { ...params, roomName: item.name } })} />
+            <LobbyCard 
+              item={item} 
+              index={index} 
+              onPress={() => {
+                if (item.isPrivate) {
+                  setSelectedLobby(item);
+                  setIsPasswordModalVisible(true);
+                } else {
+                  router.push({ pathname: '/sensor' as any, params: { ...params, roomName: item.name } });
+                }
+              }} 
+            />
           )}
           ListEmptyComponent={
             <View style={s.emptyWrap}>
@@ -344,8 +387,28 @@ export default function LobbiesScreen() {
               <Text style={mdl.subtitle}>Arkadaşlarınla odaklanmak için bir oda oluştur.</Text>
               <TextInput style={mdl.input} placeholder="Oda İsmi" placeholderTextColor={C.textMuted} value={newName} onChangeText={setNewName} />
               <TextInput style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15 }]} placeholder="Açıklama" placeholderTextColor={C.textMuted} value={newDesc} onChangeText={setNewDesc} multiline />
-              <View style={mdl.btnRow}>
-                <TouchableOpacity style={mdl.cancelBtn} onPress={() => setIsModalVisible(false)}><Text style={mdl.cancelText}>İptal</Text></TouchableOpacity>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, paddingHorizontal: 5 }}>
+                <Text style={{ color: C.textMuted, fontSize: 16, fontWeight: 'bold' }}>Gizli Oda (Kilitli)</Text>
+                <Switch
+                  trackColor={{ false: '#767577', true: C.primary }}
+                  thumbColor={isPrivate ? C.white : '#f4f3f4'}
+                  onValueChange={setIsPrivate}
+                  value={isPrivate}
+                />
+              </View>
+
+              {isPrivate && (
+                <>
+                  <TextInput style={[mdl.input, { marginTop: 15 }]} placeholder="Oda Şifresi" placeholderTextColor={C.textMuted} value={roomPassword} onChangeText={setRoomPassword} secureTextEntry />
+                  <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 5, paddingHorizontal: 5 }}>
+                    Gizli odalar {isPremium ? 'Premium olduğunuz için en fazla 5' : 'ücretsiz planda en fazla 2'} kişiliktir.
+                  </Text>
+                </>
+              )}
+
+              <View style={[mdl.btnRow, { marginTop: 20 }]}>
+                <TouchableOpacity style={mdl.cancelBtn} onPress={() => { setIsModalVisible(false); setIsPrivate(false); setRoomPassword(''); }}><Text style={mdl.cancelText}>İptal</Text></TouchableOpacity>
                 <TouchableOpacity onPress={handleCreateLobby} style={{ flex: 1 }}>
                   <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}><Text style={mdl.createText}>Oluştur</Text></LinearGradient>
                 </TouchableOpacity>
@@ -454,6 +517,46 @@ export default function LobbiesScreen() {
         </View>
       </Modal>
 
+      {/* ── ŞİFRE GİRİŞ MODALI (Gizli Odalar İçin) ── */}
+      <Modal visible={isPasswordModalVisible} animationType="fade" transparent statusBarTranslucent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={[mdl.overlay, { justifyContent: 'center', padding: 20 }]}>
+            <View style={[mdl.sheet, { borderRadius: 24 }]}>
+              <View style={{ alignItems: 'center', marginBottom: 10 }}>
+                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,193,7,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>
+                  <FontAwesome5 solid name="lock" size={24} color={C.primaryDark} />
+                </View>
+                <Text style={[mdl.title, { textAlign: 'center' }]}>Gizli Oda</Text>
+                <Text style={[mdl.subtitle, { textAlign: 'center', marginTop: 5 }]}>
+                  "{selectedLobby?.name}" odasına girmek için şifreyi giriniz.
+                </Text>
+              </View>
+
+              <TextInput 
+                style={[mdl.input, { textAlign: 'center', fontSize: 20, letterSpacing: 2 }]} 
+                placeholder="Şifre" 
+                placeholderTextColor={C.textMuted} 
+                value={enterPassword} 
+                onChangeText={setEnterPassword} 
+                secureTextEntry 
+                autoFocus
+              />
+
+              <View style={mdl.btnRow}>
+                <TouchableOpacity style={mdl.cancelBtn} onPress={() => { setIsPasswordModalVisible(false); setEnterPassword(''); }}>
+                  <Text style={mdl.cancelText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleVerifyPassword} disabled={isVerifying} style={{ flex: 1 }}>
+                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
+                    {isVerifying ? <ActivityIndicator color={C.secondary} /> : <Text style={mdl.createText}>Giriş Yap</Text>}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -467,30 +570,30 @@ const s = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
   greeting: { fontSize: 13, color: C.primary, fontWeight: '600', letterSpacing: 0.5 },
-  pageTitle: { fontSize: 28, fontWeight: 'bold', color: C.white, marginTop: 2 },
+  pageTitle: { fontSize: 28, fontWeight: 'bold', color: C.text, marginTop: 2 },
   headerBtns: { flexDirection: 'row', gap: 8 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.cardBg, borderRadius: 16, paddingHorizontal: 16, height: 50, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
-  searchInput: { flex: 1, fontSize: 15, color: C.textDark, fontWeight: '500' },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16, paddingHorizontal: 16, height: 50, marginBottom: 20, borderWidth: 1, borderColor: C.border },
+  searchInput: { flex: 1, fontSize: 15, color: C.text, fontWeight: '500' },
   sectionLabel: { fontSize: 11, color: C.textMuted, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12 },
   emptyWrap: { alignItems: 'center', paddingVertical: 80, gap: 10 },
-  emptyText: { fontSize: 18, color: C.white, fontWeight: 'bold', marginTop: 10 },
+  emptyText: { fontSize: 18, color: C.text, fontWeight: 'bold', marginTop: 10 },
   emptySubText: { fontSize: 14, color: C.textMuted },
   fab: { position: 'absolute', bottom: 30, right: 20, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 10 },
   fabGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 15 },
-  fabText: { fontSize: 14, fontWeight: 'bold', color: C.secondary, letterSpacing: 1 },
+  fabText: { fontSize: 14, fontWeight: 'bold', color: C.bg, letterSpacing: 1 },
 });
 
 const hdr = StyleSheet.create({
-  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: -5, right: -5, backgroundColor: C.dangerIcon, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
-  badgeText: { color: C.white, fontSize: 10, fontWeight: 'bold' }
+  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
+  badgeText: { color: C.text, fontSize: 10, fontWeight: 'bold' }
 });
 
 const card = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.cardBg, borderRadius: 20, padding: 16, gap: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 3 },
+  wrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 20, padding: 16, gap: 15, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 3 },
   iconBox: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(255, 193, 7, 0.15)', alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1 },
-  name: { fontSize: 16, fontWeight: 'bold', color: C.secondary, marginBottom: 3 },
+  name: { fontSize: 16, fontWeight: 'bold', color: C.text, marginBottom: 3 },
   desc: { fontSize: 13, color: C.textMuted, marginBottom: 6 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
@@ -499,32 +602,32 @@ const card = StyleSheet.create({
 
 const mdl = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: C.cardBg, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
-  handle: { width: 50, height: 5, borderRadius: 3, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 10 },
-  title: { fontSize: 24, fontWeight: 'bold', color: C.secondary },
+  sheet: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
+  handle: { width: 50, height: 5, borderRadius: 3, backgroundColor: C.textMuted, alignSelf: 'center', marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: 'bold', color: C.text },
   subtitle: { fontSize: 14, color: C.textMuted, marginTop: -5, marginBottom: 10 },
-  input: { backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 15, fontSize: 15, color: C.textDark },
+  input: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 15, fontSize: 15, color: C.text },
   btnRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-  cancelBtn: { flex: 1, height: 55, borderRadius: 16, backgroundColor: C.inputBg, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { fontSize: 15, fontWeight: 'bold', color: C.textMuted },
+  cancelBtn: { flex: 1, height: 55, borderRadius: 16, backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontSize: 15, fontWeight: 'bold', color: C.text },
   createBtn: { height: 55, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  createText: { fontSize: 16, fontWeight: 'bold', color: C.secondary, letterSpacing: 0.5 },
+  createText: { fontSize: 16, fontWeight: 'bold', color: C.bg, letterSpacing: 0.5 },
 });
 
 // Arkadaşlar Listesi İçin Stiller
 const flist = StyleSheet.create({
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: C.secondary, letterSpacing: 0.5, marginBottom: 12 },
-  itemWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.inputBg, padding: 12, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: C.border },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: C.text, letterSpacing: 0.5, marginBottom: 12 },
+  itemWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, padding: 12, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: C.border },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 193, 7, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  avatarText: { fontSize: 18, fontWeight: 'bold', color: C.primaryDark },
+  avatarText: { fontSize: 18, fontWeight: 'bold', color: C.primary },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: 'bold', color: C.textDark, marginBottom: 2 },
+  name: { fontSize: 15, fontWeight: 'bold', color: C.text, marginBottom: 2 },
   username: { fontSize: 13, color: C.textMuted },
   scoreTitle: { fontSize: 10, color: C.textMuted, fontWeight: '600', marginBottom: 2 },
-  score: { fontSize: 14, color: C.success, fontWeight: 'bold' },
+  score: { fontSize: 14, color: C.green, fontWeight: 'bold' },
   actions: { flexDirection: 'row', gap: 8 },
   actionBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  acceptBtn: { backgroundColor: '#D1FAE5' },
-  rejectBtn: { backgroundColor: '#FEE2E2' },
+  acceptBtn: { backgroundColor: C.green },
+  rejectBtn: { backgroundColor: '#EF4444' },
   emptyText: { fontSize: 14, color: C.textMuted, fontStyle: 'italic', textAlign: 'center', marginVertical: 20 }
 });

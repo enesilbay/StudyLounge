@@ -16,4 +16,16 @@ export class Lobby {
 
   @Column({ default: 0 })
   activeUsers!: number;
+
+  @Column({ default: false })
+  isPrivate!: boolean;
+
+  @Column({ nullable: true })
+  password?: string;
+
+  @Column({ default: 50 })
+  maxUsers!: number;
+
+  @Column({ nullable: true })
+  ownerId?: number;
 }

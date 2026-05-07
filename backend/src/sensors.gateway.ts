@@ -66,7 +66,18 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
     @MessageBody() payload: any,
   ) {
     const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
-    const { userId, roomName, fullName } = data;
+    const { userId, roomName, fullName, maxUsers } = data;
+
+    // Odadaki mevcut kişi sayısını hesapla
+    const usersInRoom = Array.from(this.connectedUsers.values()).filter(
+      (u) => u.roomName === roomName
+    );
+
+    // Eğer maxUsers sınırına ulaşılmışsa, reddet
+    if (maxUsers && usersInRoom.length >= maxUsers) {
+      client.emit('room_full', { message: 'Bu oda kapasitesine ulaştı!' });
+      return;
+    }
 
     // Socket.io "Rooms" özelliğini kullanarak kullanıcıyı odaya dahil et
     client.join(roomName);
