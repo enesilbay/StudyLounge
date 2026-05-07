@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client'; 
 import { Accelerometer } from 'expo-sensors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -66,6 +67,8 @@ export default function SensorScreen() {
 
   const myUserId = Number(id);
   const safeFullName = typeof fullName === 'string' && fullName.trim() !== '' ? fullName : 'Öğrenci';
+
+  const isFocused = useIsFocused();
 
   const [totalScore, setTotalScore] = useState(Number(score) || 0);
   const [isAtDesk, setIsAtDesk] = useState(false);
@@ -180,21 +183,50 @@ export default function SensorScreen() {
 
   // ── SES SİSTEMİ ──
   useEffect(() => {
+    let currentSound: Audio.Sound | null = null;
+    let isMounted = true;
+
     async function loadNewSound() {
-      if (soundObj) await soundObj.unloadAsync();
-      const { sound } = await Audio.Sound.createAsync(selectedSound.file, { isLooping: true, volume: 1.0 });
-      setSoundObj(sound);
+      try {
+        const { sound } = await Audio.Sound.createAsync(selectedSound.file, { isLooping: true, volume: 1.0 });
+        if (isMounted) {
+          setSoundObj(sound);
+          currentSound = sound;
+        } else {
+          await sound.unloadAsync();
+        }
+      } catch (e) {
+        console.log("Ses yüklenemedi:", e);
+      }
     }
     loadNewSound();
-    return () => { soundObj?.unloadAsync(); };
-  }, [selectedSound]);
+
+    return () => {
+      isMounted = false;
+      if (currentSound) {
+        currentSound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [selectedSound.key]);
 
   useEffect(() => {
-    if (soundObj) {
-      if (isSoundOn && isAtDesk) soundObj.playAsync();
-      else soundObj.pauseAsync();
+    async function handlePlayback() {
+      if (!soundObj) return;
+      try {
+        const status = await soundObj.getStatusAsync();
+        if (status.isLoaded) {
+          if (isSoundOn && isAtDesk && isFocused) {
+            await soundObj.playAsync();
+          } else {
+            await soundObj.pauseAsync();
+          }
+        }
+      } catch (e) {
+        console.log("Ses oynatma hatası:", e);
+      }
     }
-  }, [isAtDesk, isSoundOn, soundObj]);
+    handlePlayback();
+  }, [isAtDesk, isSoundOn, soundObj, isFocused]);
 
   // ── Pomodoro ──
   useEffect(() => {
@@ -232,16 +264,29 @@ export default function SensorScreen() {
     };
     initSocket();
     
-    const sub = Accelerometer.addListener(({ x, y, z }) => {
-      const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
-      setIsAtDesk(flat);
-      if (socketRef.current?.connected && flat !== previousDeskState.current) {
-        socketRef.current.emit('update_presence', { userId: id, isAtDesk: flat, roomName });
-        previousDeskState.current = flat;
-      }
-    });
-    return () => { socketRef.current?.disconnect(); sub.remove(); };
+    return () => { socketRef.current?.disconnect(); };
   }, []);
+
+  useEffect(() => {
+    let sub: any = null;
+    if (isFocused) {
+      sub = Accelerometer.addListener(({ x, y, z }) => {
+        const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
+        setIsAtDesk(flat);
+        if (socketRef.current?.connected && flat !== previousDeskState.current) {
+          socketRef.current.emit('update_presence', { userId: id, isAtDesk: flat, roomName });
+          previousDeskState.current = flat;
+        }
+      });
+    } else {
+      setIsAtDesk(false);
+      if (socketRef.current?.connected && previousDeskState.current !== false) {
+        socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
+        previousDeskState.current = false;
+      }
+    }
+    return () => { if (sub) sub.remove(); };
+  }, [isFocused]);
 
   const sendMessage = async () => {
     if (!message.trim() || !isPremium) return;
@@ -301,6 +346,29 @@ export default function SensorScreen() {
               <TouchableOpacity style={s.pomSettingsBtn} onPress={() => setShowPomodoroModal(true)}><Text style={{ color: '#FFF' }}>{pomodoroMinutes} dk Ayarla</Text></TouchableOpacity>
               <TouchableOpacity onPress={togglePomodoro} style={[s.pomPlayBtn, { backgroundColor: pomodoroRunning ? C.red : C.primary }]}><Text style={{ fontWeight: 'bold' }}>{pomodoroRunning ? 'DURDUR' : 'BAŞLAT'}</Text></TouchableOpacity>
             </View>
+          </View>
+        </View>
+
+        {/* ATMOSFER SESİ */}
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>ATMOSFER SESİ (Masada Çalar)</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {SOUNDS.map((sItem) => {
+              const active = selectedSound.key === sItem.key && isSoundOn;
+              return (
+                <TouchableOpacity
+                  key={sItem.key}
+                  style={[s.soundTile, active && s.soundTileActive]}
+                  onPress={() => {
+                    if (selectedSound.key === sItem.key) setIsSoundOn(!isSoundOn);
+                    else { setSelectedSound(sItem); setIsSoundOn(true); }
+                  }}
+                >
+                  <FontAwesome5 solid name={sItem.icon} size={20} color={active ? C.bg : C.primary} />
+                  <Text style={[s.soundText, active && { color: C.bg }]}>{sItem.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -367,7 +435,13 @@ export default function SensorScreen() {
         </Animated.View>
       )}
 
-      <TouchableOpacity style={s.fab} onPress={toggleChat}><LinearGradient colors={[C.primary, C.accent]} style={s.fabGrad}><FontAwesome5 solid name="comment-dots" size={22} color={C.secondaryDark} /></LinearGradient></TouchableOpacity>
+      {!chatVisible && (
+        <TouchableOpacity style={s.fab} onPress={toggleChat}>
+          <LinearGradient colors={[C.primary, C.accent]} style={s.fabGrad}>
+            <FontAwesome5 solid name="comment-dots" size={22} color={C.secondaryDark} />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
       
       <Modal visible={showPomodoroModal} transparent animationType="fade">
         <View style={s.modalOverlay}><View style={s.modalSheet}>
@@ -402,6 +476,9 @@ const s = StyleSheet.create({
   timerText: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   pomSettingsBtn: { backgroundColor: C.surfaceHigh, padding: 10, borderRadius: 10, alignItems: 'center' },
   pomPlayBtn: { padding: 12, borderRadius: 10, alignItems: 'center' },
+  soundTile: { flex: 1, alignItems: 'center', backgroundColor: C.surface, paddingVertical: 15, borderRadius: 16, borderWidth: 1, borderColor: C.border },
+  soundTileActive: { backgroundColor: C.primary, borderColor: C.primary },
+  soundText: { marginTop: 8, fontSize: 12, fontWeight: 'bold', color: C.textMuted },
   usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   userChip: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 10, backgroundColor: C.surface },
   userDot: { width: 8, height: 8, borderRadius: 4 },

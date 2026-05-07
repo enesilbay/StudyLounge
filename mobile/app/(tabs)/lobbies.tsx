@@ -292,15 +292,20 @@ export default function LobbiesScreen() {
       <View style={s.container}>
         {/* ── HEADER ── */}
         <Animated.View style={[s.header, { opacity: headerAnim }]}>
-          <View>
-            <Text style={s.greeting}>İyi Çalışmalar,</Text>
-            <Text style={s.pageTitle}>{userName}</Text>
+          <View style={s.headerTopRow}>
+            <View>
+              <Text style={s.greeting}>İyi Çalışmalar,</Text>
+              <Text style={s.pageTitle}>{userName}</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} activeOpacity={0.7} style={hdr.profileAvatar}>
+              <Text style={hdr.profileAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+            </TouchableOpacity>
           </View>
-          <View style={s.headerBtns}>
-            
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.headerBtns}>
             {/* Bildirim Zili ve Badge */}
             <TouchableOpacity onPress={() => setIsSocialModalVisible(true)} activeOpacity={0.7} style={hdr.iconBtn}>
-              <FontAwesome5 solid name="bell" size={15} color={C.primary} />
+              <FontAwesome5 solid name="bell" size={14} color={C.primary} />
               {requests.length > 0 && (
                 <View style={hdr.badge}>
                   <Text style={hdr.badgeText}>{requests.length}</Text>
@@ -314,10 +319,10 @@ export default function LobbiesScreen() {
             {/* Premium Mağaza Butonu */}
             <IconBtn name="crown" onPress={() => router.push({ pathname: '/premium', params: { id: myUserId } } as any)} />
             
-            {/* Profil Sayfası */}
-            <IconBtn name="user-alt" onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} />
-            <IconBtn name="sign-out-alt" danger onPress={handleLogout} />
-          </View>
+            <TouchableOpacity onPress={handleLogout} style={{ justifyContent: 'center', alignItems: 'center', marginLeft: 10 }}>
+              <FontAwesome5 solid name="sign-out-alt" size={20} color="#EF4444" />
+            </TouchableOpacity>
+          </ScrollView>
         </Animated.View>
 
         {/* ── ARAMA KUTUSU ── */}
@@ -568,10 +573,11 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   bgGlow: { position: 'absolute', top: -50, left: width / 2 - 150, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255, 193, 7, 0.05)' },
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  greeting: { fontSize: 13, color: C.primary, fontWeight: '600', letterSpacing: 0.5 },
-  pageTitle: { fontSize: 28, fontWeight: 'bold', color: C.text, marginTop: 2 },
-  headerBtns: { flexDirection: 'row', gap: 8 },
+  header: { marginBottom: 25 },
+  headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  greeting: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: C.textMuted, letterSpacing: 0.5 },
+  pageTitle: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 28, color: C.text, marginTop: 2 },
+  headerBtns: { flexDirection: 'row', gap: 10, paddingRight: 20 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16, paddingHorizontal: 16, height: 50, marginBottom: 20, borderWidth: 1, borderColor: C.border },
   searchInput: { flex: 1, fontSize: 15, color: C.text, fontWeight: '500' },
   sectionLabel: { fontSize: 11, color: C.textMuted, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12 },
@@ -584,9 +590,11 @@ const s = StyleSheet.create({
 });
 
 const hdr = StyleSheet.create({
-  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
-  badgeText: { color: C.text, fontSize: 10, fontWeight: 'bold' }
+  badgeText: { color: C.text, fontSize: 10, fontWeight: 'bold' },
+  profileAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255, 193, 7, 0.15)', borderWidth: 1, borderColor: C.primary, alignItems: 'center', justifyContent: 'center' },
+  profileAvatarText: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 18, color: C.primary }
 });
 
 const card = StyleSheet.create({
