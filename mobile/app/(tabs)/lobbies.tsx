@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { C } from './sensor';
 
 const BACKEND_URL = 'http://10.192.24.96:3000';
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface Lobby {
   id: string;
@@ -23,6 +23,20 @@ interface Lobby {
   isActive?: boolean;
   isPrivate?: boolean;
   maxUsers?: number;
+  activeUsers?: number;
+}
+
+// ── DEKORATIF ARKAPLAN NOKTALARI ──
+function BackgroundOrbs() {
+  return (
+    <>
+      <View style={bg.orb1} />
+      <View style={bg.orb2} />
+      <View style={bg.orb3} />
+      <View style={bg.gridLine1} />
+      <View style={bg.gridLine2} />
+    </>
+  );
 }
 
 // ── Lobi Kartı (Beyaz & Soft Gölgeli) ──
@@ -41,25 +55,27 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
   const pressIn = () => Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true, tension: 150 }).start();
   const pressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 150 }).start();
 
-  const memberCount = item.memberCount ?? Math.floor(Math.random() * 15) + 1;
+  const memberCount = item.activeUsers || 0;
   const isActive = item.isActive !== false;
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
       <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={0.9}>
         <View style={card.wrap}>
-          <View style={card.iconBox}>
-            <FontAwesome5 solid name={item.isPrivate ? 'lock' : (item.icon || 'users')} size={20} color={C.primaryDark} />
-          </View>
+          <LinearGradient colors={['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)']} style={card.iconBox}>
+            <FontAwesome5 solid name={item.isPrivate ? 'lock' : (item.icon || 'users')} size={20} color={C.primary} />
+          </LinearGradient>
           <View style={card.body}>
             <Text style={card.name} numberOfLines={1}>{item.name}</Text>
             <Text style={card.desc} numberOfLines={1}>{item.description}</Text>
             <View style={card.meta}>
-              <View style={[card.dot, { backgroundColor: isActive ? C.success : '#94A3B8' }]} />
+              <View style={[card.dot, { backgroundColor: isActive ? '#10B981' : 'rgba(255,255,255,0.3)' }]} />
               <Text style={card.metaText}>{memberCount} kişi odaklanıyor</Text>
             </View>
           </View>
-          <FontAwesome5 solid name="chevron-right" size={14} color={C.textMuted} style={{ opacity: 0.5 }} />
+          <View style={card.chevronWrap}>
+            <FontAwesome5 solid name="chevron-right" size={12} color="rgba(255,255,255,0.4)" />
+          </View>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -69,8 +85,8 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
 // ── Header İkon Butonu ──
 function IconBtn({ name, onPress, danger }: { name: string; onPress: () => void; danger?: boolean; }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[hdr.iconBtn, danger && { backgroundColor: C.danger, borderColor: C.danger }]}>
-      <FontAwesome5 solid name={name} size={15} color={danger ? C.dangerIcon : C.primary} />
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[hdr.iconBtn, danger && { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
+      <FontAwesome5 solid name={name} size={14} color={danger ? '#EF4444' : 'rgba(255,255,255,0.6)'} />
     </TouchableOpacity>
   );
 }
@@ -84,7 +100,6 @@ export default function LobbiesScreen() {
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // 👇 YENİ: Premium Durumunu Tutan State 👇
   const [isPremium, setIsPremium] = useState(false);
 
   // Lobi Kurma State'leri
@@ -104,6 +119,7 @@ export default function LobbiesScreen() {
   const [isFriendModalVisible, setIsFriendModalVisible] = useState(false);
   const [friendUsername, setFriendUsername] = useState('');
   const [isSendingFriendReq, setIsSendingFriendReq] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Arkadaş Listesi ve İstekler State'leri
   const [isSocialModalVisible, setIsSocialModalVisible] = useState(false);
@@ -112,30 +128,30 @@ export default function LobbiesScreen() {
 
   const headerAnim = useRef(new Animated.Value(0)).current;
 
-  // 1. Animasyon (Sadece sayfa ilk yüklendiğinde bir kez çalışır)
   useEffect(() => {
     Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
-  // 2. Canlı Yenileme (Sayfaya her odaklanıldığında verileri sessizce tazele)
   useFocusEffect(
     useCallback(() => {
       fetchLobbies();
       loadSocialData();
-      checkPremiumStatus(); // 👈 Her girişte Premium olup olmadığını kontrol et
+      loadUserData();
     }, [myUserId])
   );
 
-  // 👇 YENİ: AsyncStorage'dan Premium durumunu okuyan fonksiyon 👇
-  const checkPremiumStatus = async () => {
+  const loadUserData = async () => {
     try {
       const stored = await AsyncStorage.getItem('user_data');
       if (stored) {
         const parsed = JSON.parse(stored);
         setIsPremium(parsed.isPremium === true);
+        if (parsed.avatarUrl) {
+          setAvatarUrl(`${BACKEND_URL}${parsed.avatarUrl}`);
+        }
       }
     } catch (e) {
-      console.error('Premium durumu çekilemedi', e);
+      console.error('Kullanıcı verisi çekilemedi', e);
     }
   };
 
@@ -287,7 +303,9 @@ export default function LobbiesScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="light-content" />
-      <View style={StyleSheet.absoluteFill} pointerEvents="none"><View style={s.bgGlow} /></View>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <BackgroundOrbs />
+      </View>
 
       <View style={s.container}>
         {/* ── HEADER ── */}
@@ -298,14 +316,17 @@ export default function LobbiesScreen() {
               <Text style={s.pageTitle}>{userName}</Text>
             </View>
             <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} activeOpacity={0.7} style={hdr.profileAvatar}>
-              <Text style={hdr.profileAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%', borderRadius: 20 }} />
+              ) : (
+                <Text style={hdr.profileAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+              )}
             </TouchableOpacity>
           </View>
           
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.headerBtns}>
-            {/* Bildirim Zili ve Badge */}
             <TouchableOpacity onPress={() => setIsSocialModalVisible(true)} activeOpacity={0.7} style={hdr.iconBtn}>
-              <FontAwesome5 solid name="bell" size={14} color={C.primary} />
+              <FontAwesome5 solid name="bell" size={14} color="rgba(255,255,255,0.6)" />
               {requests.length > 0 && (
                 <View style={hdr.badge}>
                   <Text style={hdr.badgeText}>{requests.length}</Text>
@@ -315,20 +336,18 @@ export default function LobbiesScreen() {
 
             <IconBtn name="user-plus" onPress={() => setIsFriendModalVisible(true)} />
             <IconBtn name="trophy" onPress={() => router.push('/leaderboard' as any)} />
-            
-            {/* Premium Mağaza Butonu */}
             <IconBtn name="crown" onPress={() => router.push({ pathname: '/premium', params: { id: myUserId } } as any)} />
             
-            <TouchableOpacity onPress={handleLogout} style={{ justifyContent: 'center', alignItems: 'center', marginLeft: 10 }}>
-              <FontAwesome5 solid name="sign-out-alt" size={20} color="#EF4444" />
+            <TouchableOpacity onPress={handleLogout} style={hdr.logoutWrap}>
+              <FontAwesome5 solid name="sign-out-alt" size={18} color="#EF4444" />
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>
 
         {/* ── ARAMA KUTUSU ── */}
         <Animated.View style={[s.searchWrap, { opacity: headerAnim }]}>
-          <FontAwesome5 solid name="search" size={14} color={C.textMuted} style={{ marginRight: 12 }} />
-          <TextInput style={s.searchInput} placeholder="Çalışma odası bul..." placeholderTextColor={C.textMuted} value={searchQuery} onChangeText={setSearchQuery} />
+          <FontAwesome5 solid name="search" size={14} color="rgba(255,255,255,0.4)" style={{ marginRight: 12 }} />
+          <TextInput style={s.searchInput} placeholder="Çalışma odası bul..." placeholderTextColor="rgba(255,255,255,0.3)" value={searchQuery} onChangeText={setSearchQuery} />
         </Animated.View>
 
         <Text style={s.sectionLabel}>AKTİF ODALAR</Text>
@@ -337,7 +356,7 @@ export default function LobbiesScreen() {
           data={filteredLobbies}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100, gap: 12 }}
+          contentContainerStyle={{ paddingBottom: 100, gap: 14 }}
           renderItem={({ item, index }) => (
             <LobbyCard 
               item={item} 
@@ -354,7 +373,9 @@ export default function LobbiesScreen() {
           )}
           ListEmptyComponent={
             <View style={s.emptyWrap}>
-              <FontAwesome5 solid name="door-open" size={40} color={C.textMuted} opacity={0.5} />
+              <View style={s.emptyIconWrap}>
+                <FontAwesome5 solid name="door-open" size={30} color="rgba(255,255,255,0.2)" />
+              </View>
               <Text style={s.emptyText}>Henüz lobi yok</Text>
               <Text style={s.emptySubText}>İlk çalışma odasını sen kur!</Text>
             </View>
@@ -362,22 +383,17 @@ export default function LobbiesScreen() {
         />
       </View>
 
-      {/* 👇 DÜZELTME: ODA KUR BUTONUNA PRO KİLİDİ 👇 */}
+      {/* ODA KUR BUTONU */}
       <TouchableOpacity 
         style={s.fab} 
         onPress={() => {
-          if (isPremium) {
-            setIsModalVisible(true);
-          } else {
-            // PRO değilse Premium Satın Alma ekranına yönlendir
-            router.push({ pathname: '/premium', params: { id: myUserId } } as any);
-          }
+          if (isPremium) setIsModalVisible(true);
+          else router.push({ pathname: '/premium', params: { id: myUserId } } as any);
         }} 
         activeOpacity={0.85}
       >
-        <LinearGradient colors={[C.primary, C.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
-          {/* PRO değilse Kilit ikonu, PRO ise Artı ikonu göster */}
-          <FontAwesome5 solid name={isPremium ? "plus" : "lock"} size={14} color={C.secondary} />
+        <LinearGradient colors={[C.primary, '#E6A800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
+          <FontAwesome5 solid name={isPremium ? "plus" : "lock"} size={14} color="#1A0F00" />
           <Text style={s.fabText}>ODA KUR</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -390,14 +406,14 @@ export default function LobbiesScreen() {
               <View style={mdl.handle} />
               <Text style={mdl.title}>Yeni Çalışma Odası</Text>
               <Text style={mdl.subtitle}>Arkadaşlarınla odaklanmak için bir oda oluştur.</Text>
-              <TextInput style={mdl.input} placeholder="Oda İsmi" placeholderTextColor={C.textMuted} value={newName} onChangeText={setNewName} />
-              <TextInput style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15 }]} placeholder="Açıklama" placeholderTextColor={C.textMuted} value={newDesc} onChangeText={setNewDesc} multiline />
+              <TextInput style={mdl.input} placeholder="Oda İsmi" placeholderTextColor="rgba(255,255,255,0.3)" value={newName} onChangeText={setNewName} />
+              <TextInput style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15 }]} placeholder="Açıklama" placeholderTextColor="rgba(255,255,255,0.3)" value={newDesc} onChangeText={setNewDesc} multiline />
               
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, paddingHorizontal: 5 }}>
-                <Text style={{ color: C.textMuted, fontSize: 16, fontWeight: 'bold' }}>Gizli Oda (Kilitli)</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: 'bold' }}>Gizli Oda (Kilitli)</Text>
                 <Switch
-                  trackColor={{ false: '#767577', true: C.primary }}
-                  thumbColor={isPrivate ? C.white : '#f4f3f4'}
+                  trackColor={{ false: 'rgba(255,255,255,0.1)', true: C.primary }}
+                  thumbColor={isPrivate ? '#FFFFFF' : '#94A3B8'}
                   onValueChange={setIsPrivate}
                   value={isPrivate}
                 />
@@ -405,17 +421,21 @@ export default function LobbiesScreen() {
 
               {isPrivate && (
                 <>
-                  <TextInput style={[mdl.input, { marginTop: 15 }]} placeholder="Oda Şifresi" placeholderTextColor={C.textMuted} value={roomPassword} onChangeText={setRoomPassword} secureTextEntry />
-                  <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 5, paddingHorizontal: 5 }}>
+                  <TextInput style={[mdl.input, { marginTop: 15 }]} placeholder="Oda Şifresi" placeholderTextColor="rgba(255,255,255,0.3)" value={roomPassword} onChangeText={setRoomPassword} secureTextEntry />
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 8, paddingHorizontal: 5 }}>
                     Gizli odalar {isPremium ? 'Premium olduğunuz için en fazla 5' : 'ücretsiz planda en fazla 2'} kişiliktir.
                   </Text>
                 </>
               )}
 
               <View style={[mdl.btnRow, { marginTop: 20 }]}>
-                <TouchableOpacity style={mdl.cancelBtn} onPress={() => { setIsModalVisible(false); setIsPrivate(false); setRoomPassword(''); }}><Text style={mdl.cancelText}>İptal</Text></TouchableOpacity>
+                <TouchableOpacity style={mdl.cancelBtn} onPress={() => { setIsModalVisible(false); setIsPrivate(false); setRoomPassword(''); }}>
+                  <Text style={mdl.cancelText}>İptal</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={handleCreateLobby} style={{ flex: 1 }}>
-                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}><Text style={mdl.createText}>Oluştur</Text></LinearGradient>
+                  <LinearGradient colors={[C.primary, '#E6A800']} style={mdl.createBtn}>
+                    <Text style={mdl.createText}>Oluştur</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -424,18 +444,22 @@ export default function LobbiesScreen() {
       </Modal>
 
       {/* ── ARKADAŞ EKLEME MODALI ── */}
-      <Modal visible={isFriendModalVisible} animationType="slide" transparent statusBarTranslucent>
+      <Modal visible={isFriendModalVisible} animationType="fade" transparent statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={mdl.overlay}>
-            <View style={mdl.sheet}>
-              <View style={mdl.handle} />
-              <Text style={mdl.title}>Arkadaş Ekle</Text>
-              <Text style={mdl.subtitle}>Beraber odaklanmak için arkadaşlarını davet et.</Text>
-              <TextInput style={mdl.input} placeholder="Kullanıcı Adı (Örn: ahmet_123)" placeholderTextColor={C.textMuted} value={friendUsername} onChangeText={setFriendUsername} autoCapitalize="none" />
+          <View style={[mdl.overlay, { justifyContent: 'center', padding: 20 }]}>
+            <View style={[mdl.sheet, { borderRadius: 28 }]}>
+              <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                <View style={mdl.iconCircle}>
+                  <FontAwesome5 solid name="user-plus" size={20} color={C.primary} />
+                </View>
+                <Text style={[mdl.title, { textAlign: 'center' }]}>Arkadaş Ekle</Text>
+                <Text style={[mdl.subtitle, { textAlign: 'center', marginTop: 5 }]}>Beraber odaklanmak için arkadaşlarını davet et.</Text>
+              </View>
+              <TextInput style={mdl.input} placeholder="Kullanıcı Adı (Örn: ahmet_123)" placeholderTextColor="rgba(255,255,255,0.3)" value={friendUsername} onChangeText={setFriendUsername} autoCapitalize="none" />
               <View style={mdl.btnRow}>
                 <TouchableOpacity style={mdl.cancelBtn} onPress={() => setIsFriendModalVisible(false)}><Text style={mdl.cancelText}>İptal</Text></TouchableOpacity>
                 <TouchableOpacity onPress={handleSendFriendRequest} disabled={isSendingFriendReq} style={{ flex: 1 }}>
-                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
+                  <LinearGradient colors={[C.primary, '#E6A800']} style={mdl.createBtn}>
                     <Text style={mdl.createText}>{isSendingFriendReq ? 'Gönderiliyor...' : 'İstek Gönder'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -448,20 +472,20 @@ export default function LobbiesScreen() {
       {/* ── SOSYAL (İSTEKLER & ARKADAŞLAR) MODALI ── */}
       <Modal visible={isSocialModalVisible} animationType="slide" transparent statusBarTranslucent>
         <View style={mdl.overlay}>
-          <View style={[mdl.sheet, { height: '80%' }]}>
+          <View style={[mdl.sheet, { height: '85%' }]}>
             <View style={mdl.handle} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
               <Text style={mdl.title}>Sosyal</Text>
-              <TouchableOpacity onPress={() => setIsSocialModalVisible(false)}>
-                <FontAwesome5 solid name="times" size={20} color={C.textMuted} />
+              <TouchableOpacity onPress={() => setIsSocialModalVisible(false)} style={mdl.closeBtn}>
+                <FontAwesome5 solid name="times" size={16} color="rgba(255,255,255,0.6)" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
               
               {/* BEKLEYEN İSTEKLER BÖLÜMÜ */}
               {requests.length > 0 && (
-                <>
+                <View style={{ marginBottom: 25 }}>
                   <Text style={flist.sectionTitle}>Bekleyen İstekler ({requests.length})</Text>
                   {requests.map((req) => (
                     <View key={req.id} style={flist.itemWrap}>
@@ -487,13 +511,16 @@ export default function LobbiesScreen() {
                       </View>
                     </View>
                   ))}
-                </>
+                </View>
               )}
 
               {/* ARKADAŞLAR BÖLÜMÜ */}
-              <Text style={[flist.sectionTitle, { marginTop: requests.length > 0 ? 25 : 10 }]}>Arkadaşlarım ({friends.length})</Text>
+              <Text style={flist.sectionTitle}>Arkadaşlarım ({friends.length})</Text>
               {friends.length === 0 ? (
-                <Text style={flist.emptyText}>Henüz arkadaş eklemediniz.</Text>
+                <View style={flist.emptyWrap}>
+                  <FontAwesome5 solid name="user-friends" size={30} color="rgba(255,255,255,0.1)" />
+                  <Text style={flist.emptyText}>Henüz arkadaş eklemediniz.</Text>
+                </View>
               ) : (
                 friends.map((friend) => (
                   <View key={friend.id} style={flist.itemWrap}>
@@ -526,10 +553,10 @@ export default function LobbiesScreen() {
       <Modal visible={isPasswordModalVisible} animationType="fade" transparent statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={[mdl.overlay, { justifyContent: 'center', padding: 20 }]}>
-            <View style={[mdl.sheet, { borderRadius: 24 }]}>
-              <View style={{ alignItems: 'center', marginBottom: 10 }}>
-                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,193,7,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 15 }}>
-                  <FontAwesome5 solid name="lock" size={24} color={C.primaryDark} />
+            <View style={[mdl.sheet, { borderRadius: 28 }]}>
+              <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                <View style={mdl.iconCircle}>
+                  <FontAwesome5 solid name="lock" size={20} color={C.primary} />
                 </View>
                 <Text style={[mdl.title, { textAlign: 'center' }]}>Gizli Oda</Text>
                 <Text style={[mdl.subtitle, { textAlign: 'center', marginTop: 5 }]}>
@@ -540,7 +567,7 @@ export default function LobbiesScreen() {
               <TextInput 
                 style={[mdl.input, { textAlign: 'center', fontSize: 20, letterSpacing: 2 }]} 
                 placeholder="Şifre" 
-                placeholderTextColor={C.textMuted} 
+                placeholderTextColor="rgba(255,255,255,0.3)" 
                 value={enterPassword} 
                 onChangeText={setEnterPassword} 
                 secureTextEntry 
@@ -552,8 +579,8 @@ export default function LobbiesScreen() {
                   <Text style={mdl.cancelText}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleVerifyPassword} disabled={isVerifying} style={{ flex: 1 }}>
-                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
-                    {isVerifying ? <ActivityIndicator color={C.secondary} /> : <Text style={mdl.createText}>Giriş Yap</Text>}
+                  <LinearGradient colors={[C.primary, '#E6A800']} style={mdl.createBtn}>
+                    {isVerifying ? <ActivityIndicator color="#1A0F00" /> : <Text style={mdl.createText}>Giriş Yap</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -570,72 +597,88 @@ export default function LobbiesScreen() {
 // STİLLER
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
-  bgGlow: { position: 'absolute', top: -50, left: width / 2 - 150, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255, 193, 7, 0.05)' },
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
+  safe: { flex: 1, backgroundColor: '#080C14' },
+  container: { flex: 1, paddingHorizontal: 22, paddingTop: 15 },
   header: { marginBottom: 25 },
-  headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  greeting: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: C.textMuted, letterSpacing: 0.5 },
-  pageTitle: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 28, color: C.text, marginTop: 2 },
-  headerBtns: { flexDirection: 'row', gap: 10, paddingRight: 20 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16, paddingHorizontal: 16, height: 50, marginBottom: 20, borderWidth: 1, borderColor: C.border },
-  searchInput: { flex: 1, fontSize: 15, color: C.text, fontWeight: '500' },
-  sectionLabel: { fontSize: 11, color: C.textMuted, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12 },
-  emptyWrap: { alignItems: 'center', paddingVertical: 80, gap: 10 },
-  emptyText: { fontSize: 18, color: C.text, fontWeight: 'bold', marginTop: 10 },
-  emptySubText: { fontSize: 14, color: C.textMuted },
-  fab: { position: 'absolute', bottom: 30, right: 20, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 10 },
-  fabGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 15 },
-  fabText: { fontSize: 14, fontWeight: 'bold', color: C.bg, letterSpacing: 1 },
+  headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  greeting: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.5 },
+  pageTitle: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 30, color: '#FFFFFF', marginTop: 2, letterSpacing: 0.5 },
+  headerBtns: { flexDirection: 'row', gap: 10, paddingRight: 20, paddingBottom: 5 },
+  
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 18, paddingHorizontal: 18, height: 54, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  searchInput: { flex: 1, fontSize: 15, color: '#FFFFFF', fontWeight: '500' },
+  
+  sectionLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 1.5, marginBottom: 15 },
+  
+  emptyWrap: { alignItems: 'center', paddingVertical: 80, gap: 12 },
+  emptyIconWrap: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 5 },
+  emptyText: { fontSize: 18, color: '#FFFFFF', fontWeight: 'bold' },
+  emptySubText: { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
+  
+  fab: { position: 'absolute', bottom: 30, right: 22, borderRadius: 22, overflow: 'hidden', elevation: 12, shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 15 },
+  fabGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, paddingVertical: 16 },
+  fabText: { fontSize: 15, fontWeight: '900', color: '#1A0F00', letterSpacing: 1.2 },
 });
 
 const hdr = StyleSheet.create({
-  iconBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
-  badgeText: { color: C.text, fontSize: 10, fontWeight: 'bold' },
-  profileAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255, 193, 7, 0.15)', borderWidth: 1, borderColor: C.primary, alignItems: 'center', justifyContent: 'center' },
-  profileAvatarText: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 18, color: C.primary }
+  iconBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#080C14' },
+  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' },
+  profileAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255, 193, 7, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.4)', alignItems: 'center', justifyContent: 'center' },
+  profileAvatarText: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 18, color: C.primary },
+  logoutWrap: { width: 42, height: 42, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
 });
 
 const card = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 20, padding: 16, gap: 15, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 3 },
-  iconBox: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(255, 193, 7, 0.15)', alignItems: 'center', justifyContent: 'center' },
+  wrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 16, gap: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  iconBox: { width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.1)' },
   body: { flex: 1 },
-  name: { fontSize: 16, fontWeight: 'bold', color: C.text, marginBottom: 3 },
-  desc: { fontSize: 13, color: C.textMuted, marginBottom: 6 },
+  name: { fontSize: 17, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4 },
+  desc: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 8 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  metaText: { fontSize: 12, color: C.textMuted, fontWeight: '600' },
+  metaText: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
+  chevronWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
 });
 
 const mdl = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
-  handle: { width: 50, height: 5, borderRadius: 3, backgroundColor: C.textMuted, alignSelf: 'center', marginBottom: 10 },
-  title: { fontSize: 24, fontWeight: 'bold', color: C.text },
-  subtitle: { fontSize: 14, color: C.textMuted, marginTop: -5, marginBottom: 10 },
-  input: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 15, fontSize: 15, color: C.text },
-  btnRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-  cancelBtn: { flex: 1, height: 55, borderRadius: 16, backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { fontSize: 15, fontWeight: 'bold', color: C.text },
-  createBtn: { height: 55, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  createText: { fontSize: 16, fontWeight: 'bold', color: C.bg, letterSpacing: 0.5 },
+  overlay: { flex: 1, backgroundColor: 'rgba(8, 12, 20, 0.85)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#0F121A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 10 },
+  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,193,7,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 5, borderWidth: 1, borderColor: 'rgba(255,193,7,0.2)' },
+  title: { fontSize: 24, fontWeight: '900', color: '#FFFFFF' },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: -5, marginBottom: 10 },
+  input: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, fontSize: 15, color: '#FFFFFF' },
+  btnRow: { flexDirection: 'row', gap: 12, marginTop: 15 },
+  cancelBtn: { flex: 1, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontSize: 15, fontWeight: 'bold', color: '#FFFFFF' },
+  createBtn: { height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  createText: { fontSize: 15, fontWeight: '900', color: '#1A0F00', letterSpacing: 1 },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
 });
 
-// Arkadaşlar Listesi İçin Stiller
 const flist = StyleSheet.create({
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: C.text, letterSpacing: 0.5, marginBottom: 12 },
-  itemWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, padding: 12, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: C.border },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 193, 7, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  avatarText: { fontSize: 18, fontWeight: 'bold', color: C.primary },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, marginBottom: 12 },
+  itemWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 20, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,193,7,0.15)', borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  avatarText: { fontSize: 18, fontWeight: '800', color: C.primary },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: 'bold', color: C.text, marginBottom: 2 },
-  username: { fontSize: 13, color: C.textMuted },
-  scoreTitle: { fontSize: 10, color: C.textMuted, fontWeight: '600', marginBottom: 2 },
-  score: { fontSize: 14, color: C.green, fontWeight: 'bold' },
+  name: { fontSize: 15, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 3 },
+  username: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
+  scoreTitle: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '600', marginBottom: 2 },
+  score: { fontSize: 14, color: C.primary, fontWeight: 'bold' },
   actions: { flexDirection: 'row', gap: 8 },
-  actionBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  acceptBtn: { backgroundColor: C.green },
-  rejectBtn: { backgroundColor: '#EF4444' },
-  emptyText: { fontSize: 14, color: C.textMuted, fontStyle: 'italic', textAlign: 'center', marginVertical: 20 }
+  actionBtn: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  acceptBtn: { backgroundColor: 'rgba(16,185,129,0.15)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' },
+  rejectBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
+  emptyWrap: { alignItems: 'center', paddingVertical: 40, gap: 10, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  emptyText: { fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }
+});
+
+const bg = StyleSheet.create({
+  orb1: { position: 'absolute', top: -height * 0.08, left: -width * 0.2, width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35, backgroundColor: 'rgba(255,193,7,0.06)' },
+  orb2: { position: 'absolute', bottom: height * 0.05, right: -width * 0.3, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: 'rgba(99,102,241,0.05)' },
+  orb3: { position: 'absolute', top: height * 0.4, left: width * 0.1, width: width * 0.3, height: width * 0.3, borderRadius: width * 0.15, backgroundColor: 'rgba(255,193,7,0.04)' },
+  gridLine1: { position: 'absolute', top: 0, left: width * 0.33, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
+  gridLine2: { position: 'absolute', top: 0, left: width * 0.66, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
 });

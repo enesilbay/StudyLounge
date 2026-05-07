@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { Friendship } from './friendship.entity';
+import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Friendship)
     private friendshipRepository: Repository<Friendship>,
+    @InjectRepository(DailyAnalytics)
+    private dailyAnalyticsRepository: Repository<DailyAnalytics>,
   ) {}
 
   // ── 1. KAYIT OL ──
@@ -75,10 +78,48 @@ export class UsersService {
     const user = await this.usersRepository.findOneBy({ id: userId });
     if (user) {
       user.totalFocusMinutes = (user.totalFocusMinutes || 0) + minutes;
+      await this.usersRepository.save(user);
+
+      // YENİ: Günlük analitik tablosuna da ekle
+      const today = new Date().toISOString().split('T')[0];
+      let daily = await this.dailyAnalyticsRepository.findOne({
+        where: { user: { id: userId }, date: today }
+      });
+
+      if (!daily) {
+        daily = this.dailyAnalyticsRepository.create({
+          user: user,
+          date: today,
+          focusMinutes: minutes
+        });
+      } else {
+        daily.focusMinutes += minutes;
+      }
+      await this.dailyAnalyticsRepository.save(daily);
+
       console.log(`${user.fullName} için ${minutes} dakika eklendi. Yeni Toplam: ${user.totalFocusMinutes}`);
-      return await this.usersRepository.save(user);
+      return user;
     }
     return null;
+  }
+
+  // YENİ: HAFTALIK ANALİTİK VERİSİ
+  async getWeeklyAnalytics(userId: number) {
+    // Son 7 günün verilerini getir
+    const today = new Date();
+    const pastWeek = new Date(today);
+    pastWeek.setDate(pastWeek.getDate() - 6); // Son 7 gün (bugün dahil)
+
+    const dateString = pastWeek.toISOString().split('T')[0];
+
+    const records = await this.dailyAnalyticsRepository
+      .createQueryBuilder('analytics')
+      .where('analytics.userId = :userId', { userId })
+      .andWhere('analytics.date >= :dateString', { dateString })
+      .orderBy('analytics.date', 'ASC')
+      .getMany();
+
+    return records;
   }
 
   // ── 4. TÜM KULLANICILAR ──

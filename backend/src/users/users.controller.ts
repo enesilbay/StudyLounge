@@ -70,10 +70,16 @@ export class UsersController {
     return { success: true, user: updatedUser };
   }
 
-  // ── 9. PREMIUM ABONELİK (YENİ EKLENDİ) ──
+  // ── 9. PREMIUM ABONELİK ──
   @Post('upgrade/:id')
   async upgradeToPremium(@Param('id') id: string) {
     const updatedUser = await this.usersService.upgradeToPremium(Number(id));
     return { success: true, message: 'Premium aktif edildi!', user: updatedUser };
+  }
+
+  // ── 10. HAFTALIK ANALİTİK ──
+  @Get('analytics/:id')
+  async getAnalytics(@Param('id') id: string) {
+    return this.usersService.getWeeklyAnalytics(Number(id));
   }
 }

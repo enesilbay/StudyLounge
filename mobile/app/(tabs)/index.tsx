@@ -38,7 +38,7 @@ function InputField({
     Animated.spring(scaleAnim, { toValue: focused ? 1.01 : 1, tension: 120, friction: 8, useNativeDriver: true }).start();
   }, [focused]);
 
-  const borderColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [C.border, C.primary] });
+  const borderColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.08)', C.primary] });
   const bgColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.04)', 'rgba(255,193,7,0.08)'] });
 
   return (
