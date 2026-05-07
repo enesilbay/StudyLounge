@@ -31,13 +31,15 @@ export class MessagesController {
   }))
   async uploadFile(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
     const fileUrl = `/uploads/${file.filename}`;
+    const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
     
     // Veritabanına dosya tipiyle kaydet
     return await this.messagesService.createFileMessage(
       body.roomName,
       Number(body.userId),
       file.originalname,
-      fileUrl
+      fileUrl,
+      fileType
     );
   }
 

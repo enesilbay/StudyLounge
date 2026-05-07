@@ -75,7 +75,7 @@ export class SensorsGateway implements OnGatewayDisconnect {
     @MessageBody() payload: any,
   ) {
     const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
-    const { userId, fullName, roomName, text } = data;
+    const { userId, fullName, roomName, text, type, fileUrl, isPremium } = data;
 
     console.log(`[Chat - ${roomName}] ${fullName}: ${text}`);
 
@@ -84,6 +84,9 @@ export class SensorsGateway implements OnGatewayDisconnect {
       userId,
       fullName,
       text,
+      type,
+      fileUrl,
+      isPremium,
       timestamp: new Date().toISOString(),
     });
   }

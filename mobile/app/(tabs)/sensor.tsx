@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, Animated,
-  Dimensions, ScrollView, Modal, StatusBar, Alert, Linking
+  Dimensions, ScrollView, Modal, StatusBar, Alert, Linking, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client'; 
@@ -13,6 +13,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker'; // Yeni eklendi
+import * as ImagePicker from 'expo-image-picker';
 
 const SOCKET_URL = 'http://192.168.1.15:3000';
 const { width, height } = Dimensions.get('window');
@@ -121,24 +122,39 @@ export default function SensorScreen() {
     } catch (e) { console.error("Geçmiş yüklenemedi"); }
   };
 
-  // ── DOSYA YÜKLEME SİSTEMİ ──
+  // ── DOSYA/GÖRSEL YÜKLEME SİSTEMİ ──
   const pickDocument = async () => {
     if (!isPremium) return Alert.alert("PRO Özellik", "Dosya paylaşımı için Premium olmalısın!");
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
       if (!result.canceled) {
-        uploadFile(result.assets[0]);
+        uploadFile(result.assets[0], 'file');
       }
     } catch (err) { console.log(err); }
   };
 
-  const uploadFile = async (fileAsset: any) => {
+  const pickImage = async () => {
+    if (!isPremium) return Alert.alert("PRO Özellik", "Görsel paylaşımı için Premium olmalısın!");
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+      });
+      if (!result.canceled) {
+        uploadFile(result.assets[0], 'image');
+      }
+    } catch (err) { console.log(err); }
+  };
+
+  const uploadFile = async (fileAsset: any, explicitType: string = 'file') => {
     const formData = new FormData();
     // @ts-ignore
-    formData.append('file', { uri: fileAsset.uri, name: fileAsset.name, type: fileAsset.mimeType });
+    const name = fileAsset.name || fileAsset.fileName || fileAsset.uri.split('/').pop();
+    const mimeType = fileAsset.mimeType || fileAsset.type || (explicitType === 'image' ? 'image/jpeg' : 'application/pdf');
+    
+    formData.append('file', { uri: fileAsset.uri, name, type: mimeType });
     formData.append('roomName', String(roomName));
     formData.append('userId', String(myUserId));
-    formData.append('type', 'file');
 
     try {
       const res = await fetch(`${SOCKET_URL}/messages/upload`, {
@@ -147,7 +163,7 @@ export default function SensorScreen() {
       const data = await res.json();
       socketRef.current?.emit('send_message', {
         userId: myUserId, fullName: safeFullName, roomName, 
-        text: fileAsset.name, type: 'file', fileUrl: data.fileUrl, isPremium
+        text: name, type: data.type || explicitType, fileUrl: data.fileUrl, isPremium
       });
     } catch (e) { Alert.alert("Hata", "Dosya yüklenemedi"); }
   };
@@ -295,10 +311,15 @@ export default function SensorScreen() {
               renderItem={({ item }) => {
                 const isMe = item.userId === myUserId;
                 const isFile = item.type === 'file';
+                const isImage = item.type === 'image';
                 return (
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
                     {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium ? '✨' : ''}</Text>}
-                    {isFile ? (
+                    {isImage ? (
+                      <TouchableOpacity onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
+                        <Image source={{ uri: `${SOCKET_URL}${item.fileUrl}` }} style={s.imagePreview} />
+                      </TouchableOpacity>
+                    ) : isFile ? (
                       <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
                         <FontAwesome5 name="file-pdf" size={20} color={C.red} />
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
@@ -312,6 +333,7 @@ export default function SensorScreen() {
             />
 
             <View style={s.chatInputRow}>
+              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 name="image" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
               <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 name="paperclip" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
               <TextInput
                 style={[s.chatInput, !isPremium && { opacity: 0.5 }]} value={message} onChangeText={setMessage}
@@ -370,6 +392,7 @@ const s = StyleSheet.create({
   bubbleMe: { alignSelf: 'flex-end', backgroundColor: C.myBubble, borderBottomRightRadius: 2 },
   bubbleOther: { alignSelf: 'flex-start', backgroundColor: C.otherBubble, borderBottomLeftRadius: 2 },
   bubbleUser: { fontSize: 10, color: C.primary, fontWeight: 'bold', marginBottom: 4 },
+  imagePreview: { width: 150, height: 150, borderRadius: 12, marginVertical: 4 },
   fileCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 12 },
   fileName: { color: '#FFF', fontSize: 12, flex: 1 },
   chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 10, backgroundColor: C.bg, borderTopWidth: 1, borderColor: C.border },

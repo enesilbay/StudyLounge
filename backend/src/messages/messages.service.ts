@@ -21,13 +21,13 @@ export class MessagesService {
     return await this.messageRepository.save(newMessage);
   }
 
-  // Dosya (PDF/Not) Mesajını Kaydet
-  async createFileMessage(roomName: string, userId: number, fileName: string, fileUrl: string) {
+  // Dosya (PDF/Not/Görsel) Mesajını Kaydet
+  async createFileMessage(roomName: string, userId: number, fileName: string, fileUrl: string, type: string = 'file') {
     const newMessage = this.messageRepository.create({
       text: fileName, // Görünecek metin olarak dosya adını kullanıyoruz
       roomName,
       fileUrl,
-      type: 'file', // Tipi file olarak işaretliyoruz
+      type, // Tipi parametreden gelen file veya image olarak işaretliyoruz
       user: { id: userId },
     });
     return await this.messageRepository.save(newMessage);
