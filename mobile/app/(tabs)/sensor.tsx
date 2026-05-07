@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker'; // Yeni eklendi
 import * as ImagePicker from 'expo-image-picker';
 
-const SOCKET_URL = 'http://192.168.1.15:3000';
+const SOCKET_URL = 'http://192.168.1.17:3000';
 const { width, height } = Dimensions.get('window');
 
 const C = {
@@ -109,7 +109,10 @@ export default function SensorScreen() {
 
   const fetchChatHistory = async () => {
     try {
-      const res = await fetch(`${SOCKET_URL}/messages/${roomName}`);
+      const token = await AsyncStorage.getItem('access_token');
+      const res = await fetch(`${SOCKET_URL}/messages/${roomName}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await res.json();
       setChatList(data.map((m: any) => ({
         userId: m.user?.id,
@@ -157,8 +160,9 @@ export default function SensorScreen() {
     formData.append('userId', String(myUserId));
 
     try {
+      const token = await AsyncStorage.getItem('access_token');
       const res = await fetch(`${SOCKET_URL}/messages/upload`, {
-        method: 'POST', body: formData, headers: { 'Content-Type': 'multipart/form-data' },
+        method: 'POST', body: formData, headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       socketRef.current?.emit('send_message', {
@@ -205,13 +209,17 @@ export default function SensorScreen() {
 
   // ── Socket ──
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
-    socketRef.current.on('connect', () => socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName }));
-    socketRef.current.on('receive_message', (data: any) => {
-      setChatList((prev) => [...prev, data]);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    });
-    socketRef.current.on('room_users', setRoomUsers);
+    const initSocket = async () => {
+      const token = await AsyncStorage.getItem('access_token');
+      socketRef.current = io(SOCKET_URL, { transports: ['websocket'], auth: { token } });
+      socketRef.current.on('connect', () => socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName }));
+      socketRef.current.on('receive_message', (data: any) => {
+        setChatList((prev) => [...prev, data]);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      });
+      socketRef.current.on('room_users', setRoomUsers);
+    };
+    initSocket();
     
     const sub = Accelerometer.addListener(({ x, y, z }) => {
       const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
@@ -227,8 +235,9 @@ export default function SensorScreen() {
   const sendMessage = async () => {
     if (!message.trim() || !isPremium) return;
     try {
+      const token = await AsyncStorage.getItem('access_token');
       await fetch(`${SOCKET_URL}/messages`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ text: message, roomName, userId: myUserId }),
       });
       socketRef.current.emit('send_message', { userId: myUserId, fullName: safeFullName, roomName, text: message, isPremium });
@@ -256,16 +265,16 @@ export default function SensorScreen() {
         {/* HEADER & SCORE */}
         <View style={s.header}>
           <View>
-            <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 5 }}><FontAwesome5 name="arrow-left" size={16} color={C.textMuted} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 5 }}><FontAwesome5 solid name="arrow-left" size={16} color={C.textMuted} /></TouchableOpacity>
             <Text style={s.headerRoom}>📍 {roomName}</Text>
             <Text style={s.headerName}>{safeFullName.split(' ')[0]}</Text>
           </View>
-          <View style={s.scorePill}><FontAwesome5 name="fire" size={13} color={C.amber} /><Text style={s.scoreText}>{totalScore}</Text></View>
+          <View style={s.scorePill}><FontAwesome5 solid name="fire" size={13} color={C.amber} /><Text style={s.scoreText}>{totalScore}</Text></View>
         </View>
 
         {/* STATUS CARD */}
         <View style={[s.statusCard, isAtDesk && s.statusCardActive]}>
-          <FontAwesome5 name={isAtDesk ? 'headset' : 'mobile-alt'} size={28} color={isAtDesk ? C.green : C.textMuted} />
+          <FontAwesome5 solid name={isAtDesk ? 'headset' : 'mobile-alt'} size={28} color={isAtDesk ? C.green : C.textMuted} />
           <View style={{ flex: 1, marginLeft: 14 }}>
             <Text style={[s.statusTitle, isAtDesk && { color: C.green }]}>{isAtDesk ? 'Odaklanıyorsun' : 'Bekleniyor'}</Text>
             <Text style={s.statusDesc}>{isAtDesk ? 'Harika! Puan kazanmaya devam et.' : 'Telefonu masaya yüzüstü bırak.'}</Text>
@@ -302,7 +311,7 @@ export default function SensorScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <View style={s.chatHeader}>
               <Text style={s.chatTitle}>Lobi Sohbeti {!isPremium && '🔒'}</Text>
-              <TouchableOpacity onPress={toggleChat}><FontAwesome5 name="times" size={18} color={C.textMuted} /></TouchableOpacity>
+              <TouchableOpacity onPress={toggleChat}><FontAwesome5 solid name="times" size={18} color={C.textMuted} /></TouchableOpacity>
             </View>
 
             <FlatList
@@ -321,7 +330,7 @@ export default function SensorScreen() {
                       </TouchableOpacity>
                     ) : isFile ? (
                       <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
-                        <FontAwesome5 name="file-pdf" size={20} color={C.red} />
+                        <FontAwesome5 solid name="file-pdf" size={20} color={C.red} />
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
                       </TouchableOpacity>
                     ) : (
@@ -333,21 +342,21 @@ export default function SensorScreen() {
             />
 
             <View style={s.chatInputRow}>
-              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 name="image" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
-              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 name="paperclip" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
+              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 solid name="image" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
+              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 solid name="paperclip" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
               <TextInput
                 style={[s.chatInput, !isPremium && { opacity: 0.5 }]} value={message} onChangeText={setMessage}
                 placeholder={isPremium ? "Mesaj yaz..." : "PRO Üyelik Gerekli 🔒"} placeholderTextColor={C.textMuted} editable={isPremium}
               />
               <TouchableOpacity onPress={sendMessage} disabled={!isPremium} style={s.sendBtn}>
-                <LinearGradient colors={isPremium ? [C.primary, C.accent] : ['#475569', '#475569']} style={s.sendBtnGrad}><FontAwesome5 name={isPremium ? "paper-plane" : "lock"} size={14} color="#FFF" /></LinearGradient>
+                <LinearGradient colors={isPremium ? [C.primary, C.accent] : ['#475569', '#475569']} style={s.sendBtnGrad}><FontAwesome5 solid name={isPremium ? "paper-plane" : "lock"} size={14} color="#FFF" /></LinearGradient>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
         </Animated.View>
       )}
 
-      <TouchableOpacity style={s.fab} onPress={toggleChat}><LinearGradient colors={[C.primary, C.accent]} style={s.fabGrad}><FontAwesome5 name="comment-dots" size={22} color={C.secondaryDark} /></LinearGradient></TouchableOpacity>
+      <TouchableOpacity style={s.fab} onPress={toggleChat}><LinearGradient colors={[C.primary, C.accent]} style={s.fabGrad}><FontAwesome5 solid name="comment-dots" size={22} color={C.secondaryDark} /></LinearGradient></TouchableOpacity>
       
       <Modal visible={showPomodoroModal} transparent animationType="fade">
         <View style={s.modalOverlay}><View style={s.modalSheet}>

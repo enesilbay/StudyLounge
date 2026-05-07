@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const BACKEND_URL = 'http://192.168.1.5:3000';
+const BACKEND_URL = 'http://192.168.1.17:3000';
 const { width } = Dimensions.get('window');
 
 const C = {
@@ -40,16 +40,20 @@ export default function ProfileScreen() {
 
   const fetchUserData = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/users/leaderboard`);
+      const token = await AsyncStorage.getItem('access_token');
+      const res = await fetch(`${BACKEND_URL}/users/leaderboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const allUsers = await res.json();
-      const me = allUsers.find((u: any) => u.id === myUserId);
-      
-      if (me) {
-        setUser(me);
-      } else {
-        const stored = await AsyncStorage.getItem('user_data');
-        if (stored) setUser(JSON.parse(stored));
+      if (Array.isArray(allUsers)) {
+        const me = allUsers.find((u: any) => u.id === myUserId);
+        if (me) {
+          setUser(me);
+          return;
+        }
       }
+      const stored = await AsyncStorage.getItem('user_data');
+      if (stored) setUser(JSON.parse(stored));
     } catch (e) {
       console.error('Kullanıcı bilgisi çekilemedi', e);
     }
@@ -88,9 +92,11 @@ export default function ProfileScreen() {
         type: 'image/jpeg',
       } as any);
 
-      // 👇 DÜZELTME 2: headers kısmı silindi 👇
+      // 👇 DÜZELTME 2: Authorization header eklendi 👇
+      const token = await AsyncStorage.getItem('access_token');
       const res = await fetch(`${BACKEND_URL}/users/avatar/${myUserId}`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 

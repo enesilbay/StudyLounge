@@ -1,31 +1,16 @@
-import { Controller, Post, Body, Get, Param, BadRequestException, UnauthorizedException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, BadRequestException, UnauthorizedException, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // ── 1. KAYIT OL ──
-  @Post('register')
-  async register(@Body() body: any) {
-    if (!body.username || !body.email || !body.password || !body.fullName) {
-      throw new BadRequestException('Kullanıcı adı, Ad Soyad, E-posta ve Şifre zorunludur!');
-    }
-    return this.usersService.create(body);
-  }
-
-  // ── 2. GİRİŞ YAP ──
-  @Post('login')
-  async login(@Body() body: any) {
-    const user = await this.usersService.login(body.email, body.password);
-    if (!user) {
-      throw new UnauthorizedException('Hatalı e-posta veya şifre girdiniz.');
-    }
-    return { success: true, user };
-  }
+  // Kayıt ve giriş işlemleri AuthController'a taşınmıştır.
 
   // ── 3. LİDERLİK TABLOSUNU GETİR ──
   @Get('leaderboard')

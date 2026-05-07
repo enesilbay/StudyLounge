@@ -6,7 +6,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BACKEND_URL = 'http://192.168.1.5:3000'; // IP adresinin doğru olduğundan emin ol!
+const BACKEND_URL = 'http://192.168.1.17:3000'; // IP adresinin doğru olduğundan emin ol!
 const { width } = Dimensions.get('window');
 
 const C = {
@@ -28,8 +28,10 @@ export default function PremiumScreen() {
   const handlePurchase = async () => {
     setIsLoading(true);
     try {
+      const token = await AsyncStorage.getItem('access_token');
       const res = await fetch(`${BACKEND_URL}/users/upgrade/${myUserId}`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
 

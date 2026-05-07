@@ -10,7 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-const BACKEND_URL = 'http://192.168.1.15:3000'; // Yerel IP adresin
+import Constants from 'expo-constants';
+const hostUri = Constants.expoConfig?.hostUri;
+const IP = hostUri ? hostUri.split(':')[0] : '192.168.1.17';
+const BACKEND_URL = "http://${IP}:3000";
 const { width } = Dimensions.get('window');
 
 // StudyLounge Modern Tema Renkleri
@@ -146,7 +149,7 @@ export default function AuthScreen() {
     }
 
     setIsLoading(true);
-    const endpoint = isLogin ? '/users/login' : '/users/register';
+    const endpoint = isLogin ? '/auth/login' : '/auth/register';
     
     try {
       const response = await fetch(`${BACKEND_URL}${endpoint}`, {
@@ -158,9 +161,9 @@ export default function AuthScreen() {
       const data = await response.json();
       
       if (response.ok) {
-        // İleride lazım olacağı için 'username' verisini de AsyncStorage'a kaydediyoruz (data objesi içinde geliyor)
-        await AsyncStorage.setItem('user_data', JSON.stringify(data.user || data)); 
-        router.replace({ pathname: '/lobbies' as any, params: data.user || data });
+        await AsyncStorage.setItem('user_data', JSON.stringify(data.user)); 
+        await AsyncStorage.setItem('access_token', data.access_token);
+        router.replace({ pathname: '/lobbies' as any, params: data.user });
       } else {
         Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
       }
@@ -258,7 +261,7 @@ export default function AuthScreen() {
                   ) : (
                     <>
                       <Text style={s.btnText}>{isLogin ? 'GİRİŞ YAP' : 'KAYIT OL'}</Text>
-                      <FontAwesome5 name="arrow-right" size={14} color={C.secondary} style={{ marginLeft: 8 }} />
+                      <FontAwesome5 solid name="arrow-right" size={14} color={C.secondary} style={{ marginLeft: 8 }} />
                     </>
                   )}
                 </LinearGradient>
@@ -410,3 +413,4 @@ const field = StyleSheet.create({
     marginLeft: 5,
   },
 });
+

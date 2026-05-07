@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, SafeAreaView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 
@@ -13,7 +15,7 @@ const COLORS = {
   textMuted: '#6B7280'
 };
 
-const BACKEND_URL = 'http://192.168.1.5:3000';
+const BACKEND_URL = 'http://192.168.1.17:3000';
 
 export default function LeaderboardScreen() {
   const router = useRouter();
@@ -23,9 +25,12 @@ export default function LeaderboardScreen() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/users/leaderboard`);
+        const token = await AsyncStorage.getItem('access_token');
+        const response = await fetch(`${BACKEND_URL}/users/leaderboard`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         const data = await response.json();
-        setLeaders(data);
+        setLeaders(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Tablo yüklenemedi:", error);
       } finally {

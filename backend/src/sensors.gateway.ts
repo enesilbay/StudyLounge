@@ -4,13 +4,15 @@ import {
   MessageBody,
   WebSocketServer,
   ConnectedSocket,
-  OnGatewayDisconnect, // EKLENDİ: Kullanıcı çıkışlarını yakalamak için
+  OnGatewayDisconnect,
+  OnGatewayConnection,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class SensorsGateway implements OnGatewayDisconnect {
+export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection {
   @WebSocketServer() server!: Server;
 
   // Kullanıcıların aktif çalışma seanslarını takip etmek için (Puanlama için)
@@ -19,7 +21,23 @@ export class SensorsGateway implements OnGatewayDisconnect {
   // EKLENDİ: Odalardaki anlık kullanıcı listesini ve "masada mı?" durumunu tutmak için
   private connectedUsers = new Map<string, { userId: number; fullName: string; roomName: string; isAtDesk: boolean }>();
 
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService
+  ) {}
+
+  // ── KULLANICI BAĞLANDIĞINDA (JWT KONTROLÜ) ──
+  handleConnection(client: Socket) {
+    try {
+      const token = client.handshake.auth?.token;
+      if (!token) throw new Error('Token eksik');
+      const payload = this.jwtService.verify(token, { secret: 'StudyLoungeSuperSecretKey2026' });
+      client.data.user = payload;
+    } catch (err) {
+      console.log(`[Socket] Yetkisiz bağlantı denemesi reddedildi.`);
+      client.disconnect();
+    }
+  }
 
   // ── KULLANICI UYGULAMAYI KAPATTIĞINDA / BAĞLANTI KOPTUĞUNDA ──
   handleDisconnect(client: Socket) {

@@ -1,12 +1,14 @@
 import { 
   Controller, Post, Get, Body, Param, 
-  UseInterceptors, UploadedFile 
+  UseInterceptors, UploadedFile, UseGuards 
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { MessagesService } from './messages.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('messages')
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}

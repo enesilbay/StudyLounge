@@ -7,6 +7,7 @@ import { SensorsGateway } from './sensors.gateway';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
 import { MessagesModule } from './messages/messages.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MessagesModule } from './messages/messages.module';
     UsersModule,
     LobbiesModule, 
     MessagesModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [SensorsGateway], 

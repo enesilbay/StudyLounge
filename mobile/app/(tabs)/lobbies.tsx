@@ -10,7 +10,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const BACKEND_URL = 'http://192.168.1.15:3000';
+const BACKEND_URL = 'http://192.168.1.17:3000';
 const { width } = Dimensions.get('window');
 
 // ── StudyLounge Kurumsal Tema Paleti ──
@@ -63,7 +63,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
       <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={0.9}>
         <View style={card.wrap}>
           <View style={card.iconBox}>
-            <FontAwesome5 name={item.icon || 'users'} size={20} color={C.primaryDark} />
+            <FontAwesome5 solid name={item.icon || 'users'} size={20} color={C.primaryDark} />
           </View>
           <View style={card.body}>
             <Text style={card.name} numberOfLines={1}>{item.name}</Text>
@@ -73,7 +73,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
               <Text style={card.metaText}>{memberCount} kişi odaklanıyor</Text>
             </View>
           </View>
-          <FontAwesome5 name="chevron-right" size={14} color={C.textMuted} style={{ opacity: 0.5 }} />
+          <FontAwesome5 solid name="chevron-right" size={14} color={C.textMuted} style={{ opacity: 0.5 }} />
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -84,7 +84,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
 function IconBtn({ name, onPress, danger }: { name: string; onPress: () => void; danger?: boolean; }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[hdr.iconBtn, danger && { backgroundColor: C.danger, borderColor: C.danger }]}>
-      <FontAwesome5 name={name} size={15} color={danger ? C.dangerIcon : C.primary} />
+      <FontAwesome5 solid name={name} size={15} color={danger ? C.dangerIcon : C.primary} />
     </TouchableOpacity>
   );
 }
@@ -145,11 +145,21 @@ export default function LobbiesScreen() {
     }
   };
 
+  const getToken = async () => await AsyncStorage.getItem('access_token');
+
   const fetchLobbies = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/lobbies`);
+      const token = await getToken();
+      const response = await fetch(`${BACKEND_URL}/lobbies`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.status === 401) {
+        await AsyncStorage.multiRemove(['user_data', 'access_token']);
+        router.replace('/');
+        return;
+      }
       const data = await response.json();
-      setLobbies(data);
+      setLobbies(Array.isArray(data) ? data : []);
     } catch {
       console.error('Lobi listesi yüklenemedi');
     }
@@ -158,9 +168,11 @@ export default function LobbiesScreen() {
   const loadSocialData = async () => {
     if (!myUserId) return;
     try {
+      const token = await getToken();
+      const headers = { Authorization: `Bearer ${token}` };
       const [friendsRes, reqsRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/users/friends/${myUserId}`),
-        fetch(`${BACKEND_URL}/users/friend-requests/${myUserId}`)
+        fetch(`${BACKEND_URL}/users/friends/${myUserId}`, { headers }),
+        fetch(`${BACKEND_URL}/users/friend-requests/${myUserId}`, { headers })
       ]);
       const friendsData = await friendsRes.json();
       const reqsData = await reqsRes.json();
@@ -177,9 +189,10 @@ export default function LobbiesScreen() {
 
   const handleRespondRequest = async (requestId: number, status: 'accepted' | 'rejected') => {
     try {
+      const token = await getToken();
       const res = await fetch(`${BACKEND_URL}/users/respond-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ requestId, receiverId: myUserId, status }),
       });
       if (res.ok) {
@@ -193,9 +206,10 @@ export default function LobbiesScreen() {
   const handleCreateLobby = async () => {
     if (!newName.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen bir lobi ismi girin.');
     try {
+      const token = await getToken();
       const res = await fetch(`${BACKEND_URL}/lobbies`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: newName, description: newDesc, icon: 'users' }),
       });
       if (res.ok) {
@@ -210,9 +224,10 @@ export default function LobbiesScreen() {
     if (!friendUsername.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen bir kullanıcı adı girin.');
     setIsSendingFriendReq(true);
     try {
+      const token = await getToken();
       const res = await fetch(`${BACKEND_URL}/users/friend-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ senderId: myUserId, receiverUsername: friendUsername.trim() }),
       });
       const data = await res.json();
@@ -253,7 +268,7 @@ export default function LobbiesScreen() {
             
             {/* Bildirim Zili ve Badge */}
             <TouchableOpacity onPress={() => setIsSocialModalVisible(true)} activeOpacity={0.7} style={hdr.iconBtn}>
-              <FontAwesome5 name="bell" size={15} color={C.primary} />
+              <FontAwesome5 solid name="bell" size={15} color={C.primary} />
               {requests.length > 0 && (
                 <View style={hdr.badge}>
                   <Text style={hdr.badgeText}>{requests.length}</Text>
@@ -275,7 +290,7 @@ export default function LobbiesScreen() {
 
         {/* ── ARAMA KUTUSU ── */}
         <Animated.View style={[s.searchWrap, { opacity: headerAnim }]}>
-          <FontAwesome5 name="search" size={14} color={C.textMuted} style={{ marginRight: 12 }} />
+          <FontAwesome5 solid name="search" size={14} color={C.textMuted} style={{ marginRight: 12 }} />
           <TextInput style={s.searchInput} placeholder="Çalışma odası bul..." placeholderTextColor={C.textMuted} value={searchQuery} onChangeText={setSearchQuery} />
         </Animated.View>
 
@@ -291,7 +306,7 @@ export default function LobbiesScreen() {
           )}
           ListEmptyComponent={
             <View style={s.emptyWrap}>
-              <FontAwesome5 name="door-open" size={40} color={C.textMuted} opacity={0.5} />
+              <FontAwesome5 solid name="door-open" size={40} color={C.textMuted} opacity={0.5} />
               <Text style={s.emptyText}>Henüz lobi yok</Text>
               <Text style={s.emptySubText}>İlk çalışma odasını sen kur!</Text>
             </View>
@@ -314,7 +329,7 @@ export default function LobbiesScreen() {
       >
         <LinearGradient colors={[C.primary, C.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
           {/* PRO değilse Kilit ikonu, PRO ise Artı ikonu göster */}
-          <FontAwesome5 name={isPremium ? "plus" : "lock"} size={14} color={C.secondary} />
+          <FontAwesome5 solid name={isPremium ? "plus" : "lock"} size={14} color={C.secondary} />
           <Text style={s.fabText}>ODA KUR</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -370,7 +385,7 @@ export default function LobbiesScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={mdl.title}>Sosyal</Text>
               <TouchableOpacity onPress={() => setIsSocialModalVisible(false)}>
-                <FontAwesome5 name="times" size={20} color={C.textMuted} />
+                <FontAwesome5 solid name="times" size={20} color={C.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -396,10 +411,10 @@ export default function LobbiesScreen() {
                       </View>
                       <View style={flist.actions}>
                         <TouchableOpacity style={[flist.actionBtn, flist.acceptBtn]} onPress={() => handleRespondRequest(req.id, 'accepted')}>
-                          <FontAwesome5 name="check" size={14} color="#059669" />
+                          <FontAwesome5 solid name="check" size={14} color="#059669" />
                         </TouchableOpacity>
                         <TouchableOpacity style={[flist.actionBtn, flist.rejectBtn]} onPress={() => handleRespondRequest(req.id, 'rejected')}>
-                          <FontAwesome5 name="times" size={14} color="#DC2626" />
+                          <FontAwesome5 solid name="times" size={14} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
                     </View>

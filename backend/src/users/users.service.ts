@@ -61,6 +61,15 @@ export class UsersService {
     return null; 
   }
 
+  // ── KULLANICI BUL (JWT İÇİN) ──
+  async findById(id: number): Promise<User | null> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (user) {
+      delete user.password;
+    }
+    return user;
+  }
+
   // ── 3. ODAKLANMA PUANI ──
   async addFocusTime(userId: number, minutes: number) {
     const user = await this.usersRepository.findOneBy({ id: userId });
