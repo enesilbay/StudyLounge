@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-const BACKEND_URL = 'http://192.168.1.5:3000'; // Yerel IP adresin
+const BACKEND_URL = 'http://192.168.1.15:3000'; // Yerel IP adresin
 const { width } = Dimensions.get('window');
 
 // StudyLounge Modern Tema Renkleri

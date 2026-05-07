@@ -17,4 +17,13 @@ export class Message {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ nullable: true })
+fileUrl: string; // Dosyanın sunucudaki yolu
+
+@Column({ nullable: true })
+fileName: string; // Dosyanın orijinal adı (Örn: "Diferansiyel_Denklemler.pdf")
+
+@Column({ default: 'text' })
+type: string; // 'text' veya 'file'
 }

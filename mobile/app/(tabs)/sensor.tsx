@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, Animated,
-  Dimensions, ScrollView, Modal, StatusBar, Alert
+  Dimensions, ScrollView, Modal, StatusBar, Alert, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client'; 
@@ -12,8 +12,9 @@ import { Audio } from 'expo-av';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker'; // Yeni eklendi
 
-const SOCKET_URL = 'http://192.168.1.5:3000';
+const SOCKET_URL = 'http://192.168.1.15:3000';
 const { width, height } = Dimensions.get('window');
 
 const C = {
@@ -25,13 +26,10 @@ const C = {
   accent: '#F59E0B',           
   secondaryDark: '#1A237E',    
   green: '#10B981',            
-  greenDim: 'rgba(16,185,129,0.12)',
-  greenBorder: 'rgba(16,185,129,0.3)',
   amber: '#FFC107',
   amberDim: 'rgba(255,193,7,0.15)',
   red: '#EF4444',
   textPrimary: '#FFFFFF',
-  textSecondary: '#E2E8F0',
   textMuted: '#94A3B8',
   white: '#FFFFFF',
   myBubble: 'rgba(255,193,7,0.15)',      
@@ -96,7 +94,6 @@ export default function SensorScreen() {
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 14, useNativeDriver: true }),
     ]).start();
-    
     checkPremiumStatus();
     fetchChatHistory();
   }, []);
@@ -113,18 +110,49 @@ export default function SensorScreen() {
     try {
       const res = await fetch(`${SOCKET_URL}/messages/${roomName}`);
       const data = await res.json();
-      const formattedData = data.map((m: any) => ({
+      setChatList(data.map((m: any) => ({
         userId: m.user?.id,
         fullName: m.user?.fullName || 'Bilinmeyen',
         text: m.text,
+        type: m.type || 'text',
+        fileUrl: m.fileUrl,
         isPremium: m.user?.isPremium || false
-      }));
-      setChatList(formattedData);
-    } catch (e) {
-      console.error("Geçmiş yüklenemedi");
-    }
+      })));
+    } catch (e) { console.error("Geçmiş yüklenemedi"); }
   };
 
+  // ── DOSYA YÜKLEME SİSTEMİ ──
+  const pickDocument = async () => {
+    if (!isPremium) return Alert.alert("PRO Özellik", "Dosya paylaşımı için Premium olmalısın!");
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
+      if (!result.canceled) {
+        uploadFile(result.assets[0]);
+      }
+    } catch (err) { console.log(err); }
+  };
+
+  const uploadFile = async (fileAsset: any) => {
+    const formData = new FormData();
+    // @ts-ignore
+    formData.append('file', { uri: fileAsset.uri, name: fileAsset.name, type: fileAsset.mimeType });
+    formData.append('roomName', String(roomName));
+    formData.append('userId', String(myUserId));
+    formData.append('type', 'file');
+
+    try {
+      const res = await fetch(`${SOCKET_URL}/messages/upload`, {
+        method: 'POST', body: formData, headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const data = await res.json();
+      socketRef.current?.emit('send_message', {
+        userId: myUserId, fullName: safeFullName, roomName, 
+        text: fileAsset.name, type: 'file', fileUrl: data.fileUrl, isPremium
+      });
+    } catch (e) { Alert.alert("Hata", "Dosya yüklenemedi"); }
+  };
+
+  // ── SES SİSTEMİ ──
   useEffect(() => {
     async function loadNewSound() {
       if (soundObj) await soundObj.unloadAsync();
@@ -142,66 +170,55 @@ export default function SensorScreen() {
     }
   }, [isAtDesk, isSoundOn, soundObj]);
 
+  // ── Pomodoro ──
   useEffect(() => {
     if (pomodoroRunning) {
       pomTimerRef.current = setInterval(() => {
-        setPomodoroSec((prev) => {
-          if (prev <= 1) {
-            clearInterval(pomTimerRef.current!);
-            setPomodoroRunning(false);
-            return 0;
-          }
-          return prev - 1;
-        });
+        setPomodoroSec((prev) => (prev <= 1 ? (clearInterval(pomTimerRef.current), 0) : prev - 1));
       }, 1000);
-    } else {
-      if (pomTimerRef.current) clearInterval(pomTimerRef.current);
-    }
-    return () => { if (pomTimerRef.current) clearInterval(pomTimerRef.current); };
+    } else clearInterval(pomTimerRef.current);
+    return () => clearInterval(pomTimerRef.current);
   }, [pomodoroRunning]);
 
   const startPomodoro = (minutes: number) => {
-    setPomodoroMinutes(minutes);
-    setPomodoroSec(minutes * 60);
-    setPomodoroRunning(true);
-    setShowPomodoroModal(false);
+    setPomodoroMinutes(minutes); setPomodoroSec(minutes * 60);
+    setPomodoroRunning(true); setShowPomodoroModal(false);
   };
 
-  const togglePomodoro = () => pomodoroSec === 0 ? startPomodoro(pomodoroMinutes) : setPomodoroRunning((v) => !v);
+  const togglePomodoro = () => pomodoroSec === 0 ? startPomodoro(pomodoroMinutes) : setPomodoroRunning(!pomodoroRunning);
 
-  const pomProgress = pomodoroSec / (pomodoroMinutes * 60);
-  const pomMinutes = Math.floor(pomodoroSec / 60);
-  const pomSeconds = pomodoroSec % 60;
-
+  // ── Socket ──
   useEffect(() => {
     socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
-
-    socketRef.current.on('connect', () => {
-      socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName });
-    });
-
-    socketRef.current.on('score_updated', (data: any) => {
-      if (data.userId === Number(id)) setTotalScore(data.newTotal);
-    });
-
+    socketRef.current.on('connect', () => socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName }));
     socketRef.current.on('receive_message', (data: any) => {
       setChatList((prev) => [...prev, data]);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     });
-
-    socketRef.current.on('room_users', (users: any[]) => setRoomUsers(users));
-
-    const subscription = Accelerometer.addListener(({ x, y, z }) => {
-      const isFlat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
-      setIsAtDesk(isFlat);
-      if (socketRef.current?.connected && isFlat !== previousDeskState.current) {
-        socketRef.current.emit('update_presence', { userId: id, isAtDesk: isFlat, roomName });
-        previousDeskState.current = isFlat;
+    socketRef.current.on('room_users', setRoomUsers);
+    
+    const sub = Accelerometer.addListener(({ x, y, z }) => {
+      const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
+      setIsAtDesk(flat);
+      if (socketRef.current?.connected && flat !== previousDeskState.current) {
+        socketRef.current.emit('update_presence', { userId: id, isAtDesk: flat, roomName });
+        previousDeskState.current = flat;
       }
     });
-
-    return () => { socketRef.current?.disconnect(); subscription.remove(); };
+    return () => { socketRef.current?.disconnect(); sub.remove(); };
   }, []);
+
+  const sendMessage = async () => {
+    if (!message.trim() || !isPremium) return;
+    try {
+      await fetch(`${SOCKET_URL}/messages`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: message, roomName, userId: myUserId }),
+      });
+      socketRef.current.emit('send_message', { userId: myUserId, fullName: safeFullName, roomName, text: message, isPremium });
+      setMessage('');
+    } catch (e) { Alert.alert("Hata", "Mesaj iletilemedi"); }
+  };
 
   const toggleChat = () => {
     if (chatVisible) {
@@ -212,57 +229,26 @@ export default function SensorScreen() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!message.trim() || !isPremium) return;
-
-    if (socketRef.current) {
-      try {
-        await fetch(`${SOCKET_URL}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: message, roomName, userId: myUserId }),
-        });
-
-        socketRef.current.emit('send_message', {
-          userId: myUserId, fullName: safeFullName, roomName, text: message, isPremium: isPremium
-        });
-        setMessage('');
-      } catch (e) {
-        Alert.alert("Hata", "Mesaj iletilemedi.");
-      }
-    }
-  };
-
-  const chatTranslate = chatAnim.interpolate({
-    inputRange: [0, 1], outputRange: [height * 0.6, 0],
-  });
-
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="light-content" />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <View style={s.bgBase} />
-        <View style={[s.bgGlow, isAtDesk && s.bgGlowGreen]} />
+        <View style={s.bgBase} /><View style={[s.bgGlow, isAtDesk && { backgroundColor: 'rgba(16,185,129,0.08)' }]} />
       </View>
 
-      <Animated.ScrollView style={{ flex: 1, opacity: fadeAnim }} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {/* HEADER */}
-        <Animated.View style={[s.header, { transform: [{ translateY: slideAnim }] }]}>
+      <Animated.ScrollView style={{ flex: 1, opacity: fadeAnim }} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+        {/* HEADER & SCORE */}
+        <View style={s.header}>
           <View>
-            <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 5 }}>
-              <FontAwesome5 name="arrow-left" size={16} color={C.textMuted} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 5 }}><FontAwesome5 name="arrow-left" size={16} color={C.textMuted} /></TouchableOpacity>
             <Text style={s.headerRoom}>📍 {roomName}</Text>
             <Text style={s.headerName}>{safeFullName.split(' ')[0]}</Text>
           </View>
-          <View style={s.scorePill}>
-            <FontAwesome5 name="fire" size={13} color={C.amber} /><Text style={s.scoreText}>{totalScore}</Text>
-          </View>
-        </Animated.View>
+          <View style={s.scorePill}><FontAwesome5 name="fire" size={13} color={C.amber} /><Text style={s.scoreText}>{totalScore}</Text></View>
+        </View>
 
-        {/* DURUM KARTI */}
+        {/* STATUS CARD */}
         <View style={[s.statusCard, isAtDesk && s.statusCardActive]}>
-          <View style={[s.statusDot, isAtDesk && s.statusDotActive]} />
           <FontAwesome5 name={isAtDesk ? 'headset' : 'mobile-alt'} size={28} color={isAtDesk ? C.green : C.textMuted} />
           <View style={{ flex: 1, marginLeft: 14 }}>
             <Text style={[s.statusTitle, isAtDesk && { color: C.green }]}>{isAtDesk ? 'Odaklanıyorsun' : 'Bekleniyor'}</Text>
@@ -270,128 +256,84 @@ export default function SensorScreen() {
           </View>
         </View>
 
-        {/* POMODORO VE DİĞER SEKSİYONLAR... */}
+        {/* POMODORO */}
         <View style={s.section}>
           <Text style={s.sectionLabel}>POMODORO</Text>
           <View style={s.pomodoroCard}>
-            <Animated.View style={[s.timerCircle, { transform: [{ scale: pomAnim }] }]}>
-              <View style={[s.timerInner, pomodoroRunning && { borderColor: C.primary }, pomodoroSec === 0 && { borderColor: C.green }]}>
-                <Text style={s.timerText}>{pad(pomMinutes)}:{pad(pomSeconds)}</Text>
-                <Text style={s.timerSub}>{pomodoroSec === 0 ? 'Mola!' : pomodoroRunning ? 'odaklanıyor' : 'bekliyor'}</Text>
-              </View>
-            </Animated.View>
-            <View style={s.pomRight}>
-              <View style={s.progressBar}><View style={[s.progressFill, { width: `${pomProgress * 100}%` }]} /></View>
-              <View style={s.pomControls}>
-                <TouchableOpacity style={s.pomSettingsBtn} onPress={() => setShowPomodoroModal(true)}>
-                  <FontAwesome5 name="sliders-h" size={13} color={C.textSecondary} /><Text style={s.pomSettingsText}>{pomodoroMinutes} dk</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={togglePomodoro} activeOpacity={0.85} style={{ flex: 1 }}>
-                  <LinearGradient colors={pomodoroRunning ? ['#EF4444', '#DC2626'] : [C.primary, C.accent]} style={s.pomPlayBtn}>
-                    <FontAwesome5 name={pomodoroRunning ? 'pause' : 'play'} size={12} color={C.white} /><Text style={[s.pomPlayText, { color: C.white }]}>{pomodoroSec === 0 ? 'Yenile' : pomodoroRunning ? 'Durdur' : 'Başlat'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+            <View style={s.timerInner}><Text style={s.timerText}>{pad(Math.floor(pomodoroSec / 60))}:{pad(pomodoroSec % 60)}</Text></View>
+            <View style={{ flex: 1, gap: 10 }}>
+              <TouchableOpacity style={s.pomSettingsBtn} onPress={() => setShowPomodoroModal(true)}><Text style={{ color: '#FFF' }}>{pomodoroMinutes} dk Ayarla</Text></TouchableOpacity>
+              <TouchableOpacity onPress={togglePomodoro} style={[s.pomPlayBtn, { backgroundColor: pomodoroRunning ? C.red : C.primary }]}><Text style={{ fontWeight: 'bold' }}>{pomodoroRunning ? 'DURDUR' : 'BAŞLAT'}</Text></TouchableOpacity>
             </View>
           </View>
         </View>
 
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>ORTAM SESİ</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-            {SOUNDS.map((snd) => (
-              <TouchableOpacity key={snd.key} onPress={() => setSelectedSound(snd)}>
-                <View style={[s.soundChip, selectedSound.key === snd.key && { borderColor: C.primary, backgroundColor: C.amberDim }]}>
-                  <FontAwesome5 name={snd.icon} size={18} color={selectedSound.key === snd.key ? C.primary : C.textMuted} />
-                  <Text style={[s.soundChipText, selectedSound.key === snd.key && { color: C.primary }]}>{snd.label}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
+        {/* ODADAKİ KİŞİLER */}
         <View style={s.section}>
           <Text style={s.sectionLabel}>ODADAKİ KİŞİLER</Text>
           <View style={s.usersWrap}>
             {roomUsers.map((u, i) => (
-              <View key={i} style={s.userChip}>
-                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? C.green : C.textMuted }]} />
-                <Text style={s.userChipText}>{u.fullName?.split(' ')[0]}</Text>
-              </View>
+              <View key={i} style={s.userChip}><View style={[s.userDot, { backgroundColor: u.isAtDesk ? C.green : C.textMuted }]} /><Text style={{ color: '#FFF' }}>{u.fullName?.split(' ')[0]}</Text></View>
             ))}
           </View>
         </View>
-        <View style={{ height: 120 }} />
+        <View style={{ height: 100 }} />
       </Animated.ScrollView>
 
       {/* CHAT DRAWER */}
       {chatVisible && (
-        <Animated.View style={[s.chatDrawer, { transform: [{ translateY: chatTranslate }] }]}>
+        <Animated.View style={[s.chatDrawer, { transform: [{ translateY: chatAnim.interpolate({ inputRange: [0, 1], outputRange: [height * 0.6, 0] }) }] }]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <View style={s.chatHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <FontAwesome5 name="comment-dots" size={16} color={C.textPrimary} /><Text style={s.chatTitle}>Lobi Sohbeti</Text>
-                {!isPremium && <FontAwesome5 name="lock" size={12} color={C.amber} />}
-              </View>
-              <TouchableOpacity onPress={toggleChat}><FontAwesome5 name="times" size={16} color={C.textMuted} /></TouchableOpacity>
+              <Text style={s.chatTitle}>Lobi Sohbeti {!isPremium && '🔒'}</Text>
+              <TouchableOpacity onPress={toggleChat}><FontAwesome5 name="times" size={18} color={C.textMuted} /></TouchableOpacity>
             </View>
 
             <FlatList
-              ref={flatListRef} data={chatList} keyExtractor={(_, i) => i.toString()} style={s.chatList} contentContainerStyle={{ padding: 15, gap: 10 }}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              ref={flatListRef} data={chatList} keyExtractor={(_, i) => i.toString()} style={{ flex: 1 }} contentContainerStyle={{ padding: 15, gap: 10 }}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
               renderItem={({ item }) => {
                 const isMe = item.userId === myUserId;
+                const isFile = item.type === 'file';
                 return (
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
                     {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium ? '✨' : ''}</Text>}
-                    <Text style={s.bubbleText}>{item.text}</Text>
+                    {isFile ? (
+                      <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
+                        <FontAwesome5 name="file-pdf" size={20} color={C.red} />
+                        <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={{ color: '#FFF' }}>{item.text}</Text>
+                    )}
                   </View>
                 );
               }}
             />
 
-            {/* 👇 BURASI GÜNCELLENDİ: PRO KONTROLÜ SERTLEŞTİRİLDİ 👇 */}
             <View style={s.chatInputRow}>
+              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 name="paperclip" size={18} color={isPremium ? C.primary : C.textMuted} /></TouchableOpacity>
               <TextInput
-                style={[s.chatInput, !isPremium && { opacity: 0.6, backgroundColor: 'rgba(0,0,0,0.1)' }]}
-                value={message} onChangeText={setMessage}
-                placeholder={isPremium ? "Mesaj yaz..." : "Mesaj yazmak için PRO olmalısın 🔒"}
-                placeholderTextColor={C.textMuted}
-                onSubmitEditing={sendMessage} returnKeyType="send"
-                editable={isPremium}
+                style={[s.chatInput, !isPremium && { opacity: 0.5 }]} value={message} onChangeText={setMessage}
+                placeholder={isPremium ? "Mesaj yaz..." : "PRO Üyelik Gerekli 🔒"} placeholderTextColor={C.textMuted} editable={isPremium}
               />
-              <TouchableOpacity onPress={sendMessage} style={s.sendBtn} disabled={!isPremium}>
-                <LinearGradient colors={isPremium ? [C.primary, C.accent] : ['#475569', '#475569']} style={s.sendBtnGrad}>
-                  <FontAwesome5 name={isPremium ? "paper-plane" : "lock"} size={14} color={C.white} />
-                </LinearGradient>
+              <TouchableOpacity onPress={sendMessage} disabled={!isPremium} style={s.sendBtn}>
+                <LinearGradient colors={isPremium ? [C.primary, C.accent] : ['#475569', '#475569']} style={s.sendBtnGrad}><FontAwesome5 name={isPremium ? "paper-plane" : "lock"} size={14} color="#FFF" /></LinearGradient>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
         </Animated.View>
       )}
 
-      <TouchableOpacity style={s.fab} onPress={toggleChat}>
-        <LinearGradient colors={chatVisible ? [C.surfaceHigh, C.surface] : [C.primary, C.accent]} style={s.fabGrad}>
-          <FontAwesome5 name={chatVisible ? 'times' : 'comment-dots'} size={20} color={chatVisible ? C.white : C.secondaryDark} />
-        </LinearGradient>
-      </TouchableOpacity>
+      <TouchableOpacity style={s.fab} onPress={toggleChat}><LinearGradient colors={[C.primary, C.accent]} style={s.fabGrad}><FontAwesome5 name="comment-dots" size={22} color={C.secondaryDark} /></LinearGradient></TouchableOpacity>
       
-      {/* POMODORO MODAL... */}
-      <Modal visible={showPomodoroModal} transparent animationType="fade" statusBarTranslucent>
-        <TouchableOpacity style={mdl.overlay} activeOpacity={1} onPress={() => setShowPomodoroModal(false)}>
-          <View style={mdl.sheet}>
-            <View style={mdl.handle} />
-            <Text style={mdl.title}>Pomodoro Süresi</Text>
-            <View style={mdl.grid}>
-              {POMODORO_OPTIONS.map((opt) => (
-                <TouchableOpacity key={opt.minutes} style={[mdl.optBtn, pomodoroMinutes === opt.minutes && mdl.optBtnActive]} onPress={() => startPomodoro(opt.minutes)}>
-                  <Text style={[mdl.optText, pomodoroMinutes === opt.minutes && mdl.optTextActive]}>{opt.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </TouchableOpacity>
+      <Modal visible={showPomodoroModal} transparent animationType="fade">
+        <View style={s.modalOverlay}><View style={s.modalSheet}>
+            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 20 }}>Pomodoro Süresi</Text>
+            {POMODORO_OPTIONS.map(o => (
+              <TouchableOpacity key={o.minutes} onPress={() => startPomodoro(o.minutes)} style={s.modalOpt}><Text style={{ color: '#FFF' }}>{o.label}</Text></TouchableOpacity>
+            ))}
+        </View></View>
       </Modal>
     </SafeAreaView>
   );
@@ -401,66 +343,43 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   bgBase: { ...StyleSheet.absoluteFillObject, backgroundColor: C.bg },
   bgGlow: { position: 'absolute', top: -50, left: width / 2 - 150, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,193,7,0.06)' },
-  bgGlowGreen: { backgroundColor: 'rgba(16,185,129,0.08)' },
-  scroll: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 25 },
-  headerRoom: { fontSize: 12, color: C.primary, letterSpacing: 1.5, fontWeight: '700', textTransform: 'uppercase', marginBottom: 5 },
-  headerName: { fontSize: 26, fontWeight: '900', color: C.textPrimary },
-  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.amberDim, borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
-  scoreText: { fontSize: 15, fontWeight: 'bold', color: C.amber },
-  statusCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 20, padding: 18, marginBottom: 25 },
-  statusCardActive: { borderColor: C.greenBorder, backgroundColor: C.greenDim },
-  statusDot: { position: 'absolute', top: 16, right: 16, width: 10, height: 10, borderRadius: 5, backgroundColor: C.textMuted },
-  statusDotActive: { backgroundColor: C.green },
-  statusTitle: { fontSize: 16, fontWeight: 'bold', color: C.textPrimary },
-  statusDesc: { fontSize: 13, color: C.textMuted, marginTop: 4 },
+  scroll: { paddingHorizontal: 20, paddingTop: 15 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
+  headerRoom: { fontSize: 12, color: C.primary, fontWeight: 'bold' },
+  headerName: { fontSize: 26, fontWeight: '900', color: '#FFF' },
+  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.amberDim, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  scoreText: { color: C.amber, fontWeight: 'bold' },
+  statusCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 20, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: C.border },
+  statusCardActive: { borderColor: C.green, backgroundColor: 'rgba(16,185,129,0.1)' },
+  statusTitle: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
+  statusDesc: { fontSize: 12, color: C.textMuted },
   section: { marginBottom: 25 },
-  sectionLabel: { fontSize: 11, color: C.textMuted, fontWeight: 'bold', letterSpacing: 2, marginBottom: 12 },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  pomodoroCard: { flexDirection: 'row', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 24, padding: 20, alignItems: 'center', gap: 20 },
-  timerCircle: { alignItems: 'center' },
-  timerInner: { width: 90, height: 90, borderRadius: 45, borderWidth: 3, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
-  timerText: { fontSize: 22, fontWeight: 'bold', color: C.textPrimary },
-  timerSub: { fontSize: 9, color: C.textMuted, marginTop: 2, textTransform: 'uppercase' },
-  pomRight: { flex: 1, gap: 15 },
-  progressBar: { width: '100%', height: 6, backgroundColor: C.surfaceHigh, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: C.primary },
-  pomControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pomSettingsBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: C.surfaceHigh },
-  pomSettingsText: { fontSize: 13, color: C.textSecondary, fontWeight: '600' },
-  pomPlayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, flex: 1 },
-  pomPlayText: { fontSize: 13, fontWeight: 'bold' },
-  soundChip: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, width: 80, height: 85 },
-  soundChipText: { fontSize: 12, color: C.textMuted, fontWeight: '600' },
-  usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  userChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+  sectionLabel: { fontSize: 11, color: C.textMuted, fontWeight: 'bold', letterSpacing: 1, marginBottom: 10 },
+  pomodoroCard: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 24, padding: 20, gap: 20, alignItems: 'center' },
+  timerInner: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: C.primary, alignItems: 'center', justifyContent: 'center' },
+  timerText: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  pomSettingsBtn: { backgroundColor: C.surfaceHigh, padding: 10, borderRadius: 10, alignItems: 'center' },
+  pomPlayBtn: { padding: 12, borderRadius: 10, alignItems: 'center' },
+  usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  userChip: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 10, backgroundColor: C.surface },
   userDot: { width: 8, height: 8, borderRadius: 4 },
-  userChipText: { fontSize: 13, color: C.textSecondary, fontWeight: '500' },
-  chatDrawer: { position: 'absolute', left: 0, right: 0, bottom: 0, height: height * 0.55, backgroundColor: '#0F172A', borderTopLeftRadius: 28, borderTopRightRadius: 28, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
-  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderColor: C.surfaceHigh },
-  chatTitle: { fontSize: 16, fontWeight: 'bold', color: C.textPrimary },
-  chatList: { flex: 1 },
-  bubble: { maxWidth: '80%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, marginVertical: 4 },
-  bubbleMe: { alignSelf: 'flex-end', backgroundColor: C.myBubble, borderWidth: 1, borderColor: C.myBubbleBorder, borderBottomRightRadius: 4 },
-  bubbleOther: { alignSelf: 'flex-start', backgroundColor: C.otherBubble, borderWidth: 1, borderColor: C.otherBubbleBorder, borderBottomLeftRadius: 4 },
-  bubbleUser: { fontSize: 11, color: C.primary, marginBottom: 4, fontWeight: 'bold' },
-  bubbleText: { fontSize: 14, color: C.textPrimary, lineHeight: 20 },
-  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 15, paddingBottom: Platform.OS === 'ios' ? 25 : 15, gap: 10, borderTopWidth: 1, borderColor: C.surfaceHigh, backgroundColor: C.bg },
-  chatInput: { flex: 1, height: 46, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 23, paddingHorizontal: 18, fontSize: 14, color: C.textPrimary },
-  sendBtn: { borderRadius: 23, overflow: 'hidden' },
-  sendBtnGrad: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
-  fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, overflow: 'hidden', elevation: 8 },
+  chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.55, backgroundColor: '#0F172A', borderTopLeftRadius: 30, borderTopRightRadius: 30, borderTopWidth: 1, borderColor: C.border },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderColor: C.border },
+  chatTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  bubble: { maxWidth: '80%', padding: 12, borderRadius: 18, marginVertical: 4 },
+  bubbleMe: { alignSelf: 'flex-end', backgroundColor: C.myBubble, borderBottomRightRadius: 2 },
+  bubbleOther: { alignSelf: 'flex-start', backgroundColor: C.otherBubble, borderBottomLeftRadius: 2 },
+  bubbleUser: { fontSize: 10, color: C.primary, fontWeight: 'bold', marginBottom: 4 },
+  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 12 },
+  fileName: { color: '#FFF', fontSize: 12, flex: 1 },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 10, backgroundColor: C.bg, borderTopWidth: 1, borderColor: C.border },
+  chatInput: { flex: 1, height: 45, backgroundColor: C.surface, borderRadius: 22, paddingHorizontal: 15, color: '#FFF' },
+  attachBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { borderRadius: 22, overflow: 'hidden' },
+  sendBtnGrad: { width: 45, height: 45, alignItems: 'center', justifyContent: 'center' },
+  fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, overflow: 'hidden' },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-});
-
-const mdl = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
-  sheet: { backgroundColor: '#1E293B', borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', padding: 25, width: width - 50, alignItems: 'center', gap: 15 },
-  handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#FFF' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  optBtn: { paddingHorizontal: 22, paddingVertical: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', minWidth: 110, alignItems: 'center' },
-  optBtnActive: { borderColor: '#FFC107', backgroundColor: 'rgba(255,193,7,0.15)' },
-  optText: { fontSize: 16, fontWeight: 'bold', color: '#E2E8F0' },
-  optTextActive: { color: '#FFC107' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
+  modalSheet: { backgroundColor: '#1E293B', padding: 30, borderRadius: 20, width: '80%' },
+  modalOpt: { padding: 15, borderBottomWidth: 1, borderColor: C.border, alignItems: 'center' }
 });

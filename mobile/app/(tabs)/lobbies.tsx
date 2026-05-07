@@ -10,7 +10,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const BACKEND_URL = 'http://192.168.1.5:3000';
+const BACKEND_URL = 'http://192.168.1.15:3000';
 const { width } = Dimensions.get('window');
 
 // ── StudyLounge Kurumsal Tema Paleti ──
