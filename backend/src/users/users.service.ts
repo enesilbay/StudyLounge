@@ -85,6 +85,28 @@ export class UsersService {
     return user;
   }
 
+  // ── KULLANICI BUL (E-POSTA İLE) ──
+  async findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
+  }
+
+  // ── ŞİFRE SIFIRLAMA TOKEN GÜNCELLE ──
+  async updateResetToken(userId: number, token: string, expiry: Date) {
+    await this.usersRepository.update(userId, {
+      resetPasswordToken: token,
+      resetPasswordExpires: expiry,
+    });
+  }
+
+  // ── ŞİFRE GÜNCELLE ──
+  async updatePassword(userId: number, hashedPass: string) {
+    await this.usersRepository.update(userId, {
+      password: hashedPass,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    });
+  }
+
   // ── 3. ODAKLANMA PUANI ──
   async addFocusTime(userId: number, minutes: number) {
     const user = await this.usersRepository.findOneBy({ id: userId });

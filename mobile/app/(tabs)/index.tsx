@@ -81,12 +81,16 @@ function BackgroundOrbs() {
 export default function AuthScreen() {
   const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
@@ -108,6 +112,8 @@ export default function AuthScreen() {
       Animated.spring(formSlide, { toValue: 0, tension: 100, friction: 10, useNativeDriver: true }),
     ]).start();
     setIsLogin(toLogin);
+    setIsForgotPassword(false);
+    setIsResetPassword(false);
   };
 
   const checkExistingLogin = async () => {
@@ -145,6 +151,60 @@ export default function AuthScreen() {
         await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
         await AsyncStorage.setItem('access_token', data.access_token);
         router.replace({ pathname: '/lobbies' as any, params: data.user });
+      } else {
+        Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
+      }
+    } catch {
+      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Eksik Bilgi', 'Lütfen e-posta adresinizi girin.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Başarılı', data.message);
+        setIsForgotPassword(false);
+        setIsResetPassword(true); // Kod girme ekranına geç
+      } else {
+        Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
+      }
+    } catch {
+      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email || !resetToken || !newPassword) {
+      Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token: resetToken, newPass: newPassword }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Başarılı', data.message);
+        setIsResetPassword(false);
+        setIsLogin(true);
       } else {
         Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
       }
@@ -220,10 +280,26 @@ export default function AuthScreen() {
                   </>
                 )}
                 <InputField placeholder="E-posta adresi" value={email} onChangeText={setEmail} keyboardType="email-address" iconName="envelope" />
-                <InputField placeholder="Şifre" value={password} onChangeText={setPassword} secureTextEntry iconName="lock" />
+                
+                {!isForgotPassword && !isResetPassword && (
+                  <InputField placeholder="Şifre" value={password} onChangeText={setPassword} secureTextEntry iconName="lock" />
+                )}
+
+                {isResetPassword && (
+                  <>
+                    <InputField placeholder="6 Haneli Kod" value={resetToken} onChangeText={setResetToken} keyboardType="number-pad" iconName="key" />
+                    <InputField placeholder="Yeni Şifre" value={newPassword} onChangeText={setNewPassword} secureTextEntry iconName="lock" />
+                  </>
+                )}
+
+                {isLogin && !isForgotPassword && !isResetPassword && (
+                  <TouchableOpacity onPress={() => setIsForgotPassword(true)} style={s.forgotBtn}>
+                    <Text style={s.forgotText}>Şifremi Unuttum</Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* GİRİŞ BUTONU */}
-                <TouchableOpacity onPress={handleAuth} disabled={isLoading} activeOpacity={0.85} style={s.btnWrap}>
+                <TouchableOpacity onPress={isForgotPassword ? handleForgotPassword : (isResetPassword ? handleResetPassword : handleAuth)} disabled={isLoading} activeOpacity={0.85} style={s.btnWrap}>
                   <LinearGradient
                     colors={isLoading ? ['#475569', '#334155'] : [C.primary, C.primaryDark, C.primary]}
                     start={{ x: 0, y: 0 }}
@@ -234,7 +310,9 @@ export default function AuthScreen() {
                       <ActivityIndicator color={C.btnText} />
                     ) : (
                       <>
-                        <Text style={s.btnText}>{isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'}</Text>
+                        <Text style={s.btnText}>
+                          {isForgotPassword ? 'KOD GÖNDER' : (isResetPassword ? 'ŞİFREYİ GÜNCELLE' : (isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'))}
+                        </Text>
                         <View style={s.btnArrow}>
                           <FontAwesome5 solid name="arrow-right" size={12} color={C.primary} />
                         </View>
@@ -242,6 +320,12 @@ export default function AuthScreen() {
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
+
+                {(isForgotPassword || isResetPassword) && (
+                  <TouchableOpacity onPress={() => { setIsForgotPassword(false); setIsResetPassword(false); }} style={s.backToLoginBtn}>
+                    <Text style={s.backToLoginText}>← Giriş Ekranına Dön</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* ALT METİN */}
@@ -320,6 +404,12 @@ const s = StyleSheet.create({
   switchRow: { marginTop: 22, alignItems: 'center' },
   switchText: { fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: '500' },
   switchAction: { color: C.primary, fontWeight: '800' },
+
+  forgotBtn: { alignSelf: 'flex-end', marginTop: -5, marginBottom: 5 },
+  forgotText: { color: 'rgba(255,193,7,0.7)', fontSize: 13, fontWeight: '600' },
+
+  backToLoginBtn: { marginTop: 10, alignItems: 'center' },
+  backToLoginText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: '600' },
 
   features: { flexDirection: 'row', gap: 10, marginTop: 28, flexWrap: 'wrap', justifyContent: 'center' },
   featureChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,193,7,0.08)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: 'rgba(255,193,7,0.15)' },

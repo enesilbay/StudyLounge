@@ -30,4 +30,22 @@ export class AuthController {
     }
     return this.authService.login(body.email, body.password);
   }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: { email: string }) {
+    if (!body.email) {
+      throw new BadRequestException('E-posta adresi zorunludur!');
+    }
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(
+    @Body() body: { email: string; token: string; newPass: string },
+  ) {
+    if (!body.email || !body.token || !body.newPass) {
+      throw new BadRequestException('Tüm alanlar zorunludur!');
+    }
+    return this.authService.resetPassword(body.email, body.token, body.newPass);
+  }
 }

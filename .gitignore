@@ -1,0 +1,23 @@
+# Environment variables
+.env
+backend/.env
+mobile/.env
+web/.env
+
+# Node modules
+node_modules/
+backend/node_modules/
+mobile/node_modules/
+web/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+backend/dist/
+mobile/dist/
+web/dist/
+.expo/
+*.log

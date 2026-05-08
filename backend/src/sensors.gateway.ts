@@ -267,7 +267,12 @@ export class SensorsGateway
   async handleNudge(
     @MessageBody()
     payload:
-      | { senderId: number; targetUserId: number; senderName: string; roomName: string }
+      | {
+          senderId: number;
+          targetUserId: number;
+          senderName: string;
+          roomName: string;
+        }
       | string,
   ) {
     const data =

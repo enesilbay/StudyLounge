@@ -49,6 +49,7 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[Social-UI]** Arkadaşlık sisteminin (istek gönderme, yanıtlama, listeleme) mobil arayüz entegrasyonu tamamlandı.
 - **[Push-Notifications]** Expo Push Token altyapısı kuruldu; arkadaşlar masaya geçtiğinde otomatik bildirim gönderimi entegre edildi.
 - **[Nudge]** Arkadaşları odaya dürtme (çağırma) butonu eklendi; WebSocket ile anlık + Push bildirimi ile çevrimdışı bildirim desteği.
+- **[Şifre-Sıfırlama]** Nodemailer ve Gmail SMTP entegrasyonu ile 6 haneli kod bazlı güvenli şifre sıfırlama sistemi tamamlandı.
 ---
 
 ## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
@@ -58,7 +59,6 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 
 ### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
 - [ ] **Analytics (Grafikler):** `analytics.tsx` sayfasını gerçek istatistiklere (Bar/Line chart) dönüştürmek.
-- [ ] **Şifremi Unuttum Akışı:** E-posta doğrulama ve şifre sıfırlama sistemi.
 
 ### 🟣 Premium (PRO) Özellikler
 - [ ] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**.
