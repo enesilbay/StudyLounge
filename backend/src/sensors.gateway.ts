@@ -261,4 +261,64 @@ export class SensorsGateway
       this.server.to(roomName).emit('presence_changed', data);
     }
   }
+
+  // ── DÜRTME (NUDGE) - Arkadaşı Çalışmaya Çağır ──
+  @SubscribeMessage('nudge_friend')
+  async handleNudge(
+    @MessageBody()
+    payload:
+      | { senderId: number; targetUserId: number; senderName: string; roomName: string }
+      | string,
+  ) {
+    const data =
+      typeof payload === 'string'
+        ? (JSON.parse(payload) as {
+            senderId: number;
+            targetUserId: number;
+            senderName: string;
+            roomName: string;
+          })
+        : payload;
+
+    const { senderId, targetUserId, senderName, roomName } = data;
+
+    console.log(
+      `[Nudge] ${senderName} (ID: ${senderId}), Kullanıcı ${targetUserId}'yi dürtüyor.`,
+    );
+
+    // 1. Hedef kullanıcının soket bağlantısını bul ve anlık bildirim gönder
+    let notified = false;
+    for (const [socketId, user] of this.connectedUsers.entries()) {
+      if (user.userId === targetUserId) {
+        this.server.to(socketId).emit('nudge_received', {
+          senderName,
+          senderId,
+          roomName,
+          message: `${senderName} seni çalışmaya çağırıyor! 👋`,
+        });
+        notified = true;
+        break;
+      }
+    }
+
+    if (!notified) {
+      console.log(
+        `[Nudge] Kullanıcı ${targetUserId} çevrimiçi değil, sadece push bildirimi gönderilecek.`,
+      );
+    }
+
+    // 2. Push bildirimi gönder (kullanıcı çevrimdışı veya başka bir odadaysa da ulaşsın)
+    try {
+      const tokens = await this.usersService.getUserPushTokens([targetUserId]);
+      tokens.forEach((token) => {
+        void this.notificationsService.sendNotification(
+          token,
+          'StudyLounge 👋',
+          `${senderName} seni çalışmaya davet ediyor!`,
+        );
+      });
+    } catch (e) {
+      console.error('[Nudge] Push bildirimi gönderilemedi:', e);
+    }
+  }
 }

@@ -316,4 +316,15 @@ export class UsersService {
 
     return tokens;
   }
+
+  // ── 14. BELİRLİ KULLANICILARIN PUSH TOKENLARINI GETİR (NUDGE İÇİN) ──
+  async getUserPushTokens(userIds: number[]): Promise<string[]> {
+    const users = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.id IN (:...ids)', { ids: userIds })
+      .andWhere('user.expoPushToken IS NOT NULL')
+      .getMany();
+
+    return users.map((u) => u.expoPushToken).filter((t): t is string => !!t);
+  }
 }

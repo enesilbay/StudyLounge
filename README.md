@@ -58,7 +58,7 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 ### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
 - [ ] **Analytics (Grafikler):** `analytics.tsx` sayfasını gerçek istatistiklere (Bar/Line chart) dönüştürmek.
 - [ ] **Şifremi Unuttum Akışı:** E-posta doğrulama ve şifre sıfırlama sistemi.
-- [ ] **"Birlikte Çalışmaya Çağır" (Nudge):** Arkadaşları odaya dürtme (çağırma) butonu.
+- [x] **"Birlikte Çalışmaya Çağır" (Nudge):** Arkadaşları odaya dürtme (çağırma) butonu eklendi; WebSocket ile anlık + Push bildirimi ile çevrimdışı bildirim desteği.
 
 ### 🟣 Premium (PRO) Özellikler
 - [ ] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**.

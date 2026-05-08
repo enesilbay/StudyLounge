@@ -2,31 +2,43 @@ import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { C } from './sensor';
 
 const BACKEND_URL = 'http://10.192.24.96:3000';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Expo Go (SDK 53+) Android push bildirimlerini desteklemiyor.
+// Tüm expo-notifications API'si sadece gerçek build'lerde yükleniyor.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+// Notifications modülünü yalnızca Expo Go dışında yükle
+type NotificationsModule = typeof import('expo-notifications');
+let Notifications: NotificationsModule | null = null;
+
+if (!isExpoGo) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Notifications = require('expo-notifications') as NotificationsModule;
+  Notifications!.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export default function TabLayout() {
   useEffect(() => {
-    registerForPushNotificationsAsync().then(token => {
-      if (token) {
-        saveTokenToBackend(token);
-      }
-    });
+    if (!isExpoGo) {
+      registerForPushNotificationsAsync().then(token => {
+        if (token) {
+          saveTokenToBackend(token);
+        }
+      });
+    }
   }, []);
 
   async function saveTokenToBackend(token: string) {
@@ -39,7 +51,7 @@ export default function TabLayout() {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ token }),
         });
@@ -50,8 +62,13 @@ export default function TabLayout() {
     }
   }
 
-  async function registerForPushNotificationsAsync() {
-    let token;
+  async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+    if (!Notifications) return undefined;
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Device = require('expo-device') as typeof import('expo-device');
+
+    let token: string | undefined;
     if (Device.isDevice) {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -61,18 +78,25 @@ export default function TabLayout() {
       }
       if (finalStatus !== 'granted') {
         alert('Bildirim izni alınamadı!');
-        return;
+        return undefined;
       }
-      token = (await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId,
-      })).data;
-      console.log('Expo Push Token:', token);
-    } else {
-      console.log('Fiziksel cihaz gerekli.');
+      try {
+        const projectId =
+          Constants.expoConfig?.extra?.eas?.projectId ??
+          Constants.easConfig?.projectId;
+        if (!projectId) {
+          console.warn('Push bildirimleri için projectId bulunamadı.');
+          return undefined;
+        }
+        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        console.log('Expo Push Token:', token);
+      } catch (e) {
+        console.error('Push token alınamadı:', e);
+      }
     }
 
     if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
+      await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],

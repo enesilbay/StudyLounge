@@ -88,6 +88,11 @@ export default function SensorScreen() {
 
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
 
+  // Nudge (Dürtme) toast state'leri
+  const [nudgeToast, setNudgeToast] = useState<{ message: string; senderName: string } | null>(null);
+  const nudgeAnim = useRef(new Animated.Value(0)).current;
+  const nudgeTimer = useRef<any>(null);
+
   const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
   const [pomodoroSec, setPomodoroSec] = useState(25 * 60);
   const [pomodoroRunning, setPomodoroRunning] = useState(false);
@@ -270,6 +275,11 @@ export default function SensorScreen() {
       socketRef.current.on('score_update', (data: any) => {
         if (Number(data.userId) === myUserId) setTotalScore(data.score);
       });
+
+      // Dürtme (Nudge) alındığında toast göster
+      socketRef.current.on('nudge_received', (data: { senderName: string; message: string }) => {
+        showNudgeToast(data.senderName, data.message);
+      });
     };
     initSocket();
     
@@ -327,6 +337,30 @@ export default function SensorScreen() {
       if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
     };
   }, [isFocused]);
+
+  // Nudge: Toast animasyonunu göster
+  const showNudgeToast = (senderName: string, message: string) => {
+    if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
+    setNudgeToast({ message, senderName });
+    Animated.spring(nudgeAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }).start();
+    nudgeTimer.current = setTimeout(() => {
+      Animated.timing(nudgeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setNudgeToast(null);
+      });
+    }, 4000);
+  };
+
+  // Nudge: Odadaki bir kullanıcıya dürtme gönder
+  const sendNudge = (targetUserId: number, targetName: string) => {
+    if (targetUserId === myUserId) return;
+    socketRef.current?.emit('nudge_friend', {
+      senderId: myUserId,
+      targetUserId,
+      senderName: safeFullName,
+      roomName,
+    });
+    Alert.alert('👋 Dürtüldü!', `${targetName} çalışmaya çağrıldı.`);
+  };
 
   const sendMessage = async () => {
     if (!message.trim() || !isPremium) return;
@@ -423,6 +457,22 @@ export default function SensorScreen() {
           </ScrollView>
         </View>
 
+        {/* NUDGE TOAST BANNER */}
+        {nudgeToast && (
+          <Animated.View
+            style={[
+              s.nudgeToast,
+              { opacity: nudgeAnim, transform: [{ translateY: nudgeAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] },
+            ]}
+          >
+            <Text style={s.nudgeToastIcon}>👋</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.nudgeToastTitle}>{nudgeToast.senderName} seni çağırıyor!</Text>
+              <Text style={s.nudgeToastSub}>Birlikte çalışmaya davet edildiniz.</Text>
+            </View>
+          </Animated.View>
+        )}
+
         {/* AKTİF KULLANICILAR */}
         <View style={s.section}>
           <Text style={s.sectionLabel}>ODADAKİLER ({roomUsers.length})</Text>
@@ -431,6 +481,15 @@ export default function SensorScreen() {
               <View key={i} style={s.userChip}>
                 <View style={[s.userDot, { backgroundColor: u.isAtDesk ? C.success : 'rgba(255,255,255,0.2)' }]} />
                 <Text style={{ color: C.text, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
+                {Number(u.userId) !== myUserId && (
+                  <TouchableOpacity
+                    onPress={() => sendNudge(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
+                    style={s.nudgeBtn}
+                    accessibilityLabel={`${u.fullName} kullanıcısını dürt`}
+                  >
+                    <Text style={s.nudgeBtnText}>👋</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -555,6 +614,12 @@ const s = StyleSheet.create({
   usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.card },
   userDot: { width: 8, height: 8, borderRadius: 4 },
+  nudgeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,193,7,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.25)' },
+  nudgeBtnText: { fontSize: 13 },
+  nudgeToast: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(26,35,126,0.95)', borderRadius: 18, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(255,193,7,0.4)' },
+  nudgeToastIcon: { fontSize: 26 },
+  nudgeToastTitle: { color: C.primary, fontWeight: '800', fontSize: 14 },
+  nudgeToastSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
   
   chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: C.bgModal, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: C.border },
   chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderColor: C.card },
