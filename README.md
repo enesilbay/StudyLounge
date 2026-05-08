@@ -48,6 +48,7 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[Brand-Theme]** Uygulama renkleri Deep Indigo (#1A237E) ve Amber Gold (#FFC107) üzerine optimize edilerek tek merkezden yönetilebilir hale getirildi.
 - **[Social-UI]** Arkadaşlık sisteminin (istek gönderme, yanıtlama, listeleme) mobil arayüz entegrasyonu tamamlandı.
 - **[Push-Notifications]** Expo Push Token altyapısı kuruldu; arkadaşlar masaya geçtiğinde otomatik bildirim gönderimi entegre edildi.
+- **[Nudge]** Arkadaşları odaya dürtme (çağırma) butonu eklendi; WebSocket ile anlık + Push bildirimi ile çevrimdışı bildirim desteği.
 ---
 
 ## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
@@ -58,7 +59,6 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 ### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
 - [ ] **Analytics (Grafikler):** `analytics.tsx` sayfasını gerçek istatistiklere (Bar/Line chart) dönüştürmek.
 - [ ] **Şifremi Unuttum Akışı:** E-posta doğrulama ve şifre sıfırlama sistemi.
-- [x] **"Birlikte Çalışmaya Çağır" (Nudge):** Arkadaşları odaya dürtme (çağırma) butonu eklendi; WebSocket ile anlık + Push bildirimi ile çevrimdışı bildirim desteği.
 
 ### 🟣 Premium (PRO) Özellikler
 - [ ] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**.
