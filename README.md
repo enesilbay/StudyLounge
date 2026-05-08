@@ -42,6 +42,9 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[User-Profile]** Sadece harf, rakam ve alt çizgiden oluşan benzersiz (unique) username (kullanıcı adı) sistemi ve güvenli doğrulama (Regex) entegre edildi.
 - **[Social-Backend]** Friendship veritabanı altyapısı kuruldu; arkadaşlık isteği gönderme, gelen istekleri yanıtlama (kabul/red) ve arkadaş listeleme API'leri yazıldı.
 - **[Grace-Period]** Cihazı kısa süreliğine elinize aldığınızda odaktan düşmeyi engelleyen 10 saniyelik mola toleransı eklendi.
+- **[WebSocket-Heartbeat]** Bağlantı kopmalarına karşı otomatik yeniden bağlanma ve orphan user temizliği eklendi.
+- **[Score-Sync]** Uygulama aniden kapandığında veya lobi çıkışında kazanılan odak puanının veritabanına kalıcı olarak işlenmesi sağlandı.
+- **[Offline-Handling]** İnternet koptuğunda mobilde şeffaf uyarı gösterilmesi eklendi.
 
 ---
 
@@ -49,9 +52,6 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 
 ### 🟢 İlk Yapılması Gerekenler (Stabilizasyon ve Core)
 
-- [ ] **WebSocket Heartbeat & Reconnect:** Bağlantı kopmalarına karşı otomatik yeniden bağlanma ve orphan user (asılı kalan kullanıcı) temizliği.
-- [ ] **Gerçek Zamanlı Puan Kaydı:** Lobi çıkışında kazanılan odak puanının (Score) veritabanına kalıcı olarak işlenmesi.
-- [ ] **Offline / Error Handling:** İnternet koptuğunda ekranda şeffaf uyarı gösterilmesi ve hata yönetiminin güçlendirilmesi.
 - [ ] **Marka / UX Uyumu:** UI bileşenlerini marka paletiyle (Deep Indigo & Amber Gold) tek merkezden yönetmek.
 
 ### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler

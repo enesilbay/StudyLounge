@@ -11,7 +11,11 @@ import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
 import { JwtService } from '@nestjs/jwt';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({ 
+  cors: { origin: '*' },
+  pingInterval: 10000,
+  pingTimeout: 5000
+})
 export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection {
   @WebSocketServer() server!: Server;
 
@@ -40,9 +44,23 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
   }
 
   // ── KULLANICI UYGULAMAYI KAPATTIĞINDA / BAĞLANTI KOPTUĞUNDA ──
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     const user = this.connectedUsers.get(client.id);
     if (user) {
+      // Puanı kaybetmemesi için bağlantı koptuğunda süreyi hesapla
+      const startTime = this.activeSessions.get(user.userId);
+      if (startTime) {
+        const endTime = Date.now();
+        const durationMinutes = Math.round((endTime - startTime) / 60000);
+        if (durationMinutes > 0) {
+          const updatedUser = await this.usersService.addFocusTime(user.userId, durationMinutes);
+          if (updatedUser) {
+            this.server.emit('score_updated', { userId: user.userId, newTotal: updatedUser.totalFocusMinutes });
+          }
+        }
+        this.activeSessions.delete(user.userId);
+      }
+
       this.connectedUsers.delete(client.id); // Listeden sil
       this.broadcastRoomUsers(user.roomName); // Kalanlara güncel listeyi gönder
       console.log(`[Bağlantı Koptu] ${user.fullName} lobiden ayrıldı.`);

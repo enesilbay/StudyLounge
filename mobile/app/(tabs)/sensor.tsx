@@ -66,6 +66,7 @@ export default function SensorScreen() {
   const [totalScore, setTotalScore] = useState(Number(score) || 0);
   const [isAtDesk, setIsAtDesk] = useState(false);
   const [isPremium, setIsPremium] = useState(false); 
+  const [isConnected, setIsConnected] = useState(true);
 
   const [selectedSound, setSelectedSound] = useState(SOUNDS[0]);
   const [isSoundOn, setIsSoundOn] = useState(false);
@@ -240,7 +241,13 @@ export default function SensorScreen() {
     const initSocket = async () => {
       const token = await AsyncStorage.getItem('access_token');
       socketRef.current = io(SOCKET_URL, { transports: ['websocket'], auth: { token } });
-      socketRef.current.on('connect', () => socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName, maxUsers: params.maxUsers }));
+      socketRef.current.on('connect', () => {
+        setIsConnected(true);
+        socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName, maxUsers: params.maxUsers });
+      });
+      socketRef.current.on('disconnect', () => {
+        setIsConnected(false);
+      });
       
       socketRef.current.on('room_users', (users: any[]) => {
         setRoomUsers(users);
@@ -335,6 +342,12 @@ export default function SensorScreen() {
 
       <Animated.ScrollView contentContainerStyle={s.scroll} style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
         
+        {!isConnected && (
+          <View style={s.offlineBanner}>
+            <Text style={s.offlineText}>Bağlantı koptu, yeniden bağlanılıyor...</Text>
+          </View>
+        )}
+
         {/* HEADER */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.replace('/lobbies')} style={s.backBtn}>
@@ -503,6 +516,8 @@ export default function SensorScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#080C14' },
   scroll: { paddingHorizontal: 22, paddingTop: 15 },
+  offlineBanner: { backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)', alignItems: 'center' },
+  offlineText: { color: '#EF4444', fontSize: 13, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
   backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
   headerRoom: { fontSize: 12, color: C.primary, fontWeight: '800', letterSpacing: 1 },
