@@ -6,10 +6,10 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { C } from './(tabs)/sensor';
+
 const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
-
-import { C } from './(tabs)/sensor';
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {
@@ -104,7 +104,7 @@ export default function PremiumScreen() {
             {isLoading ? (
               <ActivityIndicator color="#1A0F00" />
             ) : (
-              <Text style={s.buyBtnText}>PRO'YA YÜKSELT</Text>
+              <Text style={s.buyBtnText}>PRO&apos;YA YÜKSELT</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>

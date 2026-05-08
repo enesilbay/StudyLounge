@@ -7,9 +7,9 @@ import { LineChart } from 'react-native-chart-kit';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width, height } = Dimensions.get('window');
-
 import { C } from './(tabs)/sensor';
+
+const { width, height } = Dimensions.get('window');
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {

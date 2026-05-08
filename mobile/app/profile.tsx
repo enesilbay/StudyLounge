@@ -10,10 +10,10 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { C } from './(tabs)/sensor';
+
 const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
-
-import { C } from './(tabs)/sensor';
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {

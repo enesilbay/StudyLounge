@@ -560,7 +560,7 @@ export default function LobbiesScreen() {
                 </View>
                 <Text style={[mdl.title, { textAlign: 'center' }]}>Gizli Oda</Text>
                 <Text style={[mdl.subtitle, { textAlign: 'center', marginTop: 5 }]}>
-                  "{selectedLobby?.name}" odasına girmek için şifreyi giriniz.
+                  &quot;{selectedLobby?.name}&quot; odasına girmek için şifreyi giriniz.
                 </Text>
               </View>
 

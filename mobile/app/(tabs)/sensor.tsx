@@ -21,6 +21,9 @@ const { width, height } = Dimensions.get('window');
 
 export const C = {
   primary: '#FFC107',          
+  bg: '#080C14',
+  border: 'rgba(255,255,255,0.08)',
+  textMuted: 'rgba(255,255,255,0.4)',
 };
 
 const SOUNDS = [
@@ -85,6 +88,7 @@ export default function SensorScreen() {
 
   const socketRef = useRef<any>(null);
   const previousDeskState = useRef<boolean | null>(null);
+  const graceTimerRef = useRef<any>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -262,20 +266,51 @@ export default function SensorScreen() {
     if (isFocused) {
       sub = Accelerometer.addListener(({ x, y, z }) => {
         const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
-        setIsAtDesk(flat);
-        if (socketRef.current?.connected && flat !== previousDeskState.current) {
-          socketRef.current.emit('update_presence', { userId: id, isAtDesk: flat, roomName });
-          previousDeskState.current = flat;
+        
+        if (flat) {
+          if (graceTimerRef.current) {
+            clearTimeout(graceTimerRef.current);
+            graceTimerRef.current = null;
+          }
+          if (previousDeskState.current !== true) {
+            setIsAtDesk(true);
+            if (socketRef.current?.connected) {
+              socketRef.current.emit('update_presence', { userId: id, isAtDesk: true, roomName });
+            }
+            previousDeskState.current = true;
+          }
+        } else {
+          if (previousDeskState.current === true) {
+            if (!graceTimerRef.current) {
+              graceTimerRef.current = setTimeout(() => {
+                setIsAtDesk(false);
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
+                }
+                previousDeskState.current = false;
+                graceTimerRef.current = null;
+              }, 10000);
+            }
+          } else {
+            setIsAtDesk(false);
+          }
         }
       });
     } else {
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
       setIsAtDesk(false);
       if (socketRef.current?.connected && previousDeskState.current !== false) {
         socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
         previousDeskState.current = false;
       }
     }
-    return () => { if (sub) sub.remove(); };
+    return () => {
+      if (sub) sub.remove();
+      if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
+    };
   }, [isFocused]);
 
   const sendMessage = async () => {
