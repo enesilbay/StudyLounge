@@ -44,13 +44,28 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 
 ---
 
-## Yapılacaklar
+## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
 
-- [ ] **Premium Üyelik Sistemi:**
-- [ ] **Bildirim Sistemi:**
-- [ ] **Web Sitesi**
-- [ ] **Profil Özelleştirme (Avatar)**
-- [ ] **Bildirim Sistemi**
+### 🟢 İlk Yapılması Gerekenler (Stabilizasyon ve Core)
+- [ ] **Sensör Tolerans Yapısı (Grace Period):** Cihazı kısa süreliğine elinize aldığınızda odaktan düşmeyi engelleyen 10 saniyelik mola toleransı.
+- [ ] **WebSocket Heartbeat & Reconnect:** Bağlantı kopmalarına karşı otomatik yeniden bağlanma ve orphan user (asılı kalan kullanıcı) temizliği.
+- [ ] **Gerçek Zamanlı Puan Kaydı:** Lobi çıkışında kazanılan odak puanının (Score) veritabanına kalıcı olarak işlenmesi.
+- [ ] **Offline / Error Handling:** İnternet koptuğunda ekranda şeffaf uyarı gösterilmesi ve hata yönetiminin güçlendirilmesi.
+- [ ] **Marka / UX Uyumu:** UI bileşenlerini marka paletiyle (Deep Indigo & Amber Gold) tek merkezden yönetmek.
+
+### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
+- [ ] **Arkadaş Ekleme Sistemi (UI Entegrasyonu):** API'si hazır olan arkadaşlık sisteminin mobil arayüze bağlanması.
+- [ ] **Bildirim Sistemi (Push Notifications):** Expo Push Token ile "Odan seni bekliyor", "Ahmet masaya geçti" bildirimlerini hayata geçirmek.
+- [ ] **Analytics (Grafikler):** `analytics.tsx` sayfasını gerçek istatistiklere (Bar/Line chart) dönüştürmek.
+- [ ] **Şifremi Unuttum Akışı:** E-posta doğrulama ve şifre sıfırlama sistemi.
+- [ ] **"Birlikte Çalışmaya Çağır" (Nudge):** Arkadaşları odaya dürtme (çağırma) butonu.
+
+### 🟣 Premium (PRO) Özellikler
+- [ ] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**.
+- [ ] Odalara özel şifreli veya sadece Premium'lara açık **Elite Lounges**.
+- [ ] Hangi saat aralıklarında daha verimli çalışıldığını gösteren detaylı **Sıcaklık Haritası (Heatmap)**.
+- [ ] Mesajlaşmada gönderilebilen dosya/görsel boyutu limitinin artırılması.
+- [ ] Profilde **Altın Rozet** ve liderlik tablosunda vurgulu görünüm.
 
 ---
 
