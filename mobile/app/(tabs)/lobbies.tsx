@@ -69,7 +69,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
             <Text style={card.name} numberOfLines={1}>{item.name}</Text>
             <Text style={card.desc} numberOfLines={1}>{item.description}</Text>
             <View style={card.meta}>
-              <View style={[card.dot, { backgroundColor: isActive ? '#10B981' : 'rgba(255,255,255,0.3)' }]} />
+              <View style={[card.dot, { backgroundColor: isActive ? C.success : 'rgba(255,255,255,0.3)' }]} />
               <Text style={card.metaText}>{memberCount} kişi odaklanıyor</Text>
             </View>
           </View>
@@ -86,7 +86,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
 function IconBtn({ name, onPress, danger }: { name: string; onPress: () => void; danger?: boolean; }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[hdr.iconBtn, danger && { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-      <FontAwesome5 solid name={name} size={14} color={danger ? '#EF4444' : 'rgba(255,255,255,0.6)'} />
+      <FontAwesome5 solid name={name} size={14} color={danger ? C.danger : 'rgba(255,255,255,0.6)'} />
     </TouchableOpacity>
   );
 }
@@ -339,7 +339,7 @@ export default function LobbiesScreen() {
             <IconBtn name="crown" onPress={() => router.push({ pathname: '/premium', params: { id: myUserId } } as any)} />
             
             <TouchableOpacity onPress={handleLogout} style={hdr.logoutWrap}>
-              <FontAwesome5 solid name="sign-out-alt" size={18} color="#EF4444" />
+              <FontAwesome5 solid name="sign-out-alt" size={18} color={C.danger} />
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>
@@ -392,8 +392,8 @@ export default function LobbiesScreen() {
         }} 
         activeOpacity={0.85}
       >
-        <LinearGradient colors={[C.primary, '#E6A800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
-          <FontAwesome5 solid name={isPremium ? "plus" : "lock"} size={14} color="#1A0F00" />
+        <LinearGradient colors={[C.primary, C.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.fabGrad}>
+          <FontAwesome5 solid name={isPremium ? "plus" : "lock"} size={14} color={C.btnText} />
           <Text style={s.fabText}>ODA KUR</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -413,7 +413,7 @@ export default function LobbiesScreen() {
                 <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: 'bold' }}>Gizli Oda (Kilitli)</Text>
                 <Switch
                   trackColor={{ false: 'rgba(255,255,255,0.1)', true: C.primary }}
-                  thumbColor={isPrivate ? '#FFFFFF' : '#94A3B8'}
+                  thumbColor={isPrivate ? C.text : '#94A3B8'}
                   onValueChange={setIsPrivate}
                   value={isPrivate}
                 />
@@ -433,7 +433,7 @@ export default function LobbiesScreen() {
                   <Text style={mdl.cancelText}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleCreateLobby} style={{ flex: 1 }}>
-                  <LinearGradient colors={[C.primary, '#E6A800']} style={mdl.createBtn}>
+                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
                     <Text style={mdl.createText}>Oluştur</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -459,7 +459,7 @@ export default function LobbiesScreen() {
               <View style={mdl.btnRow}>
                 <TouchableOpacity style={mdl.cancelBtn} onPress={() => setIsFriendModalVisible(false)}><Text style={mdl.cancelText}>İptal</Text></TouchableOpacity>
                 <TouchableOpacity onPress={handleSendFriendRequest} disabled={isSendingFriendReq} style={{ flex: 1 }}>
-                  <LinearGradient colors={[C.primary, '#E6A800']} style={mdl.createBtn}>
+                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
                     <Text style={mdl.createText}>{isSendingFriendReq ? 'Gönderiliyor...' : 'İstek Gönder'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -579,8 +579,8 @@ export default function LobbiesScreen() {
                   <Text style={mdl.cancelText}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleVerifyPassword} disabled={isVerifying} style={{ flex: 1 }}>
-                  <LinearGradient colors={[C.primary, '#E6A800']} style={mdl.createBtn}>
-                    {isVerifying ? <ActivityIndicator color="#1A0F00" /> : <Text style={mdl.createText}>Giriş Yap</Text>}
+                  <LinearGradient colors={[C.primary, C.primaryDark]} style={mdl.createBtn}>
+                    {isVerifying ? <ActivityIndicator color={C.btnText} /> : <Text style={mdl.createText}>Giriş Yap</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -597,33 +597,33 @@ export default function LobbiesScreen() {
 // STİLLER
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080C14' },
+  safe: { flex: 1, backgroundColor: C.bg },
   container: { flex: 1, paddingHorizontal: 22, paddingTop: 15 },
   header: { marginBottom: 25 },
   headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
   greeting: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.5 },
-  pageTitle: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 30, color: '#FFFFFF', marginTop: 2, letterSpacing: 0.5 },
+  pageTitle: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 30, color: C.text, marginTop: 2, letterSpacing: 0.5 },
   headerBtns: { flexDirection: 'row', gap: 10, paddingRight: 20, paddingBottom: 5 },
   
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 18, paddingHorizontal: 18, height: 54, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  searchInput: { flex: 1, fontSize: 15, color: '#FFFFFF', fontWeight: '500' },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 18, paddingHorizontal: 18, height: 54, marginBottom: 25, borderWidth: 1, borderColor: C.border },
+  searchInput: { flex: 1, fontSize: 15, color: C.text, fontWeight: '500' },
   
   sectionLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 1.5, marginBottom: 15 },
   
   emptyWrap: { alignItems: 'center', paddingVertical: 80, gap: 12 },
   emptyIconWrap: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 5 },
-  emptyText: { fontSize: 18, color: '#FFFFFF', fontWeight: 'bold' },
+  emptyText: { fontSize: 18, color: C.text, fontWeight: 'bold' },
   emptySubText: { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
   
   fab: { position: 'absolute', bottom: 30, right: 22, borderRadius: 22, overflow: 'hidden', elevation: 12, shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 15 },
   fabGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, paddingVertical: 16 },
-  fabText: { fontSize: 15, fontWeight: '900', color: '#1A0F00', letterSpacing: 1.2 },
+  fabText: { fontSize: 15, fontWeight: '900', color: C.btnText, letterSpacing: 1.2 },
 });
 
 const hdr = StyleSheet.create({
-  iconBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#EF4444', width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#080C14' },
-  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' },
+  iconBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -4, right: -4, backgroundColor: C.danger, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
+  badgeText: { color: C.text, fontSize: 10, fontWeight: 'bold' },
   profileAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255, 193, 7, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.4)', alignItems: 'center', justifyContent: 'center' },
   profileAvatarText: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 18, color: C.primary },
   logoutWrap: { width: 42, height: 42, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
@@ -633,28 +633,28 @@ const card = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 16, gap: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   iconBox: { width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.1)' },
   body: { flex: 1 },
-  name: { fontSize: 17, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4 },
+  name: { fontSize: 17, fontWeight: 'bold', color: C.text, marginBottom: 4 },
   desc: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 8 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   metaText: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
-  chevronWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+  chevronWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
 });
 
 const mdl = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(8, 12, 20, 0.85)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#0F121A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
+  sheet: { backgroundColor: C.bgModal, borderWidth: 1, borderColor: C.border, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 25, gap: 15 },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 10 },
   iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,193,7,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 5, borderWidth: 1, borderColor: 'rgba(255,193,7,0.2)' },
-  title: { fontSize: 24, fontWeight: '900', color: '#FFFFFF' },
+  title: { fontSize: 24, fontWeight: '900', color: C.text },
   subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: -5, marginBottom: 10 },
-  input: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, fontSize: 15, color: '#FFFFFF' },
+  input: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, fontSize: 15, color: C.text },
   btnRow: { flexDirection: 'row', gap: 12, marginTop: 15 },
-  cancelBtn: { flex: 1, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-  cancelText: { fontSize: 15, fontWeight: 'bold', color: '#FFFFFF' },
+  cancelBtn: { flex: 1, height: 56, borderRadius: 18, backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontSize: 15, fontWeight: 'bold', color: C.text },
   createBtn: { height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  createText: { fontSize: 15, fontWeight: '900', color: '#1A0F00', letterSpacing: 1 },
-  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+  createText: { fontSize: 15, fontWeight: '900', color: C.btnText, letterSpacing: 1 },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
 });
 
 const flist = StyleSheet.create({
@@ -663,7 +663,7 @@ const flist = StyleSheet.create({
   avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,193,7,0.15)', borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   avatarText: { fontSize: 18, fontWeight: '800', color: C.primary },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 3 },
+  name: { fontSize: 15, fontWeight: 'bold', color: C.text, marginBottom: 3 },
   username: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   scoreTitle: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '600', marginBottom: 2 },
   score: { fontSize: 14, color: C.primary, fontWeight: 'bold' },
@@ -671,7 +671,7 @@ const flist = StyleSheet.create({
   actionBtn: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   acceptBtn: { backgroundColor: 'rgba(16,185,129,0.15)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' },
   rejectBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
-  emptyWrap: { alignItems: 'center', paddingVertical: 40, gap: 10, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  emptyWrap: { alignItems: 'center', paddingVertical: 40, gap: 10, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20, borderWidth: 1, borderColor: C.card },
   emptyText: { fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }
 });
 

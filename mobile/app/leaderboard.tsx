@@ -125,10 +125,10 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#080C14' },
+  safeArea: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
-  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  title: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 },
+  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  title: { fontSize: 20, fontWeight: '900', color: C.text, letterSpacing: 0.5 },
   spacer: { width: 42 },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContainer: { paddingHorizontal: 22, paddingBottom: 30 },
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
 
   userInfo: { flex: 1 },
-  userName: { fontSize: 17, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
+  userName: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 4 },
   scoreText: { fontSize: 14, color: C.primary, fontWeight: '700' }
 });
 

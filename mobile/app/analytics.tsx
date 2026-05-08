@@ -100,7 +100,7 @@ export default function AnalyticsScreen() {
     barPercentage: 0.5,
     useShadowColorFromDataset: false,
     propsForDots: { r: '5', strokeWidth: '2', stroke: C.primary },
-    propsForBackgroundLines: { strokeDasharray: '', stroke: 'rgba(255,255,255,0.05)' }
+    propsForBackgroundLines: { strokeDasharray: '', stroke: C.card }
   };
 
   return (
@@ -122,17 +122,17 @@ export default function AnalyticsScreen() {
         {/* Özet Kartları */}
         <View style={s.summaryRow}>
           <View style={s.summaryCard}>
-            <LinearGradient colors={['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={[C.card, 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} />
             <View style={s.iconWrapRed}>
-              <FontAwesome5 name="fire-alt" size={18} color="#EF4444" />
+              <FontAwesome5 name="fire-alt" size={18} color={C.danger} />
             </View>
             <Text style={s.summaryVal}>{totalWeeklyMinutes}<Text style={s.summaryUnit}>dk</Text></Text>
             <Text style={s.summaryLabel}>Bu Hafta</Text>
           </View>
           <View style={s.summaryCard}>
-            <LinearGradient colors={['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={[C.card, 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} />
             <View style={s.iconWrapGreen}>
-              <FontAwesome5 name="chart-line" size={18} color="#10B981" />
+              <FontAwesome5 name="chart-line" size={18} color={C.success} />
             </View>
             <Text style={s.summaryVal}>%24</Text>
             <Text style={s.summaryLabel}>Artış</Text>
@@ -169,27 +169,27 @@ export default function AnalyticsScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080C14' },
+  safe: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
-  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   headerTitle: { fontSize: 18, fontWeight: '800', color: C.primary, letterSpacing: 1 },
   scrollContent: { paddingHorizontal: 25, paddingBottom: 40 },
   
   summaryRow: { flexDirection: 'row', gap: 15, marginBottom: 20 },
-  summaryCard: { flex: 1, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' },
+  summaryCard: { flex: 1, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
   iconWrapRed: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
   iconWrapGreen: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  summaryVal: { fontSize: 26, fontWeight: '900', color: '#FFFFFF' },
+  summaryVal: { fontSize: 26, fontWeight: '900', color: C.text },
   summaryUnit: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
   summaryLabel: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '600' },
 
   chartBox: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 28, padding: 20, paddingBottom: 10, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  chartTitle: { alignSelf: 'flex-start', fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginBottom: 10, marginLeft: 5 },
+  chartTitle: { alignSelf: 'flex-start', fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 10, marginLeft: 5 },
 
   scoreBox: { borderRadius: 28, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)', overflow: 'hidden' },
   scoreTitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 5, fontWeight: '700' },
   scoreVal: { fontSize: 60, fontWeight: '900', color: C.primary, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 15 },
-  scoreDesc: { fontSize: 14, color: '#FFFFFF', textAlign: 'center', marginTop: 15, opacity: 0.8, fontWeight: '500', lineHeight: 22 },
+  scoreDesc: { fontSize: 14, color: C.text, textAlign: 'center', marginTop: 15, opacity: 0.8, fontWeight: '500', lineHeight: 22 },
 });
 
 const bg = StyleSheet.create({

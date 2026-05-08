@@ -100,9 +100,9 @@ export default function PremiumScreen() {
       {/* Satın Alma Butonu */}
       <View style={s.footer}>
         <TouchableOpacity onPress={handlePurchase} disabled={isLoading} activeOpacity={0.85}>
-          <LinearGradient colors={[C.primary, '#E6A800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.buyBtn}>
+          <LinearGradient colors={[C.primary, C.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.buyBtn}>
             {isLoading ? (
-              <ActivityIndicator color="#1A0F00" />
+              <ActivityIndicator color={C.btnText} />
             ) : (
               <Text style={s.buyBtnText}>PRO&apos;YA YÜKSELT</Text>
             )}
@@ -129,27 +129,27 @@ function FeatureItem({ icon, title, desc }: { icon: string, title: string, desc:
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080C14' },
+  safe: { flex: 1, backgroundColor: C.bg },
   header: { padding: 22, alignItems: 'flex-end' },
-  backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   
   container: { alignItems: 'center', paddingHorizontal: 25, paddingBottom: 20 },
   crownContainer: { width: 100, height: 100, alignItems: 'center', justifyContent: 'center', marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)', borderRadius: 50 },
   crownInner: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,193,7,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.2)' },
   
-  title: { fontSize: 34, fontWeight: '900', color: '#FFFFFF', marginBottom: 8, letterSpacing: 1 },
+  title: { fontSize: 34, fontWeight: '900', color: C.text, marginBottom: 8, letterSpacing: 1 },
   subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 35 },
   
   featuresBox: { width: '100%', gap: 14 },
   featureItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,193,7,0.2)' },
   featureIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,193,7,0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   featureTextWrap: { flex: 1 },
-  featureTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
+  featureTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 4 },
   featureDesc: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   
   footer: { padding: 25, paddingBottom: 40 },
   buyBtn: { height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 15, elevation: 8 },
-  buyBtnText: { fontSize: 16, fontWeight: '900', color: '#1A0F00', letterSpacing: 1.5 },
+  buyBtnText: { fontSize: 16, fontWeight: '900', color: C.btnText, letterSpacing: 1.5 },
   disclaimer: { fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 15 }
 });
 

@@ -45,14 +45,13 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[WebSocket-Heartbeat]** Bağlantı kopmalarına karşı otomatik yeniden bağlanma ve orphan user temizliği eklendi.
 - **[Score-Sync]** Uygulama aniden kapandığında veya lobi çıkışında kazanılan odak puanının veritabanına kalıcı olarak işlenmesi sağlandı.
 - **[Offline-Handling]** İnternet koptuğunda mobilde şeffaf uyarı gösterilmesi eklendi.
-
+- **[Brand-Theme]** Uygulama renkleri Deep Indigo (#1A237E) ve Amber Gold (#FFC107) üzerine optimize edilerek tek merkezden yönetilebilir hale getirildi.
 ---
 
 ## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
 
 ### 🟢 İlk Yapılması Gerekenler (Stabilizasyon ve Core)
-
-- [ ] **Marka / UX Uyumu:** UI bileşenlerini marka paletiyle (Deep Indigo & Amber Gold) tek merkezden yönetmek.
+(Bu aşama tamamlandı)
 
 ### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
 - [ ] **Arkadaş Ekleme Sistemi (UI Entegrasyonu):** API'si hazır olan arkadaşlık sisteminin mobil arayüze bağlanması.

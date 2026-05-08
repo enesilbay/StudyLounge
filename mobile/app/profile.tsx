@@ -155,9 +155,9 @@ export default function ProfileScreen() {
 
               <View style={s.editBadge}>
                 {isUploading ? (
-                  <ActivityIndicator size="small" color="#1A0F00" />
+                  <ActivityIndicator size="small" color={C.btnText} />
                 ) : (
-                  <FontAwesome5 name="camera" size={14} color="#1A0F00" />
+                  <FontAwesome5 name="camera" size={14} color={C.btnText} />
                 )}
               </View>
             </View>
@@ -176,7 +176,7 @@ export default function ProfileScreen() {
           
           <View style={s.statItem}>
             <View style={s.statIconWrap}>
-              <FontAwesome5 name="fire" size={24} color="#EF4444" solid />
+              <FontAwesome5 name="fire" size={24} color={C.danger} solid />
             </View>
             <Text style={s.statValue}>{user.totalFocusMinutes || 0}</Text>
             <Text style={s.statLabel}>Dakika Odaklanma</Text>
@@ -193,7 +193,7 @@ export default function ProfileScreen() {
               }
             }}
           >
-            <LinearGradient colors={user.isPremium ? ['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)'] : ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)']} style={s.analyticsBtn}>
+            <LinearGradient colors={user.isPremium ? ['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)'] : [C.card, 'rgba(255,255,255,0.02)']} style={s.analyticsBtn}>
               <FontAwesome5 name={user.isPremium ? "chart-pie" : "lock"} size={16} color={user.isPremium ? C.primary : 'rgba(255,255,255,0.4)'} />
               <Text style={[s.analyticsText, !user.isPremium && { color: 'rgba(255,255,255,0.4)' }]}>Detaylı Analitik (PRO)</Text>
             </LinearGradient>
@@ -206,31 +206,31 @@ export default function ProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080C14' },
+  safe: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
-  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', letterSpacing: 1 },
+  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: C.text, letterSpacing: 1 },
   container: { flex: 1, paddingHorizontal: 25, alignItems: 'center' },
   
   avatarWrap: { marginTop: 30, marginBottom: 25 },
   avatarContainer: { width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255, 193, 7, 0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255, 193, 7, 0.3)', position: 'relative' },
   avatarImage: { width: 146, height: 146, borderRadius: 73 },
   avatarInitials: { fontSize: 50, fontWeight: '900', color: C.primary },
-  editBadge: { position: 'absolute', bottom: 5, right: 5, backgroundColor: C.primary, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#080C14', shadowColor: '#000', shadowOffset: {width:0, height:4}, shadowOpacity: 0.5, shadowRadius: 5 },
+  editBadge: { position: 'absolute', bottom: 5, right: 5, backgroundColor: C.primary, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: C.bg, shadowColor: '#000', shadowOffset: {width:0, height:4}, shadowOpacity: 0.5, shadowRadius: 5 },
   
   infoWrap: { alignItems: 'center', marginBottom: 40 },
-  name: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginBottom: 6, letterSpacing: 0.5 },
+  name: { fontSize: 28, fontWeight: '900', color: C.text, marginBottom: 6, letterSpacing: 0.5 },
   username: { fontSize: 16, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
   
   statsCard: { width: '100%', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 28, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   statItem: { alignItems: 'center', gap: 10 },
   statIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(239, 68, 68, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 5, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)' },
-  statValue: { fontSize: 36, fontWeight: '900', color: '#FFFFFF' },
+  statValue: { fontSize: 36, fontWeight: '900', color: C.text },
   statLabel: { fontSize: 14, color: 'rgba(255,255,255,0.4)', fontWeight: '700', letterSpacing: 1 },
   
   analyticsBtnWrap: { marginTop: 35, width: '100%' },
-  analyticsBtn: { flexDirection: 'row', padding: 18, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  analyticsText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15, letterSpacing: 0.5 }
+  analyticsBtn: { flexDirection: 'row', padding: 18, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 12, borderWidth: 1, borderColor: C.border },
+  analyticsText: { color: C.text, fontWeight: '800', fontSize: 15, letterSpacing: 0.5 }
 });
 
 const bg = StyleSheet.create({

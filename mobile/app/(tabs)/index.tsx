@@ -38,7 +38,7 @@ function InputField({
     Animated.spring(scaleAnim, { toValue: focused ? 1.01 : 1, tension: 120, friction: 8, useNativeDriver: true }).start();
   }, [focused]);
 
-  const borderColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.08)', C.primary] });
+  const borderColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [C.border, C.primary] });
   const bgColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.04)', 'rgba(255,193,7,0.08)'] });
 
   return (
@@ -174,8 +174,8 @@ export default function AuthScreen() {
                 colors={['rgba(255,193,7,0.2)', 'rgba(255,193,7,0.05)']}
                 style={s.logoCircle}
               >
-                <LinearGradient colors={[C.primary, '#E6A800']} style={s.logoInner}>
-                  <FontAwesome5 solid name="brain" size={30} color="#1A0F00" />
+                <LinearGradient colors={[C.primary, C.primaryDark]} style={s.logoInner}>
+                  <FontAwesome5 solid name="brain" size={30} color={C.btnText} />
                 </LinearGradient>
               </LinearGradient>
 
@@ -225,13 +225,13 @@ export default function AuthScreen() {
                 {/* GİRİŞ BUTONU */}
                 <TouchableOpacity onPress={handleAuth} disabled={isLoading} activeOpacity={0.85} style={s.btnWrap}>
                   <LinearGradient
-                    colors={isLoading ? ['#475569', '#334155'] : [C.primary, '#E6A800', C.primary]}
+                    colors={isLoading ? ['#475569', '#334155'] : [C.primary, C.primaryDark, C.primary]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={s.btn}
                   >
                     {isLoading ? (
-                      <ActivityIndicator color="#1A0F00" />
+                      <ActivityIndicator color={C.btnText} />
                     ) : (
                       <>
                         <Text style={s.btnText}>{isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'}</Text>
@@ -278,20 +278,20 @@ export default function AuthScreen() {
 // STİLLER
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080C14' },
+  safe: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 30 },
   content: { width: '100%', maxWidth: 420, alignItems: 'center' },
 
   heroSection: { alignItems: 'center', marginBottom: 36 },
   logoCircle: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 18, borderWidth: 1, borderColor: 'rgba(255,193,7,0.2)' },
   logoInner: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 10 },
-  appName: { fontSize: 34, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1, marginBottom: 6 },
+  appName: { fontSize: 34, fontWeight: '900', color: C.text, letterSpacing: 1, marginBottom: 6 },
   tagline: { fontSize: 14, color: 'rgba(255,255,255,0.45)', fontWeight: '500', letterSpacing: 0.3 },
 
   card: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: C.border,
     borderWidth: 1,
     borderRadius: 28,
     paddingVertical: 28,
@@ -314,7 +314,7 @@ const s = StyleSheet.create({
 
   btnWrap: { marginTop: 6 },
   btn: { height: 56, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  btnText: { fontSize: 15, fontWeight: '900', color: '#1A0F00', letterSpacing: 1.5 },
+  btnText: { fontSize: 15, fontWeight: '900', color: C.btnText, letterSpacing: 1.5 },
   btnArrow: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(26,15,0,0.3)', alignItems: 'center', justifyContent: 'center' },
 
   switchRow: { marginTop: 22, alignItems: 'center' },
@@ -337,5 +337,5 @@ const bg = StyleSheet.create({
 const field = StyleSheet.create({
   wrap: { height: 56, borderRadius: 16, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 },
   iconWrap: { width: 28, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
-  input: { flex: 1, fontSize: 15, color: '#FFFFFF', fontWeight: '500' },
+  input: { flex: 1, fontSize: 15, color: C.text, fontWeight: '500' },
 });

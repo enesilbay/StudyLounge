@@ -20,10 +20,18 @@ const SOCKET_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
 
 export const C = {
-  primary: '#FFC107',          
-  bg: '#080C14',
+  brand: '#1A237E',      // Deep Indigo (Ana Renk)
+  primary: '#FFC107',    // Amber Gold (Vurgular)
+  primaryDark: '#E6A800',// Koyu Amber
+  bg: '#0A0E29',         // Çok Koyu Indigo (Arka plan)
+  bgModal: '#121840',    // Biraz daha açık Indigo (Modal ve kartlar)
+  card: 'rgba(255,255,255,0.05)',
   border: 'rgba(255,255,255,0.08)',
-  textMuted: 'rgba(255,255,255,0.4)',
+  text: '#FFFFFF',
+  textMuted: 'rgba(255,255,255,0.5)',
+  success: '#10B981',
+  danger: '#EF4444',
+  btnText: '#1A0F00'
 };
 
 const SOUNDS = [
@@ -366,10 +374,10 @@ export default function SensorScreen() {
         {/* STATUS CARD */}
         <View style={[s.statusCard, isAtDesk && s.statusCardActive]}>
           <View style={[s.statusIcon, isAtDesk && { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)' }]}>
-            <FontAwesome5 solid name={isAtDesk ? "check-circle" : "clock"} size={26} color={isAtDesk ? '#10B981' : 'rgba(255,255,255,0.3)'} />
+            <FontAwesome5 solid name={isAtDesk ? "check-circle" : "clock"} size={26} color={isAtDesk ? C.success : 'rgba(255,255,255,0.3)'} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.statusTitle, isAtDesk && { color: '#10B981' }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
+            <Text style={[s.statusTitle, isAtDesk && { color: C.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
             <Text style={s.statusDesc}>{isAtDesk ? 'Cihaz masada, odak puanı kazanıyorsun.' : 'Puan kazanmak için cihazı masaya bırakın.'}</Text>
           </View>
         </View>
@@ -386,8 +394,8 @@ export default function SensorScreen() {
                 <FontAwesome5 solid name="sliders-h" size={16} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
               <TouchableOpacity onPress={togglePomodoro}>
-                <LinearGradient colors={pomodoroRunning ? ['#475569', '#334155'] : [C.primary, '#E6A800']} style={s.pomPlayBtn}>
-                  <FontAwesome5 solid name={pomodoroRunning ? "pause" : "play"} size={16} color={pomodoroRunning ? '#FFF' : '#1A0F00'} />
+                <LinearGradient colors={pomodoroRunning ? ['#475569', '#334155'] : [C.primary, C.primaryDark]} style={s.pomPlayBtn}>
+                  <FontAwesome5 solid name={pomodoroRunning ? "pause" : "play"} size={16} color={pomodoroRunning ? C.text : C.btnText} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -407,8 +415,8 @@ export default function SensorScreen() {
               const active = selectedSound.key === sItem.key;
               return (
                 <TouchableOpacity key={sItem.key} onPress={() => { setSelectedSound(sItem); setIsSoundOn(true); }} style={[s.soundTile, active && s.soundTileActive]}>
-                  <FontAwesome5 solid name={sItem.icon} size={20} color={active ? '#1A0F00' : 'rgba(255,255,255,0.5)'} />
-                  <Text style={[s.soundText, active && { color: '#1A0F00' }]}>{sItem.label}</Text>
+                  <FontAwesome5 solid name={sItem.icon} size={20} color={active ? C.btnText : 'rgba(255,255,255,0.5)'} />
+                  <Text style={[s.soundText, active && { color: C.btnText }]}>{sItem.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -421,8 +429,8 @@ export default function SensorScreen() {
           <View style={s.usersWrap}>
             {roomUsers.map((u, i) => (
               <View key={i} style={s.userChip}>
-                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? '#10B981' : 'rgba(255,255,255,0.2)' }]} />
-                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
+                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? C.success : 'rgba(255,255,255,0.2)' }]} />
+                <Text style={{ color: C.text, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
               </View>
             ))}
           </View>
@@ -457,11 +465,11 @@ export default function SensorScreen() {
                       </TouchableOpacity>
                     ) : isFile ? (
                       <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
-                        <View style={s.fileIconWrap}><FontAwesome5 solid name="file-pdf" size={16} color="#EF4444" /></View>
+                        <View style={s.fileIconWrap}><FontAwesome5 solid name="file-pdf" size={16} color={C.danger} /></View>
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
                       </TouchableOpacity>
                     ) : (
-                      <Text style={{ color: '#FFF', fontSize: 14 }}>{item.text}</Text>
+                      <Text style={{ color: C.text, fontSize: 14 }}>{item.text}</Text>
                     )}
                   </View>
                 );
@@ -476,8 +484,8 @@ export default function SensorScreen() {
                 placeholder={isPremium ? "Mesaj yaz..." : "PRO Üyelik Gerekli 🔒"} placeholderTextColor="rgba(255,255,255,0.3)" editable={isPremium}
               />
               <TouchableOpacity onPress={sendMessage} disabled={!isPremium} style={s.sendBtn}>
-                <LinearGradient colors={isPremium ? [C.primary, '#E6A800'] : ['#475569', '#334155']} style={s.sendBtnGrad}>
-                  <FontAwesome5 solid name={isPremium ? "paper-plane" : "lock"} size={14} color={isPremium ? "#1A0F00" : "rgba(255,255,255,0.5)"} />
+                <LinearGradient colors={isPremium ? [C.primary, C.primaryDark] : ['#475569', '#334155']} style={s.sendBtnGrad}>
+                  <FontAwesome5 solid name={isPremium ? "paper-plane" : "lock"} size={14} color={isPremium ? C.btnText : "rgba(255,255,255,0.5)"} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -487,8 +495,8 @@ export default function SensorScreen() {
 
       {!chatVisible && (
         <TouchableOpacity style={s.fab} onPress={toggleChat}>
-          <LinearGradient colors={[C.primary, '#E6A800']} style={s.fabGrad}>
-            <FontAwesome5 solid name="comment-dots" size={22} color="#1A0F00" />
+          <LinearGradient colors={[C.primary, C.primaryDark]} style={s.fabGrad}>
+            <FontAwesome5 solid name="comment-dots" size={22} color={C.btnText} />
           </LinearGradient>
         </TouchableOpacity>
       )}
@@ -514,21 +522,21 @@ export default function SensorScreen() {
 // STİLLER
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080C14' },
+  safe: { flex: 1, backgroundColor: C.bg },
   scroll: { paddingHorizontal: 22, paddingTop: 15 },
   offlineBanner: { backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)', alignItems: 'center' },
-  offlineText: { color: '#EF4444', fontSize: 13, fontWeight: '700' },
+  offlineText: { color: C.danger, fontSize: 13, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
   headerRoom: { fontSize: 12, color: C.primary, fontWeight: '800', letterSpacing: 1 },
-  headerName: { fontSize: 24, fontWeight: '900', color: '#FFF' },
+  headerName: { fontSize: 24, fontWeight: '900', color: C.text },
   scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,193,7,0.1)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)' },
   scoreText: { color: C.primary, fontWeight: '900', fontSize: 16 },
   
   statusCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   statusCardActive: { borderColor: 'rgba(16,185,129,0.3)', backgroundColor: 'rgba(16,185,129,0.05)' },
-  statusIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  statusTitle: { fontSize: 17, fontWeight: '800', color: '#FFFFFF', marginBottom: 3 },
+  statusIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.card, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+  statusTitle: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 3 },
   statusDesc: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
   
   section: { marginBottom: 28 },
@@ -536,34 +544,34 @@ const s = StyleSheet.create({
   
   pomodoroCard: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, gap: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   timerInner: { width: 85, height: 85, borderRadius: 42.5, borderWidth: 3, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.02)' },
-  timerText: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-  pomSettingsBtn: { width: 48, height: 48, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  timerText: { fontSize: 24, fontWeight: '900', color: C.text },
+  pomSettingsBtn: { width: 48, height: 48, backgroundColor: C.card, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   pomPlayBtn: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   
   soundTile: { width: 90, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', paddingVertical: 18, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  soundTileActive: { backgroundColor: C.primary, borderColor: '#E6A800' },
+  soundTileActive: { backgroundColor: C.primary, borderColor: C.primaryDark },
   soundText: { marginTop: 10, fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
   
   usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.card },
   userDot: { width: 8, height: 8, borderRadius: 4 },
   
-  chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: '#0F121A', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  chatTitle: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  chatCloseBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+  chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: C.bgModal, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: C.border },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderColor: C.card },
+  chatTitle: { color: C.text, fontSize: 16, fontWeight: '800' },
+  chatCloseBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
   
   bubble: { maxWidth: '80%', padding: 14, borderRadius: 20, marginVertical: 6 },
   bubbleMe: { alignSelf: 'flex-end', backgroundColor: 'rgba(255,193,7,0.15)', borderBottomRightRadius: 4, borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)' },
-  bubbleOther: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.05)', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  bubbleOther: { alignSelf: 'flex-start', backgroundColor: C.card, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: C.border },
   bubbleUser: { fontSize: 11, color: C.primary, fontWeight: '800', marginBottom: 5 },
   imagePreview: { width: 160, height: 160, borderRadius: 14, marginVertical: 5 },
   fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 14 },
   fileIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center' },
-  fileName: { color: '#FFF', fontSize: 13, flex: 1, fontWeight: '500' },
+  fileName: { color: C.text, fontSize: 13, flex: 1, fontWeight: '500' },
   
-  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 10, backgroundColor: '#080C14', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  chatInput: { flex: 1, height: 48, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 24, paddingHorizontal: 18, color: '#FFF', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 10, backgroundColor: C.bg, borderTopWidth: 1, borderColor: C.card },
+  chatInput: { flex: 1, height: 48, backgroundColor: C.card, borderRadius: 24, paddingHorizontal: 18, color: C.text, borderWidth: 1, borderColor: C.border },
   attachBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.03)' },
   sendBtn: { borderRadius: 24, overflow: 'hidden', elevation: 4 },
   sendBtnGrad: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
@@ -572,9 +580,9 @@ const s = StyleSheet.create({
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(8,12,20,0.85)', justifyContent: 'center', alignItems: 'center' },
-  modalSheet: { backgroundColor: '#0F121A', padding: 30, borderRadius: 28, width: '85%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  modalTitle: { color: '#FFF', fontSize: 20, fontWeight: '900', marginBottom: 20, textAlign: 'center' },
-  modalOpt: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+  modalSheet: { backgroundColor: C.bgModal, padding: 30, borderRadius: 28, width: '85%', borderWidth: 1, borderColor: C.border },
+  modalTitle: { color: C.text, fontSize: 20, fontWeight: '900', marginBottom: 20, textAlign: 'center' },
+  modalOpt: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: C.card, alignItems: 'center' },
   modalOptText: { color: 'rgba(255,255,255,0.8)', fontSize: 16, fontWeight: '600' }
 });
 
