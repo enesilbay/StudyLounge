@@ -22,7 +22,13 @@ export class MessagesService {
   }
 
   // Dosya (PDF/Not/Görsel) Mesajını Kaydet
-  async createFileMessage(roomName: string, userId: number, fileName: string, fileUrl: string, type: string = 'file') {
+  async createFileMessage(
+    roomName: string,
+    userId: number,
+    fileName: string,
+    fileUrl: string,
+    type: string = 'file',
+  ) {
     const newMessage = this.messageRepository.create({
       text: fileName, // Görünecek metin olarak dosya adını kullanıyoruz
       roomName,
@@ -39,7 +45,7 @@ export class MessagesService {
       where: { roomName },
       order: { createdAt: 'ASC' },
       take: 50,
-      relations: ['user'], 
+      relations: ['user'],
     });
   }
 }

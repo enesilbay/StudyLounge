@@ -7,7 +7,7 @@ export class DailyAnalytics {
   id: number;
 
   @Column({ type: 'date' })
-  date: string; 
+  date: string;
 
   @Column({ default: 0 })
   focusMinutes: number;

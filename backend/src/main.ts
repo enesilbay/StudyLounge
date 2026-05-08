@@ -17,7 +17,7 @@ async function bootstrap() {
 
   const port = 3000;
 
-  // KRITIK GUNCELLEME: '0.0.0.0' ekleyerek agdaki diger cihazlarin (telefonun) 
+  // KRITIK GUNCELLEME: '0.0.0.0' ekleyerek agdaki diger cihazlarin (telefonun)
   // bu bilgisayara erisebilmesine izin veriyoruz.
   await app.listen(port, '0.0.0.0');
 
@@ -26,7 +26,12 @@ async function bootstrap() {
   let localIp = '127.0.0.1';
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name] || []) {
-      if (iface.family === 'IPv4' && !iface.internal && !name.includes('vEthernet') && !name.includes('Virtual')) {
+      if (
+        iface.family === 'IPv4' &&
+        !iface.internal &&
+        !name.includes('vEthernet') &&
+        !name.includes('Virtual')
+      ) {
         localIp = iface.address;
         break;
       }
@@ -39,4 +44,6 @@ async function bootstrap() {
   console.log(`📁 Statik Dosyalar: http://${localIp}:${port}/uploads/`);
   console.log(`---`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Uygulama başlatılamadı:', err);
+});

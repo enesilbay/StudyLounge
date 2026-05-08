@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './users/user.entity'; 
+import { User } from './users/user.entity';
 import { Friendship } from './users/friendship.entity'; // 1. Friendship import edildi
 import { UsersModule } from './users/users.module';
-import { SensorsGateway } from './sensors.gateway'; 
+import { SensorsGateway } from './sensors.gateway';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
 import { MessagesModule } from './messages/messages.module';
 import { AuthModule } from './auth/auth.module';
+import { NotificationsService } from './notifications/notifications.service';
 
 @Module({
   imports: [
@@ -19,17 +20,17 @@ import { AuthModule } from './auth/auth.module';
       password: 'studylounge_secret',
       database: 'studylounge',
       // 2. Friendship entity'si buraya eklendi
-      entities: [User, Lobby, Friendship], 
+      entities: [User, Lobby, Friendship],
       // 3. İleride yeni bir tablo eklersen bir daha hata vermesin diye bu ayar açıldı:
-      autoLoadEntities: true, 
+      autoLoadEntities: true,
       synchronize: true,
     }),
     UsersModule,
-    LobbiesModule, 
+    LobbiesModule,
     MessagesModule,
     AuthModule,
   ],
   controllers: [],
-  providers: [SensorsGateway], 
+  providers: [SensorsGateway, NotificationsService],
 })
 export class AppModule {}

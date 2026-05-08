@@ -10,34 +10,66 @@ import {
 import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { NotificationsService } from './notifications/notifications.service';
 
-@WebSocketGateway({ 
+interface JoinLobbyDto {
+  userId: number;
+  roomName: string;
+  fullName: string;
+  maxUsers?: number;
+}
+
+interface SendMessageDto {
+  userId: number;
+  fullName: string;
+  roomName: string;
+  text: string;
+  type: string;
+  fileUrl?: string;
+  isPremium: boolean;
+}
+
+interface UpdatePresenceDto {
+  userId: number;
+  isAtDesk: boolean;
+  roomName: string;
+}
+
+@WebSocketGateway({
   cors: { origin: '*' },
   pingInterval: 10000,
-  pingTimeout: 5000
+  pingTimeout: 5000,
 })
-export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection {
+export class SensorsGateway
+  implements OnGatewayDisconnect, OnGatewayConnection
+{
   @WebSocketServer() server!: Server;
 
   // Kullanıcıların aktif çalışma seanslarını takip etmek için (Puanlama için)
   private activeSessions = new Map<number, number>();
 
   // EKLENDİ: Odalardaki anlık kullanıcı listesini ve "masada mı?" durumunu tutmak için
-  private connectedUsers = new Map<string, { userId: number; fullName: string; roomName: string; isAtDesk: boolean }>();
+  private connectedUsers = new Map<
+    string,
+    { userId: number; fullName: string; roomName: string; isAtDesk: boolean }
+  >();
 
   constructor(
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── KULLANICI BAĞLANDIĞINDA (JWT KONTROLÜ) ──
   handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth?.token;
+      const token = client.handshake.auth?.token as string | undefined;
       if (!token) throw new Error('Token eksik');
-      const payload = this.jwtService.verify(token, { secret: 'StudyLoungeSuperSecretKey2026' });
-      client.data.user = payload;
-    } catch (err) {
+      const payload = this.jwtService.verify(token, {
+        secret: 'StudyLoungeSuperSecretKey2026',
+      }) as unknown as { id: number; email: string; username: string };
+      (client.data as unknown as Record<string, unknown>).user = payload;
+    } catch {
       console.log(`[Socket] Yetkisiz bağlantı denemesi reddedildi.`);
       client.disconnect();
     }
@@ -53,9 +85,15 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
         const endTime = Date.now();
         const durationMinutes = Math.round((endTime - startTime) / 60000);
         if (durationMinutes > 0) {
-          const updatedUser = await this.usersService.addFocusTime(user.userId, durationMinutes);
+          const updatedUser = await this.usersService.addFocusTime(
+            user.userId,
+            durationMinutes,
+          );
           if (updatedUser) {
-            this.server.emit('score_updated', { userId: user.userId, newTotal: updatedUser.totalFocusMinutes });
+            this.server.emit('score_updated', {
+              userId: user.userId,
+              newTotal: updatedUser.totalFocusMinutes,
+            });
           }
         }
         this.activeSessions.delete(user.userId);
@@ -71,7 +109,7 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
   private broadcastRoomUsers(roomName: string) {
     // Sadece o odadaki kişileri filtreleyip diziye çevir
     const usersInRoom = Array.from(this.connectedUsers.values()).filter(
-      (u) => u.roomName === roomName
+      (u) => u.roomName === roomName,
     );
     // Frontend'in beklediği 'room_users' kanalına bu diziyi gönder
     this.server.to(roomName).emit('room_users', usersInRoom);
@@ -81,14 +119,17 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
   @SubscribeMessage('join_lobby')
   handleJoinLobby(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: JoinLobbyDto | string,
   ) {
-    const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    const data =
+      typeof payload === 'string'
+        ? (JSON.parse(payload) as JoinLobbyDto)
+        : payload;
     const { userId, roomName, fullName, maxUsers } = data;
 
     // Odadaki mevcut kişi sayısını hesapla
     const usersInRoom = Array.from(this.connectedUsers.values()).filter(
-      (u) => u.roomName === roomName
+      (u) => u.roomName === roomName,
     );
 
     // Eğer maxUsers sınırına ulaşılmışsa, reddet
@@ -98,19 +139,26 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
     }
 
     // Socket.io "Rooms" özelliğini kullanarak kullanıcıyı odaya dahil et
-    client.join(roomName);
-    
-    // Kullanıcıyı anlık listemize ekle (Başlangıçta isAtDesk: false)
-    this.connectedUsers.set(client.id, { userId, fullName, roomName, isAtDesk: false });
+    void client.join(roomName);
 
-    console.log(`[Lobi Katılım] ${fullName} (ID: ${userId}), '${roomName}' lobisine girdi.`);
+    // Kullanıcıyı anlık listemize ekle (Başlangıçta isAtDesk: false)
+    this.connectedUsers.set(client.id, {
+      userId,
+      fullName,
+      roomName,
+      isAtDesk: false,
+    });
+
+    console.log(
+      `[Lobi Katılım] ${fullName} (ID: ${userId}), '${roomName}' lobisine girdi.`,
+    );
 
     // EKLENDİ: Odaya yeni biri girdiği için odadaki herkese TAM LİSTEYİ gönder
     this.broadcastRoomUsers(roomName);
 
     // Odadaki diğer kullanıcılara yeni birinin geldiğini bildir (Geçmiş uyumluluk için bırakıldı)
     this.server.to(roomName).emit('user_joined_lobby', {
-      fullName, 
+      fullName,
       userId,
     });
   }
@@ -119,9 +167,12 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
   @SubscribeMessage('send_message')
   handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: SendMessageDto | string,
   ) {
-    const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    const data =
+      typeof payload === 'string'
+        ? (JSON.parse(payload) as SendMessageDto)
+        : payload;
     const { userId, fullName, roomName, text, type, fileUrl, isPremium } = data;
 
     console.log(`[Chat - ${roomName}] ${fullName}: ${text}`);
@@ -142,9 +193,12 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
   @SubscribeMessage('update_presence')
   async handlePresenceUpdate(
     @ConnectedSocket() client: Socket, // EKLENDİ: Client ID'ye ulaşmak için
-    @MessageBody() payload: any
+    @MessageBody() payload: UpdatePresenceDto | string,
   ) {
-    const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    const data =
+      typeof payload === 'string'
+        ? (JSON.parse(payload) as UpdatePresenceDto)
+        : payload;
     const { userId, isAtDesk, roomName } = data;
 
     // EKLENDİ: Kullanıcının durumunu (isAtDesk) anlık listede güncelle
@@ -152,7 +206,7 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
     if (user) {
       user.isAtDesk = isAtDesk;
       this.connectedUsers.set(client.id, user);
-      
+
       // Birinin durumu (yeşil/gri nokta) değiştiği için odadaki herkese güncel listeyi gönder
       this.broadcastRoomUsers(roomName);
     }
@@ -161,6 +215,19 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
       // Telefon masaya bırakıldığında süreyi başlat
       this.activeSessions.set(userId, Date.now());
       console.log(`[Odaklanma Başladı - ${roomName}] Kullanıcı: ${userId}`);
+
+      // ARKADAŞLARA BİLDİRİM GÖNDER
+      if (user) {
+        void this.usersService.getFriendsPushTokens(userId).then((tokens) => {
+          tokens.forEach((token) => {
+            void this.notificationsService.sendNotification(
+              token,
+              'StudyLounge 📚',
+              `${user.fullName} masaya geçti, beraber çalışabilirsiniz!`,
+            );
+          });
+        });
+      }
     } else {
       // Telefon masadan kaldırıldığında süreyi hesapla ve veritabanına yaz
       const startTime = this.activeSessions.get(userId);
@@ -170,18 +237,23 @@ export class SensorsGateway implements OnGatewayDisconnect, OnGatewayConnection 
         const durationMinutes = Math.round(durationMs / 60000);
 
         if (durationMinutes > 0) {
-          const updatedUser = await this.usersService.addFocusTime(userId, durationMinutes);
-          
+          const updatedUser = await this.usersService.addFocusTime(
+            userId,
+            durationMinutes,
+          );
+
           if (updatedUser) {
             // Güncel puanı tüm uygulamaya duyur (Liderlik tablosu vb. için)
-            this.server.emit('score_updated', { 
-              userId: userId, 
-              newTotal: updatedUser.totalFocusMinutes 
+            this.server.emit('score_updated', {
+              userId: userId,
+              newTotal: updatedUser.totalFocusMinutes,
             });
           }
         }
         this.activeSessions.delete(userId);
-        console.log(`[Odaklanma Bitti - ${roomName}] Kullanıcı: ${userId}, Kazanılan: ${durationMinutes} dk.`);
+        console.log(
+          `[Odaklanma Bitti - ${roomName}] Kullanıcı: ${userId}, Kazanılan: ${durationMinutes} dk.`,
+        );
       }
     }
 

@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { User } from '../users/user.entity';
 
 @Entity()
@@ -19,11 +25,11 @@ export class Message {
   createdAt: Date;
 
   @Column({ nullable: true })
-fileUrl: string; // Dosyanın sunucudaki yolu
+  fileUrl: string; // Dosyanın sunucudaki yolu
 
-@Column({ nullable: true })
-fileName: string; // Dosyanın orijinal adı (Örn: "Diferansiyel_Denklemler.pdf")
+  @Column({ nullable: true })
+  fileName: string; // Dosyanın orijinal adı (Örn: "Diferansiyel_Denklemler.pdf")
 
-@Column({ default: 'text' })
-type: string; // 'text' veya 'file'
+  @Column({ default: 'text' })
+  type: string; // 'text' veya 'file'
 }

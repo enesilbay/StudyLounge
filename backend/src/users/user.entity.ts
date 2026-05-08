@@ -27,4 +27,6 @@ export class User {
   @Column({ nullable: true })
   avatarUrl: string;
 
+  @Column({ nullable: true })
+  expoPushToken: string;
 }

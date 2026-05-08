@@ -41,11 +41,13 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - **[Dashboard&Analitik]** Haftalık ve aylık odaklanma grafiklerinin kullanıcıya sunulması.
 - **[User-Profile]** Sadece harf, rakam ve alt çizgiden oluşan benzersiz (unique) username (kullanıcı adı) sistemi ve güvenli doğrulama (Regex) entegre edildi.
 - **[Social-Backend]** Friendship veritabanı altyapısı kuruldu; arkadaşlık isteği gönderme, gelen istekleri yanıtlama (kabul/red) ve arkadaş listeleme API'leri yazıldı.
-- **[Grace-Period]** Cihazı kısa süreliğine elinize aldığınızda odaktan düşmeyi engelleyen 10 saniyelik mola toleransı eklendi.
+- **[Grace-Period]** Cihazı kısa süreliğine elinize aldığınızda odaktan düşmeyi engelleyen 3 saniyelik mola toleransı eklendi.
 - **[WebSocket-Heartbeat]** Bağlantı kopmalarına karşı otomatik yeniden bağlanma ve orphan user temizliği eklendi.
 - **[Score-Sync]** Uygulama aniden kapandığında veya lobi çıkışında kazanılan odak puanının veritabanına kalıcı olarak işlenmesi sağlandı.
 - **[Offline-Handling]** İnternet koptuğunda mobilde şeffaf uyarı gösterilmesi eklendi.
 - **[Brand-Theme]** Uygulama renkleri Deep Indigo (#1A237E) ve Amber Gold (#FFC107) üzerine optimize edilerek tek merkezden yönetilebilir hale getirildi.
+- **[Social-UI]** Arkadaşlık sisteminin (istek gönderme, yanıtlama, listeleme) mobil arayüz entegrasyonu tamamlandı.
+- **[Push-Notifications]** Expo Push Token altyapısı kuruldu; arkadaşlar masaya geçtiğinde otomatik bildirim gönderimi entegre edildi.
 ---
 
 ## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
@@ -54,8 +56,6 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 (Bu aşama tamamlandı)
 
 ### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
-- [ ] **Arkadaş Ekleme Sistemi (UI Entegrasyonu):** API'si hazır olan arkadaşlık sisteminin mobil arayüze bağlanması.
-- [ ] **Bildirim Sistemi (Push Notifications):** Expo Push Token ile "Odan seni bekliyor", "Ahmet masaya geçti" bildirimlerini hayata geçirmek.
 - [ ] **Analytics (Grafikler):** `analytics.tsx` sayfasını gerçek istatistiklere (Bar/Line chart) dönüştürmek.
 - [ ] **Şifremi Unuttum Akışı:** E-posta doğrulama ve şifre sıfırlama sistemi.
 - [ ] **"Birlikte Çalışmaya Çağır" (Nudge):** Arkadaşları odaya dürtme (çağırma) butonu.

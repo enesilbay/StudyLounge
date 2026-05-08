@@ -304,7 +304,7 @@ export default function SensorScreen() {
                 }
                 previousDeskState.current = false;
                 graceTimerRef.current = null;
-              }, 10000);
+              }, 3000);
             }
           } else {
             setIsAtDesk(false);
