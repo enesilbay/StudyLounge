@@ -129,7 +129,7 @@ export default function AnalyticsScreen() {
         <FontAwesome5 name="crown" size={18} color={C.primary} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent} bounces={true}>
         
         {/* Özet Kartları */}
         <View style={s.summaryRow}>
@@ -210,7 +210,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
   backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   headerTitle: { fontSize: 18, fontWeight: '800', color: C.primary, letterSpacing: 1 },
-  scrollContent: { paddingHorizontal: 25, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 25, paddingBottom: 100 },
   
   summaryRow: { flexDirection: 'row', gap: 15, marginBottom: 20 },
   summaryCard: { flex: 1, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
