@@ -7,6 +7,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { C } from './(tabs)/sensor';
+import { getRankInfo } from './utils/rank';
 
 const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
@@ -113,6 +114,12 @@ export default function LeaderboardScreen() {
                   <Text style={styles.scoreText}>
                     {String(item.totalFocusMinutes)} <Text style={{ fontSize: 11 }}>Puan</Text>
                   </Text>
+                </View>
+
+                {/* RÜTBE ROZETİ */}
+                <View style={{ alignItems: 'center', justifyContent: 'center', backgroundColor: `${getRankInfo(item.totalFocusMinutes).color}15`, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: `${getRankInfo(item.totalFocusMinutes).color}30` }}>
+                  <FontAwesome5 name={getRankInfo(item.totalFocusMinutes).icon} size={14} color={getRankInfo(item.totalFocusMinutes).color} solid />
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: getRankInfo(item.totalFocusMinutes).color, marginTop: 2 }}>{getRankInfo(item.totalFocusMinutes).title}</Text>
                 </View>
                 
               </View>
