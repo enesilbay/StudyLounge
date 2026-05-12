@@ -11,6 +11,8 @@ import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { NotificationsService } from './notifications/notifications.service';
+import { ConfigService } from '@nestjs/config';
+import { getJwtSecret } from './config/env';
 
 interface JoinLobbyDto {
   userId: number;
@@ -37,7 +39,7 @@ interface UpdatePresenceDto {
 }
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: { origin: process.env.CORS_ORIGIN?.split(',') ?? '*' },
   pingInterval: 10000,
   pingTimeout: 5000,
 })
@@ -65,6 +67,7 @@ export class SensorsGateway
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ── KULLANICI BAĞLANDIĞINDA (JWT KONTROLÜ) ──
@@ -73,7 +76,7 @@ export class SensorsGateway
       const token = client.handshake.auth?.token as string | undefined;
       if (!token) throw new Error('Token eksik');
       const payload = this.jwtService.verify(token, {
-        secret: 'StudyLoungeSuperSecretKey2026',
+        secret: getJwtSecret(this.configService),
       }) as unknown as { id: number; email: string; username: string };
       (client.data as unknown as Record<string, unknown>).user = payload;
     } catch {

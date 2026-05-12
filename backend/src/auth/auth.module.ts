@@ -1,20 +1,34 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { UsersModule } from '../users/users.module';
-import { PassportModule } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from './jwt.strategy';
+import type { SignOptions } from 'jsonwebtoken';
+import { PassportModule } from '@nestjs/passport';
+import { getConfigString, getJwtSecret } from '../config/env';
 import { MailModule } from '../mail/mail.module';
+import { UsersModule } from '../users/users.module';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
     UsersModule,
     MailModule,
     PassportModule,
-    JwtModule.register({
-      secret: 'StudyLoungeSuperSecretKey2026',
-      signOptions: { expiresIn: '7d' },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const expiresIn = getConfigString(
+          configService,
+          'JWT_EXPIRES_IN',
+          '7d',
+        ) as SignOptions['expiresIn'];
+
+        return {
+          secret: getJwtSecret(configService),
+          signOptions: { expiresIn },
+        };
+      },
     }),
   ],
   providers: [AuthService, JwtStrategy],

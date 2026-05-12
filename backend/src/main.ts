@@ -3,23 +3,30 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as os from 'os';
+import { ConfigService } from '@nestjs/config';
+import { getConfigNumber, getConfigString } from './config/env';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const configService = app.get(ConfigService);
 
   // 1. CORS Ayari: Olmazsa olmaz. Mobil cihazlarin baglanti izni almasini saglar.
-  app.enableCors();
+  const corsOrigin = getConfigString(configService, 'CORS_ORIGIN', '*');
+  app.enableCors({
+    origin: corsOrigin === '*' ? '*' : corsOrigin.split(','),
+  });
 
   // 2. Statik Dosyalar: PDF ve diger yuklemelerin URL uzerinden acilmasi icin.
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 
-  const port = 3000;
+  const port = getConfigNumber(configService, 'PORT', 3000);
+  const host = getConfigString(configService, 'HOST', '0.0.0.0');
 
   // KRITIK GUNCELLEME: '0.0.0.0' ekleyerek agdaki diger cihazlarin (telefonun)
   // bu bilgisayara erisebilmesine izin veriyoruz.
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port, host);
 
   // IP Adresini dinamik bulma
   const interfaces = os.networkInterfaces();

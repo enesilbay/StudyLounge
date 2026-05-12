@@ -1,35 +1,55 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './users/user.entity';
-import { Friendship } from './users/friendship.entity'; // 1. Friendship import edildi
-import { UsersModule } from './users/users.module';
-import { SensorsGateway } from './sensors.gateway';
+import {
+  getConfigBoolean,
+  getConfigNumber,
+  getConfigString,
+} from './config/env';
+import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
+import { MailModule } from './mail/mail.module';
 import { MessagesModule } from './messages/messages.module';
-import { AuthModule } from './auth/auth.module';
 import { NotificationsService } from './notifications/notifications.service';
-import { ConfigModule } from '@nestjs/config';
+import { SensorsGateway } from './sensors.gateway';
+import { Friendship } from './users/friendship.entity';
+import { User } from './users/user.entity';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'enes_admin',
-      password: 'studylounge_secret',
-      database: 'studylounge',
-      // 2. Friendship entity'si buraya eklendi
-      entities: [User, Lobby, Friendship],
-      // 3. İleride yeni bir tablo eklersen bir daha hata vermesin diye bu ayar açıldı:
-      autoLoadEntities: true,
-      synchronize: true,
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const nodeEnv = configService.get<string>('NODE_ENV');
+        const synchronize =
+          nodeEnv === 'production'
+            ? false
+            : getConfigBoolean(configService, 'DB_SYNCHRONIZE', false);
+
+        return {
+          type: 'postgres',
+          host: getConfigString(configService, 'DB_HOST', 'localhost'),
+          port: getConfigNumber(configService, 'DB_PORT', 5432),
+          username: getConfigString(configService, 'DB_USER', 'enes_admin'),
+          password: getConfigString(
+            configService,
+            'DB_PASSWORD',
+            'studylounge_secret',
+          ),
+          database: getConfigString(configService, 'DB_NAME', 'studylounge'),
+          entities: [User, Lobby, Friendship],
+          autoLoadEntities: true,
+          synchronize,
+        };
+      },
     }),
     UsersModule,
     LobbiesModule,
     MessagesModule,
+    MailModule,
     AuthModule,
   ],
   controllers: [],
