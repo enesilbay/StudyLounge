@@ -173,6 +173,9 @@ export default function ProfileScreen() {
       setCurrentPassword('');
       setNewPassword('');
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      if (settingsData.access_token) {
+        await AsyncStorage.setItem('access_token', settingsData.access_token);
+      }
       setSettingsVisible(false);
       Alert.alert('Kaydedildi', 'Profil ayarlari guncellendi.');
     } catch (error) {

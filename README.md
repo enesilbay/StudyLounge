@@ -18,6 +18,7 @@ Proje uc parcadan olusur:
 - Arkadaslik istegi, kabul/red ve arkadas listesi
 - Profil fotografi yukleme ve avatarin profil, lobi, liderlik ve sensor ekranlarinda gosterimi
 - Profil ayarlari: ad soyad, e-posta, kullanici adi ve sifre degistirme
+- Profil ayarlari degisince mobil token ve yerel kullanici bilgisi otomatik yenilenir
 - Premium demo akisi, premium rozetleri, analitik ve ses mikseri
 - Liderlik tablosu, rutbe sistemi ve haftalik analitik ekranlari
 - Web arayuzu: login/register, dashboard, lobbies, leaderboard, profile
@@ -154,6 +155,7 @@ Backend unit testleri artik sadece "defined olmali" seviyesinde degil; su davran
 - Odak dakikasinin kullanici puanina ve gunluk analitige yazilmasi
 - Lobi olusturma, private lobby password hash ve premium-only kontrolu
 - Profil ayarlarinda e-posta/kullanici adi guncelleme
+- Profil ayari sonrasi yeni JWT dondurme
 - Sifre degistirmede mevcut sifre kontrolu
 
 Backend e2e testleri:

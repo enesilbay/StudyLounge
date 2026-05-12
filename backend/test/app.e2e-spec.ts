@@ -173,6 +173,31 @@ describe('StudyLounge API (e2e)', () => {
     expect(usersService.findRawById(1)?.fullName).toBe('Ada User');
   });
 
+  it('updates account settings and returns a fresh token payload', async () => {
+    const token = await registerUser('ada', 'ada@example.com');
+
+    const settingsResponse = await request(getServer(app))
+      .put('/users/me/settings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        username: 'ada_new',
+        email: 'ada.new@example.com',
+      })
+      .expect(200);
+    const settingsBody = settingsResponse.body as unknown as AuthResponse & {
+      user: User;
+    };
+
+    expect(settingsBody.user.username).toBe('ada_new');
+    expect(settingsBody.user.email).toBe('ada.new@example.com');
+    expect(settingsBody.access_token).toEqual(expect.any(String));
+
+    await request(getServer(app))
+      .post('/auth/login')
+      .send({ email: 'ada.new@example.com', password: 'secret123' })
+      .expect(201);
+  });
+
   async function registerUser(username: string, email: string) {
     const response = await request(getServer(app))
       .post('/auth/register')
@@ -293,6 +318,19 @@ class InMemoryUsersService {
       throw new Error('User not found');
     }
     user.fullName = fullName;
+    return this.sanitize(user);
+  }
+
+  updateAccountSettings(
+    userId: number,
+    settings: { username?: string; email?: string },
+  ) {
+    const user = this.users.find((candidate) => candidate.id === userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    user.username = settings.username ?? user.username;
+    user.email = settings.email ?? user.email;
     return this.sanitize(user);
   }
 

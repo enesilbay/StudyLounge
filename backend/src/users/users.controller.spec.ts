@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -12,6 +13,10 @@ describe('UsersController', () => {
         {
           provide: UsersService,
           useValue: {},
+        },
+        {
+          provide: JwtService,
+          useValue: { sign: jest.fn() },
         },
       ],
     }).compile();

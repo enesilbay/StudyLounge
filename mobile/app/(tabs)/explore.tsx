@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,8 +11,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { apiUrl } from '../config/api';
-import { AppScreen, IconButton, SearchInput, SoftCard } from '../components/common';
+import { apiUrl, assetUrl, getAuthHeaders } from '../config/api';
+import { AppScreen, SearchInput, SoftCard } from '../components/common';
 import { C } from './sensor';
 
 const T = C;
@@ -32,6 +33,13 @@ type Leader = {
   username?: string;
   totalFocusMinutes: number;
   isPremium?: boolean;
+  avatarUrl?: string;
+};
+
+type CurrentUser = {
+  id: number;
+  fullName?: string;
+  avatarUrl?: string;
 };
 
 const focusIdeas = [
@@ -46,6 +54,7 @@ export default function ExploreScreen() {
   const [query, setQuery] = useState('');
   const [rooms, setRooms] = useState<Lobby[]>([]);
   const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -54,10 +63,16 @@ export default function ExploreScreen() {
     setError('');
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const headers = { Authorization: `Bearer ${token}` };
-      const [lobbyRes, leaderRes] = await Promise.all([
+      const headers = token ? { Authorization: `Bearer ${token}` } : await getAuthHeaders();
+      const stored = await AsyncStorage.getItem('user_data');
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      }
+
+      const [lobbyRes, leaderRes, meRes] = await Promise.all([
         fetch(apiUrl('/lobbies'), { headers }),
         fetch(apiUrl('/users/leaderboard'), { headers }),
+        fetch(apiUrl('/users/me'), { headers }),
       ]);
 
       if (!lobbyRes.ok || !leaderRes.ok) {
@@ -66,8 +81,13 @@ export default function ExploreScreen() {
 
       const lobbyData = await lobbyRes.json();
       const leaderData = await leaderRes.json();
+      const meData = meRes.ok ? await meRes.json() : null;
       setRooms(Array.isArray(lobbyData) ? lobbyData : []);
       setLeaders(Array.isArray(leaderData) ? leaderData.slice(0, 5) : []);
+      if (meData?.user) {
+        setCurrentUser(meData.user);
+        await AsyncStorage.setItem('user_data', JSON.stringify(meData.user));
+      }
     } catch {
       setError('Kesif akisi yuklenemedi.');
       setRooms([]);
@@ -93,6 +113,7 @@ export default function ExploreScreen() {
   const openLobbies = () => {
     router.push({ pathname: '/lobbies' as any, params: { ...params } });
   };
+  const currentAvatar = assetUrl(currentUser?.avatarUrl);
 
   return (
     <AppScreen contentStyle={styles.screen}>
@@ -101,7 +122,17 @@ export default function ExploreScreen() {
           <Text style={styles.eyebrow}>Bugun ne calisiyoruz?</Text>
           <Text style={styles.title}>Kesfet</Text>
         </View>
-        <IconButton name="user-circle" onPress={() => router.push('/profile' as any)} />
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: '/profile', params: { id: currentUser?.id ?? params.id } } as any)}
+          activeOpacity={0.75}
+          style={styles.profileButton}
+        >
+          {currentAvatar ? (
+            <Image source={{ uri: currentAvatar }} style={styles.profileImage} />
+          ) : (
+            <FontAwesome5 solid name="user-circle" size={18} color={T.primary} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <SearchInput value={query} onChangeText={setQuery} placeholder="Oda ara..." />
@@ -164,6 +195,13 @@ export default function ExploreScreen() {
               {leaders.map((leader, index) => (
                 <SoftCard key={leader.id} style={styles.leaderRow}>
                   <Text style={styles.rank}>{index + 1}</Text>
+                  {leader.avatarUrl ? (
+                    <Image source={{ uri: assetUrl(leader.avatarUrl) ?? undefined }} style={styles.leaderAvatar} />
+                  ) : (
+                    <View style={styles.leaderAvatarFallback}>
+                      <Text style={styles.leaderAvatarText}>{leader.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
+                    </View>
+                  )}
                   <View style={styles.cardBody}>
                     <Text style={styles.roomName} numberOfLines={1}>
                       {leader.fullName} {leader.isPremium ? 'PRO' : ''}
@@ -207,6 +245,18 @@ function SectionTitle({ title, value }: { title: string; value: string }) {
 const styles = StyleSheet.create({
   screen: { gap: 18 },
   hero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  profileButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: T.surface,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: { width: '100%', height: '100%' },
   eyebrow: { fontSize: 13, color: T.textMuted, fontWeight: '700' },
   title: { fontSize: 32, color: T.textDark, fontWeight: '900', marginTop: 2 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
@@ -223,6 +273,18 @@ const styles = StyleSheet.create({
   sectionValue: { fontSize: 12, color: T.textMuted, fontWeight: '700' },
   roomCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   leaderRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  leaderAvatar: { width: 42, height: 42, borderRadius: 21 },
+  leaderAvatarFallback: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: T.softIndigo,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaderAvatarText: { color: T.primary, fontSize: 16, fontWeight: '900' },
   ideaCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   iconBox: {
     width: 46,

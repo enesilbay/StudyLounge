@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -28,7 +29,10 @@ import type { Express } from 'express';
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   @Get('leaderboard')
   async getLeaderboard() {
@@ -145,7 +149,15 @@ export class UsersController {
       user.id,
       body,
     );
-    return { success: true, user: updatedUser };
+    return {
+      success: true,
+      user: updatedUser,
+      access_token: this.jwtService.sign({
+        sub: updatedUser.id,
+        email: updatedUser.email,
+        username: updatedUser.username,
+      }),
+    };
   }
 
   @Put(':id/profile')
