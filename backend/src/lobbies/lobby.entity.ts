@@ -28,4 +28,7 @@ export class Lobby {
 
   @Column({ nullable: true })
   ownerId?: number;
+
+  @Column({ default: false })
+  isPremiumOnly!: boolean;
 }

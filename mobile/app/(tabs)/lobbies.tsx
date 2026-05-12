@@ -22,6 +22,7 @@ interface Lobby {
   memberCount?: number;
   isActive?: boolean;
   isPrivate?: boolean;
+  isPremiumOnly?: boolean;
   maxUsers?: number;
   activeUsers?: number;
 }
@@ -62,11 +63,13 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
       <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={0.9}>
         <View style={card.wrap}>
-          <LinearGradient colors={['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)']} style={card.iconBox}>
-            <FontAwesome5 solid name={item.isPrivate ? 'lock' : (item.icon || 'users')} size={20} color={C.primary} />
+          <LinearGradient colors={item.isPremiumOnly ? ['rgba(255,193,7,0.3)', 'rgba(255,193,7,0.1)'] : ['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)']} style={card.iconBox}>
+            <FontAwesome5 solid name={item.isPremiumOnly ? 'crown' : (item.isPrivate ? 'lock' : (item.icon || 'users'))} size={20} color={C.primary} />
           </LinearGradient>
           <View style={card.body}>
-            <Text style={card.name} numberOfLines={1}>{item.name}</Text>
+            <Text style={[card.name, item.isPremiumOnly && { color: C.primary }]} numberOfLines={1}>
+              {item.name} {item.isPremiumOnly && '✨'}
+            </Text>
             <Text style={card.desc} numberOfLines={1}>{item.description}</Text>
             <View style={card.meta}>
               <View style={[card.dot, { backgroundColor: isActive ? C.success : 'rgba(255,255,255,0.3)' }]} />
@@ -107,6 +110,7 @@ export default function LobbiesScreen() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [isPremiumOnly, setIsPremiumOnly] = useState(false);
   const [roomPassword, setRoomPassword] = useState('');
 
   // Gizli Odaya Giriş State'leri
@@ -227,8 +231,9 @@ export default function LobbiesScreen() {
         body: JSON.stringify({ 
           name: newName, 
           description: newDesc, 
-          icon: 'users',
+          icon: isPremiumOnly ? 'crown' : 'users',
           isPrivate,
+          isPremiumOnly,
           password: isPrivate ? roomPassword : null,
           maxUsers,
           ownerId: myUserId
@@ -236,7 +241,7 @@ export default function LobbiesScreen() {
       });
       if (res.ok) {
         setIsModalVisible(false);
-        setNewName(''); setNewDesc(''); setIsPrivate(false); setRoomPassword('');
+        setNewName(''); setNewDesc(''); setIsPrivate(false); setIsPremiumOnly(false); setRoomPassword('');
         fetchLobbies();
       }
     } catch { Alert.alert('Hata', 'Sunucu bağlantı hatası.'); }
@@ -362,6 +367,18 @@ export default function LobbiesScreen() {
               item={item} 
               index={index} 
               onPress={() => {
+                if (item.isPremiumOnly && !isPremium) {
+                  Alert.alert(
+                    'Elite Lounge 👑',
+                    'Bu oda sadece Premium kullanıcılar içindir.',
+                    [
+                      { text: 'İptal', style: 'cancel' },
+                      { text: 'Premium Ol', onPress: () => router.push({ pathname: '/premium', params: { id: myUserId } } as any) }
+                    ]
+                  );
+                  return;
+                }
+
                 if (item.isPrivate) {
                   setSelectedLobby(item);
                   setIsPasswordModalVisible(true);
@@ -419,6 +436,18 @@ export default function LobbiesScreen() {
                 />
               </View>
 
+              {isPremium && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, paddingHorizontal: 5 }}>
+                  <Text style={{ color: C.primary, fontSize: 15, fontWeight: 'bold' }}>Elite Oda 👑</Text>
+                  <Switch
+                    trackColor={{ false: 'rgba(255,255,255,0.1)', true: C.primary }}
+                    thumbColor={isPremiumOnly ? C.text : '#94A3B8'}
+                    onValueChange={setIsPremiumOnly}
+                    value={isPremiumOnly}
+                  />
+                </View>
+              )}
+
               {isPrivate && (
                 <>
                   <TextInput style={[mdl.input, { marginTop: 15 }]} placeholder="Oda Şifresi" placeholderTextColor="rgba(255,255,255,0.3)" value={roomPassword} onChangeText={setRoomPassword} secureTextEntry />
@@ -429,7 +458,7 @@ export default function LobbiesScreen() {
               )}
 
               <View style={[mdl.btnRow, { marginTop: 20 }]}>
-                <TouchableOpacity style={mdl.cancelBtn} onPress={() => { setIsModalVisible(false); setIsPrivate(false); setRoomPassword(''); }}>
+                <TouchableOpacity style={mdl.cancelBtn} onPress={() => { setIsModalVisible(false); setIsPrivate(false); setIsPremiumOnly(false); setRoomPassword(''); }}>
                   <Text style={mdl.cancelText}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleCreateLobby} style={{ flex: 1 }}>
