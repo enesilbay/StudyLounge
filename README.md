@@ -53,6 +53,7 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - [x] **[Analytics]** `analytics.tsx` sayfası üzerinden gerçek API verileriyle haftalık odaklanma istatistiklerinin (Bar/Line chart) çizilmesi sağlandı.
 - [x] **[Elite-Lounges]** Sadece Premium kullanıcılara açık (isPremiumOnly) Elite çalışma odaları (taç ikonlu ve altın renk vurgulu) oluşturma ve yetki kontrolü eklendi.
 - [x] **[Sound-Mixer]** Elite Odalar (Premium) için aynı anda birden fazla atmosfer sesinin seviyesinin ayarlanıp birlikte dinlenebildiği Ses Mikseri özelliği eklendi.
+- [x] **[Gamification]** Odak puanlarına dayalı Rütbe Sistemi (Çaylak'tan Efsane'ye) kuruldu; profil ekranına gelişim çubuğu ve liderlik tablosuna rütbe rozetleri eklendi.
 ---
 
 ## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
@@ -64,10 +65,9 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 (Bu aşamadaki hedefler tamamlandı)
 
 ### 🟣 Premium (PRO) Özellikler
-- [ ] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**. (TAMAMLANDI - Elite Odalara Eklendi)
+- [x] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**. (TAMAMLANDI - Elite Odalara Eklendi)
+- [x] Profilde **Altın Rozet** ve liderlik tablosunda vurgulu görünüm. (TAMAMLANDI - Rütbe ve Rozet sistemi eklendi)
 - [ ] Hangi saat aralıklarında daha verimli çalışıldığını gösteren detaylı **Sıcaklık Haritası (Heatmap)**.
-- [ ] Mesajlaşmada gönderilebilen dosya/görsel boyutu limitinin artırılması.
-- [ ] Profilde **Altın Rozet** ve liderlik tablosunda vurgulu görünüm.
 
 ---
 

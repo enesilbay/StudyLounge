@@ -33,6 +33,7 @@ export default function AnalyticsScreen() {
     datasets: [{ data: [0, 0, 0, 0, 0, 0, 0], color: (opacity = 1) => `rgba(255, 193, 7, ${opacity})`, strokeWidth: 4 }]
   });
   const [totalWeeklyMinutes, setTotalWeeklyMinutes] = useState(0);
+  const [heatmapData, setHeatmapData] = useState<number[]>(new Array(24).fill(0));
 
   React.useEffect(() => {
     const fetchAnalytics = async () => {
@@ -81,6 +82,17 @@ export default function AnalyticsScreen() {
             }]
           });
           setTotalWeeklyMinutes(sum);
+
+          // Heatmap hesaplama (Son 7 günün saatlik toplamı)
+          const hourlyTotals = new Array(24).fill(0);
+          records.forEach((r: any) => {
+            if (r.hourlyDistribution && Array.isArray(r.hourlyDistribution)) {
+              r.hourlyDistribution.forEach((val: number, i: number) => {
+                hourlyTotals[i] += val;
+              });
+            }
+          });
+          setHeatmapData(hourlyTotals);
         }
       } catch (err) {
         console.error("Analitik hatası:", err);
@@ -151,6 +163,31 @@ export default function AnalyticsScreen() {
             style={{ marginVertical: 8, marginLeft: -15 }}
             withVerticalLines={false}
           />
+        </View>
+
+        {/* Saatlik Sıcaklık Haritası (Heatmap) */}
+        <View style={s.chartBox}>
+          <Text style={s.chartTitle}>Sıcaklık Haritası (En Verimli Saatler)</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 15 }}>Son 7 gündeki saat bazlı toplam çalışma süreniz.</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            {heatmapData.map((val, i) => {
+              const max = Math.max(...heatmapData, 1);
+              const opacity = (val / max) * 0.8 + 0.2; // Min opacity 0.2
+              return (
+                <View key={i} style={{ width: '15%', alignItems: 'center', marginBottom: 15 }}>
+                  <View style={{ 
+                    width: 34, height: 34, borderRadius: 8, 
+                    backgroundColor: val > 0 ? `rgba(255,193,7,${opacity})` : 'rgba(255,255,255,0.05)', 
+                    justifyContent: 'center', alignItems: 'center',
+                    borderWidth: 1, borderColor: val > 0 ? `rgba(255,193,7,${opacity + 0.2})` : 'rgba(255,255,255,0.02)'
+                  }}>
+                     {val > 0 && <Text style={{ fontSize: 10, fontWeight: '900', color: C.bg }}>{val}</Text>}
+                  </View>
+                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 5, fontWeight: 'bold' }}>{String(i).padStart(2, '0')}:00</Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
 
         {/* Verimlilik Puanı */}

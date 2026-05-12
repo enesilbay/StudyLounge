@@ -125,10 +125,18 @@ export class UsersService {
           user: user,
           date: today,
           focusMinutes: minutes,
+          hourlyDistribution: new Array(24).fill(0),
         });
       } else {
         daily.focusMinutes += minutes;
+        if (!daily.hourlyDistribution || daily.hourlyDistribution.length !== 24) {
+          daily.hourlyDistribution = new Array(24).fill(0);
+        }
       }
+      
+      const currentHour = new Date().getHours();
+      daily.hourlyDistribution[currentHour] += minutes;
+
       await this.dailyAnalyticsRepository.save(daily);
 
       console.log(

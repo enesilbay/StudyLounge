@@ -12,6 +12,9 @@ export class DailyAnalytics {
   @Column({ default: 0 })
   focusMinutes: number;
 
+  @Column({ type: 'jsonb', nullable: true })
+  hourlyDistribution: number[];
+
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: User;
 }
