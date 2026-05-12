@@ -45,6 +45,9 @@ mobile/build/
 web/dist/
 web/build/
 
+# User uploads
+backend/uploads/
+
 # Logs
 *.log
 npm-debug.log*

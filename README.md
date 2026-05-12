@@ -1,82 +1,186 @@
-# 📚 StudyLounge
+# StudyLounge
 
-> **"Ayrı Masalarda, Aynı Lobide."**
+StudyLounge, ogrencilerin birlikte calisabilecekleri, telefonun masada olup olmadigini sensorlerle takip eden sosyal odaklanma uygulamasidir.
 
-StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çözen, sensör tabanlı sosyal bir ders çalışma uygulamasıdır.
+Proje uc parcadan olusur:
 
-## Ürün Vizyonu
+- `backend`: NestJS, TypeScript, TypeORM, PostgreSQL, Socket.IO
+- `mobile`: Expo / React Native, TypeScript
+- `web`: Vite / React / TypeScript
 
-Öğrencilerin yalnız başlarına çalışırken hissettikleri yalnızlığı, sanki bir "lobi"de arkadaşlarıyla berabermiş gibi hissettirerek kırmayı amaçlar. Telefonun masaya bırakılmasıyla aktifleşen sensörler, çalışma odasındaki diğer kişilere eşzamanlı bir "varlık" hissi iletir.
+## Ozellikler
 
-## Marka Kimliği
+- JWT tabanli kayit, giris ve korumali API akislari
+- Lobi olusturma, listeleme, premium/elite oda kontrolu
+- Socket.IO ile odadaki kullanicilarin anlik durum takibi
+- Sensor tabanli odak durumu ve odak puani kazanimi
+- Lobi sohbeti, dosya/gorsel paylasimi ve avatarli mesaj gosterimi
+- Arkadaslik istegi, kabul/red ve arkadas listesi
+- Profil fotografi yukleme ve avatarin profil, lobi, liderlik ve sensor ekranlarinda gosterimi
+- Profil ayarlari: ad soyad, e-posta, kullanici adi ve sifre degistirme
+- Premium demo akisi, premium rozetleri, analitik ve ses mikseri
+- Liderlik tablosu, rutbe sistemi ve haftalik analitik ekranlari
+- Web arayuzu: login/register, dashboard, lobbies, leaderboard, profile
 
-- **Ana Renk (Deep Indigo):** `#1A237E`
-- **Vurgu Rengi (Amber Gold):** `#FFC107`
-- **Tipografi:** Montserrat
+## Kurulum
 
----
+Gerekenler:
 
-## 🚀 Öne Çıkan Özellikler
+- Node.js
+- npm
+- PostgreSQL
+- Expo Go veya Android/iOS simulator
 
-- **🛰️ Sensör Destekli Varlık Takibi:** Cihazın ivmeölçer ve jiroskop verilerini kullanarak masada olup olmadığınızı anlık iletir.
-- **🔊 Atmosfer Sesleri:** Yağmur, kütüphane, doğa ve gürültü seçenekleriyle odaklanma ortamı sağlar.
-- **🏢 Global Study Lounges:** Aynı dersi çalışan yabancılarla buluşma ve akademik yardımlaşma ağı.
-- **📊 Verimlilik Analitiği:** Günlük özetler, haftalık/aylık grafikler ve odaklanma puanları.
-- **💬 Konu Bazlı Global Chat:** Sınav dönemlerinde aynı konu üzerine çalışanlarla güvenli iletişim.
+Bagimliliklari kurmak icin:
 
----
+```bash
+cd backend
+npm install
 
-## Tamamlananlar
+cd ../mobile
+npm install
 
-- **[Backend]** NestJS ve PostgreSQL altyapısı kuruldu, veritabanı bağlantısı sağlandı.
-- **[Security]** `bcrypt` ile güvenli kayıt ve şifreli giriş (login) sistemi entegre edildi.
-- **[Sensor]** Accelerometer (ivmeölçer) verileriyle telefonun masadaki duruşunu algılayan algoritma yazıldı.
-- **[Real-time]** Socket.io kullanılarak sensör verileri ve puanların anlık senkronizasyonu sağlandı.
-- **[Lobby-System]** Dinamik lobi oluşturma ve listeleme API'ları entegre edildi.
-- **[Global-Chat]** Lobi bazlı izole mesajlaşma sistemi (Socket.io) tamamlandı.
-- **[Audio]** Lobiye giriş yapıldığında ve odaklanma başladığında çalan Atmosfer Sesleri (`expo-av`) eklendi.
-- **[UI/UX]** Proje renk paletine (Deep Indigo & Amber Gold) uygun profesyonel ikonlu arayüz tasarlandı.
-- **[Liderlik-Tablosu]** En çok odaklanan kullanıcıların sıralandığı "Günün En Çalışkanları" listesi.
-- **[Beni-Hatırla]** Uygulama her açıldığında tekrar giriş yapma zorunluluğunun kaldırılması.
-- **[Dashboard&Analitik]** Haftalık ve aylık odaklanma grafiklerinin kullanıcıya sunulması.
-- **[User-Profile]** Sadece harf, rakam ve alt çizgiden oluşan benzersiz (unique) username (kullanıcı adı) sistemi ve güvenli doğrulama (Regex) entegre edildi.
-- **[Social-Backend]** Friendship veritabanı altyapısı kuruldu; arkadaşlık isteği gönderme, gelen istekleri yanıtlama (kabul/red) ve arkadaş listeleme API'leri yazıldı.
-- **[Grace-Period]** Cihazı kısa süreliğine elinize aldığınızda odaktan düşmeyi engelleyen 3 saniyelik mola toleransı eklendi.
-- **[WebSocket-Heartbeat]** Bağlantı kopmalarına karşı otomatik yeniden bağlanma ve orphan user temizliği eklendi.
-- **[Score-Sync]** Uygulama aniden kapandığında veya lobi çıkışında kazanılan odak puanının veritabanına kalıcı olarak işlenmesi sağlandı.
-- **[Offline-Handling]** İnternet koptuğunda mobilde şeffaf uyarı gösterilmesi eklendi.
-- **[Brand-Theme]** Uygulama renkleri Deep Indigo (#1A237E) ve Amber Gold (#FFC107) üzerine optimize edilerek tek merkezden yönetilebilir hale getirildi.
-- **[Social-UI]** Arkadaşlık sisteminin (istek gönderme, yanıtlama, listeleme) mobil arayüz entegrasyonu tamamlandı.
-- **[Push-Notifications]** Expo Push Token altyapısı kuruldu; arkadaşlar masaya geçtiğinde otomatik bildirim gönderimi entegre edildi.
-- **[Nudge]** Arkadaşları odaya dürtme (çağırma) butonu eklendi; WebSocket ile anlık + Push bildirimi ile çevrimdışı bildirim desteği.
-- **[Şifre-Sıfırlama]** Nodemailer ve Gmail SMTP entegrasyonu ile 6 haneli kod bazlı güvenli şifre sıfırlama sistemi tamamlandı.
-- [x] **[Analytics]** `analytics.tsx` sayfası üzerinden gerçek API verileriyle haftalık odaklanma istatistiklerinin (Bar/Line chart) çizilmesi sağlandı.
-- [x] **[Elite-Lounges]** Sadece Premium kullanıcılara açık (isPremiumOnly) Elite çalışma odaları (taç ikonlu ve altın renk vurgulu) oluşturma ve yetki kontrolü eklendi.
-- [x] **[Sound-Mixer]** Elite Odalar (Premium) için aynı anda birden fazla atmosfer sesinin seviyesinin ayarlanıp birlikte dinlenebildiği Ses Mikseri özelliği eklendi.
-- [x] **[Gamification]** Odak puanlarına dayalı Rütbe Sistemi (Çaylak'tan Efsane'ye) kuruldu; profil ekranına gelişim çubuğu ve liderlik tablosuna rütbe rozetleri eklendi.
-- [x] **[Theme-Unification]** Tüm sayfalar (explore, analytics, leaderboard, premium, profile, sensor) tek tip lobi temasına dönüştürüldü; koyu sensor teması kaldırılıp açık/clean tema ile değiştirildi.
----
+cd ../web
+npm install
+```
 
-## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
+## Ortam Degiskenleri
 
-### 🟢 İlk Yapılması Gerekenler (Stabilizasyon ve Core)
-(Bu aşama tamamlandı)
+Backend icin `backend/.env.example` dosyasini `backend/.env` olarak kopyalayin:
 
-### 🟡 Kullanıcı Deneyimi ve Sosyal Özellikler
-(Bu aşamadaki hedefler tamamlandı)
+```bash
+cd backend
+cp .env.example .env
+```
 
-### 🟣 Premium (PRO) Özellikler
-- [x] Sınırsız ve yüksek kaliteli Ambient/Atmosfer sesi kütüphanesi ve 2-3 sesi aynı anda oynatabilen **Ses Mikseri**. (TAMAMLANDI - Elite Odalara Eklendi)
-- [x] Profilde **Altın Rozet** ve liderlik tablosunda vurgulu görünüm. (TAMAMLANDI - Rütbe ve Rozet sistemi eklendi)
-- [ ] Hangi saat aralıklarında daha verimli çalışıldığını gösteren detaylı **Sıcaklık Haritası (Heatmap)**.
+Temel backend degiskenleri:
 
----
+```env
+NODE_ENV=development
+PORT=3000
+HOST=0.0.0.0
+CORS_ORIGIN=*
 
-**Proje Sahibi:** Enes İlbay
+JWT_SECRET=change-this-to-a-long-random-secret
+JWT_EXPIRES_IN=7d
 
-## Test Stabilizasyonu
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=enes_admin
+DB_PASSWORD=studylounge_secret
+DB_NAME=studylounge
 
-- [x] Backend unit/e2e testleri, lint/build kontrolleri, mobile typecheck, Expo Doctor ve web build/lint kontrolleri calisir hale getirildi.
-- [x] Backend JWT, veritabani, CORS ve runtime config degerleri env tabanli hale getirildi.
-- [x] Mobile backend URL kullanimlari tek API config dosyasinda toplandi.
-- [x] Mobile ekran renkleri `sensor.tsx` icindeki `C` sabitine baglandi.
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=StudyLounge <your-email@gmail.com>
+```
+
+Mobile backend adresi icin:
+
+```env
+EXPO_PUBLIC_BACKEND_URL=http://YOUR_LOCAL_IP:3000
+```
+
+Mobile tarafinda API adresleri `mobile/app/config/api.ts` icinden tek merkezden yonetilir.
+
+## Calistirma
+
+Backend:
+
+```bash
+cd backend
+npm run start:dev
+```
+
+Mobile:
+
+```bash
+cd mobile
+npm start
+```
+
+Web:
+
+```bash
+cd web
+npm run dev
+```
+
+Docker ile PostgreSQL:
+
+```bash
+docker compose up -d
+```
+
+## Test ve Kontroller
+
+Backend:
+
+```bash
+cd backend
+npm run lint
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+npm run build
+```
+
+Mobile:
+
+```bash
+cd mobile
+npm run typecheck
+npm run lint
+```
+
+Web:
+
+```bash
+cd web
+npm run lint
+npm run build
+```
+
+## Son Test Kapsami
+
+Backend unit testleri artik sadece "defined olmali" seviyesinde degil; su davranislari kontrol eder:
+
+- Auth register/login ve JWT payload uretimi
+- Hatali login reddi
+- Kullanici olusturmada sifre hashleme
+- Login sonrasi password alaninin gizlenmesi
+- Arkadaslik istegi olusturma
+- Odak dakikasinin kullanici puanina ve gunluk analitige yazilmasi
+- Lobi olusturma, private lobby password hash ve premium-only kontrolu
+- Profil ayarlarinda e-posta/kullanici adi guncelleme
+- Sifre degistirmede mevcut sifre kontrolu
+
+Backend e2e testleri:
+
+- Register -> login
+- Login -> create lobby
+- Friend request -> accept
+- Path `userId` ile baska kullanicinin profilini guncelleyememe
+
+## Sunum Senaryosu
+
+1. Kullanici kayit olur ve giris yapar.
+2. Profil fotografi ekler, kullanici adi/e-posta ayarlarini gorur.
+3. Lobi olusturur veya var olan lobiye girer.
+4. Telefonu masaya birakarak odak durumunu baslatir.
+5. Odadaki kullanicilarin avatarlarini ve odak durumlarini gorur.
+6. Lobi sohbetinden mesaj gonderir.
+7. Arkadaslik istegi gonderir ve kabul eder.
+8. Liderlik tablosu, rutbe ve analitik ekranlarini inceler.
+9. Premium demo akisiyle elite oda ve ses mikeri ozelliklerini gosterir.
+
+## Repo Hijyeni
+
+- Secret degerleri `.env` dosyalarinda tutulur ve git'e eklenmez.
+- `backend/uploads/` kullanici yuklemeleri icindir ve repo disinda tutulur.
+- `.agents/` lokal agent verisi olarak ignore edilir.
+
+## Proje Sahibi
+
+Enes Ilbay

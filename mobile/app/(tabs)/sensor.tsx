@@ -137,6 +137,7 @@ export default function SensorScreen() {
       setChatList(data.map((m: any) => ({
         userId: m.user?.id,
         fullName: m.user?.fullName || 'Bilinmeyen',
+        avatarUrl: m.user?.avatarUrl,
         text: m.text,
         type: m.type || 'text',
         fileUrl: m.fileUrl,
@@ -544,7 +545,16 @@ export default function SensorScreen() {
           <View style={s.usersWrap}>
             {roomUsers.map((u, i) => (
               <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: T.accent, backgroundColor: T.lightAmber }]}>
-                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? T.accent : T.success) : T.textMuted }]} />
+                <View>
+                  {u.avatarUrl ? (
+                    <Image source={{ uri: assetUrl(u.avatarUrl) ?? undefined }} style={s.userAvatar} />
+                  ) : (
+                    <View style={s.userAvatarFallback}>
+                      <Text style={s.userAvatarText}>{u.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
+                    </View>
+                  )}
+                  <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? T.accent : T.success) : T.textMuted }]} />
+                </View>
                 <Text style={{ color: T.textDark, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
                 {Number(u.userId) !== myUserId && (
                   <TouchableOpacity
@@ -582,7 +592,18 @@ export default function SensorScreen() {
                 const isImage = item.type === 'image';
                 return (
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
-                    {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={T.accent} />}</Text>}
+                    {!isMe && (
+                      <View style={s.bubbleUserRow}>
+                        {item.avatarUrl ? (
+                          <Image source={{ uri: assetUrl(item.avatarUrl) ?? undefined }} style={s.bubbleAvatar} />
+                        ) : (
+                          <View style={s.bubbleAvatarFallback}>
+                            <Text style={s.bubbleAvatarText}>{item.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
+                          </View>
+                        )}
+                        <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={T.accent} />}</Text>
+                      </View>
+                    )}
                     {isImage ? (
                       <TouchableOpacity onPress={() => Linking.openURL(assetUrl(item.fileUrl) ?? '')}>
                         <Image source={{ uri: assetUrl(item.fileUrl) ?? '' }} style={s.imagePreview} />
@@ -722,7 +743,10 @@ const s = StyleSheet.create({
   
   usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
-  userDot: { width: 8, height: 8, borderRadius: 4 },
+  userAvatar: { width: 28, height: 28, borderRadius: 14 },
+  userAvatarFallback: { width: 28, height: 28, borderRadius: 14, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
+  userAvatarText: { color: T.primary, fontSize: 12, fontWeight: '900' },
+  userDot: { position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: 4.5, borderWidth: 1.5, borderColor: T.surface },
   nudgeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: T.lightAmber, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.accent },
   nudgeBtnText: { fontSize: 13 },
   nudgeToast: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.softIndigo, borderRadius: 18, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
@@ -737,7 +761,11 @@ const s = StyleSheet.create({
   bubble: { maxWidth: '80%', padding: 14, borderRadius: 20, marginVertical: 6 },
   bubbleMe: { alignSelf: 'flex-end', backgroundColor: T.softIndigo, borderBottomRightRadius: 4, borderWidth: 1, borderColor: T.primary },
   bubbleOther: { alignSelf: 'flex-start', backgroundColor: T.background, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: T.border },
-  bubbleUser: { fontSize: 11, color: T.accent, fontWeight: '800', marginBottom: 5 },
+  bubbleUserRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 7 },
+  bubbleAvatar: { width: 24, height: 24, borderRadius: 12 },
+  bubbleAvatarFallback: { width: 24, height: 24, borderRadius: 12, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center' },
+  bubbleAvatarText: { color: T.primary, fontSize: 10, fontWeight: '900' },
+  bubbleUser: { fontSize: 11, color: T.accent, fontWeight: '800' },
   imagePreview: { width: 160, height: 160, borderRadius: 14, marginVertical: 5 },
   fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.softDanger, padding: 12, borderRadius: 14 },
   fileIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.softDanger, alignItems: 'center', justifyContent: 'center' },

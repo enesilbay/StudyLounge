@@ -45,6 +45,7 @@ interface NudgeFriendDto {
 interface ConnectedRoomUser {
   userId: number;
   fullName: string;
+  avatarUrl?: string | null;
   roomName: string;
   isAtDesk: boolean;
   isEliteRoom: boolean;
@@ -194,6 +195,7 @@ export class SensorsGateway
       this.connectedUsers.set(client.id, {
         userId: socketUser.sub,
         fullName,
+        avatarUrl: currentUser.avatarUrl,
         roomName,
         isAtDesk: false,
         isEliteRoom: lobby.isPremiumOnly,
@@ -236,6 +238,7 @@ export class SensorsGateway
     this.server.to(data.roomName).emit('receive_message', {
       userId: socketUser.sub,
       fullName,
+      avatarUrl: connectedUser?.avatarUrl,
       text: data.text,
       type: data.type,
       fileUrl: data.fileUrl,

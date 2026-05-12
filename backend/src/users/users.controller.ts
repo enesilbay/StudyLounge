@@ -18,6 +18,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RespondRequestDto } from './dto/respond-request.dto';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
+import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdatePushTokenDto } from './dto/update-push-token.dto';
 import { User } from './user.entity';
@@ -32,6 +33,12 @@ export class UsersController {
   @Get('leaderboard')
   async getLeaderboard() {
     return this.usersService.getLeaderboard();
+  }
+
+  @Get('me')
+  async getMe(@CurrentUser() user: User) {
+    const currentUser = await this.usersService.findById(user.id);
+    return { success: true, user: currentUser };
   }
 
   @Post('friend-request')
@@ -127,6 +134,18 @@ export class UsersController {
       message: 'Demo premium aktif edildi.',
       user: updatedUser,
     };
+  }
+
+  @Put('me/settings')
+  async updateAccountSettings(
+    @CurrentUser() user: User,
+    @Body() body: UpdateAccountSettingsDto,
+  ) {
+    const updatedUser = await this.usersService.updateAccountSettings(
+      user.id,
+      body,
+    );
+    return { success: true, user: updatedUser };
   }
 
   @Put(':id/profile')

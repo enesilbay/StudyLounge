@@ -9,6 +9,7 @@ import { User } from './user.entity';
 import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
+import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 
 @Injectable()
 export class UsersService {
@@ -82,6 +83,11 @@ export class UsersService {
     if (user) {
       delete user.password;
     }
+    return user;
+  }
+
+  private stripPassword(user: User): User {
+    delete user.password;
     return user;
   }
 
@@ -304,8 +310,7 @@ export class UsersService {
     }
     user.avatarUrl = avatarUrl;
     const updatedUser = await this.usersRepository.save(user);
-    delete updatedUser.password;
-    return updatedUser;
+    return this.stripPassword(updatedUser);
   }
 
   // ── 11. PREMIUM YAP (YENİ EKLENDİ) ──
@@ -316,8 +321,7 @@ export class UsersService {
     }
     user.isPremium = true;
     const updatedUser = await this.usersRepository.save(user);
-    delete updatedUser.password;
-    return updatedUser;
+    return this.stripPassword(updatedUser);
   }
 
   // ── PROFİL GÜNCELLEME (İSİM) ──
@@ -326,8 +330,51 @@ export class UsersService {
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
     user.fullName = fullName;
     const updated = await this.usersRepository.save(user);
-    delete updated.password;
-    return updated;
+    return this.stripPassword(updated);
+  }
+
+  async updateAccountSettings(
+    userId: number,
+    settings: UpdateAccountSettingsDto,
+  ) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+
+    if (settings.username && settings.username !== user.username) {
+      const existingUsername = await this.usersRepository.findOne({
+        where: { username: settings.username },
+      });
+      if (existingUsername && existingUsername.id !== userId) {
+        throw new BadRequestException('Bu kullanıcı adı zaten kullanılıyor.');
+      }
+      user.username = settings.username;
+    }
+
+    if (settings.email && settings.email !== user.email) {
+      const existingEmail = await this.usersRepository.findOne({
+        where: { email: settings.email },
+      });
+      if (existingEmail && existingEmail.id !== userId) {
+        throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor.');
+      }
+      user.email = settings.email;
+    }
+
+    if (settings.newPassword) {
+      if (
+        !settings.currentPassword ||
+        !user.password ||
+        !(await bcrypt.compare(settings.currentPassword, user.password))
+      ) {
+        throw new BadRequestException('Mevcut şifre hatalı.');
+      }
+      user.password = await bcrypt.hash(settings.newPassword, 10);
+    }
+
+    const updatedUser = await this.usersRepository.save(user);
+    return this.stripPassword(updatedUser);
   }
 
   // ── 12. PUSH TOKEN GÜNCELLEME (YENİ EKLENDİ) ──

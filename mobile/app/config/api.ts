@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DEFAULT_BACKEND_URL = 'http://10.192.24.96:3000';
 
@@ -25,4 +26,9 @@ export function assetUrl(path?: string | null): string | null {
   }
 
   return apiUrl(path);
+}
+
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await AsyncStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

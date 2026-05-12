@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { apiUrl, assetUrl } from './config/api';
+import { apiUrl, assetUrl, getAuthHeaders } from './config/api';
 import { AppScreen, DarkSheetModal, IconButton, PageHeader, SoftCard } from './components/common';
 import { C } from './(tabs)/sensor';
 import { getRankInfo, getRankProgress } from './utils/rank';
@@ -25,6 +25,7 @@ const T = C;
 type UserProfile = {
   id: number;
   username?: string;
+  email?: string;
   fullName?: string;
   totalFocusMinutes?: number;
   avatarUrl?: string;
@@ -41,6 +42,10 @@ export default function ProfileScreen() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [infoVisible, setInfoVisible] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchUserData = React.useCallback(async () => {
@@ -50,24 +55,23 @@ export default function ProfileScreen() {
         const parsed = JSON.parse(stored);
         setUser(parsed);
         setEditName(parsed.fullName || '');
+        setEditEmail(parsed.email || '');
+        setEditUsername(parsed.username || '');
       }
 
-      const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(apiUrl('/users/leaderboard'), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const allUsers = await res.json();
-      if (Array.isArray(allUsers)) {
-        const me = allUsers.find((item: UserProfile) => item.id === myUserId);
-        if (me) {
-          setUser((current) => ({ ...current, ...me }));
-          setEditName(me.fullName || '');
-        }
+      const headers = await getAuthHeaders();
+      const res = await fetch(apiUrl('/users/me'), { headers });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        setUser(data.user);
+        setEditName(data.user.fullName || '');
+        setEditEmail(data.user.email || '');
+        setEditUsername(data.user.username || '');
       }
     } catch {
       Alert.alert('Hata', 'Profil bilgileri yuklenemedi.');
     }
-  }, [myUserId]);
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -121,30 +125,58 @@ export default function ProfileScreen() {
     }
   };
 
-  const saveName = async () => {
+  const saveProfile = async () => {
     if (!editName.trim()) {
       Alert.alert('Hata', 'Isim bos olamaz.');
+      return;
+    }
+    if (!editEmail.trim() || !editUsername.trim()) {
+      Alert.alert('Hata', 'E-posta ve kullanici adi bos olamaz.');
+      return;
+    }
+    if (newPassword && !currentPassword) {
+      Alert.alert('Hata', 'Sifre degistirmek icin mevcut sifreni yazmalisin.');
       return;
     }
 
     setIsSaving(true);
     try {
-      const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(apiUrl(`/users/${myUserId}/profile`), {
+      const headers = await getAuthHeaders();
+      const profileRes = await fetch(apiUrl(`/users/${myUserId}/profile`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ fullName: editName.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const profileData = await profileRes.json();
+      if (!profileRes.ok) {
         throw new Error('Profil guncellenemedi.');
       }
 
-      setUser(data.user);
-      await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+      const settingsRes = await fetch(apiUrl('/users/me/settings'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({
+          email: editEmail.trim(),
+          username: editUsername.trim(),
+          ...(newPassword
+            ? { currentPassword, newPassword }
+            : {}),
+        }),
+      });
+      const settingsData = await settingsRes.json();
+      if (!settingsRes.ok) {
+        throw new Error(settingsData.message || 'Ayarlar guncellenemedi.');
+      }
+
+      const updatedUser = { ...profileData.user, ...settingsData.user };
+      setUser(updatedUser);
+      setCurrentPassword('');
+      setNewPassword('');
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
       setSettingsVisible(false);
-    } catch {
-      Alert.alert('Hata', 'Profil guncellenemedi.');
+      Alert.alert('Kaydedildi', 'Profil ayarlari guncellendi.');
+    } catch (error) {
+      Alert.alert('Hata', error instanceof Error ? error.message : 'Profil guncellenemedi.');
     } finally {
       setIsSaving(false);
     }
@@ -197,6 +229,12 @@ export default function ProfileScreen() {
           {user.fullName} {user.isPremium ? 'PRO' : ''}
         </Text>
         <Text style={styles.username}>@{user.username || 'ogrenci'}</Text>
+        <View style={[styles.premiumBadge, user.isPremium ? styles.premiumActive : styles.premiumPassive]}>
+          <FontAwesome5 solid name={user.isPremium ? 'crown' : 'user'} size={11} color={user.isPremium ? T.accent : T.textMuted} />
+          <Text style={[styles.premiumText, user.isPremium && { color: T.accent }]}>
+            {user.isPremium ? 'Premium aktif' : 'Standart hesap'}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.statsGrid}>
@@ -251,15 +289,46 @@ export default function ProfileScreen() {
       </DarkSheetModal>
 
       <DarkSheetModal visible={settingsVisible} onClose={() => setSettingsVisible(false)}>
-        <Text style={styles.sheetTitle}>Profili duzenle</Text>
+        <Text style={styles.sheetTitle}>Hesap ayarlari</Text>
+        <Text style={styles.inputLabel}>Ad Soyad</Text>
         <View style={styles.inputWrap}>
           <TextInput style={styles.input} value={editName} onChangeText={setEditName} placeholder="Ad Soyad" placeholderTextColor={T.textMuted} />
+        </View>
+        <Text style={styles.inputLabel}>Kullanici adi</Text>
+        <View style={styles.inputWrap}>
+          <TextInput style={styles.input} value={editUsername} onChangeText={setEditUsername} placeholder="kullanici_adi" placeholderTextColor={T.textMuted} autoCapitalize="none" />
+        </View>
+        <Text style={styles.inputLabel}>E-posta</Text>
+        <View style={styles.inputWrap}>
+          <TextInput style={styles.input} value={editEmail} onChangeText={setEditEmail} placeholder="mail@ornek.com" placeholderTextColor={T.textMuted} keyboardType="email-address" autoCapitalize="none" />
+        </View>
+        <View style={styles.premiumRow}>
+          <View>
+            <Text style={styles.premiumRowTitle}>Premium durumu</Text>
+            <Text style={styles.premiumRowText}>{user.isPremium ? 'Premium ozellikler acik.' : 'Premium ozellikler kapali.'}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setSettingsVisible(false);
+              router.push({ pathname: '/premium', params: { id: myUserId } } as any);
+            }}
+            style={styles.premiumAction}
+          >
+            <Text style={styles.premiumActionText}>{user.isPremium ? 'Gor' : 'Yukselt'}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.inputLabel}>Sifre degistir</Text>
+        <View style={styles.inputWrap}>
+          <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Mevcut sifre" placeholderTextColor={T.textMuted} secureTextEntry />
+        </View>
+        <View style={styles.inputWrap}>
+          <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="Yeni sifre" placeholderTextColor={T.textMuted} secureTextEntry />
         </View>
         <View style={styles.sheetActions}>
           <TouchableOpacity onPress={() => setSettingsVisible(false)} style={styles.secondaryBtn}>
             <Text style={styles.secondaryBtnText}>Iptal</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={saveName} disabled={isSaving} style={styles.primaryBtn}>
+          <TouchableOpacity onPress={saveProfile} disabled={isSaving} style={styles.primaryBtn}>
             {isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Kaydet</Text>}
           </TouchableOpacity>
         </View>
@@ -287,6 +356,10 @@ const styles = StyleSheet.create({
   cameraBadge: { position: 'absolute', right: 4, bottom: 4, width: 38, height: 38, borderRadius: 19, backgroundColor: T.primary, borderWidth: 3, borderColor: T.surface, alignItems: 'center', justifyContent: 'center' },
   name: { color: T.textDark, fontSize: 26, fontWeight: '900', marginTop: 18, textAlign: 'center' },
   username: { color: T.textMuted, fontSize: 15, fontWeight: '700', marginTop: 4 },
+  premiumBadge: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+  premiumActive: { backgroundColor: T.lightAmber, borderColor: T.accent },
+  premiumPassive: { backgroundColor: T.softIndigo, borderColor: T.border },
+  premiumText: { color: T.textMuted, fontSize: 12, fontWeight: '900' },
   statsGrid: { flexDirection: 'row', gap: 14, marginBottom: 16 },
   statCard: { flex: 1, alignItems: 'center', gap: 8 },
   statValue: { color: T.textDark, fontSize: 22, fontWeight: '900', textAlign: 'center' },
@@ -301,8 +374,14 @@ const styles = StyleSheet.create({
   analyticsText: { flex: 1, color: T.textDark, fontSize: 15, fontWeight: '900' },
   sheetTitle: { color: T.textDark, fontSize: 20, fontWeight: '900', marginBottom: 10 },
   sheetText: { color: T.textMuted, fontSize: 14, fontWeight: '600', lineHeight: 21, marginBottom: 18 },
+  inputLabel: { color: T.textDark, fontSize: 12, fontWeight: '900', marginBottom: 7, marginLeft: 2 },
   inputWrap: { backgroundColor: T.softIndigo, borderRadius: 14, borderWidth: 1, borderColor: T.border, paddingHorizontal: 14, marginBottom: 16 },
   input: { height: 52, color: T.textDark, fontSize: 16, fontWeight: '600' },
+  premiumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, backgroundColor: T.lightAmber, borderRadius: 16, borderWidth: 1, borderColor: T.accent, padding: 14, marginBottom: 16 },
+  premiumRowTitle: { color: T.textDark, fontSize: 14, fontWeight: '900' },
+  premiumRowText: { color: T.textMuted, fontSize: 12, fontWeight: '700', marginTop: 3 },
+  premiumAction: { backgroundColor: T.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: T.accent },
+  premiumActionText: { color: T.accent, fontSize: 12, fontWeight: '900' },
   sheetActions: { flexDirection: 'row', gap: 10 },
   primaryBtn: { flex: 1, backgroundColor: T.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center', minHeight: 48, paddingHorizontal: 16 },
   primaryBtnText: { color: '#FFFFFF', fontWeight: '900' },
