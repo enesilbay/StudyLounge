@@ -1,29 +1,39 @@
-import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { AppScreen, SoftCard } from './components/common';
+import { C } from './(tabs)/sensor';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+const T = C;
 
 export default function ModalScreen() {
+  const router = useRouter();
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
-      </Link>
-    </ThemedView>
+    <AppScreen contentStyle={styles.screen}>
+      <SoftCard style={styles.card}>
+        <View style={styles.icon}>
+          <FontAwesome5 solid name="info" size={24} color={T.primary} />
+        </View>
+        <Text style={styles.title}>StudyLounge</Text>
+        <Text style={styles.text}>
+          Odak odalari, arkadaslik, liderlik ve analitik akisini tek uygulamada toplar.
+        </Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.button}>
+          <Text style={styles.buttonText}>Kapat</Text>
+        </TouchableOpacity>
+      </SoftCard>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
+  screen: { justifyContent: 'center' },
+  card: { alignItems: 'center', paddingVertical: 32 },
+  icon: { width: 62, height: 62, borderRadius: 31, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  title: { color: T.textDark, fontSize: 24, fontWeight: '900', marginBottom: 8 },
+  text: { color: T.textMuted, fontSize: 14, fontWeight: '600', lineHeight: 21, textAlign: 'center', marginBottom: 24 },
+  button: { backgroundColor: T.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
+  buttonText: { color: '#FFFFFF', fontWeight: '900' },
 });

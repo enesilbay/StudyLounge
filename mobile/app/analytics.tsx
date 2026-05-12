@@ -1,235 +1,211 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, ScrollView, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { LineChart } from 'react-native-chart-kit';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { LineChart } from 'react-native-chart-kit';
 import { apiUrl } from './config/api';
+import { AppScreen, PageHeader, SoftCard } from './components/common';
 import { C } from './(tabs)/sensor';
-import { Theme } from './utils/theme';
 
-const { width, height } = Dimensions.get('window');
 const T = C;
+const { width } = Dimensions.get('window');
 
-// ── DEKORATIF ARKAPLAN NOKTALARI ──
-function BackgroundOrbs() {
-  return (
-    <>
-      <View style={bg.orb1} />
-      <View style={bg.orb2} />
-      <View style={bg.orb3} />
-    </>
-  );
-}
+type AnalyticsRecord = {
+  date: string;
+  focusMinutes: number;
+  hourlyDistribution?: number[];
+};
 
 export default function AnalyticsScreen() {
   const router = useRouter();
-
+  const [records, setRecords] = useState<AnalyticsRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [weeklyData, setWeeklyData] = useState<any>({
-    labels: ['...', '...', '...', '...', '...', '...', '...'],
-    datasets: [{ data: [0, 0, 0, 0, 0, 0, 0], color: (opacity = 1) => `rgba(255, 193, 7, ${opacity})`, strokeWidth: 4 }]
-  });
-  const [totalWeeklyMinutes, setTotalWeeklyMinutes] = useState(0);
-  const [heatmapData, setHeatmapData] = useState<number[]>(new Array(24).fill(0));
+  const [error, setError] = useState('');
 
-  React.useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('user_data');
-        const token = await AsyncStorage.getItem('access_token');
-        if (!stored || !token) return;
-        const user = JSON.parse(stored);
-
-        const res = await fetch(apiUrl(`/users/analytics/${user.id}`), {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (res.ok) {
-          const records = await res.json();
-          
-          // Son 7 günü (bugün dahil) hesapla
-          const today = new Date();
-          const last7Days = Array.from({length: 7}, (_, i) => {
-            const d = new Date(today);
-            d.setDate(today.getDate() - (6 - i));
-            return d.toISOString().split('T')[0];
-          });
-
-          // Günleri formatla (Örn: 'Pzt', 'Sal' vb. veya '08/05')
-          const labels = last7Days.map(d => {
-            const dateObj = new Date(d);
-            const days = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
-            return days[dateObj.getDay()];
-          });
-
-          // Her gün için focusMinutes bul, yoksa 0
-          const dataPoints = last7Days.map(dateStr => {
-            const record = records.find((r: any) => r.date === dateStr);
-            return record ? record.focusMinutes : 0;
-          });
-
-          const sum = dataPoints.reduce((a, b) => a + b, 0);
-
-          setWeeklyData({
-            labels,
-            datasets: [{ 
-              data: dataPoints.every(v => v === 0) ? [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] : dataPoints, // LineChart throws error if all 0
-              color: (opacity = 1) => `rgba(255, 193, 7, ${opacity})`, 
-              strokeWidth: 4 
-            }]
-          });
-          setTotalWeeklyMinutes(sum);
-
-          // Heatmap hesaplama (Son 7 günün saatlik toplamı)
-          const hourlyTotals = new Array(24).fill(0);
-          records.forEach((r: any) => {
-            if (r.hourlyDistribution && Array.isArray(r.hourlyDistribution)) {
-              r.hourlyDistribution.forEach((val: number, i: number) => {
-                hourlyTotals[i] += val;
-              });
-            }
-          });
-          setHeatmapData(hourlyTotals);
-        }
-      } catch (err) {
-        console.error("Analitik hatası:", err);
-      } finally {
-        setIsLoading(false);
+  const fetchAnalytics = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const stored = await AsyncStorage.getItem('user_data');
+      const token = await AsyncStorage.getItem('access_token');
+      if (!stored || !token) {
+        throw new Error('Oturum bulunamadi.');
       }
-    };
+
+      const user = JSON.parse(stored);
+      const res = await fetch(apiUrl(`/users/analytics/${user.id}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error('Analitik alinamadi.');
+      }
+
+      const data = await res.json();
+      setRecords(Array.isArray(data) ? data : []);
+    } catch {
+      setError('Analitik verileri yuklenemedi.');
+      setRecords([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  const analytics = useMemo(() => {
+    const today = new Date();
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (6 - i));
+      return d.toISOString().split('T')[0];
+    });
+
+    const labels = last7Days.map((date) => {
+      const day = new Date(date).getDay();
+      return ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt'][day];
+    });
+
+    const points = last7Days.map((date) => {
+      const record = records.find((item) => item.date === date);
+      return record?.focusMinutes ?? 0;
+    });
+
+    const heatmap = Array<number>(24).fill(0);
+    records.forEach((record) => {
+      record.hourlyDistribution?.forEach((value, index) => {
+        heatmap[index] += value;
+      });
+    });
+
+    return {
+      labels,
+      points,
+      heatmap,
+      total: points.reduce((sum, value) => sum + value, 0),
+      bestHour: heatmap.indexOf(Math.max(...heatmap)),
+    };
+  }, [records]);
+
+  const hasData = analytics.total > 0;
+  const chartPoints = hasData ? analytics.points : Array(7).fill(0.1);
 
   const chartConfig = {
     backgroundGradientFromOpacity: 0,
     backgroundGradientToOpacity: 0,
-    color: (opacity = 1) => `rgba(107, 114, 128, ${opacity * 0.5})`,
+    color: (opacity = 1) => `rgba(26, 35, 126, ${opacity})`,
     labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-    strokeWidth: 2,
-    barPercentage: 0.5,
-    useShadowColorFromDataset: false,
     propsForDots: { r: '5', strokeWidth: '2', stroke: T.accent },
-    propsForBackgroundLines: { strokeDasharray: '', stroke: T.border }
+    propsForBackgroundLines: { strokeDasharray: '', stroke: T.border },
   };
 
   return (
-    <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={T.background} />
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <BackgroundOrbs />
-      </View>
+    <AppScreen scroll>
+      <PageHeader title="Analitik" eyebrow="PRO panel" onBack={() => router.back()} right={<FontAwesome5 solid name="crown" size={18} color={T.accent} />} />
 
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <FontAwesome5 name="arrow-left" size={16} color={T.primary} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>PRO Analitik</Text>
-        <FontAwesome5 name="crown" size={18} color={T.accent} />
-      </View>
-
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent} bounces={true}>
-        
-        {/* Özet Kartları */}
-        <View style={s.summaryRow}>
-          <View style={s.summaryCard}>
-            <View style={s.iconWrapRed}>
-              <FontAwesome5 name="fire-alt" size={18} color={T.danger} />
-            </View>
-            <Text style={s.summaryVal}>{totalWeeklyMinutes}<Text style={s.summaryUnit}>dk</Text></Text>
-            <Text style={s.summaryLabel}>Bu Hafta</Text>
+      {isLoading ? (
+        <SoftCard style={styles.stateCard}>
+          <ActivityIndicator color={T.primary} />
+          <Text style={styles.muted}>Odak verilerin hazirlaniyor.</Text>
+        </SoftCard>
+      ) : error ? (
+        <SoftCard style={styles.stateCard}>
+          <FontAwesome5 solid name="chart-line" size={24} color={T.danger} />
+          <Text style={styles.stateTitle}>{error}</Text>
+          <TouchableOpacity onPress={fetchAnalytics} style={styles.primaryBtn}>
+            <Text style={styles.primaryBtnText}>Tekrar dene</Text>
+          </TouchableOpacity>
+        </SoftCard>
+      ) : (
+        <>
+          <View style={styles.summaryRow}>
+            <Metric icon="fire-alt" label="Bu hafta" value={`${analytics.total} dk`} color={T.danger} />
+            <Metric icon="clock" label="En iyi saat" value={hasData ? `${String(analytics.bestHour).padStart(2, '0')}:00` : '-'} color={T.info} />
           </View>
-          <View style={s.summaryCard}>
-            <View style={s.iconWrapGreen}>
-              <FontAwesome5 name="chart-line" size={18} color={T.success} />
-            </View>
-            <Text style={s.summaryVal}>%24</Text>
-            <Text style={s.summaryLabel}>Artış</Text>
-          </View>
-        </View>
 
-        {/* Çizgi Grafiği (Haftalık Dağılım) */}
-        <View style={s.chartBox}>
-          <Text style={s.chartTitle}>Haftalık Odaklanma</Text>
-          <View pointerEvents="none">
+          {!hasData ? (
+            <SoftCard style={styles.stateCard}>
+              <FontAwesome5 solid name="seedling" size={24} color={T.primary} />
+              <Text style={styles.stateTitle}>Henuz analitik yok</Text>
+              <Text style={styles.muted}>Bir odada odak oturumu tamamladiginda grafikler burada dolacak.</Text>
+            </SoftCard>
+          ) : null}
+
+          <SoftCard style={styles.chartBox}>
+            <Text style={styles.sectionTitle}>Haftalik odaklanma</Text>
             <LineChart
-              data={weeklyData}
-              width={width - 50}
-              height={220}
+              data={{ labels: analytics.labels, datasets: [{ data: chartPoints }] }}
+              width={width - 74}
+              height={218}
               chartConfig={chartConfig}
               bezier
-              style={{ marginVertical: 8, marginLeft: -15 }}
               withVerticalLines={false}
+              style={styles.chart}
             />
-          </View>
-        </View>
+          </SoftCard>
 
-        {/* Saatlik Sıcaklık Haritası (Heatmap) */}
-        <View style={s.chartBox}>
-          <Text style={s.chartTitle}>Sıcaklık Haritası (En Verimli Saatler)</Text>
-          <Text style={{ color: T.textMuted, fontSize: 12, marginBottom: 15 }}>Son 7 gündeki saat bazlı toplam çalışma süreniz.</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-            {heatmapData.map((val, i) => {
-              const max = Math.max(...heatmapData, 1);
-              const opacity = (val / max) * 0.8 + 0.2;
-              return (
-                <View key={i} style={{ width: '15%', alignItems: 'center', marginBottom: 15 }}>
-                  <View style={{ 
-                    width: 34, height: 34, borderRadius: 8, 
-                    backgroundColor: val > 0 ? `rgba(255,193,7,${opacity})` : T.softIndigo, 
-                    justifyContent: 'center', alignItems: 'center',
-                    borderWidth: 1, borderColor: val > 0 ? `rgba(255,193,7,${opacity + 0.2})` : T.border
-                  }}>
-                     {val > 0 && <Text style={{ fontSize: 10, fontWeight: '900', color: T.textDark }}>{val}</Text>}
+          <SoftCard>
+            <Text style={styles.sectionTitle}>Verimli saatler</Text>
+            <View style={styles.heatmap}>
+              {analytics.heatmap.map((value, index) => {
+                const max = Math.max(...analytics.heatmap, 1);
+                const opacity = value > 0 ? value / max : 0;
+                return (
+                  <View key={index} style={styles.hourCell}>
+                    <View
+                      style={[
+                        styles.hourBox,
+                        {
+                          backgroundColor: value > 0 ? `rgba(255, 193, 7, ${0.25 + opacity * 0.65})` : T.softIndigo,
+                          borderColor: value > 0 ? T.accent : T.border,
+                        },
+                      ]}
+                    >
+                      {value > 0 ? <Text style={styles.hourValue}>{value}</Text> : null}
+                    </View>
+                    <Text style={styles.hourLabel}>{String(index).padStart(2, '0')}</Text>
                   </View>
-                  <Text style={{ fontSize: 10, color: T.textMuted, marginTop: 5, fontWeight: 'bold' }}>{String(i).padStart(2, '0')}:00</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Verimlilik Puanı */}
-        <View style={s.scoreBox}>
-          <Text style={s.scoreTitle}>Verimlilik Puanın</Text>
-          <Text style={s.scoreVal}>{totalWeeklyMinutes > 300 ? 'A+' : totalWeeklyMinutes > 150 ? 'B' : 'C'}</Text>
-          <Text style={s.scoreDesc}>
-            {totalWeeklyMinutes > 300 ? 'Harika gidiyorsun! Geçen haftaya göre daha istikrarlısın.' : 'Biraz daha odaklanırsan hedeflerine ulaşacaksın!'}
-          </Text>
-        </View>
-
-      </ScrollView>
-    </SafeAreaView>
+                );
+              })}
+            </View>
+          </SoftCard>
+        </>
+      )}
+    </AppScreen>
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: T.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
-  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: T.primary, letterSpacing: 1 },
-  scrollContent: { paddingHorizontal: 25, paddingBottom: 100 },
-  
-  summaryRow: { flexDirection: 'row', gap: 15, marginBottom: 20 },
-  summaryCard: { flex: 1, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, ...Theme.shadows.soft, overflow: 'hidden' },
-  iconWrapRed: { width: 40, height: 40, borderRadius: 12, backgroundColor: T.softDanger, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  iconWrapGreen: { width: 40, height: 40, borderRadius: 12, backgroundColor: T.softSuccess, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  summaryVal: { fontSize: 26, fontWeight: '900', color: T.textDark },
-  summaryUnit: { fontSize: 14, color: T.textMuted, fontWeight: '600' },
-  summaryLabel: { fontSize: 13, color: T.textMuted, marginTop: 4, fontWeight: '600' },
+function Metric({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
+  return (
+    <SoftCard style={styles.metricCard}>
+      <View style={[styles.metricIcon, { backgroundColor: `${color}18`, borderColor: `${color}44` }]}>
+        <FontAwesome5 solid name={icon} size={16} color={color} />
+      </View>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.muted}>{label}</Text>
+    </SoftCard>
+  );
+}
 
-  chartBox: { backgroundColor: T.surface, borderRadius: 28, padding: 20, paddingBottom: 10, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
-  chartTitle: { alignSelf: 'flex-start', fontSize: 16, fontWeight: '800', color: T.textDark, marginBottom: 10, marginLeft: 5 },
-
-  scoreBox: { borderRadius: 28, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: T.accent, backgroundColor: T.lightAmber, ...Theme.shadows.soft, overflow: 'hidden' },
-  scoreTitle: { fontSize: 14, color: T.textMuted, marginBottom: 5, fontWeight: '700' },
-  scoreVal: { fontSize: 60, fontWeight: '900', color: T.accent, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 15 },
-  scoreDesc: { fontSize: 14, color: T.textDark, textAlign: 'center', marginTop: 15, fontWeight: '500', lineHeight: 22 },
-});
-
-const bg = StyleSheet.create({
-  orb1: { position: 'absolute', top: -height * 0.08, right: -width * 0.22, width: width * 0.75, height: width * 0.75, borderRadius: width * 0.375, backgroundColor: T.softIndigo, opacity: 0.75 },
-  orb2: { position: 'absolute', bottom: -height * 0.06, left: -width * 0.28, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: T.lightAmber, opacity: 0.58 },
-  orb3: { position: 'absolute', top: height * 0.37, right: width * 0.08, width: width * 0.32, height: width * 0.32, borderRadius: width * 0.16, backgroundColor: T.softInfo, opacity: 0.45 },
+const styles = StyleSheet.create({
+  summaryRow: { flexDirection: 'row', gap: 14, marginBottom: 16 },
+  metricCard: { flex: 1 },
+  metricIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginBottom: 14 },
+  metricValue: { color: T.textDark, fontSize: 24, fontWeight: '900' },
+  muted: { color: T.textMuted, fontSize: 13, fontWeight: '600', lineHeight: 19, textAlign: 'center' },
+  sectionTitle: { color: T.textDark, fontSize: 16, fontWeight: '900', marginBottom: 12 },
+  chartBox: { marginBottom: 16, overflow: 'hidden' },
+  chart: { marginLeft: -18, marginVertical: 4 },
+  heatmap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  hourCell: { width: '15%', alignItems: 'center', marginBottom: 14 },
+  hourBox: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  hourValue: { color: T.textDark, fontSize: 10, fontWeight: '900' },
+  hourLabel: { color: T.textMuted, fontSize: 10, fontWeight: '800', marginTop: 5 },
+  stateCard: { alignItems: 'center', gap: 12, paddingVertical: 34, marginBottom: 16 },
+  stateTitle: { color: T.textDark, fontSize: 17, fontWeight: '900', textAlign: 'center' },
+  primaryBtn: { backgroundColor: T.primary, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12 },
+  primaryBtnText: { color: '#FFFFFF', fontWeight: '900' },
 });
