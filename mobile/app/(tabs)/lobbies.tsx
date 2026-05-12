@@ -9,9 +9,9 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { apiUrl, assetUrl } from '../config/api';
 import { Theme } from '../utils/theme';
 
-const BACKEND_URL = 'http://10.192.24.96:3000';
 const T = Theme.colors;
 const { width, height } = Dimensions.get('window');
 
@@ -164,7 +164,7 @@ export default function LobbiesScreen() {
         const parsed = JSON.parse(stored);
         setIsPremium(parsed.isPremium === true);
         if (parsed.avatarUrl) {
-          setAvatarUrl(`${BACKEND_URL}${parsed.avatarUrl}`);
+          setAvatarUrl(assetUrl(parsed.avatarUrl));
         }
       }
     } catch (e) {
@@ -177,7 +177,7 @@ export default function LobbiesScreen() {
   const fetchLobbies = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${BACKEND_URL}/lobbies`, {
+      const response = await fetch(apiUrl('/lobbies'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.status === 401) {
@@ -198,8 +198,8 @@ export default function LobbiesScreen() {
       const token = await getToken();
       const headers = { Authorization: `Bearer ${token}` };
       const [friendsRes, reqsRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/users/friends/${myUserId}`, { headers }),
-        fetch(`${BACKEND_URL}/users/friend-requests/${myUserId}`, { headers })
+        fetch(apiUrl(`/users/friends/${myUserId}`), { headers }),
+        fetch(apiUrl(`/users/friend-requests/${myUserId}`), { headers })
       ]);
       const friendsData = await friendsRes.json();
       const reqsData = await reqsRes.json();
@@ -217,7 +217,7 @@ export default function LobbiesScreen() {
   const handleRespondRequest = async (requestId: number, status: 'accepted' | 'rejected') => {
     try {
       const token = await getToken();
-      const res = await fetch(`${BACKEND_URL}/users/respond-request`, {
+      const res = await fetch(apiUrl('/users/respond-request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ requestId, receiverId: myUserId, status }),
@@ -238,7 +238,7 @@ export default function LobbiesScreen() {
 
     try {
       const token = await getToken();
-      const res = await fetch(`${BACKEND_URL}/lobbies`, {
+      const res = await fetch(apiUrl('/lobbies'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ 
@@ -266,7 +266,7 @@ export default function LobbiesScreen() {
     setIsVerifying(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${BACKEND_URL}/lobbies/verify-password`, {
+      const res = await fetch(apiUrl('/lobbies/verify-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ lobbyId: selectedLobby.id, password: enterPassword }),
@@ -291,7 +291,7 @@ export default function LobbiesScreen() {
     setIsSendingFriendReq(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${BACKEND_URL}/users/friend-request`, {
+      const res = await fetch(apiUrl('/users/friend-request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ senderId: myUserId, receiverUsername: friendUsername.trim() }),
@@ -553,7 +553,7 @@ export default function LobbiesScreen() {
                     <View key={req.id} style={flist.itemWrap}>
                       <View style={flist.avatar}>
                         {req.sender.avatarUrl ? (
-                          <Image source={{ uri: `${BACKEND_URL}${req.sender.avatarUrl}` }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                          <Image source={{ uri: assetUrl(req.sender.avatarUrl) ?? undefined }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
                         ) : (
                           <Text style={flist.avatarText}>{req.sender.fullName.charAt(0)}</Text>
                         )}
@@ -588,7 +588,7 @@ export default function LobbiesScreen() {
                   <View key={friend.id} style={flist.itemWrap}>
                     <View style={flist.avatar}>
                       {friend.avatarUrl ? (
-                        <Image source={{ uri: `${BACKEND_URL}${friend.avatarUrl}` }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                        <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
                       ) : (
                         <Text style={flist.avatarText}>{friend.fullName.charAt(0)}</Text>
                       )}

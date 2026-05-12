@@ -8,10 +8,10 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiUrl, assetUrl } from './config/api';
 import { getRankInfo, getRankProgress } from './utils/rank';
 import { Theme } from './utils/theme';
 
-const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
 const T = Theme.colors;
 
@@ -47,7 +47,7 @@ export default function ProfileScreen() {
   const fetchUserData = async () => {
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/users/leaderboard`, {
+      const res = await fetch(apiUrl('/users/leaderboard'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const allUsers = await res.json();
@@ -101,7 +101,7 @@ export default function ProfileScreen() {
       } as any);
 
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/users/avatar/${myUserId}`, {
+      const res = await fetch(apiUrl(`/users/avatar/${myUserId}`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
 
   if (!user) return <View style={s.safe} />;
 
-  const fullAvatarUrl = user.avatarUrl ? `${BACKEND_URL}${user.avatarUrl}` : null;
+  const fullAvatarUrl = assetUrl(user.avatarUrl);
 
   return (
     <SafeAreaView style={s.safe}>
@@ -283,7 +283,7 @@ export default function ProfileScreen() {
                   setIsSavingName(true);
                   try {
                     const token = await AsyncStorage.getItem('access_token');
-                    const res = await fetch(`${BACKEND_URL}/users/${myUserId}/profile`, {
+                    const res = await fetch(apiUrl(`/users/${myUserId}/profile`), {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                       body: JSON.stringify({ fullName: editName.trim() })

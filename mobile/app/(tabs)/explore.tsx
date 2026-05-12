@@ -7,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiUrl } from '../config/api';
 import { Theme } from '../utils/theme';
 
-const BACKEND_URL = 'http://10.192.24.96:3000';
 const T = Theme.colors;
 const { width, height } = Dimensions.get('window');
 
@@ -82,7 +82,7 @@ export default function ExploreScreen() {
   const fetchExploreData = async () => {
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/lobbies`, {
+      const res = await fetch(apiUrl('/lobbies'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

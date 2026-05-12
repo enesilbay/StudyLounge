@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiUrl } from './config/api';
 import { Theme } from './utils/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -40,7 +41,7 @@ export default function AnalyticsScreen() {
         if (!stored || !token) return;
         const user = JSON.parse(stored);
 
-        const res = await fetch(`http://10.192.24.96:3000/users/analytics/${user.id}`, {
+        const res = await fetch(apiUrl(`/users/analytics/${user.id}`), {
           headers: { Authorization: `Bearer ${token}` }
         });
         

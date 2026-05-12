@@ -4,9 +4,8 @@ import { Platform } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiUrl } from '../config/api';
 import { Theme } from '../utils/theme';
-
-const BACKEND_URL = 'http://10.192.24.96:3000';
 
 // Expo Go (SDK 53+) Android push bildirimlerini desteklemiyor.
 // Tüm expo-notifications API'si sadece gerçek build'lerde yükleniyor.
@@ -47,7 +46,7 @@ export default function TabLayout() {
       const accessToken = await AsyncStorage.getItem('access_token');
       if (stored && accessToken) {
         const user = JSON.parse(stored);
-        await fetch(`${BACKEND_URL}/users/${user.id}/push-token`, {
+        await fetch(apiUrl(`/users/${user.id}/push-token`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

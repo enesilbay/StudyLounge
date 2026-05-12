@@ -16,11 +16,12 @@ import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { BACKEND_URL, apiUrl, assetUrl } from '../config/api';
 import { Theme } from '../utils/theme';
 
-const SOCKET_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
-const T = Theme.colors;
+export const C = Theme.colors;
+const T = C;
 
 const SOUNDS = [
   { key: 'library', label: 'Kütüphane', icon: 'book', file: require('../../assets/sounds/library.mp3') },
@@ -129,7 +130,7 @@ export default function SensorScreen() {
   const fetchChatHistory = async () => {
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${SOCKET_URL}/messages/${roomName}`, {
+      const res = await fetch(apiUrl(`/messages/${roomName}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -179,7 +180,7 @@ export default function SensorScreen() {
 
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${SOCKET_URL}/messages/upload`, {
+      const res = await fetch(apiUrl('/messages/upload'), {
         method: 'POST', body: formData, headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -277,7 +278,7 @@ export default function SensorScreen() {
   useEffect(() => {
     const initSocket = async () => {
       const token = await AsyncStorage.getItem('access_token');
-      socketRef.current = io(SOCKET_URL, { transports: ['websocket'], auth: { token } });
+      socketRef.current = io(BACKEND_URL, { transports: ['websocket'], auth: { token } });
       socketRef.current.on('connect', () => {
         setIsConnected(true);
         socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName, maxUsers: params.maxUsers });
@@ -585,11 +586,11 @@ export default function SensorScreen() {
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
                     {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={T.accent} />}</Text>}
                     {isImage ? (
-                      <TouchableOpacity onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
-                        <Image source={{ uri: `${SOCKET_URL}${item.fileUrl}` }} style={s.imagePreview} />
+                      <TouchableOpacity onPress={() => Linking.openURL(assetUrl(item.fileUrl) ?? '')}>
+                        <Image source={{ uri: assetUrl(item.fileUrl) ?? '' }} style={s.imagePreview} />
                       </TouchableOpacity>
                     ) : isFile ? (
-                      <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
+                      <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(assetUrl(item.fileUrl) ?? '')}>
                         <View style={s.fileIconWrap}><FontAwesome5 solid name="file-pdf" size={16} color={T.danger} /></View>
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
                       </TouchableOpacity>

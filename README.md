@@ -78,3 +78,4 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 
 - [x] Backend unit/e2e testleri, lint/build kontrolleri, mobile typecheck, Expo Doctor ve web build/lint kontrolleri calisir hale getirildi.
 - [x] Backend JWT, veritabani, CORS ve runtime config degerleri env tabanli hale getirildi.
+- [x] Mobile backend URL kullanimlari tek API config dosyasinda toplandi.

@@ -8,10 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { apiUrl } from '../config/api';
 import { Theme } from '../utils/theme';
 
 const T = Theme.colors;
-const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width } = Dimensions.get('window');
 
 // ── ANİMASYONLU INPUT BİLEŞENİ ──
@@ -125,7 +125,7 @@ export default function AuthScreen() {
     setIsLoading(true);
     const endpoint = isLogin ? '/auth/login' : '/auth/register';
     try {
-      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+      const response = await fetch(apiUrl(endpoint), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(isLogin ? { email, password } : { username, fullName, email, password }),
@@ -149,7 +149,7 @@ export default function AuthScreen() {
     if (!email) { Alert.alert('Eksik Bilgi', 'Lütfen e-posta adresinizi girin.'); return; }
     setIsLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
+      const response = await fetch(apiUrl('/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -170,7 +170,7 @@ export default function AuthScreen() {
     if (!email || !resetToken || !newPassword) { Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.'); return; }
     setIsLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+      const response = await fetch(apiUrl('/auth/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, token: resetToken, newPass: newPassword }),

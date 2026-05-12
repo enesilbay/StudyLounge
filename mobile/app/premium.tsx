@@ -5,9 +5,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiUrl } from './config/api';
 import { Theme } from './utils/theme';
 
-const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
 const T = Theme.colors;
 
@@ -33,7 +33,7 @@ export default function PremiumScreen() {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/users/upgrade/${myUserId}`, {
+      const res = await fetch(apiUrl(`/users/upgrade/${myUserId}`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

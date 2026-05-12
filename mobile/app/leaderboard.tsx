@@ -4,10 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { apiUrl, assetUrl } from './config/api';
 import { getRankInfo } from './utils/rank';
 import { Theme } from './utils/theme';
 
-const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
 const T = Theme.colors;
 
@@ -31,7 +31,7 @@ export default function LeaderboardScreen() {
     const fetchLeaderboard = async () => {
       try {
         const token = await AsyncStorage.getItem('access_token');
-        const response = await fetch(`${BACKEND_URL}/users/leaderboard`, {
+        const response = await fetch(apiUrl('/users/leaderboard'), {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await response.json();
@@ -84,7 +84,7 @@ export default function LeaderboardScreen() {
                 {/* ── AVATAR KISMI ── */}
                 <View style={styles.avatarContainer}>
                   {item.avatarUrl ? (
-                    <Image source={{ uri: `${BACKEND_URL}${item.avatarUrl}` }} style={styles.avatarImage} />
+                    <Image source={{ uri: assetUrl(item.avatarUrl) ?? undefined }} style={styles.avatarImage} />
                   ) : (
                     <Text style={styles.avatarInitials}>
                       {item.fullName ? item.fullName.charAt(0).toUpperCase() : 'U'}
