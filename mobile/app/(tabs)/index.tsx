@@ -2,18 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
-  ScrollView, Animated, Dimensions, StatusBar
+  ScrollView, Animated, Dimensions, StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { Theme } from '../utils/theme';
 
-import { C } from './sensor';
-
-const BACKEND_URL = "http://10.192.24.96:3000";
-const { width, height } = Dimensions.get('window');
+const T = Theme.colors;
+const BACKEND_URL = 'http://10.192.24.96:3000';
+const { width } = Dimensions.get('window');
 
 // ── ANİMASYONLU INPUT BİLEŞENİ ──
 function InputField({
@@ -28,9 +27,7 @@ function InputField({
   iconName: string;
 }) {
   const [focused, setFocused] = useState(false);
-  // Renk animasyonu (useNativeDriver: false zorunlu)
   const colorAnim = useRef(new Animated.Value(0)).current;
-  // Scale animasyonu (useNativeDriver: true - ayrı değer)
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -38,19 +35,19 @@ function InputField({
     Animated.spring(scaleAnim, { toValue: focused ? 1.01 : 1, tension: 120, friction: 8, useNativeDriver: true }).start();
   }, [focused]);
 
-  const borderColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [C.border, C.primary] });
-  const bgColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.04)', 'rgba(255,193,7,0.08)'] });
+  const borderColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [T.border, T.primary] });
+  const bgColor = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [T.surface, T.softIndigo] });
 
   return (
     <Animated.View style={[field.wrap, { borderColor, backgroundColor: bgColor }]}>
       <Animated.View style={[{ flex: 1, flexDirection: 'row', alignItems: 'center' }, { transform: [{ scale: scaleAnim }] }]}>
         <View style={field.iconWrap}>
-          <FontAwesome5 name={iconName} size={15} color={focused ? C.primary : 'rgba(255,255,255,0.3)'} solid />
+          <FontAwesome5 name={iconName} size={15} color={focused ? T.primary : T.textMuted} solid />
         </View>
         <TextInput
           style={field.input}
           placeholder={placeholder}
-          placeholderTextColor="rgba(255,255,255,0.25)"
+          placeholderTextColor={T.textMuted}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={secureTextEntry}
@@ -61,19 +58,6 @@ function InputField({
         />
       </Animated.View>
     </Animated.View>
-  );
-}
-
-// ── DEKORATIF ARKAPLAN NOKTALARI ──
-function BackgroundOrbs() {
-  return (
-    <>
-      <View style={bg.orb1} />
-      <View style={bg.orb2} />
-      <View style={bg.orb3} />
-      <View style={bg.gridLine1} />
-      <View style={bg.gridLine2} />
-    </>
   );
 }
 
@@ -93,13 +77,13 @@ export default function AuthScreen() {
   const [newPassword, setNewPassword] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
   const formSlide = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 10, useNativeDriver: true }),
     ]).start();
@@ -108,7 +92,7 @@ export default function AuthScreen() {
 
   const switchTab = (toLogin: boolean) => {
     Animated.sequence([
-      Animated.timing(formSlide, { toValue: 10, duration: 80, useNativeDriver: true }),
+      Animated.timing(formSlide, { toValue: 8, duration: 80, useNativeDriver: true }),
       Animated.spring(formSlide, { toValue: 0, tension: 100, friction: 10, useNativeDriver: true }),
     ]).start();
     setIsLogin(toLogin);
@@ -123,7 +107,7 @@ export default function AuthScreen() {
         const parsed = JSON.parse(userData);
         router.replace({ pathname: '/lobbies' as any, params: parsed });
       }
-    } catch (e) { }
+    } catch (e) {}
   };
 
   const handleAuth = async () => {
@@ -162,10 +146,7 @@ export default function AuthScreen() {
   };
 
   const handleForgotPassword = async () => {
-    if (!email) {
-      Alert.alert('Eksik Bilgi', 'Lütfen e-posta adresinizi girin.');
-      return;
-    }
+    if (!email) { Alert.alert('Eksik Bilgi', 'Lütfen e-posta adresinizi girin.'); return; }
     setIsLoading(true);
     try {
       const response = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
@@ -177,22 +158,16 @@ export default function AuthScreen() {
       if (response.ok) {
         Alert.alert('Başarılı', data.message);
         setIsForgotPassword(false);
-        setIsResetPassword(true); // Kod girme ekranına geç
+        setIsResetPassword(true);
       } else {
         Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
       }
-    } catch {
-      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.'); }
+    finally { setIsLoading(false); }
   };
 
   const handleResetPassword = async () => {
-    if (!email || !resetToken || !newPassword) {
-      Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.');
-      return;
-    }
+    if (!email || !resetToken || !newPassword) { Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.'); return; }
     setIsLoading(true);
     try {
       const response = await fetch(`${BACKEND_URL}/auth/reset-password`, {
@@ -208,19 +183,17 @@ export default function AuthScreen() {
       } else {
         Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
       }
-    } catch {
-      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.'); }
+    finally { setIsLoading(false); }
   };
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.background} />
 
-      {/* DEKORATIF ARKAPLAN */}
-      <BackgroundOrbs />
+      {/* Hafif dekoratif arkaplan lekeleri */}
+      <View style={s.blobTop} />
+      <View style={s.blobBottom} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -229,18 +202,12 @@ export default function AuthScreen() {
 
             {/* LOGO & BAŞLIK */}
             <Animated.View style={[s.heroSection, { transform: [{ scale: logoScale }] }]}>
-              {/* Logo İkonu */}
-              <LinearGradient
-                colors={['rgba(255,193,7,0.2)', 'rgba(255,193,7,0.05)']}
-                style={s.logoCircle}
-              >
-                <LinearGradient colors={[C.primary, C.primaryDark]} style={s.logoInner}>
-                  <FontAwesome5 solid name="brain" size={30} color={C.btnText} />
-                </LinearGradient>
-              </LinearGradient>
-
-              <Text style={s.appName}>StudyLounge</Text>
-              <Text style={s.tagline}>Ayrı Masalarda,Aynı Lobide</Text>
+              <Image
+                source={require('../../assets/images/logo-light.png')}
+                style={s.logoImage}
+                resizeMode="contain"
+              />
+              <Text style={s.tagline}>Ayrı Masalarda, Aynı Lobide.</Text>
             </Animated.View>
 
             {/* KART */}
@@ -253,8 +220,7 @@ export default function AuthScreen() {
                   onPress={() => switchTab(true)}
                   activeOpacity={0.8}
                 >
-                  {isLogin && <LinearGradient colors={['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)']} style={StyleSheet.absoluteFill} />}
-                  <FontAwesome5 solid name="sign-in-alt" size={13} color={isLogin ? C.primary : 'rgba(255,255,255,0.3)'} style={{ marginRight: 7 }} />
+                  <FontAwesome5 solid name="sign-in-alt" size={13} color={isLogin ? T.primary : T.textMuted} style={{ marginRight: 7 }} />
                   <Text style={[s.tabText, isLogin && s.tabTextActive]}>Giriş Yap</Text>
                 </TouchableOpacity>
 
@@ -265,8 +231,7 @@ export default function AuthScreen() {
                   onPress={() => switchTab(false)}
                   activeOpacity={0.8}
                 >
-                  {!isLogin && <LinearGradient colors={['rgba(255,193,7,0.15)', 'rgba(255,193,7,0.05)']} style={StyleSheet.absoluteFill} />}
-                  <FontAwesome5 solid name="user-plus" size={13} color={!isLogin ? C.primary : 'rgba(255,255,255,0.3)'} style={{ marginRight: 7 }} />
+                  <FontAwesome5 solid name="user-plus" size={13} color={!isLogin ? T.primary : T.textMuted} style={{ marginRight: 7 }} />
                   <Text style={[s.tabText, !isLogin && s.tabTextActive]}>Kayıt Ol</Text>
                 </TouchableOpacity>
               </View>
@@ -280,7 +245,7 @@ export default function AuthScreen() {
                   </>
                 )}
                 <InputField placeholder="E-posta adresi" value={email} onChangeText={setEmail} keyboardType="email-address" iconName="envelope" />
-                
+
                 {!isForgotPassword && !isResetPassword && (
                   <InputField placeholder="Şifre" value={password} onChangeText={setPassword} secureTextEntry iconName="lock" />
                 )}
@@ -298,27 +263,23 @@ export default function AuthScreen() {
                   </TouchableOpacity>
                 )}
 
-                {/* GİRİŞ BUTONU */}
-                <TouchableOpacity onPress={isForgotPassword ? handleForgotPassword : (isResetPassword ? handleResetPassword : handleAuth)} disabled={isLoading} activeOpacity={0.85} style={s.btnWrap}>
-                  <LinearGradient
-                    colors={isLoading ? ['#475569', '#334155'] : [C.primary, C.primaryDark, C.primary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={s.btn}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator color={C.btnText} />
-                    ) : (
-                      <>
-                        <Text style={s.btnText}>
-                          {isForgotPassword ? 'KOD GÖNDER' : (isResetPassword ? 'ŞİFREYİ GÜNCELLE' : (isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'))}
-                        </Text>
-                        <View style={s.btnArrow}>
-                          <FontAwesome5 solid name="arrow-right" size={12} color={C.primary} />
-                        </View>
-                      </>
-                    )}
-                  </LinearGradient>
+                {/* ANA BUTON */}
+                <TouchableOpacity
+                  onPress={isForgotPassword ? handleForgotPassword : (isResetPassword ? handleResetPassword : handleAuth)}
+                  disabled={isLoading}
+                  activeOpacity={0.85}
+                  style={s.btn}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Text style={s.btnText}>
+                        {isForgotPassword ? 'KOD GÖNDER' : (isResetPassword ? 'ŞİFREYİ GÜNCELLE' : (isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'))}
+                      </Text>
+                      <FontAwesome5 solid name="arrow-right" size={13} color="#FFFFFF" />
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 {(isForgotPassword || isResetPassword) && (
@@ -328,7 +289,7 @@ export default function AuthScreen() {
                 )}
               </View>
 
-              {/* ALT METİN */}
+              {/* ALT GEÇİŞ */}
               <TouchableOpacity style={s.switchRow} onPress={() => switchTab(!isLogin)} activeOpacity={0.7}>
                 <Text style={s.switchText}>
                   {isLogin ? 'Henüz hesabın yok mu?  ' : 'Zaten üye misin?  '}
@@ -337,7 +298,7 @@ export default function AuthScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* ALT ÖZELLIK BANERLERİ */}
+            {/* ALT ÖZELLİK CHİPLERİ */}
             <View style={s.features}>
               {[
                 { icon: 'users', text: 'Çalışma Odaları' },
@@ -345,7 +306,7 @@ export default function AuthScreen() {
                 { icon: 'music', text: 'Atmosfer Sesi' },
               ].map((f) => (
                 <View key={f.text} style={s.featureChip}>
-                  <FontAwesome5 solid name={f.icon} size={11} color={C.primary} />
+                  <FontAwesome5 solid name={f.icon} size={11} color={T.primary} />
                   <Text style={s.featureText}>{f.text}</Text>
                 </View>
               ))}
@@ -358,74 +319,93 @@ export default function AuthScreen() {
   );
 }
 
-// ─────────────────────────────────────────────
-// STİLLER
-// ─────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 30 },
-  content: { width: '100%', maxWidth: 420, alignItems: 'center' },
+  safe: { flex: 1, backgroundColor: T.background },
+  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 40 },
+  content: { width: '100%', maxWidth: 440, alignItems: 'center' },
 
-  heroSection: { alignItems: 'center', marginBottom: 36 },
-  logoCircle: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 18, borderWidth: 1, borderColor: 'rgba(255,193,7,0.2)' },
-  logoInner: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 10 },
-  appName: { fontSize: 34, fontWeight: '900', color: C.text, letterSpacing: 1, marginBottom: 6 },
-  tagline: { fontSize: 14, color: 'rgba(255,255,255,0.45)', fontWeight: '500', letterSpacing: 0.3 },
+  // Dekoratif arka plan lekeleri (açık, yumuşak)
+  blobTop: {
+    position: 'absolute', top: -80, right: -60,
+    width: 260, height: 260, borderRadius: 130,
+    backgroundColor: T.softIndigo,
+    opacity: 0.7,
+  },
+  blobBottom: {
+    position: 'absolute', bottom: -60, left: -60,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: T.lightAmber,
+    opacity: 0.5,
+  },
+
+  heroSection: { alignItems: 'center', marginBottom: 32 },
+  logoImage: { width: width * 0.55, height: 70, marginBottom: 14 },
+  tagline: { fontSize: 14, color: T.textMuted, fontWeight: '500', letterSpacing: 0.3, textAlign: 'center' },
 
   card: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderColor: C.border,
+    backgroundColor: T.surface,
+    borderColor: T.border,
     borderWidth: 1,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingVertical: 28,
     paddingHorizontal: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.6,
-    shadowRadius: 30,
-    elevation: 15,
+    ...Theme.shadows.medium,
   },
 
-  tabContainer: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', marginBottom: 24, overflow: 'hidden' },
-  tabBtn: { flex: 1, flexDirection: 'row', paddingVertical: 14, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
-  tabBtnActive: { borderBottomWidth: 2, borderBottomColor: C.primary },
-  tabDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.07)', marginVertical: 10 },
-  tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.35)' },
-  tabTextActive: { color: C.primary, fontWeight: '800' },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: T.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.border,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  tabBtn: { flex: 1, flexDirection: 'row', paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
+  tabBtnActive: { backgroundColor: T.softIndigo, borderBottomWidth: 2, borderBottomColor: T.primary },
+  tabDivider: { width: 1, backgroundColor: T.border, marginVertical: 8 },
+  tabText: { fontSize: 14, fontWeight: '600', color: T.textMuted },
+  tabTextActive: { color: T.primary, fontWeight: '800' },
 
-  form: { gap: 13 },
+  form: { gap: 12 },
 
-  btnWrap: { marginTop: 6 },
-  btn: { height: 56, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  btnText: { fontSize: 15, fontWeight: '900', color: C.btnText, letterSpacing: 1.5 },
-  btnArrow: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(26,15,0,0.3)', alignItems: 'center', justifyContent: 'center' },
+  btn: {
+    height: 54,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: T.primary,
+    marginTop: 6,
+    ...Theme.shadows.medium,
+  },
+  btnText: { fontSize: 15, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.2 },
 
   switchRow: { marginTop: 22, alignItems: 'center' },
-  switchText: { fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: '500' },
-  switchAction: { color: C.primary, fontWeight: '800' },
+  switchText: { fontSize: 13, color: T.textMuted, fontWeight: '500' },
+  switchAction: { color: T.primary, fontWeight: '800' },
 
-  forgotBtn: { alignSelf: 'flex-end', marginTop: -5, marginBottom: 5 },
-  forgotText: { color: 'rgba(255,193,7,0.7)', fontSize: 13, fontWeight: '600' },
+  forgotBtn: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 2 },
+  forgotText: { color: T.accent, fontSize: 13, fontWeight: '600' },
 
   backToLoginBtn: { marginTop: 10, alignItems: 'center' },
-  backToLoginText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: '600' },
+  backToLoginText: { color: T.textMuted, fontSize: 13, fontWeight: '600' },
 
-  features: { flexDirection: 'row', gap: 10, marginTop: 28, flexWrap: 'wrap', justifyContent: 'center' },
-  featureChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,193,7,0.08)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: 'rgba(255,193,7,0.15)' },
-  featureText: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: '600' },
-});
-
-const bg = StyleSheet.create({
-  orb1: { position: 'absolute', top: -height * 0.08, left: -width * 0.2, width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35, backgroundColor: 'rgba(255,193,7,0.06)' },
-  orb2: { position: 'absolute', bottom: height * 0.05, right: -width * 0.3, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: 'rgba(99,102,241,0.05)' },
-  orb3: { position: 'absolute', top: height * 0.4, left: width * 0.1, width: width * 0.3, height: width * 0.3, borderRadius: width * 0.15, backgroundColor: 'rgba(255,193,7,0.04)' },
-  gridLine1: { position: 'absolute', top: 0, left: width * 0.33, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
-  gridLine2: { position: 'absolute', top: 0, left: width * 0.66, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
+  features: { flexDirection: 'row', gap: 10, marginTop: 24, flexWrap: 'wrap', justifyContent: 'center' },
+  featureChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: T.softIndigo,
+    borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderWidth: 1, borderColor: T.border,
+  },
+  featureText: { fontSize: 12, color: T.primary, fontWeight: '600' },
 });
 
 const field = StyleSheet.create({
-  wrap: { height: 56, borderRadius: 16, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 },
+  wrap: { height: 54, borderRadius: 12, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
   iconWrap: { width: 28, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
-  input: { flex: 1, fontSize: 15, color: C.text, fontWeight: '500' },
+  input: { flex: 1, fontSize: 15, color: T.textDark, fontWeight: '500' },
 });
