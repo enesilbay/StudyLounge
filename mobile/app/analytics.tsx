@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import { C } from './(tabs)/sensor';
+import { Theme } from './utils/theme';
 
 const { width, height } = Dimensions.get('window');
+const T = Theme.colors;
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {
@@ -18,8 +17,6 @@ function BackgroundOrbs() {
       <View style={bg.orb1} />
       <View style={bg.orb2} />
       <View style={bg.orb3} />
-      <View style={bg.gridLine1} />
-      <View style={bg.gridLine2} />
     </>
   );
 }
@@ -106,27 +103,28 @@ export default function AnalyticsScreen() {
   const chartConfig = {
     backgroundGradientFromOpacity: 0,
     backgroundGradientToOpacity: 0,
-    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.5})`,
-    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.5})`,
+    color: (opacity = 1) => `rgba(107, 114, 128, ${opacity * 0.5})`,
+    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
     strokeWidth: 2,
     barPercentage: 0.5,
     useShadowColorFromDataset: false,
-    propsForDots: { r: '5', strokeWidth: '2', stroke: C.primary },
-    propsForBackgroundLines: { strokeDasharray: '', stroke: C.card }
+    propsForDots: { r: '5', strokeWidth: '2', stroke: T.accent },
+    propsForBackgroundLines: { strokeDasharray: '', stroke: T.border }
   };
 
   return (
     <SafeAreaView style={s.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor={T.background} />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BackgroundOrbs />
       </View>
 
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <FontAwesome5 name="arrow-left" size={16} color="rgba(255,255,255,0.7)" />
+          <FontAwesome5 name="arrow-left" size={16} color={T.primary} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>PRO Analitik</Text>
-        <FontAwesome5 name="crown" size={18} color={C.primary} />
+        <FontAwesome5 name="crown" size={18} color={T.accent} />
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent} bounces={true}>
@@ -134,17 +132,15 @@ export default function AnalyticsScreen() {
         {/* Özet Kartları */}
         <View style={s.summaryRow}>
           <View style={s.summaryCard}>
-            <LinearGradient colors={[C.card, 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} />
             <View style={s.iconWrapRed}>
-              <FontAwesome5 name="fire-alt" size={18} color={C.danger} />
+              <FontAwesome5 name="fire-alt" size={18} color={T.danger} />
             </View>
             <Text style={s.summaryVal}>{totalWeeklyMinutes}<Text style={s.summaryUnit}>dk</Text></Text>
             <Text style={s.summaryLabel}>Bu Hafta</Text>
           </View>
           <View style={s.summaryCard}>
-            <LinearGradient colors={[C.card, 'rgba(255,255,255,0.02)']} style={StyleSheet.absoluteFillObject} />
             <View style={s.iconWrapGreen}>
-              <FontAwesome5 name="chart-line" size={18} color={C.success} />
+              <FontAwesome5 name="chart-line" size={18} color={T.success} />
             </View>
             <Text style={s.summaryVal}>%24</Text>
             <Text style={s.summaryLabel}>Artış</Text>
@@ -170,22 +166,22 @@ export default function AnalyticsScreen() {
         {/* Saatlik Sıcaklık Haritası (Heatmap) */}
         <View style={s.chartBox}>
           <Text style={s.chartTitle}>Sıcaklık Haritası (En Verimli Saatler)</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 15 }}>Son 7 gündeki saat bazlı toplam çalışma süreniz.</Text>
+          <Text style={{ color: T.textMuted, fontSize: 12, marginBottom: 15 }}>Son 7 gündeki saat bazlı toplam çalışma süreniz.</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
             {heatmapData.map((val, i) => {
               const max = Math.max(...heatmapData, 1);
-              const opacity = (val / max) * 0.8 + 0.2; // Min opacity 0.2
+              const opacity = (val / max) * 0.8 + 0.2;
               return (
                 <View key={i} style={{ width: '15%', alignItems: 'center', marginBottom: 15 }}>
                   <View style={{ 
                     width: 34, height: 34, borderRadius: 8, 
-                    backgroundColor: val > 0 ? `rgba(255,193,7,${opacity})` : 'rgba(255,255,255,0.05)', 
+                    backgroundColor: val > 0 ? `rgba(255,193,7,${opacity})` : T.softIndigo, 
                     justifyContent: 'center', alignItems: 'center',
-                    borderWidth: 1, borderColor: val > 0 ? `rgba(255,193,7,${opacity + 0.2})` : 'rgba(255,255,255,0.02)'
+                    borderWidth: 1, borderColor: val > 0 ? `rgba(255,193,7,${opacity + 0.2})` : T.border
                   }}>
-                     {val > 0 && <Text style={{ fontSize: 10, fontWeight: '900', color: C.bg }}>{val}</Text>}
+                     {val > 0 && <Text style={{ fontSize: 10, fontWeight: '900', color: T.textDark }}>{val}</Text>}
                   </View>
-                  <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 5, fontWeight: 'bold' }}>{String(i).padStart(2, '0')}:00</Text>
+                  <Text style={{ fontSize: 10, color: T.textMuted, marginTop: 5, fontWeight: 'bold' }}>{String(i).padStart(2, '0')}:00</Text>
                 </View>
               );
             })}
@@ -194,7 +190,6 @@ export default function AnalyticsScreen() {
 
         {/* Verimlilik Puanı */}
         <View style={s.scoreBox}>
-          <LinearGradient colors={['rgba(255,193,7,0.1)', 'rgba(255,193,7,0.02)']} style={[StyleSheet.absoluteFillObject, { borderRadius: 28 }]} />
           <Text style={s.scoreTitle}>Verimlilik Puanın</Text>
           <Text style={s.scoreVal}>{totalWeeklyMinutes > 300 ? 'A+' : totalWeeklyMinutes > 150 ? 'B' : 'C'}</Text>
           <Text style={s.scoreDesc}>
@@ -208,33 +203,31 @@ export default function AnalyticsScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: T.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
-  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: C.primary, letterSpacing: 1 },
+  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: T.primary, letterSpacing: 1 },
   scrollContent: { paddingHorizontal: 25, paddingBottom: 100 },
   
   summaryRow: { flexDirection: 'row', gap: 15, marginBottom: 20 },
-  summaryCard: { flex: 1, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
-  iconWrapRed: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  iconWrapGreen: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  summaryVal: { fontSize: 26, fontWeight: '900', color: C.text },
-  summaryUnit: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
-  summaryLabel: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: '600' },
+  summaryCard: { flex: 1, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: T.border, backgroundColor: T.surface, ...Theme.shadows.soft, overflow: 'hidden' },
+  iconWrapRed: { width: 40, height: 40, borderRadius: 12, backgroundColor: T.softDanger, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
+  iconWrapGreen: { width: 40, height: 40, borderRadius: 12, backgroundColor: T.softSuccess, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
+  summaryVal: { fontSize: 26, fontWeight: '900', color: T.textDark },
+  summaryUnit: { fontSize: 14, color: T.textMuted, fontWeight: '600' },
+  summaryLabel: { fontSize: 13, color: T.textMuted, marginTop: 4, fontWeight: '600' },
 
-  chartBox: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 28, padding: 20, paddingBottom: 10, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  chartTitle: { alignSelf: 'flex-start', fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 10, marginLeft: 5 },
+  chartBox: { backgroundColor: T.surface, borderRadius: 28, padding: 20, paddingBottom: 10, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  chartTitle: { alignSelf: 'flex-start', fontSize: 16, fontWeight: '800', color: T.textDark, marginBottom: 10, marginLeft: 5 },
 
-  scoreBox: { borderRadius: 28, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)', overflow: 'hidden' },
-  scoreTitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginBottom: 5, fontWeight: '700' },
-  scoreVal: { fontSize: 60, fontWeight: '900', color: C.primary, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 15 },
-  scoreDesc: { fontSize: 14, color: C.text, textAlign: 'center', marginTop: 15, opacity: 0.8, fontWeight: '500', lineHeight: 22 },
+  scoreBox: { borderRadius: 28, padding: 30, alignItems: 'center', borderWidth: 1, borderColor: T.accent, backgroundColor: T.lightAmber, ...Theme.shadows.soft, overflow: 'hidden' },
+  scoreTitle: { fontSize: 14, color: T.textMuted, marginBottom: 5, fontWeight: '700' },
+  scoreVal: { fontSize: 60, fontWeight: '900', color: T.accent, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 15 },
+  scoreDesc: { fontSize: 14, color: T.textDark, textAlign: 'center', marginTop: 15, fontWeight: '500', lineHeight: 22 },
 });
 
 const bg = StyleSheet.create({
-  orb1: { position: 'absolute', top: -height * 0.08, left: -width * 0.2, width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35, backgroundColor: 'rgba(255,193,7,0.06)' },
-  orb2: { position: 'absolute', bottom: height * 0.05, right: -width * 0.3, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: 'rgba(99,102,241,0.05)' },
-  orb3: { position: 'absolute', top: height * 0.4, left: width * 0.1, width: width * 0.3, height: width * 0.3, borderRadius: width * 0.15, backgroundColor: 'rgba(255,193,7,0.04)' },
-  gridLine1: { position: 'absolute', top: 0, left: width * 0.33, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
-  gridLine2: { position: 'absolute', top: 0, left: width * 0.66, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
+  orb1: { position: 'absolute', top: -height * 0.08, right: -width * 0.22, width: width * 0.75, height: width * 0.75, borderRadius: width * 0.375, backgroundColor: T.softIndigo, opacity: 0.75 },
+  orb2: { position: 'absolute', bottom: -height * 0.06, left: -width * 0.28, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: T.lightAmber, opacity: 0.58 },
+  orb3: { position: 'absolute', top: height * 0.37, right: width * 0.08, width: width * 0.32, height: width * 0.32, borderRadius: width * 0.16, backgroundColor: T.softInfo, opacity: 0.45 },
 });

@@ -1,5 +1,4 @@
 import { Link } from 'expo-router';
-import { C } from './(tabs)/sensor';
 import { StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';

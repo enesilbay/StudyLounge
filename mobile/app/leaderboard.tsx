@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Image, Dimensions, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-
-import { C } from './(tabs)/sensor';
 import { getRankInfo } from './utils/rank';
+import { Theme } from './utils/theme';
 
 const BACKEND_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
+const T = Theme.colors;
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {
@@ -19,8 +18,6 @@ function BackgroundOrbs() {
       <View style={bg.orb1} />
       <View style={bg.orb2} />
       <View style={bg.orb3} />
-      <View style={bg.gridLine1} />
-      <View style={bg.gridLine2} />
     </>
   );
 }
@@ -50,13 +47,14 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor={T.background} />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BackgroundOrbs />
       </View>
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <FontAwesome5 name="arrow-left" size={16} color="rgba(255,255,255,0.7)" />
+          <FontAwesome5 name="arrow-left" size={16} color={T.primary} />
         </TouchableOpacity>
         <Text style={styles.title}>Liderlik Tablosu</Text>
         <View style={styles.spacer} />
@@ -64,7 +62,7 @@ export default function LeaderboardScreen() {
 
       {isLoading ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={C.primary} />
+          <ActivityIndicator size="large" color={T.primary} />
         </View>
       ) : (
         <FlatList
@@ -76,12 +74,8 @@ export default function LeaderboardScreen() {
             
             return (
               <View style={[styles.card, isTop3 ? styles.topCard : {}]}>
-                {isTop3 && (
-                  <LinearGradient colors={['rgba(255,193,7,0.1)', 'transparent']} style={StyleSheet.absoluteFillObject} />
-                )}
-                
                 <View style={styles.rankContainer}>
-                    {index === 0 && <FontAwesome5 name="crown" size={24} color={C.primary} />}
+                    {index === 0 && <FontAwesome5 name="crown" size={24} color={T.accent} />}
                     {index === 1 && <FontAwesome5 name="medal" size={24} color="#C0C0C0" />}
                     {index === 2 && <FontAwesome5 name="medal" size={24} color="#CD7F32" />}
                     {index > 2 && <Text style={styles.rankText}>{index + 1}</Text>}
@@ -103,13 +97,13 @@ export default function LeaderboardScreen() {
                     styles.userName, 
                     isTop3 ? { fontWeight: '900' } : {},
                     item.isPremium ? { 
-                      color: C.primary, 
+                      color: T.accent, 
                       textShadowColor: 'rgba(255, 193, 7, 0.4)', 
                       textShadowOffset: { width: 0, height: 2 }, 
                       textShadowRadius: 8 
                     } : {}
                   ]}>
-                    {item.fullName} {item.isPremium && <FontAwesome5 solid name="crown" size={14} color={C.primary} />}
+                    {item.fullName} {item.isPremium && <FontAwesome5 solid name="crown" size={14} color={T.accent} />}
                   </Text>
                   <Text style={styles.scoreText}>
                     {String(item.totalFocusMinutes)} <Text style={{ fontSize: 11 }}>Puan</Text>
@@ -132,30 +126,30 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: C.bg },
+  safeArea: { flex: 1, backgroundColor: T.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 10, paddingBottom: 20 },
-  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
-  title: { fontSize: 20, fontWeight: '900', color: C.text, letterSpacing: 0.5 },
+  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: T.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  title: { fontSize: 20, fontWeight: '900', color: T.textDark, letterSpacing: 0.5 },
   spacer: { width: 42 },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContainer: { paddingHorizontal: 22, paddingBottom: 30 },
   
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
-  topCard: { borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.3)', backgroundColor: 'rgba(255, 193, 7, 0.05)' },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.surface, padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft, overflow: 'hidden' },
+  topCard: { borderWidth: 1, borderColor: T.accent, backgroundColor: T.lightAmber },
   rankContainer: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  rankText: { fontSize: 18, fontWeight: '800', color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  rankText: { fontSize: 18, fontWeight: '800', color: T.textMuted, marginTop: 2 },
   
   avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 193, 7, 0.12)',
+    backgroundColor: T.softIndigo,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 10,
     marginRight: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,193,7,0.3)'
+    borderColor: T.border
   },
   avatarImage: {
     width: '100%',
@@ -165,18 +159,16 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 20,
     fontWeight: '900',
-    color: C.primary,
+    color: T.primary,
   },
 
   userInfo: { flex: 1 },
-  userName: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 4 },
-  scoreText: { fontSize: 14, color: C.primary, fontWeight: '700' }
+  userName: { fontSize: 17, fontWeight: '800', color: T.textDark, marginBottom: 4 },
+  scoreText: { fontSize: 14, color: T.accent, fontWeight: '700' }
 });
 
 const bg = StyleSheet.create({
-  orb1: { position: 'absolute', top: -height * 0.08, left: -width * 0.2, width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35, backgroundColor: 'rgba(255,193,7,0.06)' },
-  orb2: { position: 'absolute', bottom: height * 0.05, right: -width * 0.3, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: 'rgba(99,102,241,0.05)' },
-  orb3: { position: 'absolute', top: height * 0.4, left: width * 0.1, width: width * 0.3, height: width * 0.3, borderRadius: width * 0.15, backgroundColor: 'rgba(255,193,7,0.04)' },
-  gridLine1: { position: 'absolute', top: 0, left: width * 0.33, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
-  gridLine2: { position: 'absolute', top: 0, left: width * 0.66, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
+  orb1: { position: 'absolute', top: -height * 0.08, right: -width * 0.22, width: width * 0.75, height: width * 0.75, borderRadius: width * 0.375, backgroundColor: T.softIndigo, opacity: 0.75 },
+  orb2: { position: 'absolute', bottom: -height * 0.06, left: -width * 0.28, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: T.lightAmber, opacity: 0.58 },
+  orb3: { position: 'absolute', top: height * 0.37, right: width * 0.08, width: width * 0.32, height: width * 0.32, borderRadius: width * 0.16, backgroundColor: T.softInfo, opacity: 0.45 },
 });

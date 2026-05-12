@@ -16,24 +16,11 @@ import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { Theme } from '../utils/theme';
 
 const SOCKET_URL = 'http://10.192.24.96:3000';
 const { width, height } = Dimensions.get('window');
-
-export const C = {
-  brand: '#1A237E',      // Deep Indigo (Ana Renk)
-  primary: '#FFC107',    // Amber Gold (Vurgular)
-  primaryDark: '#E6A800',// Koyu Amber
-  bg: '#0A0E29',         // Çok Koyu Indigo (Arka plan)
-  bgModal: '#121840',    // Biraz daha açık Indigo (Modal ve kartlar)
-  card: 'rgba(255,255,255,0.05)',
-  border: 'rgba(255,255,255,0.08)',
-  text: '#FFFFFF',
-  textMuted: 'rgba(255,255,255,0.5)',
-  success: '#10B981',
-  danger: '#EF4444',
-  btnText: '#1A0F00'
-};
+const T = Theme.colors;
 
 const SOUNDS = [
   { key: 'library', label: 'Kütüphane', icon: 'book', file: require('../../assets/sounds/library.mp3') },
@@ -53,11 +40,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
 function BackgroundOrbs({ isElite }: { isElite?: boolean }) {
   return (
     <>
-      <View style={[bg.orb1, isElite && { backgroundColor: 'rgba(255, 193, 7, 0.12)' }]} />
-      <View style={[bg.orb2, isElite && { backgroundColor: 'rgba(255, 193, 7, 0.08)' }]} />
-      <View style={[bg.orb3, isElite && { backgroundColor: 'rgba(255, 193, 7, 0.06)' }]} />
-      <View style={bg.gridLine1} />
-      <View style={bg.gridLine2} />
+      <View style={[bg.orb1, isElite && { backgroundColor: T.lightAmber, opacity: 0.8 }]} />
+      <View style={[bg.orb2, isElite && { backgroundColor: T.softIndigo, opacity: 0.7 }]} />
+      <View style={[bg.orb3, isElite && { backgroundColor: T.softInfo, opacity: 0.6 }]} />
     </>
   );
 }
@@ -417,7 +402,7 @@ export default function SensorScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.background} />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BackgroundOrbs isElite={isEliteRoom} />
       </View>
@@ -433,38 +418,38 @@ export default function SensorScreen() {
         {/* HEADER */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.replace('/lobbies')} style={s.backBtn}>
-            <FontAwesome5 solid name="chevron-left" size={16} color="rgba(255,255,255,0.7)" />
+            <FontAwesome5 solid name="chevron-left" size={16} color={T.primary} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[s.headerRoom, isEliteRoom && { color: C.primary, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }]}>
-                {isEliteRoom ? 'ELITE ODA 👑' : 'ODAK ODASI'}
+              <Text style={[s.headerRoom, isEliteRoom && { color: T.accent }]}>
+                {isEliteRoom ? 'ELITE ODA' : 'ODAK ODASI'}
               </Text>
               {isEliteRoom && (
-                <View style={{ backgroundColor: 'rgba(255, 193, 7, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.4)' }}>
-                  <Text style={{ fontSize: 9, fontWeight: '900', color: C.primary, letterSpacing: 0.5 }}>+2x PUAN</Text>
+                <View style={{ backgroundColor: T.lightAmber, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: T.accent }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: T.accent, letterSpacing: 0.5 }}>+2x PUAN</Text>
                 </View>
               )}
             </View>
-            <Text style={[s.headerName, isEliteRoom && { color: C.primary }]} numberOfLines={1}>{roomName}</Text>
+            <Text style={[s.headerName, isEliteRoom && { color: T.accent }]} numberOfLines={1}>{roomName}</Text>
           </View>
           <View style={s.scorePill}>
-            <FontAwesome5 solid name="fire" size={12} color={C.primary} />
+            <FontAwesome5 solid name="fire" size={12} color={T.accent} />
             <Text style={s.scoreText}>{totalScore}</Text>
           </View>
         </View>
 
         {/* STATUS CARD */}
         <View style={[s.statusCard, isAtDesk && (isEliteRoom ? s.statusCardEliteActive : s.statusCardActive)]}>
-          <View style={[s.statusIcon, isAtDesk && (isEliteRoom ? { backgroundColor: 'rgba(255,193,7,0.15)', borderColor: 'rgba(255,193,7,0.3)' } : { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)' })]}>
-            <FontAwesome5 solid name={isAtDesk ? "check-circle" : "clock"} size={26} color={isAtDesk ? (isEliteRoom ? C.primary : C.success) : 'rgba(255,255,255,0.3)'} />
+          <View style={[s.statusIcon, isAtDesk && (isEliteRoom ? { backgroundColor: T.lightAmber, borderColor: T.accent } : { backgroundColor: T.softSuccess, borderColor: T.success })]}>
+            <FontAwesome5 solid name={isAtDesk ? "check-circle" : "clock"} size={26} color={isAtDesk ? (isEliteRoom ? T.accent : T.success) : T.textMuted} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.statusTitle, isAtDesk && { color: isEliteRoom ? C.primary : C.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
+            <Text style={[s.statusTitle, isAtDesk && { color: isEliteRoom ? T.accent : T.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
             <Text style={s.statusDesc}>
               {isAtDesk 
-                ? (isEliteRoom ? '🔥 Elite mod aktif! Çarpan ile x2 Puan kazanıyorsun.' : 'Cihaz masada, odak puanı kazanıyorsun.') 
-                : (isEliteRoom ? 'Puan kazanmak için cihazı masaya bırakın. Unutma, sensör anında tepki verir!' : 'Puan kazanmak için cihazı masaya bırakın.')}
+                ? (isEliteRoom ? 'Elite mod aktif! Çarpan ile x2 Puan kazanıyorsun.' : 'Cihaz masada, odak puanı kazanıyorsun.') 
+                : (isEliteRoom ? 'Puan kazanmak için cihazı masaya bırakın.' : 'Puan kazanmak için cihazı masaya bırakın.')}
             </Text>
           </View>
         </View>
@@ -473,9 +458,9 @@ export default function SensorScreen() {
         {Platform.OS === 'web' && (
           <TouchableOpacity 
             onPress={toggleWebSensor} 
-            style={{ backgroundColor: isAtDesk ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: isAtDesk ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)' }}
+            style={{ backgroundColor: isAtDesk ? T.softDanger : T.softSuccess, padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: isAtDesk ? T.danger : T.success }}
           >
-            <Text style={{ color: isAtDesk ? C.danger : C.success, fontWeight: 'bold' }}>
+            <Text style={{ color: isAtDesk ? T.danger : T.success, fontWeight: 'bold' }}>
               [Web Test] {isAtDesk ? 'Masadan Kalk' : 'Masaya Geç'}
             </Text>
           </TouchableOpacity>
@@ -485,16 +470,16 @@ export default function SensorScreen() {
         <View style={s.section}>
           <Text style={s.sectionLabel}>POMODORO SAYACI</Text>
           <View style={s.pomodoroCard}>
-            <Animated.View style={[s.timerInner, pomodoroRunning && { borderColor: C.primary, shadowColor: C.primary, shadowOffset: {width:0, height:0}, shadowOpacity: 0.5, shadowRadius: 10 }]}>
+            <Animated.View style={[s.timerInner, pomodoroRunning && { borderColor: T.primary, shadowColor: T.primary, shadowOffset: {width:0, height:0}, shadowOpacity: 0.3, shadowRadius: 10 }]}>
               <Text style={s.timerText}>{pad(Math.floor(pomodoroSec / 60))}:{pad(pomodoroSec % 60)}</Text>
             </Animated.View>
             <View style={{ flex: 1, flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
               <TouchableOpacity onPress={() => setShowPomodoroModal(true)} style={s.pomSettingsBtn}>
-                <FontAwesome5 solid name="sliders-h" size={16} color="rgba(255,255,255,0.7)" />
+                <FontAwesome5 solid name="sliders-h" size={16} color={T.textMuted} />
               </TouchableOpacity>
               <TouchableOpacity onPress={togglePomodoro}>
-                <LinearGradient colors={pomodoroRunning ? ['#475569', '#334155'] : [C.primary, C.primaryDark]} style={s.pomPlayBtn}>
-                  <FontAwesome5 solid name={pomodoroRunning ? "pause" : "play"} size={16} color={pomodoroRunning ? C.text : C.btnText} />
+                <LinearGradient colors={pomodoroRunning ? [T.border, T.border] : [T.primary, T.secondary]} style={s.pomPlayBtn}>
+                  <FontAwesome5 solid name={pomodoroRunning ? "pause" : "play"} size={16} color={pomodoroRunning ? T.textDark : '#FFFFFF'} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -516,13 +501,13 @@ export default function SensorScreen() {
                 }
                 setShowMixer(true);
               }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isPremium ? 'rgba(255,193,7,0.15)' : 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: isPremium ? 'rgba(255,193,7,0.3)' : 'rgba(255,255,255,0.1)' }}>
-                  <FontAwesome5 solid name="sliders-h" size={12} color={isPremium ? C.primary : 'rgba(255,255,255,0.5)'} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: isPremium ? C.primary : 'rgba(255,255,255,0.5)' }}>MİKSER</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isPremium ? T.lightAmber : T.softIndigo, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: isPremium ? T.accent : T.border }}>
+                  <FontAwesome5 solid name="sliders-h" size={12} color={isPremium ? T.accent : T.textMuted} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: isPremium ? T.accent : T.textMuted }}>MİKSER</Text>
                 </View>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setIsSoundOn(!isSoundOn)}>
-                <FontAwesome5 solid name={isSoundOn ? "volume-up" : "volume-mute"} size={16} color={isSoundOn ? C.primary : 'rgba(255,255,255,0.3)'} />
+                <FontAwesome5 solid name={isSoundOn ? "volume-up" : "volume-mute"} size={16} color={isSoundOn ? T.primary : T.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -531,8 +516,8 @@ export default function SensorScreen() {
               const active = (volumes[sItem.key] || 0) > 0;
               return (
                 <TouchableOpacity key={sItem.key} onPress={() => handleSingleSoundSelect(sItem.key)} style={[s.soundTile, active && s.soundTileActive]}>
-                  <FontAwesome5 solid name={sItem.icon} size={20} color={active ? C.btnText : 'rgba(255,255,255,0.5)'} />
-                  <Text style={[s.soundText, active && { color: C.btnText }]}>{sItem.label}</Text>
+                  <FontAwesome5 solid name={sItem.icon} size={20} color={active ? '#FFFFFF' : T.textMuted} />
+                  <Text style={[s.soundText, active && { color: '#FFFFFF' }]}>{sItem.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -547,7 +532,6 @@ export default function SensorScreen() {
               { opacity: nudgeAnim, transform: [{ translateY: nudgeAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] },
             ]}
           >
-            <Text style={s.nudgeToastIcon}>👋</Text>
             <View style={{ flex: 1 }}>
               <Text style={s.nudgeToastTitle}>{nudgeToast.senderName} seni çağırıyor!</Text>
               <Text style={s.nudgeToastSub}>Birlikte çalışmaya davet edildiniz.</Text>
@@ -560,9 +544,9 @@ export default function SensorScreen() {
           <Text style={s.sectionLabel}>ODADAKİLER ({roomUsers.length})</Text>
           <View style={s.usersWrap}>
             {roomUsers.map((u, i) => (
-              <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: 'rgba(255,193,7,0.3)', backgroundColor: 'rgba(255,193,7,0.05)' }]}>
-                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? C.primary : C.success) : 'rgba(255,255,255,0.2)' }]} />
-                <Text style={{ color: C.text, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
+              <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: T.accent, backgroundColor: T.lightAmber }]}>
+                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? T.accent : T.success) : T.textMuted }]} />
+                <Text style={{ color: T.textDark, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
                 {Number(u.userId) !== myUserId && (
                   <TouchableOpacity
                     onPress={() => sendNudge(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
@@ -586,7 +570,7 @@ export default function SensorScreen() {
             <View style={s.chatHeader}>
               <Text style={s.chatTitle}>Lobi Sohbeti {!isPremium && '🔒'}</Text>
               <TouchableOpacity onPress={toggleChat} style={s.chatCloseBtn}>
-                <FontAwesome5 solid name="times" size={16} color="rgba(255,255,255,0.5)" />
+                <FontAwesome5 solid name="times" size={16} color={T.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -599,18 +583,18 @@ export default function SensorScreen() {
                 const isImage = item.type === 'image';
                 return (
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
-                    {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={C.primary} />}</Text>}
+                    {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={T.accent} />}</Text>}
                     {isImage ? (
                       <TouchableOpacity onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
                         <Image source={{ uri: `${SOCKET_URL}${item.fileUrl}` }} style={s.imagePreview} />
                       </TouchableOpacity>
                     ) : isFile ? (
                       <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
-                        <View style={s.fileIconWrap}><FontAwesome5 solid name="file-pdf" size={16} color={C.danger} /></View>
+                        <View style={s.fileIconWrap}><FontAwesome5 solid name="file-pdf" size={16} color={T.danger} /></View>
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
                       </TouchableOpacity>
                     ) : (
-                      <Text style={{ color: C.text, fontSize: 14 }}>{item.text}</Text>
+                      <Text style={{ color: T.textDark, fontSize: 14 }}>{item.text}</Text>
                     )}
                   </View>
                 );
@@ -618,15 +602,15 @@ export default function SensorScreen() {
             />
 
             <View style={s.chatInputRow}>
-              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 solid name="image" size={18} color={isPremium ? C.primary : 'rgba(255,255,255,0.2)'} /></TouchableOpacity>
-              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 solid name="paperclip" size={18} color={isPremium ? C.primary : 'rgba(255,255,255,0.2)'} /></TouchableOpacity>
+              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 solid name="image" size={18} color={isPremium ? T.primary : T.textMuted} /></TouchableOpacity>
+              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 solid name="paperclip" size={18} color={isPremium ? T.primary : T.textMuted} /></TouchableOpacity>
               <TextInput
                 style={[s.chatInput, !isPremium && { opacity: 0.5 }]} value={message} onChangeText={setMessage}
-                placeholder={isPremium ? "Mesaj yaz..." : "PRO Üyelik Gerekli 🔒"} placeholderTextColor="rgba(255,255,255,0.3)" editable={isPremium}
+                placeholder={isPremium ? "Mesaj yaz..." : "PRO Üyelik Gerekli"} placeholderTextColor={T.textMuted} editable={isPremium}
               />
               <TouchableOpacity onPress={sendMessage} disabled={!isPremium} style={s.sendBtn}>
-                <LinearGradient colors={isPremium ? [C.primary, C.primaryDark] : ['#475569', '#334155']} style={s.sendBtnGrad}>
-                  <FontAwesome5 solid name={isPremium ? "paper-plane" : "lock"} size={14} color={isPremium ? C.btnText : "rgba(255,255,255,0.5)"} />
+                <LinearGradient colors={isPremium ? [T.primary, T.secondary] : [T.border, T.border]} style={s.sendBtnGrad}>
+                  <FontAwesome5 solid name={isPremium ? "paper-plane" : "lock"} size={14} color={isPremium ? '#FFFFFF' : T.textMuted} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -636,8 +620,8 @@ export default function SensorScreen() {
 
       {!chatVisible && (
         <TouchableOpacity style={s.fab} onPress={toggleChat}>
-          <LinearGradient colors={[C.primary, C.primaryDark]} style={s.fabGrad}>
-            <FontAwesome5 solid name="comment-dots" size={22} color={C.btnText} />
+          <LinearGradient colors={[T.primary, T.secondary]} style={s.fabGrad}>
+            <FontAwesome5 solid name="comment-dots" size={22} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
       )}
@@ -650,11 +634,11 @@ export default function SensorScreen() {
             {POMODORO_OPTIONS.map(o => (
               <TouchableOpacity key={o.minutes} onPress={() => startPomodoro(o.minutes)} style={s.modalOpt}>
                 <Text style={s.modalOptText}>{o.label}</Text>
-                <FontAwesome5 solid name="chevron-right" size={12} color="rgba(255,255,255,0.2)" />
+                <FontAwesome5 solid name="chevron-right" size={12} color={T.textMuted} />
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={[s.modalOpt, { justifyContent: 'center', borderBottomWidth: 0, marginTop: 10 }]} onPress={() => setShowPomodoroModal(false)}>
-              <Text style={{ color: C.danger, fontWeight: 'bold' }}>İptal</Text>
+              <Text style={{ color: T.danger, fontWeight: 'bold' }}>İptal</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -666,11 +650,11 @@ export default function SensorScreen() {
           <View style={[s.modalSheet, { width: '100%', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 40 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <View>
-                <Text style={s.modalTitle}>Ses Mikseri 🎛️</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Kendi çalışma ortamını yarat.</Text>
+                <Text style={s.modalTitle}>Ses Mikseri</Text>
+                <Text style={{ color: T.textMuted, fontSize: 12 }}>Kendi çalışma ortamını yarat.</Text>
               </View>
               <TouchableOpacity onPress={() => setShowMixer(false)} style={{ padding: 10 }}>
-                <FontAwesome5 solid name="times" size={20} color="rgba(255,255,255,0.5)" />
+                <FontAwesome5 solid name="times" size={20} color={T.textMuted} />
               </TouchableOpacity>
             </View>
             
@@ -678,10 +662,10 @@ export default function SensorScreen() {
               <View key={sItem.key} style={{ marginBottom: 20 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <FontAwesome5 solid name={sItem.icon} size={14} color={C.primary} />
-                    <Text style={{ color: C.text, fontWeight: '600' }}>{sItem.label}</Text>
+                    <FontAwesome5 solid name={sItem.icon} size={14} color={T.primary} />
+                    <Text style={{ color: T.textDark, fontWeight: '600' }}>{sItem.label}</Text>
                   </View>
-                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{Math.round((volumes[sItem.key] || 0) * 100)}%</Text>
+                  <Text style={{ color: T.textMuted, fontSize: 12 }}>{Math.round((volumes[sItem.key] || 0) * 100)}%</Text>
                 </View>
                 <Slider
                   style={{ width: '100%', height: 40 }}
@@ -689,9 +673,9 @@ export default function SensorScreen() {
                   maximumValue={1}
                   value={volumes[sItem.key] || 0}
                   onValueChange={(val) => updateMixerVolume(sItem.key, val)}
-                  minimumTrackTintColor={C.primary}
-                  maximumTrackTintColor="rgba(255,255,255,0.1)"
-                  thumbTintColor={C.primary}
+                  minimumTrackTintColor={T.primary}
+                  maximumTrackTintColor={T.border}
+                  thumbTintColor={T.primary}
                 />
               </View>
             ))}
@@ -706,81 +690,78 @@ export default function SensorScreen() {
 // STİLLER
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: T.background },
   scroll: { paddingHorizontal: 22, paddingTop: 15 },
-  offlineBanner: { backgroundColor: 'rgba(239, 68, 68, 0.15)', padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)', alignItems: 'center' },
-  offlineText: { color: C.danger, fontSize: 13, fontWeight: '700' },
+  offlineBanner: { backgroundColor: T.softDanger, padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: T.danger, alignItems: 'center' },
+  offlineText: { color: T.danger, fontSize: 13, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
-  headerRoom: { fontSize: 12, color: C.primary, fontWeight: '800', letterSpacing: 1 },
-  headerName: { fontSize: 24, fontWeight: '900', color: C.text },
-  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,193,7,0.1)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)' },
-  scoreText: { color: C.primary, fontWeight: '900', fontSize: 16 },
+  backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', ...Theme.shadows.soft },
+  headerRoom: { fontSize: 12, color: T.accent, fontWeight: '800', letterSpacing: 1 },
+  headerName: { fontSize: 24, fontWeight: '900', color: T.textDark },
+  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: T.lightAmber, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: T.accent },
+  scoreText: { color: T.accent, fontWeight: '900', fontSize: 16 },
   
-  statusCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  statusCardActive: { borderColor: 'rgba(16,185,129,0.3)', backgroundColor: 'rgba(16,185,129,0.05)' },
-  statusCardEliteActive: { borderColor: 'rgba(255,193,7,0.3)', backgroundColor: 'rgba(255,193,7,0.05)' },
-  statusIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.card, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  statusTitle: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 3 },
-  statusDesc: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  statusCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.surface, borderRadius: 24, padding: 20, marginBottom: 25, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  statusCardActive: { borderColor: T.success, backgroundColor: T.softSuccess },
+  statusCardEliteActive: { borderColor: T.accent, backgroundColor: T.lightAmber },
+  statusIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: T.background, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+  statusTitle: { fontSize: 17, fontWeight: '800', color: T.textDark, marginBottom: 3 },
+  statusDesc: { fontSize: 12, color: T.textMuted },
   
   section: { marginBottom: 28 },
-  sectionLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
+  sectionLabel: { fontSize: 12, color: T.textMuted, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
   
-  pomodoroCard: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, gap: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  timerInner: { width: 85, height: 85, borderRadius: 42.5, borderWidth: 3, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.02)' },
-  timerText: { fontSize: 24, fontWeight: '900', color: C.text },
-  pomSettingsBtn: { width: 48, height: 48, backgroundColor: C.card, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  pomodoroCard: { flexDirection: 'row', backgroundColor: T.surface, borderRadius: 24, padding: 20, gap: 20, alignItems: 'center', borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  timerInner: { width: 85, height: 85, borderRadius: 42.5, borderWidth: 3, borderColor: T.border, alignItems: 'center', justifyContent: 'center', backgroundColor: T.background },
+  timerText: { fontSize: 24, fontWeight: '900', color: T.textDark },
+  pomSettingsBtn: { width: 48, height: 48, backgroundColor: T.softIndigo, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
   pomPlayBtn: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   
-  soundTile: { width: 90, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', paddingVertical: 18, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  soundTileActive: { backgroundColor: C.primary, borderColor: C.primaryDark },
-  soundText: { marginTop: 10, fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
+  soundTile: { width: 90, alignItems: 'center', backgroundColor: T.surface, paddingVertical: 18, borderRadius: 20, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  soundTileActive: { backgroundColor: T.primary, borderColor: T.secondary },
+  soundText: { marginTop: 10, fontSize: 12, fontWeight: '700', color: T.textMuted },
   
   usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.card },
+  userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
   userDot: { width: 8, height: 8, borderRadius: 4 },
-  nudgeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,193,7,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,193,7,0.25)' },
+  nudgeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: T.lightAmber, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.accent },
   nudgeBtnText: { fontSize: 13 },
-  nudgeToast: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(26,35,126,0.95)', borderRadius: 18, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(255,193,7,0.4)' },
-  nudgeToastIcon: { fontSize: 26 },
-  nudgeToastTitle: { color: C.primary, fontWeight: '800', fontSize: 14 },
-  nudgeToastSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
+  nudgeToast: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.softIndigo, borderRadius: 18, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  nudgeToastTitle: { color: T.primary, fontWeight: '800', fontSize: 14 },
+  nudgeToastSub: { color: T.textMuted, fontSize: 12, marginTop: 2 },
   
-  chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: C.bgModal, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: C.border },
-  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderColor: C.card },
-  chatTitle: { color: C.text, fontSize: 16, fontWeight: '800' },
-  chatCloseBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+  chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: T.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: T.border, ...Theme.shadows.medium },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderColor: T.border },
+  chatTitle: { color: T.textDark, fontSize: 16, fontWeight: '800' },
+  chatCloseBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center' },
   
   bubble: { maxWidth: '80%', padding: 14, borderRadius: 20, marginVertical: 6 },
-  bubbleMe: { alignSelf: 'flex-end', backgroundColor: 'rgba(255,193,7,0.15)', borderBottomRightRadius: 4, borderWidth: 1, borderColor: 'rgba(255,193,7,0.3)' },
-  bubbleOther: { alignSelf: 'flex-start', backgroundColor: C.card, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: C.border },
-  bubbleUser: { fontSize: 11, color: C.primary, fontWeight: '800', marginBottom: 5 },
+  bubbleMe: { alignSelf: 'flex-end', backgroundColor: T.softIndigo, borderBottomRightRadius: 4, borderWidth: 1, borderColor: T.primary },
+  bubbleOther: { alignSelf: 'flex-start', backgroundColor: T.background, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: T.border },
+  bubbleUser: { fontSize: 11, color: T.accent, fontWeight: '800', marginBottom: 5 },
   imagePreview: { width: 160, height: 160, borderRadius: 14, marginVertical: 5 },
-  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 14 },
-  fileIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center' },
-  fileName: { color: C.text, fontSize: 13, flex: 1, fontWeight: '500' },
+  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.softDanger, padding: 12, borderRadius: 14 },
+  fileIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.softDanger, alignItems: 'center', justifyContent: 'center' },
+  fileName: { color: T.textDark, fontSize: 13, flex: 1, fontWeight: '500' },
   
-  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 10, backgroundColor: C.bg, borderTopWidth: 1, borderColor: C.card },
-  chatInput: { flex: 1, height: 48, backgroundColor: C.card, borderRadius: 24, paddingHorizontal: 18, color: C.text, borderWidth: 1, borderColor: C.border },
-  attachBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.03)' },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 10, backgroundColor: T.background, borderTopWidth: 1, borderColor: T.border },
+  chatInput: { flex: 1, height: 48, backgroundColor: T.surface, borderRadius: 24, paddingHorizontal: 18, color: T.textDark, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  attachBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: T.softIndigo, borderWidth: 1, borderColor: T.border },
   sendBtn: { borderRadius: 24, overflow: 'hidden', elevation: 4 },
   sendBtnGrad: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   
-  fab: { position: 'absolute', bottom: 35, right: 22, width: 64, height: 64, borderRadius: 32, overflow: 'hidden', elevation: 12, shadowColor: C.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 15 },
+  fab: { position: 'absolute', bottom: 35, right: 22, width: 64, height: 64, borderRadius: 32, overflow: 'hidden', elevation: 12, shadowColor: T.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15 },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,12,20,0.85)', justifyContent: 'center', alignItems: 'center' },
-  modalSheet: { backgroundColor: C.bgModal, padding: 30, borderRadius: 28, width: '85%', borderWidth: 1, borderColor: C.border },
-  modalTitle: { color: C.text, fontSize: 20, fontWeight: '900', marginBottom: 20, textAlign: 'center' },
-  modalOpt: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: C.card, alignItems: 'center' },
-  modalOptText: { color: 'rgba(255,255,255,0.8)', fontSize: 16, fontWeight: '600' }
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  modalSheet: { backgroundColor: T.surface, padding: 30, borderRadius: 28, width: '85%', borderWidth: 1, borderColor: T.border, ...Theme.shadows.medium },
+  modalTitle: { color: T.textDark, fontSize: 20, fontWeight: '900', marginBottom: 20, textAlign: 'center' },
+  modalOpt: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderColor: T.border, alignItems: 'center' },
+  modalOptText: { color: T.textDark, fontSize: 16, fontWeight: '600' }
 });
 
 const bg = StyleSheet.create({
-  orb1: { position: 'absolute', top: -height * 0.08, left: -width * 0.2, width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35, backgroundColor: 'rgba(255,193,7,0.06)' },
-  orb2: { position: 'absolute', bottom: height * 0.05, right: -width * 0.3, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: 'rgba(99,102,241,0.05)' },
-  orb3: { position: 'absolute', top: height * 0.4, left: width * 0.1, width: width * 0.3, height: width * 0.3, borderRadius: width * 0.15, backgroundColor: 'rgba(255,193,7,0.04)' },
-  gridLine1: { position: 'absolute', top: 0, left: width * 0.33, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
-  gridLine2: { position: 'absolute', top: 0, left: width * 0.66, width: 1, height: height, backgroundColor: 'rgba(255,255,255,0.02)' },
+  orb1: { position: 'absolute', top: -height * 0.08, right: -width * 0.22, width: width * 0.75, height: width * 0.75, borderRadius: width * 0.375, backgroundColor: T.softIndigo, opacity: 0.75 },
+  orb2: { position: 'absolute', bottom: -height * 0.06, left: -width * 0.28, width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, backgroundColor: T.lightAmber, opacity: 0.58 },
+  orb3: { position: 'absolute', top: height * 0.37, right: width * 0.08, width: width * 0.32, height: width * 0.32, borderRadius: width * 0.16, backgroundColor: T.softInfo, opacity: 0.45 },
 });

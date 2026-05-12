@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { C } from './sensor';
+import { Theme } from '../utils/theme';
 
 const BACKEND_URL = 'http://10.192.24.96:3000';
 
@@ -112,15 +112,20 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: C.bg,
-          borderTopColor: C.border,
+          backgroundColor: Theme.colors.surface,
+          borderTopColor: Theme.colors.border,
           borderTopWidth: 1,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
         },
-        tabBarActiveTintColor: C.primary,
-        tabBarInactiveTintColor: C.textMuted,
+        tabBarActiveTintColor: Theme.colors.primary,
+        tabBarInactiveTintColor: Theme.colors.textMuted,
       }}>
       <Tabs.Screen
         name="index"
