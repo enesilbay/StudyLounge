@@ -1,18 +1,25 @@
 import {
-  Controller,
-  Post,
-  Get,
   Body,
+  Controller,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
   Param,
-  UseInterceptors,
+  ParseFilePipe,
+  Post,
   UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { MessagesService } from './messages.service';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../users/user.entity';
+import { CreateMessageDto } from './dto/create-message.dto';
+import { UploadMessageFileDto } from './dto/upload-message-file.dto';
+import { MessagesService } from './messages.service';
 import type { Express } from 'express';
 
 @UseGuards(JwtAuthGuard)
@@ -20,51 +27,58 @@ import type { Express } from 'express';
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  // 1. Normal Metin Mesajı Gönderme
   @Post()
-  async send(@Body() body: { text: string; roomName: string; userId: number }) {
+  async send(@CurrentUser() user: User, @Body() body: CreateMessageDto) {
     return await this.messagesService.createMessage(
       body.text,
       body.roomName,
-      body.userId,
+      user.id,
     );
   }
 
-  // 2. PDF / Dosya Yükleme ve Kaydetme
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: './uploads', // Kök dizindeki uploads klasörü
-        filename: (req, file, cb) => {
+        destination: './uploads',
+        filename: (_req, file, cb) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
       limits: {
-        fileSize: 5 * 1024 * 1024, // 5 MB limit
+        fileSize: 5 * 1024 * 1024,
       },
     }),
   )
   async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: { roomName: string; userId: string },
+    @CurrentUser() user: User,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({
+            fileType: /^(image\/(jpeg|png|webp)|application\/pdf)$/,
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Body() body: UploadMessageFileDto,
   ) {
     const fileUrl = `/uploads/${file.filename}`;
     const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
 
-    // Veritabanına dosya tipiyle kaydet
     return await this.messagesService.createFileMessage(
       body.roomName,
-      Number(body.userId),
+      user.id,
       file.originalname,
       fileUrl,
       fileType,
     );
   }
 
-  // 3. Odaya Ait Geçmiş Mesajları Getirme
   @Get(':roomName')
   async getMessages(@Param('roomName') roomName: string) {
     return await this.messagesService.getRoomMessages(roomName);

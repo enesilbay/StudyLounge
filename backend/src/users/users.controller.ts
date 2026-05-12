@@ -1,20 +1,27 @@
 import {
+  Body,
   Controller,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  ParseFilePipe,
   Post,
   Put,
-  Body,
-  Get,
-  Param,
-  BadRequestException,
-  UseInterceptors,
   UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UsersService } from './users.service';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RespondRequestDto } from './dto/respond-request.dto';
+import { SendFriendRequestDto } from './dto/send-friend-request.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdatePushTokenDto } from './dto/update-push-token.dto';
+import { User } from './user.entity';
+import { UsersService } from './users.service';
 import type { Express } from 'express';
 
 @UseGuards(JwtAuthGuard)
@@ -22,73 +29,56 @@ import type { Express } from 'express';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Kayıt ve giriş işlemleri AuthController'a taşınmıştır.
-
-  // ── 3. LİDERLİK TABLOSUNU GETİR ──
   @Get('leaderboard')
   async getLeaderboard() {
     return this.usersService.getLeaderboard();
   }
 
-  // ── 4. ARKADAŞLIK İSTEĞİ GÖNDER ──
   @Post('friend-request')
   async sendRequest(
-    @Body() body: { senderId: number; receiverUsername: string },
+    @CurrentUser() user: User,
+    @Body() body: SendFriendRequestDto,
   ) {
-    if (!body.senderId || !body.receiverUsername) {
-      throw new BadRequestException(
-        'Gönderen ID ve Alıcı Kullanıcı Adı eksik.',
-      );
-    }
     const request = await this.usersService.sendFriendRequest(
-      body.senderId,
+      user.id,
       body.receiverUsername,
     );
+
     return {
       success: true,
-      message: 'Arkadaşlık isteği başarıyla gönderildi!',
+      message: 'Arkadaslik istegi basariyla gonderildi.',
       data: request,
     };
   }
 
-  // ── 5. BANA GELEN İSTEKLERİ GÖR ──
   @Get('friend-requests/:userId')
-  async getRequests(@Param('userId') userId: string) {
-    return this.usersService.getPendingRequests(Number(userId));
+  async getRequests(@CurrentUser() user: User) {
+    return this.usersService.getPendingRequests(user.id);
   }
 
-  // ── 6. İSTEĞİ YANITLA (Kabul/Red) ──
   @Post('respond-request')
   async respondRequest(
-    @Body()
-    body: {
-      requestId: number;
-      receiverId: number;
-      status: 'accepted' | 'rejected';
-    },
+    @CurrentUser() user: User,
+    @Body() body: RespondRequestDto,
   ) {
-    if (!body.requestId || !body.receiverId || !body.status) {
-      throw new BadRequestException('Eksik bilgi gönderildi.');
-    }
     const result = await this.usersService.respondToRequest(
       body.requestId,
-      body.receiverId,
+      user.id,
       body.status,
     );
+
     return {
       success: true,
-      message: `İstek ${body.status === 'accepted' ? 'kabul edildi' : 'reddedildi'}.`,
+      message: `Istek ${body.status === 'accepted' ? 'kabul edildi' : 'reddedildi'}.`,
       data: result,
     };
   }
 
-  // ── 7. ARKADAŞ LİSTEMİ GETİR ──
   @Get('friends/:userId')
-  async getFriends(@Param('userId') userId: string) {
-    return this.usersService.getFriends(Number(userId));
+  async getFriends(@CurrentUser() user: User) {
+    return this.usersService.getFriends(user.id);
   }
 
-  // ── 8. AVATAR YÜKLEME UCU (YENİ EKLENDİ) ──
   @Post('avatar/:id')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -97,7 +87,7 @@ export class UsersController {
         filename: (req, file, cb) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const userId = req.params.id as string;
+          const userId = (req.user as User | undefined)?.id ?? 'unknown';
           cb(
             null,
             `avatar-${userId}-${uniqueSuffix}${extname(file.originalname)}`,
@@ -110,64 +100,59 @@ export class UsersController {
     }),
   )
   async uploadAvatar(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: User,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('Dosya yüklenemedi!');
-    }
     const avatarUrl = `/uploads/${file.filename}`;
     const updatedUser = await this.usersService.updateAvatar(
-      Number(id),
+      user.id,
       avatarUrl,
     );
     return { success: true, user: updatedUser };
   }
 
-  // ── 9. PREMIUM ABONELİK ──
-  @Post('upgrade/:id')
-  async upgradeToPremium(@Param('id') id: string) {
-    const updatedUser = await this.usersService.upgradeToPremium(Number(id));
+  @Post('demo/upgrade')
+  async demoUpgradeToPremium(@CurrentUser() user: User) {
+    const updatedUser = await this.usersService.upgradeToPremium(user.id);
     return {
       success: true,
-      message: 'Premium aktif edildi!',
+      message: 'Demo premium aktif edildi.',
       user: updatedUser,
     };
   }
 
-  // ── PROFİL BİLGİLERİ GÜNCELLEME ──
   @Put(':id/profile')
   async updateProfile(
-    @Param('id') id: string,
-    @Body() body: { fullName: string },
+    @CurrentUser() user: User,
+    @Body() body: UpdateProfileDto,
   ) {
-    if (!body.fullName || body.fullName.trim() === '') {
-      throw new BadRequestException('İsim boş olamaz');
-    }
     const updated = await this.usersService.updateProfile(
-      Number(id),
+      user.id,
       body.fullName,
     );
     return { success: true, user: updated };
   }
 
-  // ── 10. HAFTALIK ANALİTİK ──
   @Get('analytics/:id')
-  async getAnalytics(@Param('id') id: string) {
-    return this.usersService.getWeeklyAnalytics(Number(id));
+  async getAnalytics(@CurrentUser() user: User) {
+    return this.usersService.getWeeklyAnalytics(user.id);
   }
 
-  // ── 11. PUSH TOKEN GÜNCELLEME ──
   @Put(':id/push-token')
   async updatePushToken(
-    @Param('id') id: string,
-    @Body() body: { token: string },
+    @CurrentUser() user: User,
+    @Body() body: UpdatePushTokenDto,
   ) {
-    if (!body.token) {
-      throw new BadRequestException('Token eksik.');
-    }
     const updatedUser = await this.usersService.updatePushToken(
-      Number(id),
+      user.id,
       body.token,
     );
     return { success: true, user: updatedUser };

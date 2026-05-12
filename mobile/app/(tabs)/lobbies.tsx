@@ -221,7 +221,7 @@ export default function LobbiesScreen() {
       const res = await fetch(apiUrl('/users/respond-request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ requestId, receiverId: myUserId, status }),
+        body: JSON.stringify({ requestId, status }),
       });
       if (res.ok) {
         loadSocialData(); 
@@ -295,7 +295,7 @@ export default function LobbiesScreen() {
       const res = await fetch(apiUrl('/users/friend-request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ senderId: myUserId, receiverUsername: friendUsername.trim() }),
+        body: JSON.stringify({ receiverUsername: friendUsername.trim() }),
       });
       const data = await res.json();
       if (res.ok) {

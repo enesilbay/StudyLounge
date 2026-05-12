@@ -6,20 +6,24 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Lobby } from './lobby.entity';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class LobbiesService {
   constructor(
     @InjectRepository(Lobby)
     private lobbiesRepository: Repository<Lobby>,
+    private readonly usersService: UsersService,
   ) {}
 
-  // Tüm lobileri getir (Mobil uygulama açıldığında çağrılır)
   findAll(): Promise<Lobby[]> {
     return this.lobbiesRepository.find({ order: { id: 'DESC' } });
   }
 
-  // Yeni bir lobi oluştur (Form gönderildiğinde çağrılır)
+  findByName(name: string): Promise<Lobby | null> {
+    return this.lobbiesRepository.findOne({ where: { name } });
+  }
+
   create(lobbyData: Partial<Lobby>): Promise<Lobby> {
     const newLobby = this.lobbiesRepository.create(lobbyData);
     return this.lobbiesRepository.save(newLobby);
@@ -27,28 +31,48 @@ export class LobbiesService {
 
   async verifyPassword(
     lobbyId: number,
-    password?: string,
-    userId?: number, // Mobil taraftan userId de gönderilmeli ki premium durumunu kontrol edelim
+    password: string | undefined,
+    userId: number,
   ): Promise<{ success: boolean }> {
     const lobby = await this.lobbiesRepository.findOne({
       where: { id: lobbyId },
     });
-    if (!lobby) throw new NotFoundException('Lobi bulunamadı.');
 
-    // Elite Oda kontrolü
-    if (lobby.isPremiumOnly && userId) {
-      // Normalde burada User repository'den de kontrol edebiliriz,
-      // Ancak hızlıca bir kontrol yapmak için şimdilik mobile'ın yetkisini de kullanabiliriz.
-      // Daha iyisi User repoya bakmak ama service'te usersRepository yok.
-      // Şimdilik Elite oda girişi için basit bir kontrol bırakalım. (Gerçek yetki mobile'da yapılacak)
+    if (!lobby) {
+      throw new NotFoundException('Lobi bulunamadi.');
     }
 
-    if (!lobby.isPrivate) return { success: true };
+    if (lobby.isPremiumOnly) {
+      const user = await this.usersService.findById(userId);
+      if (!user?.isPremium) {
+        throw new UnauthorizedException('Bu lobi premium kullanicilara ozel.');
+      }
+    }
+
+    if (!lobby.isPrivate) {
+      return { success: true };
+    }
 
     if (lobby.password !== password) {
-      throw new UnauthorizedException('Şifre hatalı.');
+      throw new UnauthorizedException('Sifre hatali.');
     }
 
     return { success: true };
+  }
+
+  async assertUserCanEnter(lobbyName: string, userId: number): Promise<Lobby> {
+    const lobby = await this.findByName(lobbyName);
+    if (!lobby) {
+      throw new NotFoundException('Lobi bulunamadi.');
+    }
+
+    if (lobby.isPremiumOnly) {
+      const user = await this.usersService.findById(userId);
+      if (!user?.isPremium) {
+        throw new UnauthorizedException('Bu lobi premium kullanicilara ozel.');
+      }
+    }
+
+    return lobby;
   }
 }

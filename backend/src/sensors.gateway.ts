@@ -13,29 +13,42 @@ import { JwtService } from '@nestjs/jwt';
 import { NotificationsService } from './notifications/notifications.service';
 import { ConfigService } from '@nestjs/config';
 import { getJwtSecret } from './config/env';
+import { JwtPayload } from './auth/jwt-payload.interface';
+import { LobbiesService } from './lobbies/lobbies.service';
 
 interface JoinLobbyDto {
-  userId: number;
   roomName: string;
-  fullName: string;
+  fullName?: string;
   maxUsers?: number;
 }
 
 interface SendMessageDto {
-  userId: number;
-  fullName: string;
+  fullName?: string;
   roomName: string;
   text: string;
-  type: string;
+  type?: string;
   fileUrl?: string;
-  isPremium: boolean;
+  isPremium?: boolean;
 }
 
 interface UpdatePresenceDto {
-  userId: number;
   isAtDesk: boolean;
   roomName: string;
-  isEliteRoom?: boolean;
+}
+
+interface NudgeFriendDto {
+  targetUserId: number;
+  senderName?: string;
+  roomName: string;
+}
+
+interface ConnectedRoomUser {
+  userId: number;
+  fullName: string;
+  roomName: string;
+  isAtDesk: boolean;
+  isEliteRoom: boolean;
+  isPremium: boolean;
 }
 
 @WebSocketGateway({
@@ -48,282 +61,268 @@ export class SensorsGateway
 {
   @WebSocketServer() server!: Server;
 
-  // Kullanıcıların aktif çalışma seanslarını takip etmek için (Puanlama için)
   private activeSessions = new Map<number, number>();
-
-  // EKLENDİ: Odalardaki anlık kullanıcı listesini ve "masada mı?" durumunu tutmak için
-  private connectedUsers = new Map<
-    string,
-    {
-      userId: number;
-      fullName: string;
-      roomName: string;
-      isAtDesk: boolean;
-      isEliteRoom?: boolean;
-    }
-  >();
+  private connectedUsers = new Map<string, ConnectedRoomUser>();
 
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
+    private readonly lobbiesService: LobbiesService,
   ) {}
 
-  // ── KULLANICI BAĞLANDIĞINDA (JWT KONTROLÜ) ──
   handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth?.token as string | undefined;
-      if (!token) throw new Error('Token eksik');
-      const payload = this.jwtService.verify(token, {
+      const auth = client.handshake.auth as { token?: unknown } | undefined;
+      const token = typeof auth?.token === 'string' ? auth.token : undefined;
+      if (!token) {
+        throw new Error('Token eksik');
+      }
+
+      const payload = this.jwtService.verify<JwtPayload>(token, {
         secret: getJwtSecret(this.configService),
-      }) as unknown as { id: number; email: string; username: string };
-      (client.data as unknown as Record<string, unknown>).user = payload;
+      });
+
+      (client.data as Record<string, unknown>).user = payload;
     } catch {
-      console.log(`[Socket] Yetkisiz bağlantı denemesi reddedildi.`);
+      console.log('[Socket] Yetkisiz baglanti denemesi reddedildi.');
       client.disconnect();
     }
   }
 
-  // ── KULLANICI UYGULAMAYI KAPATTIĞINDA / BAĞLANTI KOPTUĞUNDA ──
   async handleDisconnect(client: Socket) {
     const user = this.connectedUsers.get(client.id);
-    if (user) {
-      // Puanı kaybetmemesi için bağlantı koptuğunda süreyi hesapla
-      const startTime = this.activeSessions.get(user.userId);
-      if (startTime) {
-        const endTime = Date.now();
-        let durationMinutes = Math.round((endTime - startTime) / 60000);
-
-        // Elite Oda 2x Çarpanı
-        if (user.isEliteRoom) {
-          durationMinutes = durationMinutes * 2;
-        }
-
-        if (durationMinutes > 0) {
-          const updatedUser = await this.usersService.addFocusTime(
-            user.userId,
-            durationMinutes,
-          );
-          if (updatedUser) {
-            this.server.emit('score_updated', {
-              userId: user.userId,
-              newTotal: updatedUser.totalFocusMinutes,
-            });
-          }
-        }
-        this.activeSessions.delete(user.userId);
-      }
-
-      this.connectedUsers.delete(client.id); // Listeden sil
-      this.broadcastRoomUsers(user.roomName); // Kalanlara güncel listeyi gönder
-      console.log(`[Bağlantı Koptu] ${user.fullName} lobiden ayrıldı.`);
-    }
-  }
-
-  // ── ODADAKİ HERKESE GÜNCEL LİSTEYİ GÖNDEREN YARDIMCI FONKSİYON ──
-  private broadcastRoomUsers(roomName: string) {
-    // Sadece o odadaki kişileri filtreleyip diziye çevir
-    const usersInRoom = Array.from(this.connectedUsers.values()).filter(
-      (u) => u.roomName === roomName,
-    );
-    // Frontend'in beklediği 'room_users' kanalına bu diziyi gönder
-    this.server.to(roomName).emit('room_users', usersInRoom);
-  }
-
-  // ── KULLANICIYI LOBİYE (ODAYA) ALMA ──
-  @SubscribeMessage('join_lobby')
-  handleJoinLobby(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: JoinLobbyDto | string,
-  ) {
-    const data =
-      typeof payload === 'string'
-        ? (JSON.parse(payload) as JoinLobbyDto)
-        : payload;
-    const { userId, roomName, fullName, maxUsers } = data;
-
-    // Odadaki mevcut kişi sayısını hesapla
-    const usersInRoom = Array.from(this.connectedUsers.values()).filter(
-      (u) => u.roomName === roomName,
-    );
-
-    // Eğer maxUsers sınırına ulaşılmışsa, reddet
-    if (maxUsers && usersInRoom.length >= maxUsers) {
-      client.emit('room_full', { message: 'Bu oda kapasitesine ulaştı!' });
+    if (!user) {
       return;
     }
 
-    // Socket.io "Rooms" özelliğini kullanarak kullanıcıyı odaya dahil et
-    void client.join(roomName);
+    const startTime = this.activeSessions.get(user.userId);
+    if (startTime) {
+      await this.finishFocusSession(user);
+    }
 
-    // Kullanıcıyı anlık listemize ekle (Başlangıçta isAtDesk: false)
-    this.connectedUsers.set(client.id, {
-      userId,
-      fullName,
-      roomName,
-      isAtDesk: false,
-    });
-
-    console.log(
-      `[Lobi Katılım] ${fullName} (ID: ${userId}), '${roomName}' lobisine girdi.`,
-    );
-
-    // EKLENDİ: Odaya yeni biri girdiği için odadaki herkese TAM LİSTEYİ gönder
-    this.broadcastRoomUsers(roomName);
-
-    // Odadaki diğer kullanıcılara yeni birinin geldiğini bildir (Geçmiş uyumluluk için bırakıldı)
-    this.server.to(roomName).emit('user_joined_lobby', {
-      fullName,
-      userId,
-    });
+    this.connectedUsers.delete(client.id);
+    this.broadcastRoomUsers(user.roomName);
+    console.log(`[Baglanti Koptu] ${user.fullName} lobiden ayrildi.`);
   }
 
-  // ── GLOBAL CHAT - MESAJ GÖNDERME VE DAĞITMA ──
+  private getSocketUser(client: Socket): JwtPayload | null {
+    const user = (client.data as Record<string, unknown>).user as
+      | JwtPayload
+      | undefined;
+    return user?.sub ? user : null;
+  }
+
+  private parsePayload<T>(payload: T | string): T {
+    return typeof payload === 'string' ? (JSON.parse(payload) as T) : payload;
+  }
+
+  private broadcastRoomUsers(roomName: string) {
+    const usersInRoom = Array.from(this.connectedUsers.values()).filter(
+      (u) => u.roomName === roomName,
+    );
+    this.server.to(roomName).emit('room_users', usersInRoom);
+  }
+
+  private async finishFocusSession(user: ConnectedRoomUser) {
+    const startTime = this.activeSessions.get(user.userId);
+    if (!startTime) {
+      return;
+    }
+
+    let durationMinutes = Math.round((Date.now() - startTime) / 60000);
+    if (user.isEliteRoom) {
+      durationMinutes *= 2;
+    }
+
+    if (durationMinutes > 0) {
+      const updatedUser = await this.usersService.addFocusTime(
+        user.userId,
+        durationMinutes,
+      );
+
+      if (updatedUser) {
+        this.server.emit('score_updated', {
+          userId: user.userId,
+          newTotal: updatedUser.totalFocusMinutes,
+        });
+      }
+    }
+
+    this.activeSessions.delete(user.userId);
+  }
+
+  @SubscribeMessage('join_lobby')
+  async handleJoinLobby(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: JoinLobbyDto | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) {
+      client.disconnect();
+      return;
+    }
+
+    const data = this.parsePayload(payload);
+    const { roomName, maxUsers } = data;
+
+    try {
+      const currentUser = await this.usersService.findById(socketUser.sub);
+      if (!currentUser) {
+        client.disconnect();
+        return;
+      }
+
+      const lobby = await this.lobbiesService.assertUserCanEnter(
+        roomName,
+        socketUser.sub,
+      );
+      const fullName = currentUser.fullName ?? socketUser.username;
+
+      const usersInRoom = Array.from(this.connectedUsers.values()).filter(
+        (u) => u.roomName === roomName,
+      );
+
+      if (maxUsers && usersInRoom.length >= maxUsers) {
+        client.emit('room_full', { message: 'Bu oda kapasitesine ulasti.' });
+        return;
+      }
+
+      void client.join(roomName);
+
+      this.connectedUsers.set(client.id, {
+        userId: socketUser.sub,
+        fullName,
+        roomName,
+        isAtDesk: false,
+        isEliteRoom: lobby.isPremiumOnly,
+        isPremium: currentUser.isPremium,
+      });
+
+      console.log(
+        `[Lobi Katilim] ${fullName} (ID: ${socketUser.sub}), '${roomName}' lobisine girdi.`,
+      );
+
+      this.broadcastRoomUsers(roomName);
+      this.server.to(roomName).emit('user_joined_lobby', {
+        fullName,
+        userId: socketUser.sub,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Lobiye giris reddedildi.';
+      client.emit('join_lobby_error', { message });
+    }
+  }
+
   @SubscribeMessage('send_message')
   handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: SendMessageDto | string,
   ) {
-    const data =
-      typeof payload === 'string'
-        ? (JSON.parse(payload) as SendMessageDto)
-        : payload;
-    const { userId, fullName, roomName, text, type, fileUrl, isPremium } = data;
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) {
+      client.disconnect();
+      return;
+    }
 
-    console.log(`[Chat - ${roomName}] ${fullName}: ${text}`);
+    const data = this.parsePayload(payload);
+    const connectedUser = this.connectedUsers.get(client.id);
+    const fullName = connectedUser?.fullName ?? socketUser.username;
 
-    // Mesajı SADECE ilgili lobiye (odaya) bağlı olanlara ilet
-    this.server.to(roomName).emit('receive_message', {
-      userId,
+    console.log(`[Chat - ${data.roomName}] ${fullName}: ${data.text}`);
+
+    this.server.to(data.roomName).emit('receive_message', {
+      userId: socketUser.sub,
       fullName,
-      text,
-      type,
-      fileUrl,
-      isPremium,
+      text: data.text,
+      type: data.type,
+      fileUrl: data.fileUrl,
+      isPremium: connectedUser?.isPremium ?? false,
       timestamp: new Date().toISOString(),
     });
   }
 
-  // ── ODAKLANMA DURUMU VE PUANLAMA TAKİBİ ──
   @SubscribeMessage('update_presence')
   async handlePresenceUpdate(
-    @ConnectedSocket() client: Socket, // EKLENDİ: Client ID'ye ulaşmak için
+    @ConnectedSocket() client: Socket,
     @MessageBody() payload: UpdatePresenceDto | string,
   ) {
-    const data =
-      typeof payload === 'string'
-        ? (JSON.parse(payload) as UpdatePresenceDto)
-        : payload;
-    const { userId, isAtDesk, roomName, isEliteRoom } = data;
-
-    // EKLENDİ: Kullanıcının durumunu (isAtDesk) anlık listede güncelle
-    const user = this.connectedUsers.get(client.id);
-    if (user) {
-      user.isAtDesk = isAtDesk;
-      user.isEliteRoom = isEliteRoom;
-      this.connectedUsers.set(client.id, user);
-
-      // Birinin durumu (yeşil/gri nokta) değiştiği için odadaki herkese güncel listeyi gönder
-      this.broadcastRoomUsers(roomName);
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) {
+      client.disconnect();
+      return;
     }
 
-    if (isAtDesk) {
-      // Telefon masaya bırakıldığında süreyi başlat
-      this.activeSessions.set(userId, Date.now());
+    const data = this.parsePayload(payload);
+    const user = this.connectedUsers.get(client.id);
+    if (!user) {
+      return;
+    }
+
+    user.isAtDesk = data.isAtDesk;
+    this.connectedUsers.set(client.id, user);
+    this.broadcastRoomUsers(user.roomName);
+
+    if (data.isAtDesk) {
+      this.activeSessions.set(socketUser.sub, Date.now());
       console.log(
-        `[Odaklanma Başladı - ${roomName}] Kullanıcı: ${userId} (Elite: ${isEliteRoom})`,
+        `[Odaklanma Basladi - ${user.roomName}] Kullanici: ${socketUser.sub} (Elite: ${user.isEliteRoom})`,
       );
 
-      // ARKADAŞLARA BİLDİRİM GÖNDER
-      if (user) {
-        void this.usersService.getFriendsPushTokens(userId).then((tokens) => {
+      void this.usersService
+        .getFriendsPushTokens(socketUser.sub)
+        .then((tokens) => {
           tokens.forEach((token) => {
             void this.notificationsService.sendNotification(
               token,
-              'StudyLounge 📚',
-              `${user.fullName} masaya geçti, beraber çalışabilirsiniz!`,
+              'StudyLounge',
+              `${user.fullName} masaya gecti, beraber calisabilirsiniz!`,
             );
           });
         });
-      }
     } else {
-      // Telefon masadan kaldırıldığında süreyi hesapla ve veritabanına yaz
-      const startTime = this.activeSessions.get(userId);
-      if (startTime) {
-        const endTime = Date.now();
-        const durationMs = endTime - startTime;
-        let durationMinutes = Math.round(durationMs / 60000);
-
-        // Elite Oda 2x Çarpanı
-        if (isEliteRoom) {
-          durationMinutes = durationMinutes * 2;
-        }
-
-        if (durationMinutes > 0) {
-          const updatedUser = await this.usersService.addFocusTime(
-            userId,
-            durationMinutes,
-          );
-
-          if (updatedUser) {
-            // Güncel puanı tüm uygulamaya duyur (Liderlik tablosu vb. için)
-            this.server.emit('score_updated', {
-              userId: userId,
-              newTotal: updatedUser.totalFocusMinutes,
-            });
-          }
-        }
-        this.activeSessions.delete(userId);
-        console.log(
-          `[Odaklanma Bitti - ${roomName}] Kullanıcı: ${userId}, Kazanılan: ${durationMinutes} dk. (Elite: ${isEliteRoom})`,
-        );
-      }
+      await this.finishFocusSession(user);
+      console.log(
+        `[Odaklanma Bitti - ${user.roomName}] Kullanici: ${socketUser.sub} (Elite: ${user.isEliteRoom})`,
+      );
     }
 
-    if (roomName) {
-      this.server.to(roomName).emit('presence_changed', data);
-    }
+    this.server.to(user.roomName).emit('presence_changed', {
+      ...data,
+      userId: socketUser.sub,
+      isEliteRoom: user.isEliteRoom,
+    });
   }
 
-  // ── DÜRTME (NUDGE) - Arkadaşı Çalışmaya Çağır ──
   @SubscribeMessage('nudge_friend')
   async handleNudge(
-    @MessageBody()
-    payload:
-      | {
-          senderId: number;
-          targetUserId: number;
-          senderName: string;
-          roomName: string;
-        }
-      | string,
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: NudgeFriendDto | string,
   ) {
-    const data =
-      typeof payload === 'string'
-        ? (JSON.parse(payload) as {
-            senderId: number;
-            targetUserId: number;
-            senderName: string;
-            roomName: string;
-          })
-        : payload;
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) {
+      client.disconnect();
+      return;
+    }
 
-    const { senderId, targetUserId, senderName, roomName } = data;
+    const data = this.parsePayload(payload);
+    const connectedUser = this.connectedUsers.get(client.id);
+    const senderName = connectedUser?.fullName ?? socketUser.username;
 
     console.log(
-      `[Nudge] ${senderName} (ID: ${senderId}), Kullanıcı ${targetUserId}'yi dürtüyor.`,
+      `[Nudge] ${senderName} (ID: ${socketUser.sub}), Kullanici ${data.targetUserId}'yi durtuyor.`,
     );
 
-    // 1. Hedef kullanıcının soket bağlantısını bul ve anlık bildirim gönder
     let notified = false;
     for (const [socketId, user] of this.connectedUsers.entries()) {
-      if (user.userId === targetUserId) {
+      if (user.userId === data.targetUserId) {
         this.server.to(socketId).emit('nudge_received', {
           senderName,
-          senderId,
-          roomName,
-          message: `${senderName} seni çalışmaya çağırıyor! 👋`,
+          senderId: socketUser.sub,
+          roomName: data.roomName,
+          message: `${senderName} seni calismaya cagiriyor!`,
         });
         notified = true;
         break;
@@ -332,22 +331,23 @@ export class SensorsGateway
 
     if (!notified) {
       console.log(
-        `[Nudge] Kullanıcı ${targetUserId} çevrimiçi değil, sadece push bildirimi gönderilecek.`,
+        `[Nudge] Kullanici ${data.targetUserId} cevrimici degil, push bildirimi denenecek.`,
       );
     }
 
-    // 2. Push bildirimi gönder (kullanıcı çevrimdışı veya başka bir odadaysa da ulaşsın)
     try {
-      const tokens = await this.usersService.getUserPushTokens([targetUserId]);
+      const tokens = await this.usersService.getUserPushTokens([
+        data.targetUserId,
+      ]);
       tokens.forEach((token) => {
         void this.notificationsService.sendNotification(
           token,
-          'StudyLounge 👋',
-          `${senderName} seni çalışmaya davet ediyor!`,
+          'StudyLounge',
+          `${senderName} seni calismaya davet ediyor!`,
         );
       });
     } catch (e) {
-      console.error('[Nudge] Push bildirimi gönderilemedi:', e);
+      console.error('[Nudge] Push bildirimi gonderilemedi:', e);
     }
   }
 }

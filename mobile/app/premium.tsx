@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Alert, ActivityIndicator, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,16 +25,13 @@ function BackgroundOrbs() {
 
 export default function PremiumScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const myUserId = Number(params.id);
-  
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePurchase = async () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(apiUrl(`/users/upgrade/${myUserId}`), {
+      const res = await fetch(apiUrl('/users/demo/upgrade'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

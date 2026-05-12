@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
-import { LobbiesService } from './lobbies.service';
-import { Lobby } from './lobby.entity';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { User } from '../users/user.entity';
+import { CreateLobbyDto } from './dto/create-lobby.dto';
+import { VerifyLobbyPasswordDto } from './dto/verify-lobby-password.dto';
+import { LobbiesService } from './lobbies.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('lobbies')
@@ -14,12 +17,19 @@ export class LobbiesController {
   }
 
   @Post()
-  async createLobby(@Body() lobbyData: Partial<Lobby>) {
+  async createLobby(@Body() lobbyData: CreateLobbyDto) {
     return this.lobbiesService.create(lobbyData);
   }
 
   @Post('verify-password')
-  async verifyPassword(@Body() body: { lobbyId: number; password?: string }) {
-    return this.lobbiesService.verifyPassword(body.lobbyId, body.password);
+  async verifyPassword(
+    @CurrentUser() user: User,
+    @Body() body: VerifyLobbyPasswordDto,
+  ) {
+    return this.lobbiesService.verifyPassword(
+      body.lobbyId,
+      body.password,
+      user.id,
+    );
   }
 }

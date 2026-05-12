@@ -1,51 +1,31 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  async register(
-    @Body()
-    body: {
-      username: string;
-      email: string;
-      password?: string;
-      fullName: string;
-    },
-  ) {
-    if (!body.username || !body.email || !body.password || !body.fullName) {
-      throw new BadRequestException(
-        'Kullanıcı adı, Ad Soyad, E-posta ve Şifre zorunludur!',
-      );
-    }
+  async register(@Body() body: RegisterDto) {
     return this.authService.register(body);
   }
 
   @Post('login')
-  async login(@Body() body: { email: string; password?: string }) {
-    if (!body.email || !body.password) {
-      throw new BadRequestException('E-posta ve şifre zorunludur!');
-    }
+  async login(@Body() body: LoginDto) {
     return this.authService.login(body.email, body.password);
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: { email: string }) {
-    if (!body.email) {
-      throw new BadRequestException('E-posta adresi zorunludur!');
-    }
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.forgotPassword(body.email);
   }
 
   @Post('reset-password')
-  async resetPassword(
-    @Body() body: { email: string; token: string; newPass: string },
-  ) {
-    if (!body.email || !body.token || !body.newPass) {
-      throw new BadRequestException('Tüm alanlar zorunludur!');
-    }
+  async resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body.email, body.token, body.newPass);
   }
 }

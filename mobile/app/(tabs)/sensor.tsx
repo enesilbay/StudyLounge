@@ -176,7 +176,6 @@ export default function SensorScreen() {
     
     formData.append('file', { uri: fileAsset.uri, name, type: mimeType } as any);
     formData.append('roomName', String(roomName));
-    formData.append('userId', String(myUserId));
 
     try {
       const token = await AsyncStorage.getItem('access_token');
@@ -185,7 +184,7 @@ export default function SensorScreen() {
       });
       const data = await res.json();
       socketRef.current?.emit('send_message', {
-        userId: myUserId, fullName: safeFullName, roomName, 
+        fullName: safeFullName, roomName, 
         text: name, type: data.type || explicitType, fileUrl: data.fileUrl, isPremium
       });
     } catch (e) { Alert.alert("Hata", "Dosya yüklenemedi"); }
@@ -281,7 +280,7 @@ export default function SensorScreen() {
       socketRef.current = io(BACKEND_URL, { transports: ['websocket'], auth: { token } });
       socketRef.current.on('connect', () => {
         setIsConnected(true);
-        socketRef.current?.emit('join_lobby', { userId: id, roomName, fullName: safeFullName, maxUsers: params.maxUsers });
+        socketRef.current?.emit('join_lobby', { roomName, fullName: safeFullName, maxUsers: params.maxUsers });
       });
       socketRef.current.on('disconnect', () => {
         setIsConnected(false);
@@ -297,8 +296,8 @@ export default function SensorScreen() {
         setChatList(prev => [...prev, msg]);
       });
       
-      socketRef.current.on('score_update', (data: any) => {
-        if (Number(data.userId) === myUserId) setTotalScore(data.score);
+      socketRef.current.on('score_updated', (data: any) => {
+        if (Number(data.userId) === myUserId) setTotalScore(data.newTotal);
       });
 
       // Dürtme (Nudge) alındığında toast göster
@@ -324,7 +323,7 @@ export default function SensorScreen() {
             if (previousDeskState.current !== true) {
               setIsAtDesk(true);
               if (socketRef.current?.connected) {
-                socketRef.current.emit('update_presence', { userId: id, isAtDesk: true, roomName, isEliteRoom });
+                socketRef.current.emit('update_presence', { isAtDesk: true, roomName });
               }
               previousDeskState.current = true;
             }
@@ -332,7 +331,7 @@ export default function SensorScreen() {
             if (previousDeskState.current === true) {
               setIsAtDesk(false);
               if (socketRef.current?.connected) {
-                socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName, isEliteRoom });
+                socketRef.current.emit('update_presence', { isAtDesk: false, roomName });
               }
               previousDeskState.current = false;
             } else {
@@ -344,7 +343,7 @@ export default function SensorScreen() {
     } else {
       setIsAtDesk(false);
       if (socketRef.current?.connected && previousDeskState.current !== false) {
-        socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName, isEliteRoom });
+        socketRef.current.emit('update_presence', { isAtDesk: false, roomName });
         previousDeskState.current = false;
       }
     }
@@ -358,7 +357,7 @@ export default function SensorScreen() {
     const newState = !isAtDesk;
     setIsAtDesk(newState);
     if (socketRef.current?.connected) {
-      socketRef.current.emit('update_presence', { userId: id, isAtDesk: newState, roomName, isEliteRoom });
+      socketRef.current.emit('update_presence', { isAtDesk: newState, roomName });
     }
     previousDeskState.current = newState;
   };
@@ -380,7 +379,6 @@ export default function SensorScreen() {
   const sendNudge = (targetUserId: number, targetName: string) => {
     if (targetUserId === myUserId) return;
     socketRef.current?.emit('nudge_friend', {
-      senderId: myUserId,
       targetUserId,
       senderName: safeFullName,
       roomName,
@@ -390,7 +388,7 @@ export default function SensorScreen() {
 
   const sendMessage = async () => {
     if (!message.trim() || !isPremium) return;
-    socketRef.current?.emit('send_message', { userId: myUserId, fullName: safeFullName, roomName, text: message, isPremium });
+    socketRef.current?.emit('send_message', { fullName: safeFullName, roomName, text: message, isPremium });
     setMessage('');
   };
 

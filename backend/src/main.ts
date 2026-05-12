@@ -5,10 +5,19 @@ import { join } from 'path';
 import * as os from 'os';
 import { ConfigService } from '@nestjs/config';
 import { getConfigNumber, getConfigString } from './config/env';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   // 1. CORS Ayari: Olmazsa olmaz. Mobil cihazlarin baglanti izni almasini saglar.
   const corsOrigin = getConfigString(configService, 'CORS_ORIGIN', '*');

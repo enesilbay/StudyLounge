@@ -1,9 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '../users/user.entity';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
+import { JwtPayload } from './jwt-payload.interface';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +19,11 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Hatalı e-posta veya şifre girdiniz.');
     }
-    const payload = { email: user.email, sub: user.id };
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      username: user.username,
+    };
     return {
       success: true,
       user,
@@ -26,9 +31,13 @@ export class AuthService {
     };
   }
 
-  async register(body: Partial<User>) {
+  async register(body: RegisterDto) {
     const user = await this.usersService.create(body);
-    const payload = { email: user.email, sub: user.id };
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      username: user.username,
+    };
     return {
       success: true,
       user,
