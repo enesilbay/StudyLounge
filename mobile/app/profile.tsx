@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  Image, Alert, ActivityIndicator, Dimensions, Platform 
+  Image, Alert, ActivityIndicator, Dimensions, Platform, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -144,7 +144,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={s.container}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* ── AVATAR BÖLÜMÜ ── */}
         <View style={s.avatarWrap}>
@@ -219,7 +219,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-      </View>
+      </ScrollView>
 
       {/* NASIL PUAN KAZANILIR MODAL */}
       {showInfo && (
@@ -259,7 +259,7 @@ const s = StyleSheet.create({
   backBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   infoBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   headerTitle: { fontSize: 18, fontWeight: '800', color: C.text, letterSpacing: 1 },
-  container: { flex: 1, paddingHorizontal: 25, alignItems: 'center' },
+  scrollContent: { paddingHorizontal: 25, alignItems: 'center', paddingBottom: 100 },
   
   avatarWrap: { marginTop: 30, marginBottom: 25 },
   avatarContainer: { width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255, 193, 7, 0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255, 193, 7, 0.3)', position: 'relative' },
