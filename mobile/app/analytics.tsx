@@ -154,15 +154,17 @@ export default function AnalyticsScreen() {
         {/* Çizgi Grafiği (Haftalık Dağılım) */}
         <View style={s.chartBox}>
           <Text style={s.chartTitle}>Haftalık Odaklanma</Text>
-          <LineChart
-            data={weeklyData}
-            width={width - 50}
-            height={220}
-            chartConfig={chartConfig}
-            bezier
-            style={{ marginVertical: 8, marginLeft: -15 }}
-            withVerticalLines={false}
-          />
+          <View pointerEvents="none">
+            <LineChart
+              data={weeklyData}
+              width={width - 50}
+              height={220}
+              chartConfig={chartConfig}
+              bezier
+              style={{ marginVertical: 8, marginLeft: -15 }}
+              withVerticalLines={false}
+            />
+          </View>
         </View>
 
         {/* Saatlik Sıcaklık Haritası (Heatmap) */}
