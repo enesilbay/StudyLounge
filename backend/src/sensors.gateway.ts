@@ -33,6 +33,7 @@ interface UpdatePresenceDto {
   userId: number;
   isAtDesk: boolean;
   roomName: string;
+  isEliteRoom?: boolean;
 }
 
 @WebSocketGateway({
@@ -51,7 +52,7 @@ export class SensorsGateway
   // EKLENDİ: Odalardaki anlık kullanıcı listesini ve "masada mı?" durumunu tutmak için
   private connectedUsers = new Map<
     string,
-    { userId: number; fullName: string; roomName: string; isAtDesk: boolean }
+    { userId: number; fullName: string; roomName: string; isAtDesk: boolean; isEliteRoom?: boolean }
   >();
 
   constructor(
@@ -83,7 +84,13 @@ export class SensorsGateway
       const startTime = this.activeSessions.get(user.userId);
       if (startTime) {
         const endTime = Date.now();
-        const durationMinutes = Math.round((endTime - startTime) / 60000);
+        let durationMinutes = Math.round((endTime - startTime) / 60000);
+        
+        // Elite Oda 2x Çarpanı
+        if (user.isEliteRoom) {
+          durationMinutes = durationMinutes * 2;
+        }
+
         if (durationMinutes > 0) {
           const updatedUser = await this.usersService.addFocusTime(
             user.userId,
@@ -199,12 +206,13 @@ export class SensorsGateway
       typeof payload === 'string'
         ? (JSON.parse(payload) as UpdatePresenceDto)
         : payload;
-    const { userId, isAtDesk, roomName } = data;
+    const { userId, isAtDesk, roomName, isEliteRoom } = data;
 
     // EKLENDİ: Kullanıcının durumunu (isAtDesk) anlık listede güncelle
     const user = this.connectedUsers.get(client.id);
     if (user) {
       user.isAtDesk = isAtDesk;
+      user.isEliteRoom = isEliteRoom;
       this.connectedUsers.set(client.id, user);
 
       // Birinin durumu (yeşil/gri nokta) değiştiği için odadaki herkese güncel listeyi gönder
@@ -214,7 +222,7 @@ export class SensorsGateway
     if (isAtDesk) {
       // Telefon masaya bırakıldığında süreyi başlat
       this.activeSessions.set(userId, Date.now());
-      console.log(`[Odaklanma Başladı - ${roomName}] Kullanıcı: ${userId}`);
+      console.log(`[Odaklanma Başladı - ${roomName}] Kullanıcı: ${userId} (Elite: ${isEliteRoom})`);
 
       // ARKADAŞLARA BİLDİRİM GÖNDER
       if (user) {
@@ -234,7 +242,12 @@ export class SensorsGateway
       if (startTime) {
         const endTime = Date.now();
         const durationMs = endTime - startTime;
-        const durationMinutes = Math.round(durationMs / 60000);
+        let durationMinutes = Math.round(durationMs / 60000);
+
+        // Elite Oda 2x Çarpanı
+        if (isEliteRoom) {
+          durationMinutes = durationMinutes * 2;
+        }
 
         if (durationMinutes > 0) {
           const updatedUser = await this.usersService.addFocusTime(
@@ -252,7 +265,7 @@ export class SensorsGateway
         }
         this.activeSessions.delete(userId);
         console.log(
-          `[Odaklanma Bitti - ${roomName}] Kullanıcı: ${userId}, Kazanılan: ${durationMinutes} dk.`,
+          `[Odaklanma Bitti - ${roomName}] Kullanıcı: ${userId}, Kazanılan: ${durationMinutes} dk. (Elite: ${isEliteRoom})`,
         );
       }
     }

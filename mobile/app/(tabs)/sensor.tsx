@@ -116,7 +116,6 @@ export default function SensorScreen() {
 
   const socketRef = useRef<any>(null);
   const previousDeskState = useRef<boolean | null>(null);
-  const graceTimerRef = useRef<any>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -310,30 +309,20 @@ export default function SensorScreen() {
           const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
           
           if (flat) {
-            if (graceTimerRef.current) {
-              clearTimeout(graceTimerRef.current);
-              graceTimerRef.current = null;
-            }
             if (previousDeskState.current !== true) {
               setIsAtDesk(true);
               if (socketRef.current?.connected) {
-                socketRef.current.emit('update_presence', { userId: id, isAtDesk: true, roomName });
+                socketRef.current.emit('update_presence', { userId: id, isAtDesk: true, roomName, isEliteRoom });
               }
               previousDeskState.current = true;
             }
           } else {
             if (previousDeskState.current === true) {
-              if (!graceTimerRef.current) {
-                const gracePeriod = isEliteRoom ? 1000 : 3000;
-                graceTimerRef.current = setTimeout(() => {
-                  setIsAtDesk(false);
-                  if (socketRef.current?.connected) {
-                    socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
-                  }
-                  previousDeskState.current = false;
-                  graceTimerRef.current = null;
-                }, gracePeriod);
+              setIsAtDesk(false);
+              if (socketRef.current?.connected) {
+                socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName, isEliteRoom });
               }
+              previousDeskState.current = false;
             } else {
               setIsAtDesk(false);
             }
@@ -341,19 +330,14 @@ export default function SensorScreen() {
         });
       }
     } else {
-      if (graceTimerRef.current) {
-        clearTimeout(graceTimerRef.current);
-        graceTimerRef.current = null;
-      }
       setIsAtDesk(false);
       if (socketRef.current?.connected && previousDeskState.current !== false) {
-        socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
+        socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName, isEliteRoom });
         previousDeskState.current = false;
       }
     }
     return () => {
       if (sub && typeof sub.remove === 'function') sub.remove();
-      if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
     };
   }, [isFocused]);
 
@@ -362,7 +346,7 @@ export default function SensorScreen() {
     const newState = !isAtDesk;
     setIsAtDesk(newState);
     if (socketRef.current?.connected) {
-      socketRef.current.emit('update_presence', { userId: id, isAtDesk: newState, roomName });
+      socketRef.current.emit('update_presence', { userId: id, isAtDesk: newState, roomName, isEliteRoom });
     }
     previousDeskState.current = newState;
   };
@@ -431,8 +415,8 @@ export default function SensorScreen() {
                 {isEliteRoom ? 'ELITE ODA 👑' : 'ODAK ODASI'}
               </Text>
               {isEliteRoom && (
-                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.4)' }}>
-                  <Text style={{ fontSize: 9, fontWeight: '900', color: C.danger, letterSpacing: 0.5 }}>HARDCORE</Text>
+                <View style={{ backgroundColor: 'rgba(255, 193, 7, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255, 193, 7, 0.4)' }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: C.primary, letterSpacing: 0.5 }}>+2x PUAN</Text>
                 </View>
               )}
             </View>
@@ -453,8 +437,8 @@ export default function SensorScreen() {
             <Text style={[s.statusTitle, isAtDesk && { color: isEliteRoom ? C.primary : C.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
             <Text style={s.statusDesc}>
               {isAtDesk 
-                ? (isEliteRoom ? '🔥 Hardcore mod aktif! Telefonu kaldırırsan 1 saniye içinde odağın bozulur.' : 'Cihaz masada, odak puanı kazanıyorsun.') 
-                : (isEliteRoom ? 'Puan kazanmak için cihazı masaya bırakın. (Tolerans: 1 sn)' : 'Puan kazanmak için cihazı masaya bırakın.')}
+                ? (isEliteRoom ? '🔥 Elite mod aktif! Çarpan ile x2 Puan kazanıyorsun.' : 'Cihaz masada, odak puanı kazanıyorsun.') 
+                : (isEliteRoom ? 'Puan kazanmak için cihazı masaya bırakın. Unutma, sensör anında tepki verir!' : 'Puan kazanmak için cihazı masaya bırakın.')}
             </Text>
           </View>
         </View>
