@@ -324,6 +324,7 @@ export default function SensorScreen() {
           } else {
             if (previousDeskState.current === true) {
               if (!graceTimerRef.current) {
+                const gracePeriod = isEliteRoom ? 1000 : 3000;
                 graceTimerRef.current = setTimeout(() => {
                   setIsAtDesk(false);
                   if (socketRef.current?.connected) {
@@ -331,7 +332,7 @@ export default function SensorScreen() {
                   }
                   previousDeskState.current = false;
                   graceTimerRef.current = null;
-                }, 3000);
+                }, gracePeriod);
               }
             } else {
               setIsAtDesk(false);
@@ -425,9 +426,16 @@ export default function SensorScreen() {
             <FontAwesome5 solid name="chevron-left" size={16} color="rgba(255,255,255,0.7)" />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
-            <Text style={[s.headerRoom, isEliteRoom && { color: C.primary, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }]}>
-              {isEliteRoom ? 'ELITE ODA 👑' : 'ODAK ODASI'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[s.headerRoom, isEliteRoom && { color: C.primary, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }]}>
+                {isEliteRoom ? 'ELITE ODA 👑' : 'ODAK ODASI'}
+              </Text>
+              {isEliteRoom && (
+                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: C.danger, letterSpacing: 0.5 }}>HARDCORE</Text>
+                </View>
+              )}
+            </View>
             <Text style={[s.headerName, isEliteRoom && { color: C.primary }]} numberOfLines={1}>{roomName}</Text>
           </View>
           <View style={s.scorePill}>
@@ -443,7 +451,11 @@ export default function SensorScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.statusTitle, isAtDesk && { color: isEliteRoom ? C.primary : C.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
-            <Text style={s.statusDesc}>{isAtDesk ? 'Cihaz masada, odak puanı kazanıyorsun.' : 'Puan kazanmak için cihazı masaya bırakın.'}</Text>
+            <Text style={s.statusDesc}>
+              {isAtDesk 
+                ? (isEliteRoom ? '🔥 Hardcore mod aktif! Telefonu kaldırırsan 1 saniye içinde odağın bozulur.' : 'Cihaz masada, odak puanı kazanıyorsun.') 
+                : (isEliteRoom ? 'Puan kazanmak için cihazı masaya bırakın. (Tolerans: 1 sn)' : 'Puan kazanmak için cihazı masaya bırakın.')}
+            </Text>
           </View>
         </View>
 
