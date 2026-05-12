@@ -52,7 +52,13 @@ export class SensorsGateway
   // EKLENDİ: Odalardaki anlık kullanıcı listesini ve "masada mı?" durumunu tutmak için
   private connectedUsers = new Map<
     string,
-    { userId: number; fullName: string; roomName: string; isAtDesk: boolean; isEliteRoom?: boolean }
+    {
+      userId: number;
+      fullName: string;
+      roomName: string;
+      isAtDesk: boolean;
+      isEliteRoom?: boolean;
+    }
   >();
 
   constructor(
@@ -85,7 +91,7 @@ export class SensorsGateway
       if (startTime) {
         const endTime = Date.now();
         let durationMinutes = Math.round((endTime - startTime) / 60000);
-        
+
         // Elite Oda 2x Çarpanı
         if (user.isEliteRoom) {
           durationMinutes = durationMinutes * 2;
@@ -222,7 +228,9 @@ export class SensorsGateway
     if (isAtDesk) {
       // Telefon masaya bırakıldığında süreyi başlat
       this.activeSessions.set(userId, Date.now());
-      console.log(`[Odaklanma Başladı - ${roomName}] Kullanıcı: ${userId} (Elite: ${isEliteRoom})`);
+      console.log(
+        `[Odaklanma Başladı - ${roomName}] Kullanıcı: ${userId} (Elite: ${isEliteRoom})`,
+      );
 
       // ARKADAŞLARA BİLDİRİM GÖNDER
       if (user) {

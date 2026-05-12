@@ -137,11 +137,17 @@ export class UsersController {
 
   // ── PROFİL BİLGİLERİ GÜNCELLEME ──
   @Put(':id/profile')
-  async updateProfile(@Param('id') id: string, @Body() body: { fullName: string }) {
+  async updateProfile(
+    @Param('id') id: string,
+    @Body() body: { fullName: string },
+  ) {
     if (!body.fullName || body.fullName.trim() === '') {
       throw new BadRequestException('İsim boş olamaz');
     }
-    const updated = await this.usersService.updateProfile(Number(id), body.fullName);
+    const updated = await this.usersService.updateProfile(
+      Number(id),
+      body.fullName,
+    );
     return { success: true, user: updated };
   }
 

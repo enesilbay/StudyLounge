@@ -37,7 +37,8 @@ export class MessagesController {
       storage: diskStorage({
         destination: './uploads', // Kök dizindeki uploads klasörü
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
