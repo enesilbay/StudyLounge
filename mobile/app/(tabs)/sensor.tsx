@@ -12,6 +12,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -79,9 +80,10 @@ export default function SensorScreen() {
   const isEliteRoom = params.isElite === 'true';
 
   const [availableSounds, setAvailableSounds] = useState(SOUNDS);
-  const [selectedSound, setSelectedSound] = useState(SOUNDS[0]);
   const [isSoundOn, setIsSoundOn] = useState(false);
-  const [soundObj, setSoundObj] = useState<Audio.Sound | null>(null);
+  const [volumes, setVolumes] = useState<Record<string, number>>({});
+  const [showMixer, setShowMixer] = useState(false);
+  const soundsMapRef = useRef<Record<string, Audio.Sound>>({});
 
   useEffect(() => {
     if (isEliteRoom) {
@@ -90,7 +92,9 @@ export default function SensorScreen() {
         ...SOUNDS
       ];
       setAvailableSounds(eliteSounds);
-      setSelectedSound(eliteSounds[0]);
+      setVolumes({ 'deep_focus': 1 }); // Default selection for elite
+    } else {
+      setVolumes({ [SOUNDS[0].key]: 1 }); // Default selection for normal
     }
   }, [isEliteRoom]);
 
@@ -201,51 +205,73 @@ export default function SensorScreen() {
     } catch (e) { Alert.alert("Hata", "Dosya yüklenemedi"); }
   };
 
+  // ── SES MİKSERİ (SOUND MIXER) MANTIĞI ──
   useEffect(() => {
-    let currentSound: Audio.Sound | null = null;
     let isMounted = true;
+    
+    async function initSounds() {
+      // Önceki sesleri temizle
+      for (const key in soundsMapRef.current) {
+         soundsMapRef.current[key].unloadAsync().catch(()=>{});
+      }
+      soundsMapRef.current = {};
 
-    async function loadNewSound() {
-      try {
-        const { sound } = await Audio.Sound.createAsync(selectedSound.file, { isLooping: true, volume: 1.0 });
-        if (isMounted) {
-          setSoundObj(sound);
-          currentSound = sound;
-        } else {
-          await sound.unloadAsync();
+      // Yeni sesleri yükle (başlangıçta sessiz ve durdurulmuş şekilde)
+      for (const s of availableSounds) {
+        if (!isMounted) break;
+        try {
+          const { sound } = await Audio.Sound.createAsync(s.file, { isLooping: true, volume: 0 });
+          soundsMapRef.current[s.key] = sound;
+        } catch (e) {
+          console.log("Ses yüklenemedi", s.key);
         }
-      } catch (e) {
-        console.log("Ses yüklenemedi:", e);
       }
     }
-    loadNewSound();
+    initSounds();
 
     return () => {
       isMounted = false;
-      if (currentSound) {
-        currentSound.unloadAsync().catch(() => {});
+      for (const key in soundsMapRef.current) {
+        soundsMapRef.current[key].unloadAsync().catch(()=>{});
       }
     };
-  }, [selectedSound.key]);
+  }, [availableSounds]);
 
   useEffect(() => {
-    async function handlePlayback() {
-      if (!soundObj) return;
-      try {
-        const status = await soundObj.getStatusAsync();
-        if (status.isLoaded) {
-          if (isSoundOn && isAtDesk && isFocused) {
-            await soundObj.playAsync();
-          } else {
-            await soundObj.pauseAsync();
+    async function syncPlayback() {
+      const shouldPlay = isSoundOn && isAtDesk && isFocused;
+      
+      for (const key in soundsMapRef.current) {
+        const sound = soundsMapRef.current[key];
+        const vol = volumes[key] || 0;
+        
+        try {
+          const status = await sound.getStatusAsync();
+          if (status.isLoaded) {
+            await sound.setVolumeAsync(vol);
+            if (shouldPlay && vol > 0) {
+              if (!status.isPlaying) await sound.playAsync();
+            } else {
+              if (status.isPlaying) await sound.pauseAsync();
+            }
           }
-        }
-      } catch (e) {
-        console.log("Ses oynatma hatası:", e);
+        } catch(e){}
       }
     }
-    handlePlayback();
-  }, [isAtDesk, isSoundOn, soundObj, isFocused]);
+    syncPlayback();
+  }, [isAtDesk, isSoundOn, isFocused, volumes]);
+
+  const handleSingleSoundSelect = (key: string) => {
+    const newVolumes: Record<string, number> = {};
+    availableSounds.forEach(s => newVolumes[s.key] = s.key === key ? 1 : 0);
+    setVolumes(newVolumes);
+    setIsSoundOn(true);
+  };
+
+  const updateMixerVolume = (key: string, val: number) => {
+    setVolumes(prev => ({ ...prev, [key]: val }));
+    setIsSoundOn(true);
+  };
 
   useEffect(() => {
     if (pomodoroRunning) {
@@ -475,19 +501,36 @@ export default function SensorScreen() {
           </View>
         </View>
 
-        {/* ATMOSFER */}
+        {/* ATMOSFER & MIXER */}
         <View style={s.section}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={s.sectionLabel}>ATMOSFER SESİ</Text>
-            <TouchableOpacity onPress={() => setIsSoundOn(!isSoundOn)}>
-              <FontAwesome5 solid name={isSoundOn ? "volume-up" : "volume-mute"} size={16} color={isSoundOn ? C.primary : 'rgba(255,255,255,0.3)'} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+              <TouchableOpacity onPress={() => {
+                if (!isPremium) {
+                  Alert.alert('PRO Özellik', 'Ses mikseri sadece Premium kullanıcılara özeldir.', [
+                    { text: 'İptal', style: 'cancel' },
+                    { text: 'Premium Ol', onPress: () => router.push({ pathname: '/premium', params: { id: myUserId } } as any) }
+                  ]);
+                  return;
+                }
+                setShowMixer(true);
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isPremium ? 'rgba(255,193,7,0.15)' : 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: isPremium ? 'rgba(255,193,7,0.3)' : 'rgba(255,255,255,0.1)' }}>
+                  <FontAwesome5 solid name="sliders-h" size={12} color={isPremium ? C.primary : 'rgba(255,255,255,0.5)'} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: isPremium ? C.primary : 'rgba(255,255,255,0.5)' }}>MİKSER</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsSoundOn(!isSoundOn)}>
+                <FontAwesome5 solid name={isSoundOn ? "volume-up" : "volume-mute"} size={16} color={isSoundOn ? C.primary : 'rgba(255,255,255,0.3)'} />
+              </TouchableOpacity>
+            </View>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             {availableSounds.map(sItem => {
-              const active = selectedSound.key === sItem.key;
+              const active = (volumes[sItem.key] || 0) > 0;
               return (
-                <TouchableOpacity key={sItem.key} onPress={() => { setSelectedSound(sItem); setIsSoundOn(true); }} style={[s.soundTile, active && s.soundTileActive]}>
+                <TouchableOpacity key={sItem.key} onPress={() => handleSingleSoundSelect(sItem.key)} style={[s.soundTile, active && s.soundTileActive]}>
                   <FontAwesome5 solid name={sItem.icon} size={20} color={active ? C.btnText : 'rgba(255,255,255,0.5)'} />
                   <Text style={[s.soundText, active && { color: C.btnText }]}>{sItem.label}</Text>
                 </TouchableOpacity>
@@ -599,6 +642,7 @@ export default function SensorScreen() {
         </TouchableOpacity>
       )}
       
+      {/* POMODORO MODAL */}
       <Modal visible={showPomodoroModal} transparent animationType="fade">
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
@@ -608,6 +652,48 @@ export default function SensorScreen() {
                 <Text style={s.modalOptText}>{o.label}</Text>
                 <FontAwesome5 solid name="chevron-right" size={12} color="rgba(255,255,255,0.2)" />
               </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={[s.modalOpt, { justifyContent: 'center', borderBottomWidth: 0, marginTop: 10 }]} onPress={() => setShowPomodoroModal(false)}>
+              <Text style={{ color: C.danger, fontWeight: 'bold' }}>İptal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MIXER MODAL */}
+      <Modal visible={showMixer} transparent animationType="slide">
+        <View style={[s.modalOverlay, { justifyContent: 'flex-end' }]}>
+          <View style={[s.modalSheet, { width: '100%', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 40 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <View>
+                <Text style={s.modalTitle}>Ses Mikseri 🎛️</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Kendi çalışma ortamını yarat.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowMixer(false)} style={{ padding: 10 }}>
+                <FontAwesome5 solid name="times" size={20} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+            </View>
+            
+            {availableSounds.map(sItem => (
+              <View key={sItem.key} style={{ marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <FontAwesome5 solid name={sItem.icon} size={14} color={C.primary} />
+                    <Text style={{ color: C.text, fontWeight: '600' }}>{sItem.label}</Text>
+                  </View>
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{Math.round((volumes[sItem.key] || 0) * 100)}%</Text>
+                </View>
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={0}
+                  maximumValue={1}
+                  value={volumes[sItem.key] || 0}
+                  onValueChange={(val) => updateMixerVolume(sItem.key, val)}
+                  minimumTrackTintColor={C.primary}
+                  maximumTrackTintColor="rgba(255,255,255,0.1)"
+                  thumbTintColor={C.primary}
+                />
+              </View>
             ))}
           </View>
         </View>
