@@ -261,7 +261,7 @@ export default function LobbiesScreen() {
       if (res.ok) {
         setIsPasswordModalVisible(false);
         setEnterPassword('');
-        router.push({ pathname: '/sensor' as any, params: { ...params, roomName: selectedLobby.name, maxUsers: selectedLobby.maxUsers || 50 } });
+        router.push({ pathname: '/sensor' as any, params: { ...params, roomName: selectedLobby.name, maxUsers: selectedLobby.maxUsers || 50, isElite: selectedLobby.isPremiumOnly ? 'true' : 'false' } });
       } else {
         Alert.alert('Hata', 'Şifre hatalı!');
       }
@@ -383,7 +383,7 @@ export default function LobbiesScreen() {
                   setSelectedLobby(item);
                   setIsPasswordModalVisible(true);
                 } else {
-                  router.push({ pathname: '/sensor' as any, params: { ...params, roomName: item.name } });
+                  router.push({ pathname: '/sensor' as any, params: { ...params, roomName: item.name, isElite: item.isPremiumOnly ? 'true' : 'false' } });
                 }
               }} 
             />

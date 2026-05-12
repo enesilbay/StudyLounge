@@ -49,12 +49,12 @@ const POMODORO_OPTIONS = [
 const pad = (n: number) => String(n).padStart(2, '0');
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
-function BackgroundOrbs() {
+function BackgroundOrbs({ isElite }: { isElite?: boolean }) {
   return (
     <>
-      <View style={bg.orb1} />
-      <View style={bg.orb2} />
-      <View style={bg.orb3} />
+      <View style={[bg.orb1, isElite && { backgroundColor: 'rgba(255, 193, 7, 0.12)' }]} />
+      <View style={[bg.orb2, isElite && { backgroundColor: 'rgba(255, 193, 7, 0.08)' }]} />
+      <View style={[bg.orb3, isElite && { backgroundColor: 'rgba(255, 193, 7, 0.06)' }]} />
       <View style={bg.gridLine1} />
       <View style={bg.gridLine2} />
     </>
@@ -76,9 +76,23 @@ export default function SensorScreen() {
   const [isPremium, setIsPremium] = useState(false); 
   const [isConnected, setIsConnected] = useState(true);
 
+  const isEliteRoom = params.isElite === 'true';
+
+  const [availableSounds, setAvailableSounds] = useState(SOUNDS);
   const [selectedSound, setSelectedSound] = useState(SOUNDS[0]);
   const [isSoundOn, setIsSoundOn] = useState(false);
   const [soundObj, setSoundObj] = useState<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    if (isEliteRoom) {
+      const eliteSounds = [
+        { key: 'deep_focus', label: 'Derin Odak', icon: 'brain', file: require('../../assets/sounds/library.mp3') }, // Placeholder for binaural beats
+        ...SOUNDS
+      ];
+      setAvailableSounds(eliteSounds);
+      setSelectedSound(eliteSounds[0]);
+    }
+  }, [isEliteRoom]);
 
   const [chatVisible, setChatVisible] = useState(false);
   const [message, setMessage] = useState('');
@@ -379,7 +393,7 @@ export default function SensorScreen() {
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="light-content" />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <BackgroundOrbs />
+        <BackgroundOrbs isElite={isEliteRoom} />
       </View>
 
       <Animated.ScrollView contentContainerStyle={s.scroll} style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -396,8 +410,10 @@ export default function SensorScreen() {
             <FontAwesome5 solid name="chevron-left" size={16} color="rgba(255,255,255,0.7)" />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
-            <Text style={s.headerRoom}>ODAK ODASI</Text>
-            <Text style={s.headerName} numberOfLines={1}>{roomName}</Text>
+            <Text style={[s.headerRoom, isEliteRoom && { color: C.primary, textShadowColor: 'rgba(255, 193, 7, 0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }]}>
+              {isEliteRoom ? 'ELITE ODA 👑' : 'ODAK ODASI'}
+            </Text>
+            <Text style={[s.headerName, isEliteRoom && { color: C.primary }]} numberOfLines={1}>{roomName}</Text>
           </View>
           <View style={s.scorePill}>
             <FontAwesome5 solid name="fire" size={12} color={C.primary} />
@@ -406,12 +422,12 @@ export default function SensorScreen() {
         </View>
 
         {/* STATUS CARD */}
-        <View style={[s.statusCard, isAtDesk && s.statusCardActive]}>
-          <View style={[s.statusIcon, isAtDesk && { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)' }]}>
-            <FontAwesome5 solid name={isAtDesk ? "check-circle" : "clock"} size={26} color={isAtDesk ? C.success : 'rgba(255,255,255,0.3)'} />
+        <View style={[s.statusCard, isAtDesk && (isEliteRoom ? s.statusCardEliteActive : s.statusCardActive)]}>
+          <View style={[s.statusIcon, isAtDesk && (isEliteRoom ? { backgroundColor: 'rgba(255,193,7,0.15)', borderColor: 'rgba(255,193,7,0.3)' } : { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)' })]}>
+            <FontAwesome5 solid name={isAtDesk ? "check-circle" : "clock"} size={26} color={isAtDesk ? (isEliteRoom ? C.primary : C.success) : 'rgba(255,255,255,0.3)'} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.statusTitle, isAtDesk && { color: C.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
+            <Text style={[s.statusTitle, isAtDesk && { color: isEliteRoom ? C.primary : C.success }]}>{isAtDesk ? 'Odaklanıyor' : 'Bekleniyor...'}</Text>
             <Text style={s.statusDesc}>{isAtDesk ? 'Cihaz masada, odak puanı kazanıyorsun.' : 'Puan kazanmak için cihazı masaya bırakın.'}</Text>
           </View>
         </View>
@@ -445,7 +461,7 @@ export default function SensorScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-            {SOUNDS.map(sItem => {
+            {availableSounds.map(sItem => {
               const active = selectedSound.key === sItem.key;
               return (
                 <TouchableOpacity key={sItem.key} onPress={() => { setSelectedSound(sItem); setIsSoundOn(true); }} style={[s.soundTile, active && s.soundTileActive]}>
@@ -478,8 +494,8 @@ export default function SensorScreen() {
           <Text style={s.sectionLabel}>ODADAKİLER ({roomUsers.length})</Text>
           <View style={s.usersWrap}>
             {roomUsers.map((u, i) => (
-              <View key={i} style={s.userChip}>
-                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? C.success : 'rgba(255,255,255,0.2)' }]} />
+              <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: 'rgba(255,193,7,0.3)', backgroundColor: 'rgba(255,193,7,0.05)' }]}>
+                <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? C.primary : C.success) : 'rgba(255,255,255,0.2)' }]} />
                 <Text style={{ color: C.text, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
                 {Number(u.userId) !== myUserId && (
                   <TouchableOpacity
@@ -594,6 +610,7 @@ const s = StyleSheet.create({
   
   statusCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   statusCardActive: { borderColor: 'rgba(16,185,129,0.3)', backgroundColor: 'rgba(16,185,129,0.05)' },
+  statusCardEliteActive: { borderColor: 'rgba(255,193,7,0.3)', backgroundColor: 'rgba(255,193,7,0.05)' },
   statusIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: C.card, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
   statusTitle: { fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 3 },
   statusDesc: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
