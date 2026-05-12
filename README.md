@@ -54,6 +54,7 @@ StudyLounge, ders çalışırken yaşanan yalnızlık ve odaklanma sorununu çö
 - [x] **[Elite-Lounges]** Sadece Premium kullanıcılara açık (isPremiumOnly) Elite çalışma odaları (taç ikonlu ve altın renk vurgulu) oluşturma ve yetki kontrolü eklendi.
 - [x] **[Sound-Mixer]** Elite Odalar (Premium) için aynı anda birden fazla atmosfer sesinin seviyesinin ayarlanıp birlikte dinlenebildiği Ses Mikseri özelliği eklendi.
 - [x] **[Gamification]** Odak puanlarına dayalı Rütbe Sistemi (Çaylak'tan Efsane'ye) kuruldu; profil ekranına gelişim çubuğu ve liderlik tablosuna rütbe rozetleri eklendi.
+- [x] **[Theme-Unification]** Tüm sayfalar (explore, analytics, leaderboard, premium, profile, sensor) tek tip lobi temasına dönüştürüldü; koyu sensor teması kaldırılıp açık/clean tema ile değiştirildi.
 ---
 
 ## 🗺️ Geliştirme Yol Haritası (Yapılacaklar)
