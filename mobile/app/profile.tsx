@@ -9,11 +9,12 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUrl, assetUrl } from './config/api';
+import { C } from './(tabs)/sensor';
 import { getRankInfo, getRankProgress } from './utils/rank';
 import { Theme } from './utils/theme';
 
 const { width, height } = Dimensions.get('window');
-const T = Theme.colors;
+const T = C;
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {

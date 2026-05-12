@@ -9,9 +9,10 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { apiUrl } from '../config/api';
+import { C } from './sensor';
 import { Theme } from '../utils/theme';
 
-const T = Theme.colors;
+const T = C;
 const { width } = Dimensions.get('window');
 
 // ── ANİMASYONLU INPUT BİLEŞENİ ──

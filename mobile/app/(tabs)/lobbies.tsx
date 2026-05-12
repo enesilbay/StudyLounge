@@ -10,9 +10,10 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiUrl, assetUrl } from '../config/api';
+import { C } from './sensor';
 import { Theme } from '../utils/theme';
 
-const T = Theme.colors;
+const T = C;
 const { width, height } = Dimensions.get('window');
 
 interface Lobby {

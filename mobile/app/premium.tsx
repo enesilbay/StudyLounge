@@ -6,10 +6,11 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUrl } from './config/api';
+import { C } from './(tabs)/sensor';
 import { Theme } from './utils/theme';
 
 const { width, height } = Dimensions.get('window');
-const T = Theme.colors;
+const T = C;
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {

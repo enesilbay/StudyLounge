@@ -8,9 +8,10 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUrl } from '../config/api';
+import { C } from './sensor';
 import { Theme } from '../utils/theme';
 
-const T = Theme.colors;
+const T = C;
 const { width, height } = Dimensions.get('window');
 
 function BackgroundOrbs() {

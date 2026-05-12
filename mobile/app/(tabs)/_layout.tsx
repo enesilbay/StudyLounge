@@ -5,7 +5,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiUrl } from '../config/api';
-import { Theme } from '../utils/theme';
+import { C } from './sensor';
 
 // Expo Go (SDK 53+) Android push bildirimlerini desteklemiyor.
 // Tüm expo-notifications API'si sadece gerçek build'lerde yükleniyor.
@@ -111,8 +111,8 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Theme.colors.surface,
-          borderTopColor: Theme.colors.border,
+          backgroundColor: C.surface,
+          borderTopColor: C.border,
           borderTopWidth: 1,
           height: 60,
           paddingBottom: 8,
@@ -123,8 +123,8 @@ export default function TabLayout() {
           shadowOpacity: 0.05,
           shadowRadius: 10,
         },
-        tabBarActiveTintColor: Theme.colors.primary,
-        tabBarInactiveTintColor: Theme.colors.textMuted,
+        tabBarActiveTintColor: C.primary,
+        tabBarInactiveTintColor: C.textMuted,
       }}>
       <Tabs.Screen
         name="index"

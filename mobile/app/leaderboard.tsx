@@ -5,11 +5,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { apiUrl, assetUrl } from './config/api';
+import { C } from './(tabs)/sensor';
 import { getRankInfo } from './utils/rank';
 import { Theme } from './utils/theme';
 
 const { width, height } = Dimensions.get('window');
-const T = Theme.colors;
+const T = C;
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
 function BackgroundOrbs() {
