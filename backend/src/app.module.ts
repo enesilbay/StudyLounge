@@ -1,18 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import {
-  getConfigBoolean,
-  getConfigNumber,
-  getConfigString,
-} from './config/env';
+import { getConfigNumber, getConfigString } from './config/env';
 import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
 import { MailModule } from './mail/mail.module';
 import { MessagesModule } from './messages/messages.module';
+import { Message } from './messages/message.entity';
 import { NotificationsService } from './notifications/notifications.service';
 import { SensorsGateway } from './sensors.gateway';
+import { DailyAnalytics } from './users/daily-analytics.entity';
 import { Friendship } from './users/friendship.entity';
 import { User } from './users/user.entity';
 import { UsersModule } from './users/users.module';
@@ -23,12 +21,6 @@ import { UsersModule } from './users/users.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const nodeEnv = configService.get<string>('NODE_ENV');
-        const synchronize =
-          nodeEnv === 'production'
-            ? false
-            : getConfigBoolean(configService, 'DB_SYNCHRONIZE', false);
-
         return {
           type: 'postgres',
           host: getConfigString(configService, 'DB_HOST', 'localhost'),
@@ -40,9 +32,9 @@ import { UsersModule } from './users/users.module';
             'studylounge_secret',
           ),
           database: getConfigString(configService, 'DB_NAME', 'studylounge'),
-          entities: [User, Lobby, Friendship],
+          entities: [User, Lobby, Friendship, DailyAnalytics, Message],
           autoLoadEntities: true,
-          synchronize,
+          synchronize: false,
         };
       },
     }),

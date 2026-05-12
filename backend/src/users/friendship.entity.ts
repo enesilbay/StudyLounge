@@ -6,10 +6,10 @@ export class Friendship {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   sender: User;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   receiver: User;
 
   // 'pending' (Bekliyor), 'accepted' (Kabul Edildi), 'rejected' (Reddedildi)

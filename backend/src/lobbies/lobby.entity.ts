@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from '../users/user.entity';
 
 @Entity('lobbies')
 export class Lobby {
@@ -12,7 +13,7 @@ export class Lobby {
   icon!: string;
 
   @Column({ nullable: true })
-  description?: string; // Nullable olduğu için '?' de kullanabilirsin
+  description?: string;
 
   @Column({ default: 0 })
   activeUsers!: number;
@@ -20,14 +21,14 @@ export class Lobby {
   @Column({ default: false })
   isPrivate!: boolean;
 
-  @Column({ nullable: true })
-  password?: string;
+  @Column({ nullable: true, select: false })
+  passwordHash?: string;
 
   @Column({ default: 50 })
   maxUsers!: number;
 
-  @Column({ nullable: true })
-  ownerId?: number;
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  owner?: User | null;
 
   @Column({ default: false })
   isPremiumOnly!: boolean;

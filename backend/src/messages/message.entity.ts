@@ -16,20 +16,20 @@ export class Message {
   text: string;
 
   @Column()
-  roomName: string; // Hangi lobide yazıldı?
+  roomName: string; // Hangi lobide yazildi?
 
-  @ManyToOne(() => User, { eager: true })
-  user: User; // Mesajı kim yazdı?
+  @ManyToOne(() => User, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  user: User | null;
 
   @CreateDateColumn()
   createdAt: Date;
 
   @Column({ nullable: true })
-  fileUrl: string; // Dosyanın sunucudaki yolu
+  fileUrl: string;
 
   @Column({ nullable: true })
-  fileName: string; // Dosyanın orijinal adı (Örn: "Diferansiyel_Denklemler.pdf")
+  fileName: string;
 
   @Column({ default: 'text' })
-  type: string; // 'text' veya 'file'
+  type: string;
 }

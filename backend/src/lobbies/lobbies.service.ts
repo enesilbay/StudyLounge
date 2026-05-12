@@ -5,8 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Lobby } from './lobby.entity';
 import { UsersService } from '../users/users.service';
+import { CreateLobbyDto } from './dto/create-lobby.dto';
+import { Lobby } from './lobby.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class LobbiesService {
@@ -24,8 +26,23 @@ export class LobbiesService {
     return this.lobbiesRepository.findOne({ where: { name } });
   }
 
-  create(lobbyData: Partial<Lobby>): Promise<Lobby> {
-    const newLobby = this.lobbiesRepository.create(lobbyData);
+  async create(lobbyData: CreateLobbyDto, ownerId: number): Promise<Lobby> {
+    const passwordHash =
+      lobbyData.isPrivate && lobbyData.password
+        ? await bcrypt.hash(lobbyData.password, 10)
+        : undefined;
+
+    const newLobby = this.lobbiesRepository.create({
+      name: lobbyData.name,
+      icon: lobbyData.icon,
+      description: lobbyData.description,
+      isPrivate: lobbyData.isPrivate ?? false,
+      isPremiumOnly: lobbyData.isPremiumOnly ?? false,
+      maxUsers: lobbyData.maxUsers ?? 50,
+      passwordHash,
+      owner: { id: ownerId },
+    });
+
     return this.lobbiesRepository.save(newLobby);
   }
 
@@ -34,9 +51,11 @@ export class LobbiesService {
     password: string | undefined,
     userId: number,
   ): Promise<{ success: boolean }> {
-    const lobby = await this.lobbiesRepository.findOne({
-      where: { id: lobbyId },
-    });
+    const lobby = await this.lobbiesRepository
+      .createQueryBuilder('lobby')
+      .addSelect('lobby.passwordHash')
+      .where('lobby.id = :lobbyId', { lobbyId })
+      .getOne();
 
     if (!lobby) {
       throw new NotFoundException('Lobi bulunamadi.');
@@ -53,7 +72,12 @@ export class LobbiesService {
       return { success: true };
     }
 
-    if (lobby.password !== password) {
+    if (!password || !lobby.passwordHash) {
+      throw new UnauthorizedException('Sifre hatali.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, lobby.passwordHash);
+    if (!isPasswordValid) {
       throw new UnauthorizedException('Sifre hatali.');
     }
 

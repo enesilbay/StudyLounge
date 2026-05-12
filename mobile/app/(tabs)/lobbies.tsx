@@ -250,7 +250,6 @@ export default function LobbiesScreen() {
           isPremiumOnly,
           password: isPrivate ? roomPassword : null,
           maxUsers,
-          ownerId: myUserId
         }),
       });
       if (res.ok) {

@@ -17,8 +17,11 @@ export class LobbiesController {
   }
 
   @Post()
-  async createLobby(@Body() lobbyData: CreateLobbyDto) {
-    return this.lobbiesService.create(lobbyData);
+  async createLobby(
+    @CurrentUser() user: User,
+    @Body() lobbyData: CreateLobbyDto,
+  ) {
+    return this.lobbiesService.create(lobbyData, user.id);
   }
 
   @Post('verify-password')
