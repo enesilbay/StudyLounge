@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  Image, Alert, ActivityIndicator, Dimensions, Platform, ScrollView
+  Image, Alert, ActivityIndicator, Dimensions, Platform, ScrollView, TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -37,6 +37,9 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -59,7 +62,11 @@ export default function ProfileScreen() {
         }
       }
       const stored = await AsyncStorage.getItem('user_data');
-      if (stored) setUser(JSON.parse(stored));
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUser(u);
+        setEditName(u.fullName || '');
+      }
     } catch (e) {
       console.error('Kullanıcı bilgisi çekilemedi', e);
     }
@@ -139,9 +146,14 @@ export default function ProfileScreen() {
           <FontAwesome5 name="arrow-left" size={16} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Profilim</Text>
-        <TouchableOpacity onPress={() => setShowInfo(true)} style={s.infoBtn}>
-          <FontAwesome5 name="info" size={16} color="rgba(255,255,255,0.7)" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity onPress={() => setShowSettings(true)} style={s.infoBtn}>
+            <FontAwesome5 name="cog" size={16} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowInfo(true)} style={s.infoBtn}>
+            <FontAwesome5 name="info" size={16} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
@@ -245,6 +257,68 @@ export default function ProfileScreen() {
             <TouchableOpacity onPress={() => setShowInfo(false)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
               <Text style={{ color: C.text, fontWeight: 'bold' }}>Anladım</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* AYARLAR MODAL */}
+      {showSettings && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', zIndex: 100 }]}>
+          <View style={{ backgroundColor: C.card, padding: 30, borderRadius: 24, width: '85%', borderWidth: 1, borderColor: C.border }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: C.text, marginBottom: 5, textAlign: 'center' }}>Profili Düzenle</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 20, textAlign: 'center' }}>İsmini değiştirebilirsin.</Text>
+            
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, marginBottom: 20, paddingHorizontal: 15 }}>
+              <TextInput
+                style={{ height: 50, color: C.text, fontSize: 16 }}
+                placeholder="Ad Soyad"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={editName}
+                onChangeText={setEditName}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity onPress={() => setShowSettings(false)} style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 'bold' }}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={async () => {
+                  if (!editName.trim()) return Alert.alert('Hata', 'İsim boş olamaz.');
+                  setIsSavingName(true);
+                  try {
+                    const token = await AsyncStorage.getItem('access_token');
+                    const res = await fetch(`${BACKEND_URL}/users/${myUserId}/profile`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ fullName: editName.trim() })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setUser(data.user);
+                      const stored = await AsyncStorage.getItem('user_data');
+                      if (stored) {
+                        const parsed = JSON.parse(stored);
+                        parsed.fullName = data.user.fullName;
+                        await AsyncStorage.setItem('user_data', JSON.stringify(parsed));
+                      }
+                      setShowSettings(false);
+                      Alert.alert('Başarılı', 'Profil güncellendi!');
+                    } else {
+                      Alert.alert('Hata', 'Güncellenemedi.');
+                    }
+                  } catch(e) {
+                    Alert.alert('Hata', 'Bağlantı sorunu.');
+                  } finally {
+                    setIsSavingName(false);
+                  }
+                }} 
+                style={{ flex: 1, backgroundColor: C.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}
+                disabled={isSavingName}
+              >
+                {isSavingName ? <ActivityIndicator size="small" color={C.btnText} /> : <Text style={{ color: C.btnText, fontWeight: 'bold' }}>Kaydet</Text>}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}

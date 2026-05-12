@@ -104,6 +104,9 @@ export class UsersController {
           );
         },
       }),
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
     }),
   )
   async uploadAvatar(
@@ -130,6 +133,16 @@ export class UsersController {
       message: 'Premium aktif edildi!',
       user: updatedUser,
     };
+  }
+
+  // ── PROFİL BİLGİLERİ GÜNCELLEME ──
+  @Put(':id/profile')
+  async updateProfile(@Param('id') id: string, @Body() body: { fullName: string }) {
+    if (!body.fullName || body.fullName.trim() === '') {
+      throw new BadRequestException('İsim boş olamaz');
+    }
+    const updated = await this.usersService.updateProfile(Number(id), body.fullName);
+    return { success: true, user: updated };
   }
 
   // ── 10. HAFTALIK ANALİTİK ──

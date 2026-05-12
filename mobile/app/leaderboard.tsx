@@ -109,7 +109,7 @@ export default function LeaderboardScreen() {
                       textShadowRadius: 8 
                     } : {}
                   ]}>
-                    {item.fullName} {item.isPremium ? '✨' : ''}
+                    {item.fullName} {item.isPremium && <FontAwesome5 solid name="crown" size={14} color={C.primary} />}
                   </Text>
                   <Text style={styles.scoreText}>
                     {String(item.totalFocusMinutes)} <Text style={{ fontSize: 11 }}>Puan</Text>

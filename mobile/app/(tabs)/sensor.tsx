@@ -599,7 +599,7 @@ export default function SensorScreen() {
                 const isImage = item.type === 'image';
                 return (
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
-                    {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium ? '✨' : ''}</Text>}
+                    {!isMe && <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={C.primary} />}</Text>}
                     {isImage ? (
                       <TouchableOpacity onPress={() => Linking.openURL(`${SOCKET_URL}${item.fileUrl}`)}>
                         <Image source={{ uri: `${SOCKET_URL}${item.fileUrl}` }} style={s.imagePreview} />

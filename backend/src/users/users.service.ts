@@ -317,6 +317,16 @@ export class UsersService {
     return updatedUser;
   }
 
+  // ── PROFİL GÜNCELLEME (İSİM) ──
+  async updateProfile(userId: number, fullName: string) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    user.fullName = fullName;
+    const updated = await this.usersRepository.save(user);
+    delete updated.password;
+    return updated;
+  }
+
   // ── 12. PUSH TOKEN GÜNCELLEME (YENİ EKLENDİ) ──
   async updatePushToken(userId: number, token: string) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });

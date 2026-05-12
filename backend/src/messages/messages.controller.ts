@@ -37,12 +37,13 @@ export class MessagesController {
       storage: diskStorage({
         destination: './uploads', // Kök dizindeki uploads klasörü
         filename: (req, file, cb) => {
-          // Çakışma olmaması için: "171509-456789.pdf" gibi benzersiz isim üretir
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5 MB limit
+      },
     }),
   )
   async uploadFile(
