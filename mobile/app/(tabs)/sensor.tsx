@@ -303,38 +303,42 @@ export default function SensorScreen() {
   useEffect(() => {
     let sub: any = null;
     if (isFocused) {
-      sub = Accelerometer.addListener(({ x, y, z }) => {
-        const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
-        
-        if (flat) {
-          if (graceTimerRef.current) {
-            clearTimeout(graceTimerRef.current);
-            graceTimerRef.current = null;
-          }
-          if (previousDeskState.current !== true) {
-            setIsAtDesk(true);
-            if (socketRef.current?.connected) {
-              socketRef.current.emit('update_presence', { userId: id, isAtDesk: true, roomName });
+      if (Platform.OS === 'web') {
+        sub = { remove: () => {} };
+      } else {
+        sub = Accelerometer.addListener(({ x, y, z }) => {
+          const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
+          
+          if (flat) {
+            if (graceTimerRef.current) {
+              clearTimeout(graceTimerRef.current);
+              graceTimerRef.current = null;
             }
-            previousDeskState.current = true;
-          }
-        } else {
-          if (previousDeskState.current === true) {
-            if (!graceTimerRef.current) {
-              graceTimerRef.current = setTimeout(() => {
-                setIsAtDesk(false);
-                if (socketRef.current?.connected) {
-                  socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
-                }
-                previousDeskState.current = false;
-                graceTimerRef.current = null;
-              }, 3000);
+            if (previousDeskState.current !== true) {
+              setIsAtDesk(true);
+              if (socketRef.current?.connected) {
+                socketRef.current.emit('update_presence', { userId: id, isAtDesk: true, roomName });
+              }
+              previousDeskState.current = true;
             }
           } else {
-            setIsAtDesk(false);
+            if (previousDeskState.current === true) {
+              if (!graceTimerRef.current) {
+                graceTimerRef.current = setTimeout(() => {
+                  setIsAtDesk(false);
+                  if (socketRef.current?.connected) {
+                    socketRef.current.emit('update_presence', { userId: id, isAtDesk: false, roomName });
+                  }
+                  previousDeskState.current = false;
+                  graceTimerRef.current = null;
+                }, 3000);
+              }
+            } else {
+              setIsAtDesk(false);
+            }
           }
-        }
-      });
+        });
+      }
     } else {
       if (graceTimerRef.current) {
         clearTimeout(graceTimerRef.current);
@@ -347,10 +351,21 @@ export default function SensorScreen() {
       }
     }
     return () => {
-      if (sub) sub.remove();
+      if (sub && typeof sub.remove === 'function') sub.remove();
       if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
     };
   }, [isFocused]);
+
+  // Web'de sensörü simüle etmek için
+  const toggleWebSensor = () => {
+    const newState = !isAtDesk;
+    setIsAtDesk(newState);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('update_presence', { userId: id, isAtDesk: newState, roomName });
+    }
+    previousDeskState.current = newState;
+  };
+
 
   // Nudge: Toast animasyonunu göster
   const showNudgeToast = (senderName: string, message: string) => {
@@ -431,6 +446,18 @@ export default function SensorScreen() {
             <Text style={s.statusDesc}>{isAtDesk ? 'Cihaz masada, odak puanı kazanıyorsun.' : 'Puan kazanmak için cihazı masaya bırakın.'}</Text>
           </View>
         </View>
+
+        {/* WEB İÇİN MANUEL SENSÖR SİMÜLASYONU */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity 
+            onPress={toggleWebSensor} 
+            style={{ backgroundColor: isAtDesk ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: isAtDesk ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)' }}
+          >
+            <Text style={{ color: isAtDesk ? C.danger : C.success, fontWeight: 'bold' }}>
+              [Web Test] {isAtDesk ? 'Masadan Kalk' : 'Masaya Geç'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* POMODORO */}
         <View style={s.section}>
