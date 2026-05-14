@@ -114,42 +114,52 @@ export default function TabLayout() {
           backgroundColor: C.surface,
           borderTopColor: C.border,
           borderTopWidth: 1,
-          height: 60,
+          height: 64,
           paddingBottom: 8,
           paddingTop: 8,
           elevation: 10,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 10,
+          shadowOpacity: 0.07,
+          shadowRadius: 12,
         },
         tabBarActiveTintColor: C.primary,
         tabBarInactiveTintColor: C.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
       }}>
       <Tabs.Screen
         name="index"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="lobbies"
         options={{
           title: 'Odalar',
-          tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="door-open" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome5 size={focused ? 22 : 20} name="door-open" color={color} solid={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="me"
+        options={{
+          title: 'Ben',
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome5 size={focused ? 22 : 20} name="user-circle" color={color} solid={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="sensor"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Keşfet',
-          tabBarIcon: ({ color }) => <FontAwesome5 size={24} name="compass" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome5 size={focused ? 22 : 20} name="compass" color={color} solid={focused} />
+          ),
         }}
       />
     </Tabs>
