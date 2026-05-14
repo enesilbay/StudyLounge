@@ -75,6 +75,7 @@ export class SensorsGateway
   private activeSessions = new Map<number, number>();
   private connectedUsers = new Map<string, ConnectedRoomUser>();
   private duels = new Map<string, Duel>();
+  private userSockets = new Map<number, Set<string>>();
 
   constructor(
     private readonly usersService: UsersService,
@@ -85,7 +86,7 @@ export class SensorsGateway
     private readonly messagesService: MessagesService,
   ) {}
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
     try {
       const auth = client.handshake.auth as { token?: unknown } | undefined;
       const token = typeof auth?.token === 'string' ? auth.token : undefined;
@@ -98,6 +99,15 @@ export class SensorsGateway
       });
 
       (client.data as Record<string, unknown>).user = payload;
+
+      const userId = payload.sub;
+      if (!this.userSockets.has(userId)) {
+        this.userSockets.set(userId, new Set());
+      }
+      this.userSockets.get(userId)!.add(client.id);
+
+      // Global olarak çevrimiçi işaretle
+      await this.usersService.setOnlineStatus(userId, true);
     } catch {
       console.log('[Socket] Yetkisiz baglanti denemesi reddedildi.');
       client.disconnect();
@@ -105,6 +115,20 @@ export class SensorsGateway
   }
 
   async handleDisconnect(client: Socket) {
+    const payload = (client.data as any).user;
+    if (payload?.sub) {
+      const userId = payload.sub;
+      const userSocketSet = this.userSockets.get(userId);
+      if (userSocketSet) {
+        userSocketSet.delete(client.id);
+        if (userSocketSet.size === 0) {
+          this.userSockets.delete(userId);
+          // Global olarak çevrimdışı işaretle
+          await this.usersService.setOnlineStatus(userId, false);
+        }
+      }
+    }
+
     const user = this.connectedUsers.get(client.id);
     if (!user) {
       return;
@@ -247,6 +271,8 @@ export class SensorsGateway
         `[Lobi Katilim] ${fullName} (ID: ${socketUser.sub}), '${roomName}' lobisine girdi.`,
       );
 
+      await this.usersService.setOnlineStatus(socketUser.sub, true, roomName);
+
       this.broadcastRoomUsers(roomName);
       this.server.to(roomName).emit('user_joined_lobby', {
         fullName,
@@ -317,14 +343,20 @@ export class SensorsGateway
       };
 
       // Alıcıya gönder
-      for (const [socketId, user] of this.connectedUsers.entries()) {
-        if (user.userId === data.targetUserId) {
+      const targetSockets = this.userSockets.get(data.targetUserId);
+      if (targetSockets) {
+        for (const socketId of targetSockets) {
           this.server.to(socketId).emit('receive_dm', dmPayload);
         }
       }
-      
+
       // Gönderene de geri yolla (kendi ekranında çıksın)
-      client.emit('receive_dm', dmPayload);
+      const senderSockets = this.userSockets.get(socketUser.sub);
+      if (senderSockets) {
+        for (const socketId of senderSockets) {
+          this.server.to(socketId).emit('receive_dm', dmPayload);
+        }
+      }
     } catch (error) {
       console.error('DM Gönderim Hatası:', error);
     }
@@ -403,8 +435,9 @@ export class SensorsGateway
     );
 
     let notified = false;
-    for (const [socketId, user] of this.connectedUsers.entries()) {
-      if (user.userId === data.targetUserId) {
+    const targetSockets = this.userSockets.get(data.targetUserId);
+    if (targetSockets) {
+      for (const socketId of targetSockets) {
         this.server.to(socketId).emit('nudge_received', {
           senderName,
           senderId: socketUser.sub,
@@ -412,7 +445,6 @@ export class SensorsGateway
           message: `${senderName} seni calismaya cagiriyor!`,
         });
         notified = true;
-        break;
       }
     }
 

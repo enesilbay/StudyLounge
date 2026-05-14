@@ -42,7 +42,7 @@ function BackgroundOrbs() {
 }
 
 // ── Lobi Kartı (Beyaz & Soft Gölgeli) ──
-function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void; index: number; }) {
+function LobbyCard({ item, onPress, index, friends }: { item: Lobby; onPress: () => void; index: number; friends: any[] }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -60,6 +60,15 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
   const memberCount = item.activeUsers || 0;
   const isActive = item.isActive !== false;
 
+  const friendsInLobby = friends?.filter((f: any) => f.currentRoom === item.name && f.isOnline) || [];
+  let metaText = `${memberCount} kişi odaklanıyor`;
+  if (friendsInLobby.length > 0) {
+    const firstName = friendsInLobby[0].fullName.split(' ')[0];
+    metaText = friendsInLobby.length > 1 
+      ? `${firstName} ve ${friendsInLobby.length - 1} arkadaşın burada` 
+      : `${firstName} burada odaklanıyor`;
+  }
+
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
       <TouchableOpacity onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={0.9}>
@@ -75,7 +84,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
             <View style={card.metaRow}>
               <View style={card.metaPill}>
                 <View style={[card.dot, { backgroundColor: isActive ? T.success : T.textMuted }]} />
-                <Text style={card.metaText}>{memberCount} kişi odaklanıyor</Text>
+                <Text style={card.metaText}>{metaText}</Text>
               </View>
               {item.isPrivate && (
                 <View style={card.metaPill}>
@@ -138,9 +147,12 @@ export default function LobbiesScreen() {
     Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
+  const [friends, setFriends] = useState<any[]>([]);
+
   useFocusEffect(
     useCallback(() => {
       fetchLobbies();
+      fetchFriends();
       loadUserData();
     }, [myUserId])
   );
@@ -161,6 +173,19 @@ export default function LobbiesScreen() {
   };
 
   const getToken = async () => await AsyncStorage.getItem('access_token');
+
+  const fetchFriends = async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch(apiUrl('/users/friends/0'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFriends(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {}
+  };
 
   const fetchLobbies = async () => {
     try {
@@ -339,7 +364,8 @@ export default function LobbiesScreen() {
           renderItem={({ item, index }) => (
             <LobbyCard 
               item={item} 
-              index={index} 
+              index={index}
+              friends={friends}
               onPress={() => {
                 if (item.isPremiumOnly && !isPremium) {
                   Alert.alert(

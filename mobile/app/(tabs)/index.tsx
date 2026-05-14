@@ -207,7 +207,7 @@ export default function AuthScreen() {
             {/* LOGO & BAŞLIK */}
             <Animated.View style={[s.heroSection, { transform: [{ scale: logoScale }] }]}>
               <Image
-                source={require('../../assets/images/logo-light.png')}
+                source={require('../../assets/images/logo.png')}
                 style={s.logoImage}
                 resizeMode="contain"
               />

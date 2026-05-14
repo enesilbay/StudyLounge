@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Image, Modal, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View, TextInput, Alert,
+  StyleSheet, Text, TouchableOpacity, View, TextInput, Alert, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -65,10 +65,11 @@ export default function MeScreen() {
       const token = await AsyncStorage.getItem('access_token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [meRes, friendsRes, reqsRes] = await Promise.all([
+      const [meRes, friendsRes, reqsRes, unreadRes] = await Promise.all([
         fetch(apiUrl('/users/me'), { headers }),
         fetch(apiUrl('/users/friends/0'), { headers }),
         fetch(apiUrl('/users/friend-requests/0'), { headers }),
+        fetch(apiUrl('/messages/unread/dm-senders'), { headers }),
       ]);
 
       if (meRes.ok) {
@@ -82,10 +83,26 @@ export default function MeScreen() {
         );
         setFriends(sorted);
       }
+      
+      let allRequests: any[] = [];
       if (reqsRes.ok) {
         const data = await reqsRes.json();
-        setRequests(Array.isArray(data) ? data : []);
+        if (Array.isArray(data)) {
+          allRequests = data.map(req => ({ ...req, reqType: 'friend' }));
+        }
       }
+      if (unreadRes.ok) {
+        const data = await unreadRes.json();
+        if (Array.isArray(data)) {
+          const unreadReqs = data.map((sender: any) => ({
+            id: `unread_${sender.id}`,
+            sender,
+            reqType: 'unread_dm',
+          }));
+          allRequests = [...allRequests, ...unreadReqs];
+        }
+      }
+      setRequests(allRequests);
     } catch (e) {
       console.log('Me tab fetch error:', e);
     } finally {
@@ -142,6 +159,23 @@ export default function MeScreen() {
     finally { setIsSendingFriendReq(false); }
   };
 
+  const handleNudge = async (targetId: number, targetName: string) => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      const res = await fetch(apiUrl(`/users/nudge/${targetId}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        Alert.alert('👋 Dürtüldü!', `${targetName} çalışmaya davet edildi.`);
+      } else {
+        Alert.alert('Hata', 'Kullanıcı şu an davet edilemiyor.');
+      }
+    } catch (e) {
+      Alert.alert('Hata', 'Sunucu bağlantı hatası.');
+    }
+  };
+
   const handleQuickAction = async (action: typeof QUICK_ACTIONS[0]) => {
     if (action.id === 'analytics' && user && !user.isPremium) {
       router.push({ pathname: '/premium', params: { id: user.id } } as any);
@@ -177,6 +211,9 @@ export default function MeScreen() {
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={fetchData} tintColor={T.primary} colors={[T.primary]} />
+        }
       >
         {/* ── HEADER ── */}
         <View style={s.header}>
@@ -321,6 +358,7 @@ export default function MeScreen() {
                       pathname: '/dm',
                       params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username }
                     } as any)}
+                    onNudge={handleNudge}
                   />
                 ))}
               </>
@@ -336,6 +374,7 @@ export default function MeScreen() {
                       pathname: '/dm',
                       params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username }
                     } as any)}
+                    onNudge={handleNudge}
                   />
                 ))}
               </>
@@ -456,16 +495,31 @@ export default function MeScreen() {
 
                     <View style={s.friendInfo}>
                       <Text style={s.friendName}>{req.sender.fullName}</Text>
-                      <Text style={s.friendSub}>@{req.sender.username}</Text>
+                      <Text style={s.friendSub}>
+                        {req.reqType === 'unread_dm' ? 'Mesajınız var!' : `@${req.sender.username}`}
+                      </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity style={[s.actionBtn, s.acceptBtn]} onPress={() => handleRespondRequest(req.id, 'accepted')}>
-                        <FontAwesome5 solid name="check" size={14} color="#059669" />
+                    
+                    {req.reqType === 'unread_dm' ? (
+                      <TouchableOpacity
+                        style={[s.actionBtn, { backgroundColor: T.primary }]}
+                        onPress={() => {
+                          setIsSocialModalVisible(false);
+                          setDmModalVisible(true);
+                        }}
+                      >
+                        <FontAwesome5 solid name="envelope" size={14} color="#FFF" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={[s.actionBtn, s.rejectBtn]} onPress={() => handleRespondRequest(req.id, 'rejected')}>
-                        <FontAwesome5 solid name="times" size={14} color="#DC2626" />
-                      </TouchableOpacity>
-                    </View>
+                    ) : (
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity style={[s.actionBtn, s.acceptBtn]} onPress={() => handleRespondRequest(req.id, 'accepted')}>
+                          <FontAwesome5 solid name="check" size={14} color="#059669" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[s.actionBtn, s.rejectBtn]} onPress={() => handleRespondRequest(req.id, 'rejected')}>
+                          <FontAwesome5 solid name="times" size={14} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 ))
               )}
@@ -477,7 +531,7 @@ export default function MeScreen() {
   );
 }
 
-function FriendRow({ friend, onDM }: { friend: Friend; onDM: () => void }) {
+function FriendRow({ friend, onDM, onNudge }: { friend: Friend; onDM: () => void; onNudge?: (id: number, name: string) => void }) {
   return (
     <View style={s.friendRow}>
       <View style={s.friendAvatar}>
@@ -498,9 +552,14 @@ function FriendRow({ friend, onDM }: { friend: Friend; onDM: () => void }) {
         </Text>
       </View>
 
-      <TouchableOpacity style={s.dmBtn} onPress={onDM} activeOpacity={0.8}>
-        <FontAwesome5 name="comment-dots" size={14} color={T.primary} solid />
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <TouchableOpacity style={[s.dmBtn, { backgroundColor: T.secondary }]} onPress={() => onNudge?.(friend.id, friend.fullName)} activeOpacity={0.8}>
+          <Text style={{ fontSize: 13 }}>👋</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.dmBtn} onPress={onDM} activeOpacity={0.8}>
+          <FontAwesome5 name="comment-dots" size={14} color={T.primary} solid />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

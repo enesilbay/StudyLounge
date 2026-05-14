@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiUrl } from '../config/api';
+import { apiUrl, BACKEND_URL } from '../config/api';
 import { C } from './sensor';
+import { io, Socket } from 'socket.io-client';
 
 // Expo Go (SDK 53+) Android push bildirimlerini desteklemiyor.
 // Tüm expo-notifications API'si sadece gerçek build'lerde yükleniyor.
@@ -41,6 +42,25 @@ export default function TabLayout() {
         }
       });
     }
+
+    let globalSocket: Socket | null = null;
+    const connectGlobalSocket = async () => {
+      const token = await AsyncStorage.getItem('access_token');
+      if (token) {
+        globalSocket = io(BACKEND_URL, { transports: ['websocket'], auth: { token } });
+        
+        globalSocket.on('nudge_received', (data: any) => {
+          Alert.alert('👋 Dürtüldün!', data.message || `${data.senderName} seni çalışmaya davet ediyor!`);
+        });
+      }
+    };
+    connectGlobalSocket();
+
+    return () => {
+      if (globalSocket) {
+        globalSocket.disconnect();
+      }
+    };
   }, []);
 
   async function saveTokenToBackend(token: string) {

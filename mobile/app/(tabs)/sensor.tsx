@@ -117,8 +117,11 @@ export default function SensorScreen() {
       Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 14, useNativeDriver: true }),
     ]).start();
     checkPremiumStatus();
-    fetchChatHistory();
   }, []);
+
+  useEffect(() => {
+    fetchChatHistory();
+  }, [roomName]);
 
   const checkPremiumStatus = async () => {
     const stored = await AsyncStorage.getItem('user_data');
@@ -129,6 +132,7 @@ export default function SensorScreen() {
   };
 
   const fetchChatHistory = async () => {
+    setChatList([]); // Eski oda mesajlarını temizle
     try {
       const token = await AsyncStorage.getItem('access_token');
       const res = await fetch(apiUrl(`/messages/${roomName}`), {
@@ -372,10 +376,12 @@ export default function SensorScreen() {
         );
       });
     };
-    initSocket();
+    if (isFocused) {
+      initSocket();
+    }
     
     return () => { socketRef.current?.disconnect(); };
-  }, []);
+  }, [roomName, isFocused]);
 
   useEffect(() => {
     let sub: any = null;
@@ -418,7 +424,7 @@ export default function SensorScreen() {
     return () => {
       if (sub && typeof sub.remove === 'function') sub.remove();
     };
-  }, [isFocused, pomodoroRunning]);
+  }, [isFocused, pomodoroRunning, roomName]);
 
   // Web'de sensörü simüle etmek için
   const toggleWebSensor = () => {
@@ -644,9 +650,9 @@ export default function SensorScreen() {
 
         {/* AKTİF KULLANICILAR */}
         <View style={s.section}>
-          <Text style={s.sectionLabel}>ODADAKİLER ({roomUsers.length})</Text>
+          <Text style={s.sectionLabel}>ODADAKİLER ({roomUsers.filter(u => Number(u.userId) !== myUserId).length})</Text>
           <View style={s.usersWrap}>
-            {roomUsers.map((u, i) => (
+            {roomUsers.filter(u => Number(u.userId) !== myUserId).map((u, i) => (
               <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: T.accent, backgroundColor: T.lightAmber }]}>
                 <View>
                   {u.avatarUrl ? (
@@ -659,22 +665,14 @@ export default function SensorScreen() {
                   <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? T.accent : T.success) : T.textMuted }]} />
                 </View>
                 <Text style={{ color: T.textDark, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
-                {Number(u.userId) !== myUserId && (
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <TouchableOpacity
-                      onPress={() => challengeDuel(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
-                      style={[s.nudgeBtn, { backgroundColor: T.danger }]}
-                    >
-                      <Text style={s.nudgeBtnText}>⚔️</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => sendNudge(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
-                      style={s.nudgeBtn}
-                    >
-                      <Text style={s.nudgeBtnText}>👋</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => challengeDuel(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
+                    style={[s.nudgeBtn, { backgroundColor: T.danger }]}
+                  >
+                    <Text style={s.nudgeBtnText}>⚔️</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>

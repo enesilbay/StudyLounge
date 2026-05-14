@@ -75,4 +75,26 @@ export class MessagesService {
     });
     return await this.dmRepository.save(dm);
   }
+
+  async getUnreadSenders(userId: number) {
+    const unreadMessages = await this.dmRepository.find({
+      where: { receiver: { id: userId }, isRead: false },
+      relations: ['sender'],
+    });
+
+    const sendersMap = new Map<number, any>();
+    for (const msg of unreadMessages) {
+      if (!sendersMap.has(msg.sender.id)) {
+        sendersMap.set(msg.sender.id, msg.sender);
+      }
+    }
+    return Array.from(sendersMap.values());
+  }
+
+  async markAsRead(senderId: number, receiverId: number) {
+    await this.dmRepository.update(
+      { sender: { id: senderId }, receiver: { id: receiverId }, isRead: false },
+      { isRead: true },
+    );
+  }
 }

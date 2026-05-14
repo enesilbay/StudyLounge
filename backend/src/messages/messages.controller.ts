@@ -76,13 +76,20 @@ export class MessagesController {
     );
   }
 
-  @Get(':roomName')
-  async getMessages(@Param('roomName') roomName: string) {
-    return await this.messagesService.getRoomMessages(roomName);
+  @Get('unread/dm-senders')
+  async getUnreadSenders(@CurrentUser() user: User) {
+    return await this.messagesService.getUnreadSenders(user.id);
   }
 
   @Get('dm/:userId')
   async getDirectMessages(@CurrentUser() user: User, @Param('userId') targetId: string) {
+    // Mesajlar getirilirken okundu olarak işaretle
+    await this.messagesService.markAsRead(Number(targetId), user.id);
     return await this.messagesService.getDirectMessages(user.id, Number(targetId));
+  }
+
+  @Get(':roomName')
+  async getMessages(@Param('roomName') roomName: string) {
+    return await this.messagesService.getRoomMessages(roomName);
   }
 }
