@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -30,6 +31,8 @@ if (!isExpoGo) {
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     if (!isExpoGo) {
       registerForPushNotificationsAsync().then(token => {
@@ -54,7 +57,7 @@ export default function TabLayout() {
           },
           body: JSON.stringify({ token }),
         });
-        console.log('Push token backend\'e kaydedildi.');
+        console.log("Push token backend'e kaydedildi.");
       }
     } catch (e) {
       console.error('Push token kaydedilirken hata:', e);
@@ -111,17 +114,21 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? Math.max(insets.bottom + 10, 25) : 25,
+          left: 20,
+          right: 20,
           backgroundColor: C.surface,
-          borderTopColor: C.border,
-          borderTopWidth: 1,
+          borderRadius: 32,
+          borderTopWidth: 0,
           height: 64,
           paddingBottom: 8,
           paddingTop: 8,
           elevation: 10,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.07,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 15,
         },
         tabBarActiveTintColor: C.primary,
         tabBarInactiveTintColor: C.textMuted,
@@ -131,11 +138,12 @@ export default function TabLayout() {
         name="index"
         options={{ href: null }}
       />
+
       <Tabs.Screen
         name="lobbies"
         options={{
           title: 'Odalar',
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color, focused }: { color: string, focused: boolean }) => (
             <FontAwesome5 size={focused ? 22 : 20} name="door-open" color={color} solid={focused} />
           ),
         }}
@@ -144,7 +152,7 @@ export default function TabLayout() {
         name="me"
         options={{
           title: 'Ben',
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color, focused }: { color: string, focused: boolean }) => (
             <FontAwesome5 size={focused ? 22 : 20} name="user-circle" color={color} solid={focused} />
           ),
         }}
@@ -152,15 +160,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="sensor"
         options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Keşfet',
-          tabBarIcon: ({ color, focused }) => (
-            <FontAwesome5 size={focused ? 22 : 20} name="compass" color={color} solid={focused} />
-          ),
-        }}
       />
     </Tabs>
   );

@@ -67,8 +67,8 @@ export default function MeScreen() {
 
       const [meRes, friendsRes, reqsRes] = await Promise.all([
         fetch(apiUrl('/users/me'), { headers }),
-        fetch(apiUrl('/users/friends'), { headers }),
-        fetch(apiUrl('/users/friend-requests'), { headers }),
+        fetch(apiUrl('/users/friends/0'), { headers }),
+        fetch(apiUrl('/users/friend-requests/0'), { headers }),
       ]);
 
       if (meRes.ok) {
@@ -297,7 +297,7 @@ export default function MeScreen() {
         {/* ── ARKADAŞLAR ── */}
         <View style={s.friendsHeader}>
           <Text style={s.sectionTitle}>Arkadaşlar</Text>
-          <TouchableOpacity onPress={() => router.push('/leaderboard' as any)}>
+          <TouchableOpacity onPress={() => setDmModalVisible(true)}>
             <Text style={s.seeAll}>Tümü →</Text>
           </TouchableOpacity>
         </View>

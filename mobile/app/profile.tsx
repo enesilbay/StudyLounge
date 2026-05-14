@@ -91,7 +91,7 @@ export default function ProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
@@ -106,8 +106,9 @@ export default function ProfileScreen() {
     setIsUploading(true);
     try {
       const formData = new FormData();
-      const fileUri = Platform.OS === 'android' ? imageAsset.uri : imageAsset.uri.replace('file://', '');
-      formData.append('file', { uri: fileUri, name: 'avatar.jpg', type: 'image/jpeg' } as any);
+      const fileUri = imageAsset.uri;
+      const fileName = imageAsset.fileName || fileUri.split('/').pop() || 'avatar.jpg';
+      formData.append('file', { uri: fileUri, name: fileName, type: imageAsset.mimeType || 'image/jpeg' } as any);
 
       const token = await AsyncStorage.getItem('access_token');
       const res = await fetch(apiUrl(`/users/avatar/${myUserId}`), {
@@ -115,15 +116,19 @@ export default function ProfileScreen() {
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      const data = await res.json();
+      
+      const resText = await res.text();
       if (!res.ok) {
-        throw new Error('Avatar yuklenemedi.');
+        console.log('Upload error response:', resText);
+        throw new Error(`Avatar yuklenemedi: ${resText.substring(0, 100)}`);
       }
 
+      const data = JSON.parse(resText);
       setUser(data.user);
       await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
-    } catch {
-      Alert.alert('Hata', 'Avatar yuklenemedi.');
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Hata', err.message || 'Avatar yuklenemedi.');
     } finally {
       setIsUploading(false);
     }

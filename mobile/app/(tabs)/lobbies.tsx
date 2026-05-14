@@ -100,7 +100,7 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
   );
 }
 
-const CATEGORIES = ['Tümü', 'Yazılım', 'Kodlama', 'Tıp', 'Hukuk', 'YKS', 'KPSS', 'Dil Öğrenimi', 'Tasarım', 'Mühendislik', 'Genel'];
+const CATEGORIES = ['Tümü', 'Bilgisayar Bilimi', 'Tıp & Sağlık', 'Hukuk', 'Sınav Hazırlık', 'Yabancı Dil', 'Tasarım & Sanat', 'Mühendislik', 'İşletme & Ekonomi', 'Fen Bilimleri', 'Genel'];
 const ROOM_CATEGORIES = CATEGORIES.filter(c => c !== 'Tümü');
 
 // ── Ana Ekran ──
@@ -540,7 +540,7 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 18, color: T.textDark, fontWeight: 'bold' },
   emptySubText: { fontSize: 14, color: T.textMuted },
   
-  fab: { position: 'absolute', bottom: 30, right: 22, borderRadius: 18, overflow: 'hidden', elevation: 12, shadowColor: T.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 15 },
+  fab: { position: 'absolute', bottom: 110, right: 22, borderRadius: 18, overflow: 'hidden', elevation: 12, shadowColor: T.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 15 },
   fabGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, paddingVertical: 16 },
   fabText: { fontSize: 15, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1.2 },
 });

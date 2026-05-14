@@ -148,6 +148,10 @@ export default function SensorScreen() {
   };
 
   const pickDocument = async () => {
+    if (!isEliteRoom) {
+      Alert.alert('Elite Özellik 👑', 'Belge (PDF) paylaşımı sadece Elite odalarda kullanılabilir.');
+      return;
+    }
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
       if (!result.canceled) {
