@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Lobby } from './lobbies/lobby.entity';
 import { Message } from './messages/message.entity';
+import { DirectMessage } from './messages/direct-message.entity';
 import { DailyAnalytics } from './users/daily-analytics.entity';
 import { Friendship } from './users/friendship.entity';
 import { User } from './users/user.entity';
@@ -21,7 +22,7 @@ export default new DataSource({
   username: process.env.DB_USER ?? 'enes_admin',
   password: process.env.DB_PASSWORD ?? 'studylounge_secret',
   database: process.env.DB_NAME ?? 'studylounge',
-  entities: [User, Lobby, Friendship, DailyAnalytics, Message],
+  entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 });

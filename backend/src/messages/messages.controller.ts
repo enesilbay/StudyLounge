@@ -83,4 +83,9 @@ export class MessagesController {
   async getMessages(@Param('roomName') roomName: string) {
     return await this.messagesService.getRoomMessages(roomName);
   }
+
+  @Get('dm/:userId')
+  async getDirectMessages(@CurrentUser() user: User, @Param('userId') targetId: string) {
+    return await this.messagesService.getDirectMessages(user.id, Number(targetId));
+  }
 }

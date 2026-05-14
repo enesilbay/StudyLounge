@@ -298,6 +298,8 @@ export class UsersService {
         fullName: friend.fullName,
         totalFocusMinutes: friend.totalFocusMinutes,
         avatarUrl: friend.avatarUrl,
+        isOnline: friend.isOnline,
+        currentRoom: friend.currentRoom,
       };
     });
   }
@@ -416,5 +418,10 @@ export class UsersService {
       .getMany();
 
     return users.map((u) => u.expoPushToken).filter((t): t is string => !!t);
+  }
+
+  // ── 15. KULLANICI ONLINE DURUMU VE ODASI ──
+  async setOnlineStatus(userId: number, isOnline: boolean, roomName?: string | null) {
+    await this.usersRepository.update(userId, { isOnline, currentRoom: roomName || null });
   }
 }

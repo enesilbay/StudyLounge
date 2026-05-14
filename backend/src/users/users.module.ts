@@ -7,8 +7,9 @@ import { getConfigString, getJwtSecret } from '../config/env';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './user.entity';
-import { Friendship } from './friendship.entity'; // EKLENDİ
+import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Module({
   // EKLENDİ: Friendship tablosu TypeOrmModule içine yazıldı
@@ -30,7 +31,7 @@ import { DailyAnalytics } from './daily-analytics.entity';
       },
     }),
   ],
-  providers: [UsersService],
+  providers: [UsersService, NotificationsService],
   controllers: [UsersController],
   exports: [UsersService],
 })

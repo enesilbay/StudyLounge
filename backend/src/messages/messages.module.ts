@@ -3,11 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessagesService } from './messages.service';
 import { MessagesController } from './messages.controller';
 import { Message } from './message.entity';
+import { DirectMessage } from './direct-message.entity';
 
 @Module({
-  // TypeOrmModule.forFeature ile Message entity'sini bu modüle tanıtıyoruz
-  imports: [TypeOrmModule.forFeature([Message])],
+  imports: [TypeOrmModule.forFeature([Message, DirectMessage])],
   providers: [MessagesService],
   controllers: [MessagesController],
+  exports: [MessagesService],
 })
 export class MessagesModule {}

@@ -15,6 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { getJwtSecret } from './config/env';
 import { JwtPayload } from './auth/jwt-payload.interface';
 import { LobbiesService } from './lobbies/lobbies.service';
+import { MessagesService } from './messages/messages.service';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -71,6 +72,7 @@ export class SensorsGateway
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
     private readonly lobbiesService: LobbiesService,
+    private readonly messagesService: MessagesService,
   ) {}
 
   handleConnection(client: Socket) {
@@ -245,6 +247,48 @@ export class SensorsGateway
       isPremium: connectedUser?.isPremium ?? false,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  @SubscribeMessage('send_dm')
+  async handleSendDm(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { targetUserId: number; text: string; type?: string; fileUrl?: string } | string,
+  ) {
+    try {
+      const socketUser = this.getSocketUser(client);
+      if (!socketUser) return;
+
+      const data = this.parsePayload(payload) as { targetUserId: number; text: string; type?: string; fileUrl?: string };
+      const savedMsg = await this.messagesService.createDirectMessage(
+        socketUser.sub,
+        data.targetUserId,
+        data.text,
+        data.type || 'text',
+        data.fileUrl
+      );
+
+      const dmPayload = {
+        id: savedMsg.id,
+        senderId: socketUser.sub,
+        receiverId: data.targetUserId,
+        text: data.text,
+        type: data.type || 'text',
+        fileUrl: data.fileUrl,
+        createdAt: savedMsg.createdAt || new Date(),
+      };
+
+      // Alıcıya gönder
+      for (const [socketId, user] of this.connectedUsers.entries()) {
+        if (user.userId === data.targetUserId) {
+          this.server.to(socketId).emit('receive_dm', dmPayload);
+        }
+      }
+      
+      // Gönderene de geri yolla (kendi ekranında çıksın)
+      client.emit('receive_dm', dmPayload);
+    } catch (error) {
+      console.error('DM Gönderim Hatası:', error);
+    }
   }
 
   @SubscribeMessage('update_presence')

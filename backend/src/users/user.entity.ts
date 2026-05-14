@@ -24,6 +24,12 @@ export class User {
   @Column({ default: 0 })
   totalFocusMinutes: number;
 
+  @Column({ default: false })
+  isOnline: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  currentRoom: string | null;
+
   @Column({ nullable: true })
   avatarUrl: string;
 

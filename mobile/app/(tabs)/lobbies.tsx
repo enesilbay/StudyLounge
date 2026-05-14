@@ -597,13 +597,46 @@ export default function LobbiesScreen() {
                       )}
                     </View>
 
-                    <View style={flist.info}>
+                    <View style={{ flex: 1, marginLeft: 14 }}>
                       <Text style={flist.name}>{friend.fullName}</Text>
-                      <Text style={flist.username}>@{friend.username}</Text>
+                      {friend.isOnline ? (
+                        <Text style={[flist.username, { color: '#059669', fontWeight: '600' }]}>
+                          🟢 {friend.currentRoom ? `${friend.currentRoom} odasında` : 'Çevrim içi'}
+                        </Text>
+                      ) : (
+                        <Text style={flist.username}>@{friend.username}</Text>
+                      )}
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={flist.scoreTitle}>Odak Süresi</Text>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
                       <Text style={flist.score}>{friend.totalFocusMinutes} dk</Text>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <TouchableOpacity
+                          style={{ backgroundColor: T.softIndigo, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: T.primary }}
+                          onPress={() => router.push({ pathname: '/dm', params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username } } as any)}
+                        >
+                          <Text style={{ color: T.primary, fontSize: 12, fontWeight: '700' }}>Mesaj</Text>
+                        </TouchableOpacity>
+
+                        {friend.isOnline && !friend.currentRoom && (
+                          <TouchableOpacity
+                            style={{ backgroundColor: T.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 }}
+                          onPress={async () => {
+                            try {
+                              const token = await AsyncStorage.getItem('access_token');
+                              await fetch(apiUrl(`/users/nudge/${friend.id}`), {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              alert('Dürtme gönderildi!');
+                            } catch {
+                              alert('Hata oluştu.');
+                            }
+                          }}
+                        >
+                          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Dürt</Text>
+                        </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   </View>
                 ))

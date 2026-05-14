@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Message } from './message.entity';
+import { DirectMessage } from './direct-message.entity';
 
 @Injectable()
 export class MessagesService {
   constructor(
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(DirectMessage)
+    private readonly dmRepository: Repository<DirectMessage>,
   ) {}
 
   // Normal Metin Mesajını Kaydet
@@ -48,5 +51,28 @@ export class MessagesService {
       take: 50,
       relations: ['user'],
     });
+  }
+
+  // ── DM METODLARI ──
+  async getDirectMessages(userId1: number, userId2: number) {
+    return await this.dmRepository.find({
+      where: [
+        { sender: { id: userId1 }, receiver: { id: userId2 } },
+        { sender: { id: userId2 }, receiver: { id: userId1 } },
+      ],
+      order: { createdAt: 'ASC' },
+      take: 100,
+    });
+  }
+
+  async createDirectMessage(senderId: number, receiverId: number, text: string, type: string = 'text', fileUrl?: string) {
+    const dm = this.dmRepository.create({
+      sender: { id: senderId },
+      receiver: { id: receiverId },
+      text,
+      type,
+      fileUrl,
+    });
+    return await this.dmRepository.save(dm);
   }
 }

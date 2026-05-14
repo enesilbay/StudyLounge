@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Param,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -25,6 +26,7 @@ import { UpdatePushTokenDto } from './dto/update-push-token.dto';
 import { User } from './user.entity';
 import { UsersService } from './users.service';
 import type { Express } from 'express';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -32,6 +34,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Get('leaderboard')
@@ -187,5 +190,19 @@ export class UsersController {
       body.token,
     );
     return { success: true, user: updatedUser };
+  }
+
+  @Post('nudge/:id')
+  async nudgeFriend(@CurrentUser() user: User, @Param('id') targetId: string) {
+    const sender = await this.usersService.findById(user.id);
+    const tokens = await this.usersService.getUserPushTokens([Number(targetId)]);
+    tokens.forEach((token) => {
+      void this.notificationsService.sendNotification(
+        token,
+        'StudyLounge',
+        `${sender?.fullName} seni çalışmaya davet ediyor!`
+      );
+    });
+    return { success: true, message: 'Dürtme gönderildi!' };
   }
 }

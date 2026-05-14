@@ -8,6 +8,7 @@ import { Lobby } from './lobbies/lobby.entity';
 import { MailModule } from './mail/mail.module';
 import { MessagesModule } from './messages/messages.module';
 import { Message } from './messages/message.entity';
+import { DirectMessage } from './messages/direct-message.entity';
 import { NotificationsService } from './notifications/notifications.service';
 import { SensorsGateway } from './sensors.gateway';
 import { DailyAnalytics } from './users/daily-analytics.entity';
@@ -32,7 +33,7 @@ import { UsersModule } from './users/users.module';
             'studylounge_secret',
           ),
           database: getConfigString(configService, 'DB_NAME', 'studylounge'),
-          entities: [User, Lobby, Friendship, DailyAnalytics, Message],
+          entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
           autoLoadEntities: true,
           synchronize: false,
         };
