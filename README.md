@@ -23,6 +23,13 @@ Proje uc parcadan olusur:
 - Liderlik tablosu, rutbe sistemi ve haftalik analitik ekranlari
 - Web arayuzu: login/register, dashboard, lobbies, leaderboard, profile
 
+## Son Guncellemeler (Sensor, DM & Lobi)
+- **Global Socket Yonetimi:** Kullanicilar sisteme baglandiginda tum sekmelerde online durumu ve mesajlasmayi senkron tutan global socket `userSockets` yapisi kuruldu.
+- **Okunmamis DM Bildirimleri:** `DirectMessage` entity'sine okundu bilgisi (`isRead`) eklendi. Ben (Profil) sayfasindaki "Istekler" kisminda okunmamis DM gonderenler artik listeleniyor.
+- **Odadakiler Listesi Duzenlemesi:** Bir odaya (sensore) girdiginizde `Odadakiler` listesinde artik kendi adiniz filtrelenerek gizleniyor.
+- **Global Durtme (Nudge) Guncellemesi:** Arkadasiniza calisma teklifi sunan "Durtme (👋)" ozelligi odadan cikarilarak genel "Ben" sayfasina eklendi. Arkadasiniz uygulamanin neresinde olursa olsun anlik Toast/Alert (Push haric) bildirimi aliyor.
+- **Lobi Gorunurlugu:** Lobi sayfasindaki odalarda o an eger bir arkadasiniz odaklaniyorsa (ornegin "Ahmet burada odaklaniyor"), bu bilgi aktif olarak odanin uzerinde belirtiliyor.
+
 ## Kurulum
 
 Gerekenler:
