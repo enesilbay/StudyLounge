@@ -21,6 +21,7 @@ interface Lobby {
   name: string;
   icon: string;
   description: string;
+  category?: string;
   memberCount?: number;
   isActive?: boolean;
   isPrivate?: boolean;
@@ -99,20 +100,15 @@ function LobbyCard({ item, onPress, index }: { item: Lobby; onPress: () => void;
   );
 }
 
-// ── Header İkon Butonu ──
-function IconBtn({ name, onPress, danger }: { name: string; onPress: () => void; danger?: boolean; }) {
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={[hdr.iconBtn, danger && hdr.iconBtnDanger]}>
-      <FontAwesome5 solid name={name} size={14} color={danger ? T.danger : T.primary} />
-    </TouchableOpacity>
-  );
-}
+const CATEGORIES = ['Tümü', 'Yazılım', 'Kodlama', 'Tıp', 'Hukuk', 'YKS', 'KPSS', 'Dil Öğrenimi', 'Tasarım', 'Mühendislik', 'Genel'];
+const ROOM_CATEGORIES = CATEGORIES.filter(c => c !== 'Tümü');
 
 // ── Ana Ekran ──
 export default function LobbiesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const myUserId = Number(params.id); // Kendi ID'miz
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -134,16 +130,7 @@ export default function LobbiesScreen() {
   const [enterPassword, setEnterPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Arkadaş Ekleme State'leri
-  const [isFriendModalVisible, setIsFriendModalVisible] = useState(false);
-  const [friendUsername, setFriendUsername] = useState('');
-  const [isSendingFriendReq, setIsSendingFriendReq] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  // Arkadaş Listesi ve İstekler State'leri
-  const [isSocialModalVisible, setIsSocialModalVisible] = useState(false);
-  const [friends, setFriends] = useState<any[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('Tümü');
 
   const headerAnim = useRef(new Animated.Value(0)).current;
 
@@ -154,7 +141,6 @@ export default function LobbiesScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchLobbies();
-      loadSocialData();
       loadUserData();
     }, [myUserId])
   );
@@ -194,43 +180,6 @@ export default function LobbiesScreen() {
     }
   };
 
-  const loadSocialData = async () => {
-    if (!myUserId) return;
-    try {
-      const token = await getToken();
-      const headers = { Authorization: `Bearer ${token}` };
-      const [friendsRes, reqsRes] = await Promise.all([
-        fetch(apiUrl(`/users/friends/${myUserId}`), { headers }),
-        fetch(apiUrl(`/users/friend-requests/${myUserId}`), { headers })
-      ]);
-      const friendsData = await friendsRes.json();
-      const reqsData = await reqsRes.json();
-      
-      setFriends(Array.isArray(friendsData) ? friendsData : []);
-      setRequests(Array.isArray(reqsData) ? reqsData : []);
-      
-    } catch (e) {
-      console.error('Sosyal veriler yüklenirken hata:', e);
-      setFriends([]);
-      setRequests([]);
-    }
-  };
-
-  const handleRespondRequest = async (requestId: number, status: 'accepted' | 'rejected') => {
-    try {
-      const token = await getToken();
-      const res = await fetch(apiUrl('/users/respond-request'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ requestId, status }),
-      });
-      if (res.ok) {
-        loadSocialData(); 
-      }
-    } catch (e) {
-      Alert.alert('Hata', 'İşlem gerçekleştirilemedi.');
-    }
-  };
 
   const handleCreateLobby = async () => {
     if (!newName.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen bir lobi ismi girin.');
@@ -288,27 +237,6 @@ export default function LobbiesScreen() {
     }
   };
 
-  const handleSendFriendRequest = async () => {
-    if (!friendUsername.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen bir kullanıcı adı girin.');
-    setIsSendingFriendReq(true);
-    try {
-      const token = await getToken();
-      const res = await fetch(apiUrl('/users/friend-request'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ receiverUsername: friendUsername.trim() }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        Alert.alert('Başarılı', 'Arkadaşlık isteği gönderildi!');
-        setIsFriendModalVisible(false);
-        setFriendUsername('');
-      } else {
-        Alert.alert('Hata', data.message || 'İstek gönderilemedi.');
-      }
-    } catch { Alert.alert('Hata', 'Sunucu bağlantı hatası.'); } 
-    finally { setIsSendingFriendReq(false); }
-  };
 
   const handleLogout = async () => {
     try {
@@ -317,7 +245,11 @@ export default function LobbiesScreen() {
     } catch (e) { console.error('Çıkış hatası:', e); }
   };
 
-  const filteredLobbies = lobbies.filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredLobbies = lobbies.filter((l) => {
+    const matchSearch = l.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchCategory = selectedCategoryFilter === 'Tümü' || l.category === selectedCategoryFilter;
+    return matchSearch && matchCategory;
+  });
   const activeCount = lobbies.reduce((sum, lobby) => sum + (lobby.activeUsers || 0), 0);
   const eliteCount = lobbies.filter((lobby) => lobby.isPremiumOnly).length;
   const userName = typeof params.fullName === 'string' ? params.fullName.split(' ')[0] : 'Öğrenci';
@@ -345,26 +277,9 @@ export default function LobbiesScreen() {
               )}
             </TouchableOpacity>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.headerBtns}>
-            <TouchableOpacity onPress={() => setIsSocialModalVisible(true)} activeOpacity={0.7} style={hdr.iconBtn}>
-              <FontAwesome5 solid name="bell" size={14} color={T.primary} />
-              {requests.length > 0 && (
-                <View style={hdr.badge}>
-                  <Text style={hdr.badgeText}>{requests.length}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <IconBtn name="user-plus" onPress={() => setIsFriendModalVisible(true)} />
-            <IconBtn name="trophy" onPress={() => router.push('/leaderboard' as any)} />
-            <IconBtn name="crown" onPress={() => router.push({ pathname: '/premium', params: { id: myUserId } } as any)} />
-            
-            <IconBtn name="sign-out-alt" onPress={handleLogout} danger />
-          </ScrollView>
         </Animated.View>
 
-        {/* ── ARAMA KUTUSU ── */}
+        {/* ── ARAMA KUTUSU VE KATEGORİ FİLTRESİ ── */}
         <Animated.View style={[s.summaryCard, { opacity: headerAnim }]}>
           <View style={s.summaryItem}>
             <Text style={s.summaryValue}>{lobbies.length}</Text>
@@ -385,6 +300,26 @@ export default function LobbiesScreen() {
         <Animated.View style={[s.searchWrap, { opacity: headerAnim }]}>
           <FontAwesome5 solid name="search" size={14} color={T.textMuted} style={{ marginRight: 12 }} />
           <TextInput style={s.searchInput} placeholder="Çalışma odası bul..." placeholderTextColor={T.textMuted} value={searchQuery} onChangeText={setSearchQuery} />
+        </Animated.View>
+
+        <Animated.View style={[{ opacity: headerAnim, marginBottom: 20 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+            {CATEGORIES.map(cat => {
+              const isSelected = selectedCategoryFilter === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setSelectedCategoryFilter(cat)}
+                  style={[
+                    s.catChip,
+                    isSelected ? s.catChipActive : s.catChipInactive
+                  ]}
+                >
+                  <Text style={[s.catText, isSelected ? s.catTextActive : s.catTextInactive]}>{cat}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </Animated.View>
 
         <View style={s.sectionHeader}>
@@ -459,7 +394,23 @@ export default function LobbiesScreen() {
               <Text style={mdl.title}>Yeni Çalışma Odası</Text>
               <Text style={mdl.subtitle}>Arkadaşlarınla odaklanmak için bir oda oluştur.</Text>
               <TextInput style={mdl.input} placeholder="Oda İsmi" placeholderTextColor={T.textMuted} value={newName} onChangeText={setNewName} />
-              <TextInput style={[mdl.input, { marginTop: 15 }]} placeholder="Kategori (Örn: Tıp, YKS)" placeholderTextColor={T.textMuted} value={newCategory} onChangeText={setNewCategory} />
+              
+              <Text style={{ color: T.textDark, fontSize: 13, fontWeight: 'bold', marginTop: 15, paddingHorizontal: 5 }}>Kategori Seç</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }} contentContainerStyle={{ gap: 8 }}>
+                {ROOM_CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    onPress={() => setNewCategory(cat)}
+                    style={[
+                      s.catChip,
+                      newCategory === cat ? s.catChipActive : s.catChipInactive
+                    ]}
+                  >
+                    <Text style={[s.catText, newCategory === cat ? s.catTextActive : s.catTextInactive]}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
               <TextInput style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15, marginTop: 15 }]} placeholder="Açıklama" placeholderTextColor={T.textMuted} value={newDesc} onChangeText={setNewDesc} multiline />
               
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, paddingHorizontal: 5 }}>
@@ -508,144 +459,7 @@ export default function LobbiesScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── ARKADAŞ EKLEME MODALI ── */}
-      <Modal visible={isFriendModalVisible} animationType="fade" transparent statusBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={[mdl.overlay, { justifyContent: 'center', padding: 20 }]}>
-            <View style={[mdl.sheet, { borderRadius: 28 }]}>
-              <View style={{ alignItems: 'center', marginBottom: 15 }}>
-                <View style={mdl.iconCircle}>
-                  <FontAwesome5 solid name="user-plus" size={20} color={T.primary} />
-                </View>
-                <Text style={[mdl.title, { textAlign: 'center' }]}>Arkadaş Ekle</Text>
-                <Text style={[mdl.subtitle, { textAlign: 'center', marginTop: 5 }]}>Beraber odaklanmak için arkadaşlarını davet et.</Text>
-              </View>
-              <TextInput style={mdl.input} placeholder="Kullanıcı Adı (Örn: ahmet_123)" placeholderTextColor={T.textMuted} value={friendUsername} onChangeText={setFriendUsername} autoCapitalize="none" />
-              <View style={mdl.btnRow}>
-                <TouchableOpacity style={mdl.cancelBtn} onPress={() => setIsFriendModalVisible(false)}><Text style={mdl.cancelText}>İptal</Text></TouchableOpacity>
-                <TouchableOpacity onPress={handleSendFriendRequest} disabled={isSendingFriendReq} style={{ flex: 1 }}>
-                  <LinearGradient colors={[T.primary, T.secondary]} style={mdl.createBtn}>
-                    <Text style={mdl.createText}>{isSendingFriendReq ? 'Gönderiliyor...' : 'İstek Gönder'}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
-      {/* ── SOSYAL (İSTEKLER & ARKADAŞLAR) MODALI ── */}
-      <Modal visible={isSocialModalVisible} animationType="slide" transparent statusBarTranslucent>
-        <View style={mdl.overlay}>
-          <View style={[mdl.sheet, { height: '85%' }]}>
-            <View style={mdl.handle} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-              <Text style={mdl.title}>Sosyal</Text>
-              <TouchableOpacity onPress={() => setIsSocialModalVisible(false)} style={mdl.closeBtn}>
-                <FontAwesome5 solid name="times" size={16} color={T.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
-              
-              {/* BEKLEYEN İSTEKLER BÖLÜMÜ */}
-              {requests.length > 0 && (
-                <View style={{ marginBottom: 25 }}>
-                  <Text style={flist.sectionTitle}>Bekleyen İstekler ({requests.length})</Text>
-                  {requests.map((req) => (
-                    <View key={req.id} style={flist.itemWrap}>
-                      <View style={flist.avatar}>
-                        {req.sender.avatarUrl ? (
-                          <Image source={{ uri: assetUrl(req.sender.avatarUrl) ?? undefined }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
-                        ) : (
-                          <Text style={flist.avatarText}>{req.sender.fullName.charAt(0)}</Text>
-                        )}
-                      </View>
-
-                      <View style={flist.info}>
-                        <Text style={flist.name}>{req.sender.fullName}</Text>
-                        <Text style={flist.username}>@{req.sender.username}</Text>
-                      </View>
-                      <View style={flist.actions}>
-                        <TouchableOpacity style={[flist.actionBtn, flist.acceptBtn]} onPress={() => handleRespondRequest(req.id, 'accepted')}>
-                          <FontAwesome5 solid name="check" size={14} color="#059669" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[flist.actionBtn, flist.rejectBtn]} onPress={() => handleRespondRequest(req.id, 'rejected')}>
-                          <FontAwesome5 solid name="times" size={14} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* ARKADAŞLAR BÖLÜMÜ */}
-              <Text style={flist.sectionTitle}>Arkadaşlarım ({friends.length})</Text>
-              {friends.length === 0 ? (
-                <View style={flist.emptyWrap}>
-                  <FontAwesome5 solid name="user-friends" size={30} color={T.textMuted} />
-                  <Text style={flist.emptyText}>Henüz arkadaş eklemediniz.</Text>
-                </View>
-              ) : (
-                friends.map((friend) => (
-                  <View key={friend.id} style={flist.itemWrap}>
-                    <View style={flist.avatar}>
-                      {friend.avatarUrl ? (
-                        <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
-                      ) : (
-                        <Text style={flist.avatarText}>{friend.fullName.charAt(0)}</Text>
-                      )}
-                    </View>
-
-                    <View style={{ flex: 1, marginLeft: 14 }}>
-                      <Text style={flist.name}>{friend.fullName}</Text>
-                      {friend.isOnline ? (
-                        <Text style={[flist.username, { color: '#059669', fontWeight: '600' }]}>
-                          🟢 {friend.currentRoom ? `${friend.currentRoom} odasında` : 'Çevrim içi'}
-                        </Text>
-                      ) : (
-                        <Text style={flist.username}>@{friend.username}</Text>
-                      )}
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                      <Text style={flist.score}>{friend.totalFocusMinutes} dk</Text>
-                      <View style={{ flexDirection: 'row', gap: 6 }}>
-                        <TouchableOpacity
-                          style={{ backgroundColor: T.softIndigo, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: T.primary }}
-                          onPress={() => router.push({ pathname: '/dm', params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username } } as any)}
-                        >
-                          <Text style={{ color: T.primary, fontSize: 12, fontWeight: '700' }}>Mesaj</Text>
-                        </TouchableOpacity>
-
-                        {friend.isOnline && !friend.currentRoom && (
-                          <TouchableOpacity
-                            style={{ backgroundColor: T.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 }}
-                          onPress={async () => {
-                            try {
-                              const token = await AsyncStorage.getItem('access_token');
-                              await fetch(apiUrl(`/users/nudge/${friend.id}`), {
-                                method: 'POST',
-                                headers: { Authorization: `Bearer ${token}` }
-                              });
-                              alert('Dürtme gönderildi!');
-                            } catch {
-                              alert('Hata oluştu.');
-                            }
-                          }}
-                        >
-                          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Dürt</Text>
-                        </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                ))
-              )}
-
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* ── ŞİFRE GİRİŞ MODALI (Gizli Odalar İçin) ── */}
       <Modal visible={isPasswordModalVisible} animationType="fade" transparent statusBarTranslucent>
@@ -701,7 +515,13 @@ const s = StyleSheet.create({
   headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
   greeting: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: T.textMuted, letterSpacing: 0.5 },
   pageTitle: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 30, color: T.textDark, marginTop: 2, letterSpacing: 0.5 },
-  headerBtns: { flexDirection: 'row', gap: 10, paddingRight: 20, paddingBottom: 5 },
+  
+  catChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  catChipActive: { backgroundColor: T.primary, borderColor: T.primary },
+  catChipInactive: { backgroundColor: T.surface, borderColor: T.border },
+  catText: { fontSize: 13, fontWeight: 'bold' },
+  catTextActive: { color: '#FFF' },
+  catTextInactive: { color: T.textMuted },
   
   summaryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.surface, borderRadius: 20, paddingVertical: 16, marginBottom: 16, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
   summaryItem: { flex: 1, alignItems: 'center' },

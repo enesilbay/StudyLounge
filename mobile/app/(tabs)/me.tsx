@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Image, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Animated, Image, Modal, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -49,7 +49,14 @@ export default function MeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modals & Forms
+  const [isFriendModalVisible, setIsFriendModalVisible] = useState(false);
+  const [isSocialModalVisible, setIsSocialModalVisible] = useState(false);
+  const [friendUsername, setFriendUsername] = useState('');
+  const [isSendingFriendReq, setIsSendingFriendReq] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -58,9 +65,10 @@ export default function MeScreen() {
       const token = await AsyncStorage.getItem('access_token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [meRes, friendsRes] = await Promise.all([
+      const [meRes, friendsRes, reqsRes] = await Promise.all([
         fetch(apiUrl('/users/me'), { headers }),
         fetch(apiUrl('/users/friends'), { headers }),
+        fetch(apiUrl('/users/friend-requests'), { headers }),
       ]);
 
       if (meRes.ok) {
@@ -73,6 +81,10 @@ export default function MeScreen() {
           (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0)
         );
         setFriends(sorted);
+      }
+      if (reqsRes.ok) {
+        const data = await reqsRes.json();
+        setRequests(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.log('Me tab fetch error:', e);
@@ -90,13 +102,53 @@ export default function MeScreen() {
     fetchData();
   }, [fetchData]));
 
+  const [dmModalVisible, setDmModalVisible] = useState(false);
+
+  const handleRespondRequest = async (requestId: number, status: 'accepted' | 'rejected') => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      const res = await fetch(apiUrl('/users/respond-request'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ requestId, status }),
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (e) {
+      Alert.alert('Hata', 'İşlem gerçekleştirilemedi.');
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!friendUsername.trim()) return Alert.alert('Eksik Bilgi', 'Lütfen bir kullanıcı adı girin.');
+    setIsSendingFriendReq(true);
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      const res = await fetch(apiUrl('/users/friend-request'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ receiverUsername: friendUsername.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        Alert.alert('Başarılı', 'Arkadaşlık isteği gönderildi!');
+        setIsFriendModalVisible(false);
+        setFriendUsername('');
+      } else {
+        Alert.alert('Hata', data.message || 'İstek gönderilemedi.');
+      }
+    } catch { Alert.alert('Hata', 'Sunucu bağlantı hatası.'); } 
+    finally { setIsSendingFriendReq(false); }
+  };
+
   const handleQuickAction = async (action: typeof QUICK_ACTIONS[0]) => {
     if (action.id === 'analytics' && user && !user.isPremium) {
       router.push({ pathname: '/premium', params: { id: user.id } } as any);
       return;
     }
     if (action.id === 'messages') {
-      // Mesajlar için arkadaş listesine kaydır (sayfada mevcut)
+      setDmModalVisible(true);
       return;
     }
     if (action.route) router.push(action.route as any);
@@ -129,9 +181,22 @@ export default function MeScreen() {
         {/* ── HEADER ── */}
         <View style={s.header}>
           <Text style={s.headerTitle}>Ben</Text>
-          <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: user.id } } as any)}>
-            <FontAwesome5 name="cog" size={20} color={T.textMuted} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => setIsFriendModalVisible(true)}>
+              <FontAwesome5 name="user-plus" size={18} color={T.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setIsSocialModalVisible(true)} style={{ position: 'relative' }}>
+              <FontAwesome5 name="bell" size={20} color={requests.length > 0 ? T.accent : T.primary} />
+              {requests.length > 0 && (
+                <View style={s.badge}>
+                  <Text style={s.badgeText}>{requests.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: user.id } } as any)}>
+              <FontAwesome5 name="cog" size={20} color={T.textMuted} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── PROFİL KARTI ── */}
@@ -280,6 +345,134 @@ export default function MeScreen() {
 
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
+
+      {/* ── DM MODAL ── */}
+      <Modal visible={dmModalVisible} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <View style={s.dmSheet}>
+            <View style={s.dmHandle} />
+            <View style={s.dmHeader}>
+              <Text style={s.dmTitle}>Mesajlar</Text>
+              <TouchableOpacity onPress={() => setDmModalVisible(false)} style={s.dmCloseBtn}>
+                <FontAwesome5 name="times" size={16} color={T.textMuted} solid />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {friends.length === 0 ? (
+                <View style={s.emptyFriends}>
+                  <FontAwesome5 name="comment-slash" size={28} color={T.textMuted} />
+                  <Text style={s.emptyText}>Henüz arkadaşın yok</Text>
+                  <Text style={s.emptySubText}>Keşfet sekmesinden arkadaş ekle.</Text>
+                </View>
+              ) : (
+                friends.map(friend => (
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={s.dmFriendRow}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setDmModalVisible(false);
+                      router.push({
+                        pathname: '/dm',
+                        params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username }
+                      } as any);
+                    }}
+                  >
+                    <View style={s.friendAvatar}>
+                      {friend.avatarUrl ? (
+                        <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={s.friendAvatarImg} />
+                      ) : (
+                        <Text style={s.friendAvatarText}>{friend.fullName.charAt(0).toUpperCase()}</Text>
+                      )}
+                      <View style={[s.onlineDot, { backgroundColor: friend.isOnline ? T.success : T.textMuted }]} />
+                    </View>
+                    <View style={s.friendInfo}>
+                      <Text style={s.friendName}>{friend.fullName}</Text>
+                      <Text style={s.friendSub}>{friend.isOnline ? '🟢 Çevrimiçi' : `${friend.totalFocusMinutes} dk odak`}</Text>
+                    </View>
+                    <View style={[s.dmBtn, { backgroundColor: T.primary }]}>
+                      <FontAwesome5 name="paper-plane" size={13} color="#FFF" solid />
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+              <View style={{ height: 30 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── ARKADAŞ EKLEME MODALI ── */}
+      <Modal visible={isFriendModalVisible} animationType="fade" transparent statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
+          <View style={s.modalSheet}>
+            <View style={{ alignItems: 'center', marginBottom: 15 }}>
+              <View style={s.modalIconCircle}>
+                <FontAwesome5 solid name="user-plus" size={20} color={T.primary} />
+              </View>
+              <Text style={s.modalTitle}>Arkadaş Ekle</Text>
+              <Text style={s.modalSubtitle}>Beraber odaklanmak için arkadaşlarını davet et.</Text>
+            </View>
+            <TextInput style={s.modalInput} placeholder="Kullanıcı Adı (Örn: ahmet_123)" placeholderTextColor={T.textMuted} value={friendUsername} onChangeText={setFriendUsername} autoCapitalize="none" />
+            <View style={s.modalBtnRow}>
+              <TouchableOpacity style={s.modalCancelBtn} onPress={() => setIsFriendModalVisible(false)}><Text style={s.modalCancelText}>İptal</Text></TouchableOpacity>
+              <TouchableOpacity onPress={handleSendFriendRequest} disabled={isSendingFriendReq} style={{ flex: 1 }}>
+                <LinearGradient colors={[T.primary, T.secondary]} style={s.modalCreateBtn}>
+                  <Text style={s.modalCreateText}>{isSendingFriendReq ? 'Gönderiliyor...' : 'İstek Gönder'}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── GELEN İSTEKLER MODALI ── */}
+      <Modal visible={isSocialModalVisible} animationType="slide" transparent statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <View style={[s.dmSheet, { maxHeight: '85%' }]}>
+            <View style={s.dmHandle} />
+            <View style={s.dmHeader}>
+              <Text style={s.dmTitle}>Gelen İstekler</Text>
+              <TouchableOpacity onPress={() => setIsSocialModalVisible(false)} style={s.dmCloseBtn}>
+                <FontAwesome5 name="times" size={16} color={T.textMuted} solid />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {requests.length === 0 ? (
+                <View style={s.emptyFriends}>
+                  <FontAwesome5 name="bell-slash" size={28} color={T.textMuted} />
+                  <Text style={s.emptyText}>Yeni istek yok</Text>
+                </View>
+              ) : (
+                requests.map((req) => (
+                  <View key={req.id} style={s.dmFriendRow}>
+                    <View style={s.friendAvatar}>
+                      {req.sender.avatarUrl ? (
+                        <Image source={{ uri: assetUrl(req.sender.avatarUrl) ?? undefined }} style={s.friendAvatarImg} />
+                      ) : (
+                        <Text style={s.friendAvatarText}>{req.sender.fullName.charAt(0)}</Text>
+                      )}
+                    </View>
+
+                    <View style={s.friendInfo}>
+                      <Text style={s.friendName}>{req.sender.fullName}</Text>
+                      <Text style={s.friendSub}>@{req.sender.username}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity style={[s.actionBtn, s.acceptBtn]} onPress={() => handleRespondRequest(req.id, 'accepted')}>
+                        <FontAwesome5 solid name="check" size={14} color="#059669" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[s.actionBtn, s.rejectBtn]} onPress={() => handleRespondRequest(req.id, 'rejected')}>
+                        <FontAwesome5 solid name="times" size={14} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -401,4 +594,38 @@ const s = StyleSheet.create({
     backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: T.border,
   },
+
+  // DM Modal
+  dmSheet: {
+    backgroundColor: T.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 40, maxHeight: '75%',
+    borderWidth: 1, borderColor: T.border,
+    ...Theme.shadows.medium,
+  },
+  dmHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: T.border, alignSelf: 'center', marginBottom: 16 },
+  dmHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  dmTitle: { color: T.textDark, fontSize: 22, fontWeight: '900' },
+  dmCloseBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center' },
+  dmFriendRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: T.background, borderRadius: 16, padding: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: T.border,
+  },
+  badge: { position: 'absolute', top: -4, right: -6, backgroundColor: T.danger, minWidth: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: T.background },
+  badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: 'bold' },
+
+  modalSheet: { backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 28, padding: 25, gap: 15, ...Theme.shadows.medium },
+  modalIconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: T.lightAmber, alignItems: 'center', justifyContent: 'center', marginBottom: 5, borderWidth: 1, borderColor: T.accent },
+  modalTitle: { fontSize: 24, fontWeight: '900', color: T.textDark, textAlign: 'center' },
+  modalSubtitle: { fontSize: 14, color: T.textMuted, marginTop: -5, marginBottom: 10, textAlign: 'center' },
+  modalInput: { backgroundColor: T.background, borderWidth: 1, borderColor: T.border, borderRadius: 16, padding: 16, fontSize: 15, color: T.textDark },
+  modalBtnRow: { flexDirection: 'row', gap: 12, marginTop: 15 },
+  modalCancelBtn: { flex: 1, height: 56, borderRadius: 18, backgroundColor: T.softIndigo, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center' },
+  modalCancelText: { fontSize: 15, fontWeight: 'bold', color: T.textDark },
+  modalCreateBtn: { height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  modalCreateText: { fontSize: 15, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },
+
+  actionBtn: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  acceptBtn: { backgroundColor: T.softSuccess, borderWidth: 1, borderColor: T.success },
+  rejectBtn: { backgroundColor: T.softDanger, borderWidth: 1, borderColor: T.danger },
 });
