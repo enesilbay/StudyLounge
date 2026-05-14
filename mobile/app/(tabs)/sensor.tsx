@@ -317,6 +317,39 @@ export default function SensorScreen() {
       socketRef.current.on('nudge_received', (data: { senderName: string; message: string }) => {
         showNudgeToast(data.senderName, data.message);
       });
+
+      // AŞAMA 4: DÜELLO
+      socketRef.current.on('duel_received', (data: any) => {
+        Alert.alert(
+          '⚔️ Düello Teklifi!',
+          `${data.challengerName} sana ${data.betAmount} Odak Puanlık bir düello teklif etti! Kabul edersen masadan telefonunu ilk kaldıran kaybeder. Kabul ediyor musun?`,
+          [
+            { text: 'Reddet', style: 'cancel' },
+            { 
+              text: 'Kabul Et', 
+              onPress: () => {
+                socketRef.current?.emit('accept_duel', { duelId: data.duelId });
+              }
+            }
+          ]
+        );
+      });
+
+      socketRef.current.on('duel_started', (data: any) => {
+        Alert.alert('⚔️ Düello Başladı!', `${data.opponentName} ile düellodasın! Telefonu masadan ilk kaldıran ${data.betAmount} puan kaybeder.`);
+      });
+
+      socketRef.current.on('duel_ended', (data: any) => {
+        if (data.winner) {
+          Alert.alert('🏆 Düelloyu Kazandın!', `Tebrikler! ${data.opponentName} pes etti. ${data.betAmount * 2} puan kazandın!`);
+        } else {
+          Alert.alert('💀 Düelloyu Kaybettin!', `Odaktan koptun! ${data.betAmount} puan kaybettin.`);
+        }
+      });
+
+      socketRef.current.on('error', (data: any) => {
+        Alert.alert('Uyarı', data.message);
+      });
     };
     initSocket();
     
@@ -397,6 +430,24 @@ export default function SensorScreen() {
       roomName,
     });
     Alert.alert('👋 Dürtüldü!', `${targetName} çalışmaya çağrıldı.`);
+  };
+
+  const challengeDuel = (targetId: number, targetName: string) => {
+    if (targetId === myUserId) return;
+    Alert.alert(
+      '⚔️ Düello İsteği',
+      `${targetName} adlı kullanıcıya düello isteği göndermek istediğine emin misin? (Bahis: 50 Puan)`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Gönder', onPress: () => {
+            socketRef.current?.emit('challenge_duel', {
+              targetUserId: targetId,
+              betAmount: 50,
+              roomName: roomName
+            });
+        }}
+      ]
+    );
   };
 
   const sendMessage = async () => {
@@ -578,13 +629,20 @@ export default function SensorScreen() {
                 </View>
                 <Text style={{ color: T.textDark, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
                 {Number(u.userId) !== myUserId && (
-                  <TouchableOpacity
-                    onPress={() => sendNudge(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
-                    style={s.nudgeBtn}
-                    accessibilityLabel={`${u.fullName} kullanıcısını dürt`}
-                  >
-                    <Text style={s.nudgeBtnText}>👋</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={() => challengeDuel(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
+                      style={[s.nudgeBtn, { backgroundColor: T.danger }]}
+                    >
+                      <Text style={s.nudgeBtnText}>⚔️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => sendNudge(Number(u.userId), u.fullName?.split(' ')[0] || 'Arkadaş')}
+                      style={s.nudgeBtn}
+                    >
+                      <Text style={s.nudgeBtnText}>👋</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             ))}

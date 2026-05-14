@@ -42,6 +42,11 @@ export class UsersController {
     return this.usersService.getLeaderboard();
   }
 
+  @Get('friends-leaderboard')
+  async getFriendsLeaderboard(@CurrentUser() user: User) {
+    return this.usersService.getFriendsLeaderboard(user.id);
+  }
+
   @Get('me')
   async getMe(@CurrentUser() user: User) {
     const currentUser = await this.usersService.findById(user.id);

@@ -53,6 +53,15 @@ interface ConnectedRoomUser {
   isPremium: boolean;
 }
 
+interface Duel {
+  id: string;
+  challengerId: number;
+  challengedId: number;
+  betAmount: number;
+  status: 'pending' | 'active';
+  roomName: string;
+}
+
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN?.split(',') ?? '*' },
   pingInterval: 10000,
@@ -65,6 +74,7 @@ export class SensorsGateway
 
   private activeSessions = new Map<number, number>();
   private connectedUsers = new Map<string, ConnectedRoomUser>();
+  private duels = new Map<string, Duel>();
 
   constructor(
     private readonly usersService: UsersService,
@@ -99,6 +109,8 @@ export class SensorsGateway
     if (!user) {
       return;
     }
+
+    await this.resolveDuel(user.userId);
 
     const startTime = this.activeSessions.get(user.userId);
     if (startTime) {
@@ -154,6 +166,33 @@ export class SensorsGateway
     }
 
     this.activeSessions.delete(user.userId);
+  }
+
+  // ── AŞAMA 4: DÜELLO ÇÖZÜMLEME ──
+  private async resolveDuel(loserId: number) {
+    for (const [duelId, duel] of this.duels.entries()) {
+      if (duel.status === 'active' && (duel.challengerId === loserId || duel.challengedId === loserId)) {
+        const winnerId = duel.challengerId === loserId ? duel.challengedId : duel.challengerId;
+        
+        await this.usersService.addCoins(winnerId, duel.betAmount * 2);
+
+        const winnerSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === winnerId)?.[0];
+        const loserSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === loserId)?.[0];
+        
+        const winnerObj = await this.usersService.findById(winnerId);
+        const loserObj = await this.usersService.findById(loserId);
+
+        if (winnerSocket) {
+          this.server.to(winnerSocket).emit('duel_ended', { winner: true, opponentName: loserObj?.fullName, betAmount: duel.betAmount });
+        }
+        if (loserSocket) {
+          this.server.to(loserSocket).emit('duel_ended', { winner: false, opponentName: winnerObj?.fullName, betAmount: duel.betAmount });
+        }
+
+        this.duels.delete(duelId);
+        break;
+      }
+    }
   }
 
   @SubscribeMessage('join_lobby')
@@ -330,6 +369,7 @@ export class SensorsGateway
           });
         });
     } else {
+      await this.resolveDuel(user.userId);
       await this.finishFocusSession(user);
       console.log(
         `[Odaklanma Bitti - ${user.roomName}] Kullanici: ${socketUser.sub} (Elite: ${user.isEliteRoom})`,
@@ -396,5 +436,85 @@ export class SensorsGateway
     } catch (e) {
       console.error('[Nudge] Push bildirimi gonderilemedi:', e);
     }
+  }
+
+  // ── AŞAMA 4: DÜELLO SİSTEMİ ──
+  @SubscribeMessage('challenge_duel')
+  async handleChallengeDuel(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { targetUserId: number; betAmount: number; roomName: string } | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+
+    const data = this.parsePayload(payload) as { targetUserId: number; betAmount: number; roomName: string };
+    
+    const challenger = await this.usersService.findById(socketUser.sub);
+    if (!challenger || challenger.coins < data.betAmount) {
+      client.emit('error', { message: 'Yetersiz bakiye!' });
+      return;
+    }
+
+    const duelId = `duel_${Date.now()}_${Math.random()}`;
+    this.duels.set(duelId, {
+      id: duelId,
+      challengerId: socketUser.sub,
+      challengedId: data.targetUserId,
+      betAmount: data.betAmount,
+      status: 'pending',
+      roomName: data.roomName,
+    });
+
+    for (const [socketId, user] of this.connectedUsers.entries()) {
+      if (user.userId === data.targetUserId) {
+        this.server.to(socketId).emit('duel_received', {
+          duelId,
+          challengerName: challenger.fullName,
+          betAmount: data.betAmount,
+        });
+        break;
+      }
+    }
+  }
+
+  @SubscribeMessage('accept_duel')
+  async handleAcceptDuel(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { duelId: string } | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+
+    const data = this.parsePayload(payload) as { duelId: string };
+    const duel = this.duels.get(data.duelId);
+
+    if (!duel || duel.status !== 'pending' || duel.challengedId !== socketUser.sub) {
+      client.emit('error', { message: 'Geçersiz düello isteği!' });
+      return;
+    }
+
+    const challenged = await this.usersService.findById(socketUser.sub);
+    if (!challenged || challenged.coins < duel.betAmount) {
+      client.emit('error', { message: 'Yetersiz bakiye!' });
+      return;
+    }
+
+    // Her iki taraftan da coinleri düş
+    const challengerSuccess = await this.usersService.removeCoins(duel.challengerId, duel.betAmount);
+    if (!challengerSuccess) {
+      client.emit('error', { message: 'Rakibinin bakiyesi yetersiz.' });
+      this.duels.delete(duel.id);
+      return;
+    }
+    await this.usersService.removeCoins(duel.challengedId, duel.betAmount);
+
+    duel.status = 'active';
+    this.duels.set(duel.id, duel);
+
+    const challengerSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === duel.challengerId)?.[0];
+    if (challengerSocket) {
+      this.server.to(challengerSocket).emit('duel_started', { opponentName: challenged.fullName, betAmount: duel.betAmount });
+    }
+    client.emit('duel_started', { opponentName: 'Rakip', betAmount: duel.betAmount });
   }
 }

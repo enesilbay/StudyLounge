@@ -113,6 +113,22 @@ export class UsersService {
     });
   }
 
+  // ── AŞAMA 4: DÜELLO BAKİYE YÖNETİMİ ──
+  async addCoins(userId: number, amount: number) {
+    const user = await this.usersRepository.findOneBy({ id: userId });
+    if (!user) return;
+    user.coins = (user.coins || 0) + amount;
+    await this.usersRepository.save(user);
+  }
+
+  async removeCoins(userId: number, amount: number): Promise<boolean> {
+    const user = await this.usersRepository.findOneBy({ id: userId });
+    if (!user || (user.coins || 0) < amount) return false;
+    user.coins -= amount;
+    await this.usersRepository.save(user);
+    return true;
+  }
+
   // ── 3. ODAKLANMA PUANI VE OYUNLAŞTIRMA (AŞAMA 3) ──
   async addFocusTime(userId: number, minutes: number) {
     const user = await this.usersRepository.findOneBy({ id: userId });
@@ -234,6 +250,26 @@ export class UsersService {
         'avatarUrl',
       ],
     });
+  }
+
+  // ── AŞAMA 4: ARKADAŞ İÇİ LİDERLİK TABLOSU ──
+  async getFriendsLeaderboard(userId: number) {
+    const friends = await this.getFriends(userId);
+    const currentUser = await this.findById(userId);
+    
+    if (currentUser) {
+      friends.push({
+        id: currentUser.id,
+        username: currentUser.username,
+        fullName: currentUser.fullName,
+        totalFocusMinutes: currentUser.totalFocusMinutes,
+        avatarUrl: currentUser.avatarUrl,
+        isOnline: currentUser.isOnline,
+        currentRoom: currentUser.currentRoom,
+      } as any);
+    }
+
+    return friends.sort((a, b) => (b.totalFocusMinutes || 0) - (a.totalFocusMinutes || 0));
   }
 
   // ── 6. ARKADAŞLIK İSTEĞİ GÖNDERME ──

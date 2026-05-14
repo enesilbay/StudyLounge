@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -21,6 +21,7 @@ type Leader = {
 
 export default function LeaderboardScreen() {
   const router = useRouter();
+  const [tab, setTab] = useState<'global' | 'friends'>('global');
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,7 +31,8 @@ export default function LeaderboardScreen() {
     setError('');
     try {
       const token = await AsyncStorage.getItem('access_token');
-      const response = await fetch(apiUrl('/users/leaderboard'), {
+      const endpoint = tab === 'global' ? '/users/leaderboard' : '/users/friends-leaderboard';
+      const response = await fetch(apiUrl(endpoint), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
@@ -48,11 +50,20 @@ export default function LeaderboardScreen() {
 
   useEffect(() => {
     fetchLeaderboard();
-  }, []);
+  }, [tab]);
 
   return (
     <AppScreen>
       <PageHeader title="Liderlik" eyebrow="Haftanin odak siralamasi" onBack={() => router.back()} />
+
+      <View style={styles.tabContainer}>
+        <TouchableOpacity style={[styles.tabButton, tab === 'global' && styles.tabActive]} onPress={() => setTab('global')}>
+          <Text style={[styles.tabText, tab === 'global' && styles.tabTextActive]}>Tüm Dünya</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tabButton, tab === 'friends' && styles.tabActive]} onPress={() => setTab('friends')}>
+          <Text style={[styles.tabText, tab === 'friends' && styles.tabTextActive]}>Arkadaşlarım</Text>
+        </TouchableOpacity>
+      </View>
 
       {isLoading ? (
         <SoftCard style={styles.stateCard}>
@@ -121,6 +132,11 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  tabContainer: { flexDirection: 'row', backgroundColor: T.surface, borderRadius: 16, padding: 6, marginBottom: 16, borderWidth: 1, borderColor: T.border },
+  tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
+  tabActive: { backgroundColor: T.primary },
+  tabText: { color: T.textMuted, fontSize: 14, fontWeight: '700' },
+  tabTextActive: { color: '#FFF', fontWeight: '900' },
   list: { gap: 12, paddingBottom: 110 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   topRow: { backgroundColor: T.lightAmber, borderColor: T.accent },
