@@ -163,7 +163,7 @@ export default function SensorScreen() {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.7,
       });
       if (!result.canceled) {
@@ -384,7 +384,8 @@ export default function SensorScreen() {
         sub = { remove: () => {} };
       } else {
         sub = Accelerometer.addListener(({ x, y, z }) => {
-          const flat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
+          const isPhoneFlat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
+          const flat = isPhoneFlat && pomodoroRunning; // YALNIZCA pomodoro çalışırken odaklanma başlar
           
           if (flat) {
             if (previousDeskState.current !== true) {
@@ -417,7 +418,7 @@ export default function SensorScreen() {
     return () => {
       if (sub && typeof sub.remove === 'function') sub.remove();
     };
-  }, [isFocused]);
+  }, [isFocused, pomodoroRunning]);
 
   // Web'de sensörü simüle etmek için
   const toggleWebSensor = () => {
@@ -870,7 +871,7 @@ const s = StyleSheet.create({
   nudgeToastTitle: { color: T.primary, fontWeight: '800', fontSize: 14 },
   nudgeToastSub: { color: T.textMuted, fontSize: 12, marginTop: 2 },
   
-  chatDrawer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6, backgroundColor: T.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: T.border, ...Theme.shadows.medium },
+  chatDrawer: { position: 'absolute', bottom: 100, left: 0, right: 0, height: height * 0.6, backgroundColor: T.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: T.border, ...Theme.shadows.medium },
   chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderColor: T.border },
   chatTitle: { color: T.textDark, fontSize: 16, fontWeight: '800' },
   chatCloseBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center' },
@@ -894,7 +895,7 @@ const s = StyleSheet.create({
   sendBtn: { borderRadius: 24, overflow: 'hidden', elevation: 4 },
   sendBtnGrad: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   
-  fab: { position: 'absolute', bottom: 35, right: 22, width: 64, height: 64, borderRadius: 32, overflow: 'hidden', elevation: 12, shadowColor: T.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15 },
+  fab: { position: 'absolute', bottom: 115, right: 22, width: 64, height: 64, borderRadius: 32, overflow: 'hidden', elevation: 12, shadowColor: T.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15 },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },

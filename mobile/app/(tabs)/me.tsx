@@ -193,7 +193,7 @@ export default function MeScreen() {
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: user.id } } as any)}>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: user.id, openSettings: 'true' } } as any)}>
               <FontAwesome5 name="cog" size={20} color={T.textMuted} />
             </TouchableOpacity>
           </View>

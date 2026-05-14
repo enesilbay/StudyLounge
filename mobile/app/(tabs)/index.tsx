@@ -137,7 +137,10 @@ export default function AuthScreen() {
         await AsyncStorage.setItem('access_token', data.access_token);
         router.replace({ pathname: '/lobbies' as any, params: data.user });
       } else {
-        Alert.alert('Hata', data.message || 'Bir sorun oluştu.');
+        const errorMsg = Array.isArray(data.message)
+          ? data.message.join('\n')
+          : (data.message || 'Bir sorun oluştu.');
+        Alert.alert('Hata', errorMsg);
       }
     } catch {
       Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');

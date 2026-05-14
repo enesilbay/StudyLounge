@@ -35,7 +35,7 @@ import { UsersModule } from './users/users.module';
           database: getConfigString(configService, 'DB_NAME', 'studylounge'),
           entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
           autoLoadEntities: true,
-          synchronize: false,
+          synchronize: true,
         };
       },
     }),

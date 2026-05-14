@@ -199,7 +199,7 @@ export default function LobbiesScreen() {
           icon: isPremiumOnly ? 'crown' : 'users',
           isPrivate,
           isPremiumOnly,
-          password: isPrivate ? roomPassword : null,
+          password: isPrivate ? roomPassword : undefined,
           maxUsers,
         }),
       });
@@ -207,6 +207,10 @@ export default function LobbiesScreen() {
         setIsModalVisible(false);
         setNewName(''); setNewDesc(''); setNewCategory(''); setIsPrivate(false); setIsPremiumOnly(false); setRoomPassword('');
         fetchLobbies();
+      } else {
+        const errData = await res.json();
+        const errMsg = Array.isArray(errData.message) ? errData.message.join('\n') : (errData.message || 'Lobi kurulamadı.');
+        Alert.alert('Hata', errMsg);
       }
     } catch { Alert.alert('Hata', 'Sunucu bağlantı hatası.'); }
   };

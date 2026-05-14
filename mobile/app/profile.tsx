@@ -80,8 +80,30 @@ export default function ProfileScreen() {
   useFocusEffect(
     React.useCallback(() => {
       fetchUserData();
-    }, [fetchUserData]),
+      if (params.openSettings === 'true') {
+        setSettingsVisible(true);
+        router.setParams({ openSettings: undefined }); // Prevent reopening on subsequent focuses
+      }
+    }, [fetchUserData, params.openSettings]),
   );
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cikis Yap',
+      'Hesabindan cikis yapmak istediginize emin misiniz?',
+      [
+        { text: 'Iptal', style: 'cancel' },
+        {
+          text: 'Cikis Yap',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.multiRemove(['user_data', 'access_token']);
+            router.replace('/' as any);
+          },
+        },
+      ]
+    );
+  };
 
   const handlePickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -381,6 +403,10 @@ export default function ProfileScreen() {
             {isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Kaydet</Text>}
           </TouchableOpacity>
         </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <FontAwesome5 solid name="sign-out-alt" size={15} color="#E53935" />
+          <Text style={styles.logoutBtnText}>Cikis Yap</Text>
+        </TouchableOpacity>
       </DarkSheetModal>
     </AppScreen>
   );
@@ -441,4 +467,6 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#FFFFFF', fontWeight: '900' },
   secondaryBtn: { flex: 1, backgroundColor: T.softIndigo, borderRadius: 14, alignItems: 'center', justifyContent: 'center', minHeight: 48, borderWidth: 1, borderColor: T.border },
   secondaryBtnText: { color: T.textDark, fontWeight: '900' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
+  logoutBtnText: { color: '#E53935', fontWeight: '900', fontSize: 15 },
 });

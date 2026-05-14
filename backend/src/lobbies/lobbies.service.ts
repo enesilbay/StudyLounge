@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { CreateLobbyDto } from './dto/create-lobby.dto';
 import { Lobby } from './lobby.entity';
@@ -18,7 +18,9 @@ export class LobbiesService {
     private readonly usersService: UsersService,
   ) {}
 
-  findAll(): Promise<Lobby[]> {
+  async findAll(): Promise<Lobby[]> {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await this.lobbiesRepository.delete({ createdAt: LessThan(yesterday) });
     return this.lobbiesRepository.find({ order: { id: 'DESC' } });
   }
 

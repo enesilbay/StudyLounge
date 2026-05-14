@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
 import { User } from '../users/user.entity';
 
 @Entity('lobbies')
@@ -35,4 +35,7 @@ export class Lobby {
 
   @Column({ default: false })
   isPremiumOnly!: boolean;
+
+  @CreateDateColumn()
+  createdAt!: Date;
 }
