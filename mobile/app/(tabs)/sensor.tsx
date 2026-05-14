@@ -350,6 +350,23 @@ export default function SensorScreen() {
       socketRef.current.on('error', (data: any) => {
         Alert.alert('Uyarı', data.message);
       });
+
+      socketRef.current.on('atmosphere_updated', (data: any) => {
+        Alert.alert(
+          '🎵 Atmosfer Senkronu',
+          `${data.ownerName} odanın atmosferini paylaştı. Bu ses ayarlarını kendi cihazına uygulamak ister misin?`,
+          [
+            { text: 'Hayır', style: 'cancel' },
+            { 
+              text: 'Uygula', 
+              onPress: () => {
+                setVolumes(data.volumes);
+                Alert.alert('Başarılı', 'Atmosfer senkronize edildi!');
+              }
+            }
+          ]
+        );
+      });
     };
     initSocket();
     
@@ -448,6 +465,15 @@ export default function SensorScreen() {
         }}
       ]
     );
+  };
+
+  const broadcastAtmosphere = () => {
+    if (!isPremium) return;
+    socketRef.current?.emit('broadcast_atmosphere', {
+      volumes,
+      roomName
+    });
+    Alert.alert('🎵 Yayınlandı', 'Ses ayarların odadaki diğer kullanıcılarla paylaşıldı!');
   };
 
   const sendMessage = async () => {
@@ -752,9 +778,17 @@ export default function SensorScreen() {
                 <Text style={s.modalTitle}>Ses Mikseri</Text>
                 <Text style={{ color: T.textMuted, fontSize: 12 }}>Kendi çalışma ortamını yarat.</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowMixer(false)} style={{ padding: 10 }}>
-                <FontAwesome5 solid name="times" size={20} color={T.textMuted} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                {isPremium && (
+                  <TouchableOpacity onPress={broadcastAtmosphere} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: T.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                    <FontAwesome5 name="broadcast-tower" size={10} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800' }}>YAYINLA</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setShowMixer(false)} style={{ padding: 5 }}>
+                  <FontAwesome5 solid name="times" size={20} color={T.textMuted} />
+                </TouchableOpacity>
+              </View>
             </View>
             
             {availableSounds.map(sItem => (

@@ -438,6 +438,32 @@ export class SensorsGateway
     }
   }
 
+  // ── AŞAMA 6: SENKRONİZE ATMOSFER (PREMIUM) ──
+  @SubscribeMessage('broadcast_atmosphere')
+  async handleBroadcastAtmosphere(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { volumes: Record<string, number>; roomName: string } | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+
+    // Sadece Premium kullanıcılar yayın yapabilir
+    const user = await this.usersService.findById(socketUser.sub);
+    if (!user?.isPremium) {
+      client.emit('error', { message: 'Atmosfer senkronizasyonu için Premium gereklidir.' });
+      return;
+    }
+
+    const data = this.parsePayload(payload) as { volumes: Record<string, number>; roomName: string };
+    
+    // Odadaki diğer kullanıcılara (kendisi hariç) ayarları gönder
+    client.to(data.roomName).emit('atmosphere_updated', {
+      ownerId: socketUser.sub,
+      ownerName: user.fullName,
+      volumes: data.volumes,
+    });
+  }
+
   // ── AŞAMA 4: DÜELLO SİSTEMİ ──
   @SubscribeMessage('challenge_duel')
   async handleChallengeDuel(

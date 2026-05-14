@@ -75,16 +75,25 @@ export default function AnalyticsScreen() {
     });
 
     const heatmap = Array<number>(24).fill(0);
+    const dayTotals = Array<number>(7).fill(0);
+    
     records.forEach((record) => {
+      const d = new Date(record.date).getDay();
+      dayTotals[d] += record.focusMinutes;
       record.hourlyDistribution?.forEach((value, index) => {
         heatmap[index] += value;
       });
     });
 
+    const dayNames = ['Pazar', 'Pzt', 'Salı', 'Çarş', 'Perş', 'Cuma', 'Cmt'];
+    const bestDayIndex = dayTotals.indexOf(Math.max(...dayTotals));
+    const bestDay = Math.max(...dayTotals) > 0 ? dayNames[bestDayIndex] : '-';
+
     return {
       labels,
       points,
       heatmap,
+      bestDay,
       total: points.reduce((sum, value) => sum + value, 0),
       bestHour: heatmap.indexOf(Math.max(...heatmap)),
     };
@@ -123,7 +132,8 @@ export default function AnalyticsScreen() {
         <>
           <View style={styles.summaryRow}>
             <Metric icon="fire-alt" label="Bu hafta" value={`${analytics.total} dk`} color={T.danger} />
-            <Metric icon="clock" label="En iyi saat" value={hasData ? `${String(analytics.bestHour).padStart(2, '0')}:00` : '-'} color={T.info} />
+            <Metric icon="clock" label="En verimli" value={hasData ? `${String(analytics.bestHour).padStart(2, '0')}:00` : '-'} color={T.info} />
+            <Metric icon="calendar-check" label="En iyi gün" value={analytics.bestDay} color={T.success} />
           </View>
 
           {!hasData ? (
@@ -192,10 +202,10 @@ function Metric({ icon, label, value, color }: { icon: string; label: string; va
 
 const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 14, marginBottom: 16 },
-  metricCard: { flex: 1 },
-  metricIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginBottom: 14 },
-  metricValue: { color: T.textDark, fontSize: 24, fontWeight: '900' },
-  muted: { color: T.textMuted, fontSize: 13, fontWeight: '600', lineHeight: 19, textAlign: 'center' },
+  metricCard: { flex: 1, padding: 12, alignItems: 'center' },
+  metricIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, marginBottom: 10 },
+  metricValue: { color: T.textDark, fontSize: 18, fontWeight: '900' },
+  muted: { color: T.textMuted, fontSize: 11, fontWeight: '700', lineHeight: 16, textAlign: 'center' },
   sectionTitle: { color: T.textDark, fontSize: 16, fontWeight: '900', marginBottom: 12 },
   chartBox: { marginBottom: 16, overflow: 'hidden' },
   chart: { marginLeft: -18, marginVertical: 4 },
