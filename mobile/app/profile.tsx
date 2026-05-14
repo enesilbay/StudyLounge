@@ -30,6 +30,10 @@ type UserProfile = {
   totalFocusMinutes?: number;
   avatarUrl?: string;
   isPremium?: boolean;
+  coins?: number;
+  currentStreak?: number;
+  badges?: string[];
+  equippedIcon?: string;
 };
 
 export default function ProfileScreen() {
@@ -229,7 +233,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text style={styles.name}>
-          {user.fullName} {user.isPremium ? 'PRO' : ''}
+          {user.fullName} {user.isPremium ? 'PRO' : ''} {user.equippedIcon ? user.equippedIcon : ''}
         </Text>
         <Text style={styles.username}>@{user.username || 'ogrenci'}</Text>
         <View style={[styles.premiumBadge, user.isPremium ? styles.premiumActive : styles.premiumPassive]}>
@@ -247,9 +251,22 @@ export default function ProfileScreen() {
           <Text style={styles.statLabel}>Rutbe</Text>
         </SoftCard>
         <SoftCard style={styles.statCard}>
-          <FontAwesome5 solid name="fire-alt" size={22} color={T.danger} />
+          <FontAwesome5 solid name="brain" size={22} color={T.primary} />
           <Text style={styles.statValue}>{score}</Text>
-          <Text style={styles.statLabel}>Odak puani</Text>
+          <Text style={styles.statLabel}>Odak Dk.</Text>
+        </SoftCard>
+      </View>
+
+      <View style={styles.statsGrid}>
+        <SoftCard style={styles.statCard}>
+          <FontAwesome5 solid name="fire-alt" size={22} color={T.danger} />
+          <Text style={styles.statValue}>{user.currentStreak ?? 0}</Text>
+          <Text style={styles.statLabel}>Gunluk Seri</Text>
+        </SoftCard>
+        <SoftCard style={styles.statCard}>
+          <FontAwesome5 solid name="coins" size={22} color={T.accent} />
+          <Text style={styles.statValue}>{user.coins ?? 0}</Text>
+          <Text style={styles.statLabel}>Bakiye</Text>
         </SoftCard>
       </View>
 
@@ -262,9 +279,33 @@ export default function ProfileScreen() {
           <View style={[styles.fill, { width: `${progress.percentage}%`, backgroundColor: rank.color }]} />
         </View>
         <Text style={styles.statLabel}>
-          {progress.nextRank ? `${progress.current} / ${progress.total} puan` : 'Tum rutbeler tamamlandi.'}
+          {progress.nextRank ? `${progress.current} / ${progress.total} dakika` : 'Tum rutbeler tamamlandi.'}
         </Text>
       </SoftCard>
+
+      <SoftCard style={styles.badgesCard}>
+        <Text style={styles.sectionTitle}>Kazanilan Rozetler</Text>
+        <View style={styles.badgesList}>
+          {user.badges && user.badges.length > 0 ? (
+            user.badges.map((badge, i) => (
+              <View key={i} style={styles.badgeItem}>
+                <FontAwesome5 name="medal" size={20} color={T.accent} />
+                <Text style={styles.badgeText}>{badge}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noBadgeText}>Henuz rozet kazanilamadi.</Text>
+          )}
+        </View>
+      </SoftCard>
+
+      <TouchableOpacity onPress={() => router.push('/shop' as any)} activeOpacity={0.86}>
+        <SoftCard style={[styles.analyticsButton, { backgroundColor: T.primary, marginBottom: 16 }]}>
+          <FontAwesome5 solid name="shopping-cart" size={16} color="#FFF" />
+          <Text style={[styles.analyticsText, { color: '#FFF' }]}>Magaza'ya Git (Shop)</Text>
+          <FontAwesome5 solid name="chevron-right" size={12} color="#FFF" />
+        </SoftCard>
+      </TouchableOpacity>
 
       <TouchableOpacity
         activeOpacity={0.86}
@@ -373,6 +414,11 @@ const styles = StyleSheet.create({
   progressText: { color: T.primary, fontSize: 13, fontWeight: '900' },
   track: { height: 9, backgroundColor: T.border, borderRadius: 999, overflow: 'hidden', marginBottom: 10 },
   fill: { height: '100%', borderRadius: 999 },
+  badgesCard: { marginBottom: 16 },
+  badgesList: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
+  badgeItem: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: T.background, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: T.border },
+  badgeText: { color: T.textDark, fontSize: 13, fontWeight: '700' },
+  noBadgeText: { color: T.textMuted, fontSize: 13, fontStyle: 'italic', marginTop: 4 },
   analyticsButton: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 30 },
   analyticsText: { flex: 1, color: T.textDark, fontSize: 15, fontWeight: '900' },
   sheetTitle: { color: T.textDark, fontSize: 20, fontWeight: '900', marginBottom: 10 },

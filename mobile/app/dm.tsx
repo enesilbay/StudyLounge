@@ -27,6 +27,7 @@ export default function DMScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [myUserId, setMyUserId] = useState<number>(0);
+  const [myBubbleColor, setMyBubbleColor] = useState<string>(T.primary);
   const [isLoading, setIsLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
   const listRef = useRef<FlatList>(null);
@@ -43,11 +44,13 @@ export default function DMScreen() {
           const user = JSON.parse(stored);
           uid = user.id;
           setMyUserId(user.id);
+          if (user.equippedBubbleColor) setMyBubbleColor(user.equippedBubbleColor);
         } else {
           const meRes = await fetch(apiUrl('/users/me'), { headers: { Authorization: `Bearer ${token}` } });
           const meData = await meRes.json();
           uid = meData.user.id;
           setMyUserId(uid);
+          if (meData.user.equippedBubbleColor) setMyBubbleColor(meData.user.equippedBubbleColor);
         }
 
         const res = await fetch(apiUrl(`/messages/dm/${targetUserId}`), {
@@ -124,7 +127,7 @@ export default function DMScreen() {
               const dateVal = item.createdAt ? new Date(item.createdAt) : new Date();
               return (
                 <View style={[styles.bubbleWrapper, isMe ? styles.myBubbleWrapper : styles.theirBubbleWrapper]}>
-                  <View style={[styles.bubble, isMe ? styles.myBubble : styles.theirBubble]}>
+                  <View style={[styles.bubble, isMe ? [styles.myBubble, { backgroundColor: myBubbleColor }] : styles.theirBubble]}>
                     <Text style={[styles.msgText, isMe ? styles.myMsgText : styles.theirMsgText]}>{item.text}</Text>
                   </View>
                   <Text style={styles.timeText}>
