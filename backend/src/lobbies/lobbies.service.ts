@@ -35,6 +35,7 @@ export class LobbiesService {
     const newLobby = this.lobbiesRepository.create({
       name: lobbyData.name,
       icon: lobbyData.icon,
+      category: lobbyData.category,
       description: lobbyData.description,
       isPrivate: lobbyData.isPrivate ?? false,
       isPremiumOnly: lobbyData.isPremiumOnly ?? false,

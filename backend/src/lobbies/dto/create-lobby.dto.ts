@@ -24,6 +24,11 @@ export class CreateLobbyDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(64)
+  category?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(240)
   description?: string;
 

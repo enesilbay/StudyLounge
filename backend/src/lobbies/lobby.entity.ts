@@ -13,6 +13,9 @@ export class Lobby {
   icon!: string;
 
   @Column({ nullable: true })
+  category?: string;
+
+  @Column({ nullable: true })
   description?: string;
 
   @Column({ default: 0 })

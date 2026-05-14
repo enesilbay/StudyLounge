@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { Message } from './message.entity';
 
 @Injectable()
@@ -41,8 +41,9 @@ export class MessagesService {
 
   // Odaya ait son 50 mesajı getir (İlişkili kullanıcı verisiyle beraber)
   async getRoomMessages(roomName: string) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     return await this.messageRepository.find({
-      where: { roomName },
+      where: { roomName, createdAt: MoreThan(oneHourAgo) },
       order: { createdAt: 'ASC' },
       take: 50,
       relations: ['user'],

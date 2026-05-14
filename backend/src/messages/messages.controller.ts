@@ -59,7 +59,7 @@ export class MessagesController {
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
           new FileTypeValidator({
-            fileType: /^(image\/(jpeg|png|webp)|application\/pdf)$/,
+            fileType: /(jpg|jpeg|png|webp|pdf)/i,
           }),
         ],
       }),

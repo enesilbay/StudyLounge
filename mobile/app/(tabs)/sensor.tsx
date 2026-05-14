@@ -2,8 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, Animated,
-  Dimensions, ScrollView, Modal, StatusBar, Alert, Linking, Image
+  Dimensions, ScrollView, Modal, StatusBar, Alert, Image
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client'; 
 import { Accelerometer } from 'expo-sensors';
@@ -147,7 +148,6 @@ export default function SensorScreen() {
   };
 
   const pickDocument = async () => {
-    if (!isPremium) return Alert.alert("PRO Özellik", "Dosya paylaşımı için Premium olmalısın!");
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
       if (!result.canceled) {
@@ -157,7 +157,6 @@ export default function SensorScreen() {
   };
 
   const pickImage = async () => {
-    if (!isPremium) return Alert.alert("PRO Özellik", "Görsel paylaşımı için Premium olmalısın!");
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -173,7 +172,10 @@ export default function SensorScreen() {
     const formData = new FormData();
     // @ts-ignore
     const name = fileAsset.name || fileAsset.fileName || fileAsset.uri.split('/').pop();
-    const mimeType = fileAsset.mimeType || fileAsset.type || (explicitType === 'image' ? 'image/jpeg' : 'application/pdf');
+    let mimeType = fileAsset.mimeType;
+    if (!mimeType || mimeType === 'image' || mimeType === 'success') {
+      mimeType = explicitType === 'image' ? 'image/jpeg' : 'application/pdf';
+    }
     
     formData.append('file', { uri: fileAsset.uri, name, type: mimeType } as any);
     formData.append('roomName', String(roomName));
@@ -181,8 +183,16 @@ export default function SensorScreen() {
     try {
       const token = await AsyncStorage.getItem('access_token');
       const res = await fetch(apiUrl('/messages/upload'), {
-        method: 'POST', body: formData, headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
+        method: 'POST', body: formData, headers: { Authorization: `Bearer ${token}` },
       });
+      
+      if (!res.ok) {
+        const errText = await res.text();
+        console.log("Upload failed with status", res.status, errText);
+        Alert.alert("Sunucu Hatası", `Kod: ${res.status}\n\nDetay: ${errText.substring(0, 150)}`);
+        return;
+      }
+      
       const data = await res.json();
       socketRef.current?.emit('send_message', {
         fullName: safeFullName, roomName, 
@@ -260,13 +270,15 @@ export default function SensorScreen() {
   };
 
   useEffect(() => {
-    if (pomodoroRunning) {
+    if (pomodoroRunning && isAtDesk) {
       pomTimerRef.current = setInterval(() => {
-        setPomodoroSec((prev) => (prev <= 1 ? (clearInterval(pomTimerRef.current), 0) : prev - 1));
+        setPomodoroSec((prev) => (prev <= 1 ? (clearInterval(pomTimerRef.current), setPomodoroRunning(false), 0) : prev - 1));
       }, 1000);
-    } else clearInterval(pomTimerRef.current);
+    } else {
+      clearInterval(pomTimerRef.current);
+    }
     return () => clearInterval(pomTimerRef.current);
-  }, [pomodoroRunning]);
+  }, [pomodoroRunning, isAtDesk]);
 
   const startPomodoro = (minutes: number) => {
     setPomodoroMinutes(minutes); setPomodoroSec(minutes * 60);
@@ -388,7 +400,7 @@ export default function SensorScreen() {
   };
 
   const sendMessage = async () => {
-    if (!message.trim() || !isPremium) return;
+    if (!message.trim()) return;
     socketRef.current?.emit('send_message', { fullName: safeFullName, roomName, text: message, isPremium });
     setMessage('');
   };
@@ -398,6 +410,15 @@ export default function SensorScreen() {
     Animated.spring(chatAnim, { toValue: chatVisible ? 0 : 1, useNativeDriver: true, tension: 60, friction: 12 }).start(() => {
       if (chatVisible) setChatVisible(false);
     });
+  };
+
+  const openLink = async (url: string | null) => {
+    if (!url) return;
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (e) {
+      Alert.alert("Tarayıcı Bulunamadı", `Cihazınızda bağlantıyı açacak bir tarayıcı yok:\n\n${url}`);
+    }
   };
 
   return (
@@ -577,7 +598,7 @@ export default function SensorScreen() {
         <Animated.View style={[s.chatDrawer, { transform: [{ translateY: chatAnim.interpolate({ inputRange: [0, 1], outputRange: [height * 0.6, 0] }) }] }]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <View style={s.chatHeader}>
-              <Text style={s.chatTitle}>Lobi Sohbeti {!isPremium && '🔒'}</Text>
+              <Text style={s.chatTitle}>Lobi Sohbeti</Text>
               <TouchableOpacity onPress={toggleChat} style={s.chatCloseBtn}>
                 <FontAwesome5 solid name="times" size={16} color={T.textMuted} />
               </TouchableOpacity>
@@ -605,11 +626,11 @@ export default function SensorScreen() {
                       </View>
                     )}
                     {isImage ? (
-                      <TouchableOpacity onPress={() => Linking.openURL(assetUrl(item.fileUrl) ?? '')}>
+                      <TouchableOpacity onPress={() => openLink(assetUrl(item.fileUrl))}>
                         <Image source={{ uri: assetUrl(item.fileUrl) ?? '' }} style={s.imagePreview} />
                       </TouchableOpacity>
                     ) : isFile ? (
-                      <TouchableOpacity style={s.fileCard} onPress={() => Linking.openURL(assetUrl(item.fileUrl) ?? '')}>
+                      <TouchableOpacity style={s.fileCard} onPress={() => openLink(assetUrl(item.fileUrl))}>
                         <View style={s.fileIconWrap}><FontAwesome5 solid name="file-pdf" size={16} color={T.danger} /></View>
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
                       </TouchableOpacity>
@@ -622,15 +643,15 @@ export default function SensorScreen() {
             />
 
             <View style={s.chatInputRow}>
-              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 solid name="image" size={18} color={isPremium ? T.primary : T.textMuted} /></TouchableOpacity>
-              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 solid name="paperclip" size={18} color={isPremium ? T.primary : T.textMuted} /></TouchableOpacity>
+              <TouchableOpacity onPress={pickImage} style={s.attachBtn}><FontAwesome5 solid name="image" size={18} color={T.primary} /></TouchableOpacity>
+              <TouchableOpacity onPress={pickDocument} style={s.attachBtn}><FontAwesome5 solid name="paperclip" size={18} color={T.primary} /></TouchableOpacity>
               <TextInput
-                style={[s.chatInput, !isPremium && { opacity: 0.5 }]} value={message} onChangeText={setMessage}
-                placeholder={isPremium ? "Mesaj yaz..." : "PRO Üyelik Gerekli"} placeholderTextColor={T.textMuted} editable={isPremium}
+                style={s.chatInput} value={message} onChangeText={setMessage}
+                placeholder="Mesaj yaz..." placeholderTextColor={T.textMuted}
               />
-              <TouchableOpacity onPress={sendMessage} disabled={!isPremium} style={s.sendBtn}>
-                <LinearGradient colors={isPremium ? [T.primary, T.secondary] : [T.border, T.border]} style={s.sendBtnGrad}>
-                  <FontAwesome5 solid name={isPremium ? "paper-plane" : "lock"} size={14} color={isPremium ? '#FFFFFF' : T.textMuted} />
+              <TouchableOpacity onPress={sendMessage} style={s.sendBtn}>
+                <LinearGradient colors={[T.primary, T.secondary]} style={s.sendBtnGrad}>
+                  <FontAwesome5 solid name="paper-plane" size={14} color="#FFFFFF" />
                 </LinearGradient>
               </TouchableOpacity>
             </View>

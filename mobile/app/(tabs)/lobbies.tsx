@@ -123,6 +123,7 @@ export default function LobbiesScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [newCategory, setNewCategory] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isPremiumOnly, setIsPremiumOnly] = useState(false);
   const [roomPassword, setRoomPassword] = useState('');
@@ -245,6 +246,7 @@ export default function LobbiesScreen() {
         body: JSON.stringify({ 
           name: newName, 
           description: newDesc, 
+          category: newCategory,
           icon: isPremiumOnly ? 'crown' : 'users',
           isPrivate,
           isPremiumOnly,
@@ -254,7 +256,7 @@ export default function LobbiesScreen() {
       });
       if (res.ok) {
         setIsModalVisible(false);
-        setNewName(''); setNewDesc(''); setIsPrivate(false); setIsPremiumOnly(false); setRoomPassword('');
+        setNewName(''); setNewDesc(''); setNewCategory(''); setIsPrivate(false); setIsPremiumOnly(false); setRoomPassword('');
         fetchLobbies();
       }
     } catch { Alert.alert('Hata', 'Sunucu bağlantı hatası.'); }
@@ -457,7 +459,8 @@ export default function LobbiesScreen() {
               <Text style={mdl.title}>Yeni Çalışma Odası</Text>
               <Text style={mdl.subtitle}>Arkadaşlarınla odaklanmak için bir oda oluştur.</Text>
               <TextInput style={mdl.input} placeholder="Oda İsmi" placeholderTextColor={T.textMuted} value={newName} onChangeText={setNewName} />
-              <TextInput style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15 }]} placeholder="Açıklama" placeholderTextColor={T.textMuted} value={newDesc} onChangeText={setNewDesc} multiline />
+              <TextInput style={[mdl.input, { marginTop: 15 }]} placeholder="Kategori (Örn: Tıp, YKS)" placeholderTextColor={T.textMuted} value={newCategory} onChangeText={setNewCategory} />
+              <TextInput style={[mdl.input, { height: 80, textAlignVertical: 'top', paddingTop: 15, marginTop: 15 }]} placeholder="Açıklama" placeholderTextColor={T.textMuted} value={newDesc} onChangeText={setNewDesc} multiline />
               
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, paddingHorizontal: 5 }}>
                 <Text style={{ color: T.textDark, fontSize: 15, fontWeight: 'bold' }}>Gizli Oda (Kilitli)</Text>
