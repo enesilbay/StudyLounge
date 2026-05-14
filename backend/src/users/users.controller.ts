@@ -205,4 +205,23 @@ export class UsersController {
     });
     return { success: true, message: 'Dürtme gönderildi!' };
   }
+
+  // ── AŞAMA 3: MAĞAZA ENDPOINTLERİ ──
+  @Post('buy')
+  async buyItem(
+    @CurrentUser() user: User,
+    @Body() body: { itemType: 'color' | 'icon'; itemId: string; price: number }
+  ) {
+    const updatedUser = await this.usersService.buyItem(user.id, body.itemType, body.itemId, body.price);
+    return { success: true, user: updatedUser };
+  }
+
+  @Post('equip')
+  async equipItem(
+    @CurrentUser() user: User,
+    @Body() body: { itemType: 'color' | 'icon'; itemId: string }
+  ) {
+    const updatedUser = await this.usersService.equipItem(user.id, body.itemType, body.itemId);
+    return { success: true, user: updatedUser };
+  }
 }

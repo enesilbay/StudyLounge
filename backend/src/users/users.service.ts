@@ -113,15 +113,54 @@ export class UsersService {
     });
   }
 
-  // ── 3. ODAKLANMA PUANI ──
+  // ── 3. ODAKLANMA PUANI VE OYUNLAŞTIRMA (AŞAMA 3) ──
   async addFocusTime(userId: number, minutes: number) {
     const user = await this.usersRepository.findOneBy({ id: userId });
     if (user) {
       user.totalFocusMinutes = (user.totalFocusMinutes || 0) + minutes;
+
+      // STREAK HESAPLAMASI
+      const now = new Date();
+      const todayString = now.toISOString().split('T')[0];
+      const currentHour = now.getHours();
+
+      let streakMultiplier = 0;
+      if (user.lastFocusDate) {
+        const lastFocusString = user.lastFocusDate.toISOString().split('T')[0];
+        if (lastFocusString !== todayString) {
+          const diffTime = Math.abs(now.getTime() - user.lastFocusDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+          if (diffDays <= 2) { // Sonraki gün
+            user.currentStreak += 1;
+          } else { // Seri bozuldu
+            user.currentStreak = 1;
+          }
+          user.lastFocusDate = now;
+        }
+      } else {
+        user.currentStreak = 1;
+        user.lastFocusDate = now;
+      }
+      if (user.currentStreak > user.bestStreak) user.bestStreak = user.currentStreak;
+
+      // COIN HESAPLAMASI (Örn: Streak başına %10 bonus, max %50)
+      streakMultiplier = Math.min(user.currentStreak, 5) * 0.1;
+      const earnedCoins = Math.floor(minutes * (1 + streakMultiplier));
+      user.coins = (user.coins || 0) + earnedCoins;
+
+      // BAŞARIMLAR (BADGES)
+      if (!user.badges) user.badges = [];
+      if (minutes >= 120 && !user.badges.includes('Maratoncu')) {
+        user.badges.push('Maratoncu');
+      }
+      if ((currentHour >= 0 && currentHour <= 5) && minutes >= 60 && !user.badges.includes('Gece Kuşu')) {
+        user.badges.push('Gece Kuşu');
+      }
+
       await this.usersRepository.save(user);
 
-      // YENİ: Günlük analitik tablosuna da ekle
-      const today = new Date().toISOString().split('T')[0];
+      // Günlük analitik tablosuna da ekle
+      const today = todayString;
       let daily = await this.dailyAnalyticsRepository.findOne({
         where: { user: { id: userId }, date: today },
       });
@@ -143,7 +182,6 @@ export class UsersService {
         }
       }
 
-      const currentHour = new Date().getHours();
       daily.hourlyDistribution[currentHour] += minutes;
 
       await this.dailyAnalyticsRepository.save(daily);
@@ -423,5 +461,45 @@ export class UsersService {
   // ── 15. KULLANICI ONLINE DURUMU VE ODASI ──
   async setOnlineStatus(userId: number, isOnline: boolean, roomName?: string | null) {
     await this.usersRepository.update(userId, { isOnline, currentRoom: roomName || null });
+  }
+
+  // ── AŞAMA 3: MAĞAZA İŞLEMLERİ ──
+  async buyItem(userId: number, itemType: 'color' | 'icon', itemId: string, price: number) {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    if (user.coins < price) {
+      throw new BadRequestException('Yetersiz Odak Puanı (Coin)');
+    }
+
+    if (itemType === 'color') {
+      if (user.ownedColors.includes(itemId)) throw new BadRequestException('Bu renge zaten sahipsiniz');
+      user.ownedColors.push(itemId);
+    } else {
+      if (user.ownedIcons.includes(itemId)) throw new BadRequestException('Bu ikona zaten sahipsiniz');
+      user.ownedIcons.push(itemId);
+    }
+
+    user.coins -= price;
+    return await this.usersRepository.save(user);
+  }
+
+  async equipItem(userId: number, itemType: 'color' | 'icon', itemId: string) {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    if (itemType === 'color') {
+      if (!user.ownedColors.includes(itemId) && itemId !== '#4F46E5') {
+        throw new BadRequestException('Bu renge sahip değilsiniz');
+      }
+      user.equippedBubbleColor = itemId;
+    } else {
+      if (!user.ownedIcons.includes(itemId) && itemId !== '') {
+        throw new BadRequestException('Bu ikona sahip değilsiniz');
+      }
+      user.equippedIcon = itemId;
+    }
+
+    return await this.usersRepository.save(user);
   }
 }
