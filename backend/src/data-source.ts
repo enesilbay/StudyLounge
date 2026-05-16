@@ -15,6 +15,14 @@ const toNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
+  if (!value) {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+};
+
 export default new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST ?? 'localhost',
@@ -22,6 +30,9 @@ export default new DataSource({
   username: process.env.DB_USER ?? 'enes_admin',
   password: process.env.DB_PASSWORD ?? 'studylounge_secret',
   database: process.env.DB_NAME ?? 'studylounge',
+  ssl: toBoolean(process.env.DB_SSL, false)
+    ? { rejectUnauthorized: false }
+    : false,
   entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

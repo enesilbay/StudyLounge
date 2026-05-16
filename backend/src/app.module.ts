@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { getConfigNumber, getConfigString } from './config/env';
+import {
+  getConfigBoolean,
+  getConfigNumber,
+  getConfigString,
+} from './config/env';
 import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
@@ -33,7 +37,17 @@ import { UsersModule } from './users/users.module';
             'studylounge_secret',
           ),
           database: getConfigString(configService, 'DB_NAME', 'studylounge'),
-          entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
+          ssl: getConfigBoolean(configService, 'DB_SSL', false)
+            ? { rejectUnauthorized: false }
+            : false,
+          entities: [
+            User,
+            Lobby,
+            Friendship,
+            DailyAnalytics,
+            Message,
+            DirectMessage,
+          ],
           autoLoadEntities: true,
           synchronize: true,
         };
