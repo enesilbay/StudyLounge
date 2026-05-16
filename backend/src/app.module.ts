@@ -26,9 +26,14 @@ import { UsersModule } from './users/users.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
+        const dbHost = getConfigString(configService, 'DB_HOST', 'localhost');
+        const dbSsl =
+          getConfigBoolean(configService, 'DB_SSL', false) ||
+          dbHost.includes('neon.tech');
+
         return {
           type: 'postgres',
-          host: getConfigString(configService, 'DB_HOST', 'localhost'),
+          host: dbHost,
           port: getConfigNumber(configService, 'DB_PORT', 5432),
           username: getConfigString(configService, 'DB_USER', 'enes_admin'),
           password: getConfigString(
@@ -37,9 +42,7 @@ import { UsersModule } from './users/users.module';
             'studylounge_secret',
           ),
           database: getConfigString(configService, 'DB_NAME', 'studylounge'),
-          ssl: getConfigBoolean(configService, 'DB_SSL', false)
-            ? { rejectUnauthorized: false }
-            : false,
+          ssl: dbSsl ? { rejectUnauthorized: false } : false,
           entities: [
             User,
             Lobby,

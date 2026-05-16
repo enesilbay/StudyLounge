@@ -23,16 +23,17 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 };
 
+const dbHost = process.env.DB_HOST ?? 'localhost';
+const dbSsl = toBoolean(process.env.DB_SSL, false) || dbHost.includes('neon.tech');
+
 export default new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST ?? 'localhost',
+  host: dbHost,
   port: toNumber(process.env.DB_PORT, 5432),
   username: process.env.DB_USER ?? 'enes_admin',
   password: process.env.DB_PASSWORD ?? 'studylounge_secret',
   database: process.env.DB_NAME ?? 'studylounge',
-  ssl: toBoolean(process.env.DB_SSL, false)
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: dbSsl ? { rejectUnauthorized: false } : false,
   entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
