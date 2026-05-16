@@ -33,10 +33,6 @@ import { UsersModule } from './users/users.module';
         const dbName = getConfigString(configService, 'DB_NAME', 'studylounge');
         const dbUser = getConfigString(configService, 'DB_USER', 'enes_admin');
 
-        console.log(
-          `Database config: host=${dbHost}, database=${dbName}, user=${dbUser}, ssl=${dbSsl}`,
-        );
-
         return {
           type: 'postgres',
           host: dbHost,
