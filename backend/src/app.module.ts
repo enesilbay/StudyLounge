@@ -30,18 +30,24 @@ import { UsersModule } from './users/users.module';
         const dbSsl =
           getConfigBoolean(configService, 'DB_SSL', false) ||
           dbHost.includes('neon.tech');
+        const dbName = getConfigString(configService, 'DB_NAME', 'studylounge');
+        const dbUser = getConfigString(configService, 'DB_USER', 'enes_admin');
+
+        console.log(
+          `Database config: host=${dbHost}, database=${dbName}, user=${dbUser}, ssl=${dbSsl}`,
+        );
 
         return {
           type: 'postgres',
           host: dbHost,
           port: getConfigNumber(configService, 'DB_PORT', 5432),
-          username: getConfigString(configService, 'DB_USER', 'enes_admin'),
+          username: dbUser,
           password: getConfigString(
             configService,
             'DB_PASSWORD',
             'studylounge_secret',
           ),
-          database: getConfigString(configService, 'DB_NAME', 'studylounge'),
+          database: dbName,
           ssl: dbSsl ? { rejectUnauthorized: false } : false,
           entities: [
             User,
