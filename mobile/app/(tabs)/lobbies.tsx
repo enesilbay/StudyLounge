@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   TextInput, Modal, Alert, Animated, Dimensions,
-  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Image, Switch, ActivityIndicator
+  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Switch, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -10,6 +10,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiUrl, assetUrl } from '../config/api';
+import { FramedAvatar } from '../components/FramedAvatar';
 import { C } from './sensor';
 import { Theme } from '../utils/theme';
 
@@ -119,6 +120,7 @@ export default function LobbiesScreen() {
   const params = useLocalSearchParams();
   const myUserId = Number(params.id); // Kendi ID'miz
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [equippedProfileFrame, setEquippedProfileFrame] = useState<string>('none');
 
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,6 +166,7 @@ export default function LobbiesScreen() {
       if (stored) {
         const parsed = JSON.parse(stored);
         setIsPremium(parsed.isPremium === true);
+        setEquippedProfileFrame(parsed.equippedProfileFrame || 'none');
         if (parsed.avatarUrl) {
           setAvatarUrl(assetUrl(parsed.avatarUrl));
         }
@@ -299,12 +302,18 @@ export default function LobbiesScreen() {
               <Text style={s.greeting}>İyi Çalışmalar,</Text>
               <Text style={s.pageTitle}>{userName}</Text>
             </View>
-            <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} activeOpacity={0.7} style={hdr.profileAvatar}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%', borderRadius: 20 }} />
-              ) : (
-                <Text style={hdr.profileAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
-              )}
+            <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} activeOpacity={0.7}>
+              <FramedAvatar
+                uri={avatarUrl}
+                name={userName}
+                frameId={equippedProfileFrame}
+                size={48}
+                colors={T}
+                backgroundColor={T.softIndigo}
+                textSize={18}
+                textStyle={hdr.profileAvatarText}
+                style={hdr.profileAvatar}
+              />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -581,7 +590,7 @@ const hdr = StyleSheet.create({
   iconBtnDanger: { borderColor: T.softDanger, backgroundColor: '#FFFFFF' },
   badge: { position: 'absolute', top: -4, right: -4, backgroundColor: T.danger, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: T.background },
   badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' },
-  profileAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: T.softIndigo, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', ...Theme.shadows.soft },
+  profileAvatar: { ...Theme.shadows.soft },
   profileAvatarText: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 18, color: T.primary },
   logoutWrap: { width: 42, height: 42, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
 });

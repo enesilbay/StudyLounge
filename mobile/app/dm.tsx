@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Keyboard,
   Platform,
@@ -15,40 +16,44 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
-import { apiUrl } from './config/api';
+import { apiUrl, assetUrl } from './config/api';
+import { FramedAvatar } from './components/FramedAvatar';
 import { C } from './(tabs)/sensor';
 
 const BACKEND_URL = apiUrl('');
 const T = C;
-const ANDROID_NAV_FALLBACK = 28;
 
 export default function DMScreen() {
   const router = useRouter();
-  const { targetUserId, targetName, targetUsername } = useLocalSearchParams();
+  const { targetUserId, targetName, targetUsername, targetAvatarUrl, targetProfileFrame } = useLocalSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [myUserId, setMyUserId] = useState<number>(0);
   const [myBubbleColor, setMyBubbleColor] = useState<string>(T.primary);
   const [isLoading, setIsLoading] = useState(true);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardBottom, setKeyboardBottom] = useState(0);
   const [inputHeight, setInputHeight] = useState(76);
   const socketRef = useRef<Socket | null>(null);
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
 
-  const baseBottomInset = Platform.OS === 'android'
-    ? Math.max(insets.bottom, ANDROID_NAV_FALLBACK)
-    : Math.max(insets.bottom, 12);
-  const inputBottomOffset = keyboardHeight > 0 ? keyboardHeight + 8 : baseBottomInset;
+  const baseBottom = Platform.OS === 'android' ? Math.max(insets.bottom, 28) : Math.max(insets.bottom, 12);
+  const inputBottom = keyboardBottom > 0 ? keyboardBottom + 8 : baseBottom;
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
+    const updateKeyboardBottom = (event: any) => {
+      const windowHeight = Dimensions.get('window').height;
+      const keyboardTop = event?.endCoordinates?.screenY;
+      const nextBottom = typeof keyboardTop === 'number'
+        ? Math.max(windowHeight - keyboardTop, 0)
+        : event?.endCoordinates?.height || 0;
+
+      setKeyboardBottom(nextBottom);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    };
+
+    const showSub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', updateKeyboardBottom);
+    const hideSub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardBottom(0));
 
     return () => {
       showSub.remove();
@@ -127,11 +132,18 @@ export default function DMScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
           <FontAwesome5 name="chevron-left" size={16} color={T.primary} />
         </TouchableOpacity>
-        <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>
-            {String(targetName || 'M').charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <FramedAvatar
+          uri={typeof targetAvatarUrl === 'string' ? assetUrl(targetAvatarUrl) : null}
+          name={String(targetName || 'M')}
+          frameId={typeof targetProfileFrame === 'string' ? targetProfileFrame : 'none'}
+          size={44}
+          colors={T}
+          backgroundColor={T.primary}
+          textColor="#FFFFFF"
+          textSize={17}
+          style={styles.headerAvatar}
+          textStyle={styles.headerAvatarText}
+        />
         <View style={styles.headerInfo}>
           <Text style={styles.headerLabel}>Direkt mesaj</Text>
           <Text style={styles.headerName} numberOfLines={1}>{targetName || 'Mesaj'}</Text>
@@ -157,7 +169,7 @@ export default function DMScreen() {
             contentContainerStyle={{
               padding: 16,
               gap: 12,
-              paddingBottom: inputHeight + inputBottomOffset + 18,
+              paddingBottom: inputHeight + inputBottom + 18,
             }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             renderItem={({ item }) => {
@@ -183,7 +195,7 @@ export default function DMScreen() {
         style={[
           styles.inputArea,
           {
-            bottom: inputBottomOffset,
+            bottom: inputBottom,
           },
         ]}
       >
@@ -232,12 +244,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: T.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 12,
   },
   headerAvatarText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },

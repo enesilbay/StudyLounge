@@ -20,7 +20,11 @@
       },
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.enesilbay.mobile"
     },
     "web": {
       "output": "static",
@@ -53,9 +57,11 @@
       "reactCompiler": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "72740924-f726-4444-934c-6f81a7b1b369"
+        "projectId": "14a2f7b4-3948-4feb-8c7c-809388d84857"
       }
-    }
+    },
+    "owner": "enesilbay"
   }
 }

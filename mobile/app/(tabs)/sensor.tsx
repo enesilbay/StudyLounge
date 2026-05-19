@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { BACKEND_URL, apiUrl, assetUrl } from '../config/api';
+import { FramedAvatar } from '../components/FramedAvatar';
 import { Theme } from '../utils/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -31,6 +32,34 @@ const SOUNDS = [
   { key: 'forest',  label: 'Doğa',      icon: 'leaf', file: require('../../assets/sounds/nature.mp3') },
   { key: 'fire',    label: 'Şömine',    icon: 'fire', file: require('../../assets/sounds/fire.mp3') },
 ];
+
+const SOUND_PACK_PRESETS: Record<string, typeof SOUNDS> = {
+  classic: SOUNDS,
+  rainy: [
+    { key: 'rain', label: 'Yoğun Yağmur', icon: 'cloud-rain', file: require('../../assets/sounds/rain.mp3') },
+    { key: 'library', label: 'Sessiz Kütüphane', icon: 'book', file: require('../../assets/sounds/library.mp3') },
+  ],
+  forest: [
+    { key: 'forest', label: 'Orman', icon: 'leaf', file: require('../../assets/sounds/nature.mp3') },
+    { key: 'rain', label: 'Hafif Yağmur', icon: 'cloud-rain', file: require('../../assets/sounds/rain.mp3') },
+  ],
+  fireplace: [
+    { key: 'fire', label: 'Şömine', icon: 'fire', file: require('../../assets/sounds/fire.mp3') },
+    { key: 'library', label: 'Sıcak Oda', icon: 'book', file: require('../../assets/sounds/library.mp3') },
+  ],
+  deep: [
+    { key: 'deep_focus', label: 'Derin Odak', icon: 'brain', file: require('../../assets/sounds/library.mp3') },
+    { key: 'forest', label: 'Düşük Doğa', icon: 'leaf', file: require('../../assets/sounds/nature.mp3') },
+  ],
+};
+
+const SOUND_PACK_LABELS: Record<string, string> = {
+  classic: 'Klasik Lounge',
+  rainy: 'Yağmur Modu',
+  forest: 'Orman Odası',
+  fireplace: 'Şömine Köşesi',
+  deep: 'Derin Odak',
+};
 
 const POMODORO_OPTIONS = [
   { label: '15 dk', minutes: 15 }, { label: '25 dk', minutes: 25 }, 
@@ -45,6 +74,7 @@ type Friend = {
   fullName: string;
   username?: string;
   avatarUrl?: string;
+  equippedProfileFrame?: string;
   isOnline?: boolean;
   currentRoom?: string | null;
 };
@@ -83,22 +113,20 @@ export default function SensorScreen() {
 
   const [availableSounds, setAvailableSounds] = useState(SOUNDS);
   const [isSoundOn, setIsSoundOn] = useState(false);
+  const [equippedSoundPack, setEquippedSoundPack] = useState('classic');
   const [volumes, setVolumes] = useState<Record<string, number>>({});
   const [showMixer, setShowMixer] = useState(false);
   const soundsMapRef = useRef<Record<string, Audio.Sound>>({});
 
   useEffect(() => {
-    if (isEliteRoom) {
-      const eliteSounds = [
-        { key: 'deep_focus', label: 'Derin Odak', icon: 'brain', file: require('../../assets/sounds/library.mp3') }, // Placeholder for binaural beats
-        ...SOUNDS
-      ];
-      setAvailableSounds(eliteSounds);
-      setVolumes({ 'deep_focus': 1 }); // Default selection for elite
-    } else {
-      setVolumes({ [SOUNDS[0].key]: 1 }); // Default selection for normal
-    }
-  }, [isEliteRoom]);
+    const selectedSounds = SOUND_PACK_PRESETS[equippedSoundPack] || SOUNDS;
+    const finalSounds = isEliteRoom && equippedSoundPack !== 'deep'
+      ? [{ key: 'deep_focus', label: 'Derin Odak', icon: 'brain', file: require('../../assets/sounds/library.mp3') }, ...selectedSounds]
+      : selectedSounds;
+
+    setAvailableSounds(finalSounds);
+    setVolumes({ [finalSounds[0].key]: 1 });
+  }, [isEliteRoom, equippedSoundPack]);
 
   const [chatVisible, setChatVisible] = useState(false);
   const [message, setMessage] = useState('');
@@ -117,6 +145,7 @@ export default function SensorScreen() {
   const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
   const [pomodoroSec, setPomodoroSec] = useState(25 * 60);
   const [pomodoroRunning, setPomodoroRunning] = useState(false);
+  const [focusRequested, setFocusRequested] = useState(false);
   const [isPhoneFaceDownOnDesk, setIsPhoneFaceDownOnDesk] = useState(false);
   const [focusScreenDimmed, setFocusScreenDimmed] = useState(false);
   const [showPomodoroModal, setShowPomodoroModal] = useState(false);
@@ -144,6 +173,7 @@ export default function SensorScreen() {
 
   useEffect(() => {
     if (isFocused) {
+      checkPremiumStatus();
       fetchOnlineFriends();
     }
   }, [isFocused, roomName]);
@@ -155,7 +185,32 @@ export default function SensorScreen() {
       if (typeof parsed.id === 'number') {
         setStoredUserId(parsed.id);
       }
+      if (typeof parsed.equippedSoundPack === 'string') {
+        setEquippedSoundPack(parsed.equippedSoundPack);
+      }
       setIsPremium(parsed.isPremium === true);
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) return;
+
+      const res = await fetch(apiUrl('/users/me'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+        if (typeof data.user.id === 'number') {
+          setStoredUserId(data.user.id);
+        }
+        if (typeof data.user.equippedSoundPack === 'string') {
+          setEquippedSoundPack(data.user.equippedSoundPack);
+        }
+        setIsPremium(data.user.isPremium === true);
+      }
+    } catch {
+      console.log('Kullanıcı tercihleri güncellenemedi');
     }
   };
 
@@ -171,10 +226,13 @@ export default function SensorScreen() {
         userId: m.user?.id,
         fullName: m.user?.fullName || 'Bilinmeyen',
         avatarUrl: m.user?.avatarUrl,
+        equippedProfileFrame: m.user?.equippedProfileFrame,
         text: m.text,
         type: m.type || 'text',
         fileUrl: m.fileUrl,
-        isPremium: m.user?.isPremium || false
+        isPremium: m.user?.isPremium || false,
+        equippedBubbleColor: m.user?.equippedBubbleColor,
+        equippedIcon: m.user?.equippedIcon,
       })));
     } catch (e) { console.error("Geçmiş yüklenemedi"); }
   };
@@ -322,7 +380,11 @@ export default function SensorScreen() {
   useEffect(() => {
     if (pomodoroRunning && isAtDesk) {
       pomTimerRef.current = setInterval(() => {
-        setPomodoroSec((prev) => (prev <= 1 ? (clearInterval(pomTimerRef.current), setPomodoroRunning(false), 0) : prev - 1));
+        setPomodoroSec((prev) => (
+          prev <= 1
+            ? (clearInterval(pomTimerRef.current), setPomodoroRunning(false), setFocusRequested(false), 0)
+            : prev - 1
+        ));
       }, 1000);
     } else {
       clearInterval(pomTimerRef.current);
@@ -335,7 +397,26 @@ export default function SensorScreen() {
     setPomodoroRunning(true); setShowPomodoroModal(false);
   };
 
-  const togglePomodoro = () => pomodoroSec === 0 ? startPomodoro(pomodoroMinutes) : setPomodoroRunning(!pomodoroRunning);
+  const startFocusSession = () => {
+    if (pomodoroSec === 0) {
+      setPomodoroSec(pomodoroMinutes * 60);
+    }
+    setFocusRequested(true);
+    setPomodoroRunning(true);
+  };
+
+  const togglePomodoro = () => {
+    if (pomodoroSec === 0) {
+      startPomodoro(pomodoroMinutes);
+      return;
+    }
+
+    const nextRunning = !pomodoroRunning;
+    setPomodoroRunning(nextRunning);
+    if (!nextRunning) {
+      setFocusRequested(false);
+    }
+  };
 
   const restoreFocusBrightness = async () => {
     if (Platform.OS === 'web' || brightnessBeforeFocusRef.current === null) return;
@@ -453,7 +534,7 @@ export default function SensorScreen() {
             Math.abs(z) > FLAT_Z_THRESHOLD &&
             Math.abs(x) < FLAT_AXIS_THRESHOLD &&
             Math.abs(y) < FLAT_AXIS_THRESHOLD;
-          const flat = isPhoneFlat && pomodoroRunning; // Pomodoro çalışırken telefon iki yönde de masadaysa odaklanma başlar
+          const flat = isPhoneFlat && focusRequested; // Odak istendiğinde telefon iki yönde de masadaysa odaklanma başlar
           setIsPhoneFaceDownOnDesk(isPhoneFaceDown);
           
           if (flat) {
@@ -489,7 +570,7 @@ export default function SensorScreen() {
       if (sub && typeof sub.remove === 'function') sub.remove();
       setIsPhoneFaceDownOnDesk(false);
     };
-  }, [isFocused, pomodoroRunning, roomName]);
+  }, [isFocused, focusRequested, roomName]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -498,7 +579,7 @@ export default function SensorScreen() {
     }
 
     let mounted = true;
-    const shouldDimScreen = isFocused && isAtDesk && isPhoneFaceDownOnDesk && pomodoroRunning;
+    const shouldDimScreen = isFocused && isAtDesk && isPhoneFaceDownOnDesk && focusRequested;
 
     const syncScreenBrightness = async () => {
       if (shouldDimScreen) {
@@ -522,7 +603,7 @@ export default function SensorScreen() {
     return () => {
       mounted = false;
     };
-  }, [isFocused, isAtDesk, isPhoneFaceDownOnDesk, pomodoroRunning]);
+  }, [isFocused, isAtDesk, isPhoneFaceDownOnDesk, focusRequested]);
 
   useEffect(() => {
     return () => {
@@ -671,6 +752,23 @@ export default function SensorScreen() {
           </View>
         </View>
 
+        <TouchableOpacity
+          onPress={startFocusSession}
+          disabled={focusRequested && pomodoroRunning}
+          activeOpacity={0.88}
+          style={[s.focusStartBtn, focusRequested && pomodoroRunning && s.focusStartBtnActive]}
+        >
+          <LinearGradient
+            colors={focusRequested && pomodoroRunning ? [T.success, T.success] : [T.primary, T.secondary]}
+            style={s.focusStartGrad}
+          >
+            <FontAwesome5 solid name={focusRequested && pomodoroRunning ? 'check-circle' : 'bullseye'} size={16} color="#FFFFFF" />
+            <Text style={s.focusStartText}>
+              {focusRequested && pomodoroRunning ? 'Odaklanma Hazır' : 'Odaklanmayı Başlat'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* WEB İÇİN MANUEL SENSÖR SİMÜLASYONU */}
         {Platform.OS === 'web' && (
           <TouchableOpacity 
@@ -706,7 +804,10 @@ export default function SensorScreen() {
         {/* ATMOSFER & MIXER */}
         <View style={s.section}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={s.sectionLabel}>ATMOSFER SESİ</Text>
+            <View>
+              <Text style={s.sectionLabel}>ATMOSFER SESİ</Text>
+              <Text style={s.soundPackLabel}>{SOUND_PACK_LABELS[equippedSoundPack] || 'Klasik Lounge'}</Text>
+            </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
               <TouchableOpacity onPress={() => {
                 if (!isPremium) {
@@ -769,13 +870,15 @@ export default function SensorScreen() {
               {inviteableFriends.map((friend) => (
                 <View key={friend.id} style={s.inviteChip}>
                   <View>
-                    {friend.avatarUrl ? (
-                      <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={s.userAvatar} />
-                    ) : (
-                      <View style={s.userAvatarFallback}>
-                        <Text style={s.userAvatarText}>{friend.fullName?.charAt(0).toUpperCase() || 'A'}</Text>
-                      </View>
-                    )}
+                    <FramedAvatar
+                      uri={assetUrl(friend.avatarUrl)}
+                      name={friend.fullName}
+                      frameId={friend.equippedProfileFrame}
+                      size={28}
+                      colors={T}
+                      backgroundColor={T.softIndigo}
+                      textSize={12}
+                    />
                     <View style={[s.userDot, { backgroundColor: T.success }]} />
                   </View>
                   <View style={s.inviteInfo}>
@@ -803,13 +906,15 @@ export default function SensorScreen() {
             {otherRoomUsers.map((u, i) => (
               <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: T.accent, backgroundColor: T.lightAmber }]}>
                 <View>
-                  {u.avatarUrl ? (
-                    <Image source={{ uri: assetUrl(u.avatarUrl) ?? undefined }} style={s.userAvatar} />
-                  ) : (
-                    <View style={s.userAvatarFallback}>
-                      <Text style={s.userAvatarText}>{u.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
-                    </View>
-                  )}
+                  <FramedAvatar
+                    uri={assetUrl(u.avatarUrl)}
+                    name={u.fullName}
+                    frameId={u.equippedProfileFrame}
+                    size={28}
+                    colors={T}
+                    backgroundColor={T.softIndigo}
+                    textSize={12}
+                  />
                   <View style={[s.userDot, { backgroundColor: u.isAtDesk ? (isEliteRoom ? T.accent : T.success) : T.textMuted }]} />
                 </View>
                 <Text style={{ color: T.textDark, fontSize: 13, fontWeight: '500' }}>{u.fullName?.split(' ')[0]}</Text>
@@ -846,18 +951,31 @@ export default function SensorScreen() {
                 const isMe = item.userId === myUserId;
                 const isFile = item.type === 'file';
                 const isImage = item.type === 'image';
+                const bubbleColor = typeof item.equippedBubbleColor === 'string' && item.equippedBubbleColor.trim()
+                  ? item.equippedBubbleColor
+                  : undefined;
+                const equippedIcon = typeof item.equippedIcon === 'string' ? item.equippedIcon : '';
                 return (
-                  <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
+                  <View style={[
+                    s.bubble,
+                    isMe ? s.bubbleMe : s.bubbleOther,
+                    bubbleColor && { backgroundColor: bubbleColor, borderColor: bubbleColor },
+                  ]}>
                     {!isMe && (
                       <View style={s.bubbleUserRow}>
-                        {item.avatarUrl ? (
-                          <Image source={{ uri: assetUrl(item.avatarUrl) ?? undefined }} style={s.bubbleAvatar} />
-                        ) : (
-                          <View style={s.bubbleAvatarFallback}>
-                            <Text style={s.bubbleAvatarText}>{item.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
-                          </View>
-                        )}
-                        <Text style={s.bubbleUser}>{item.fullName?.split(' ')[0]} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={T.accent} />}</Text>
+                        <FramedAvatar
+                          uri={assetUrl(item.avatarUrl)}
+                          name={item.fullName}
+                          frameId={item.equippedProfileFrame}
+                          size={24}
+                          colors={T}
+                          backgroundColor={T.softIndigo}
+                          textSize={10}
+                          activeBorderWidth={2}
+                        />
+                        <Text style={s.bubbleUser}>
+                          {item.fullName?.split(' ')[0]} {equippedIcon ? <Text style={s.equippedNameIcon}>{equippedIcon}</Text> : null} {item.isPremium && <FontAwesome5 solid name="crown" size={10} color={T.accent} />}
+                        </Text>
                       </View>
                     )}
                     {isImage ? (
@@ -870,7 +988,7 @@ export default function SensorScreen() {
                         <Text style={s.fileName} numberOfLines={1}>{item.text}</Text>
                       </TouchableOpacity>
                     ) : (
-                      <Text style={{ color: T.textDark, fontSize: 14 }}>{item.text}</Text>
+                      <Text style={[s.messageText, (isMe || bubbleColor) && s.messageTextOnColor]}>{item.text}</Text>
                     )}
                   </View>
                 );
@@ -994,6 +1112,10 @@ const s = StyleSheet.create({
   statusIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: T.background, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
   statusTitle: { fontSize: 17, fontWeight: '800', color: T.textDark, marginBottom: 3 },
   statusDesc: { fontSize: 12, color: T.textMuted },
+  focusStartBtn: { borderRadius: 18, overflow: 'hidden', marginTop: -12, marginBottom: 24, ...Theme.shadows.medium },
+  focusStartBtnActive: { opacity: 0.88 },
+  focusStartGrad: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 18 },
+  focusStartText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   
   section: { marginBottom: 28 },
   sectionLabel: { fontSize: 12, color: T.textMuted, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
@@ -1007,12 +1129,10 @@ const s = StyleSheet.create({
   soundTile: { width: 90, alignItems: 'center', backgroundColor: T.surface, paddingVertical: 18, borderRadius: 20, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
   soundTileActive: { backgroundColor: T.primary, borderColor: T.secondary },
   soundText: { marginTop: 10, fontSize: 12, fontWeight: '700', color: T.textMuted },
+  soundPackLabel: { marginTop: -8, color: T.primary, fontSize: 12, fontWeight: '800' },
   
   usersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   userChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
-  userAvatar: { width: 28, height: 28, borderRadius: 14 },
-  userAvatarFallback: { width: 28, height: 28, borderRadius: 14, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
-  userAvatarText: { color: T.primary, fontSize: 12, fontWeight: '900' },
   userDot: { position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: 4.5, borderWidth: 1.5, borderColor: T.surface },
   inviteEmpty: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 14, padding: 14, ...Theme.shadows.soft },
   inviteEmptyText: { color: T.textMuted, fontSize: 13, fontWeight: '700' },
@@ -1035,11 +1155,11 @@ const s = StyleSheet.create({
   bubble: { maxWidth: '80%', padding: 14, borderRadius: 20, marginVertical: 6 },
   bubbleMe: { alignSelf: 'flex-end', backgroundColor: T.softIndigo, borderBottomRightRadius: 4, borderWidth: 1, borderColor: T.primary },
   bubbleOther: { alignSelf: 'flex-start', backgroundColor: T.background, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: T.border },
+  messageText: { color: T.textDark, fontSize: 14 },
+  messageTextOnColor: { color: '#FFFFFF' },
   bubbleUserRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 7 },
-  bubbleAvatar: { width: 24, height: 24, borderRadius: 12 },
-  bubbleAvatarFallback: { width: 24, height: 24, borderRadius: 12, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center' },
-  bubbleAvatarText: { color: T.primary, fontSize: 10, fontWeight: '900' },
   bubbleUser: { fontSize: 11, color: T.accent, fontWeight: '800' },
+  equippedNameIcon: { fontSize: 11 },
   imagePreview: { width: 160, height: 160, borderRadius: 14, marginVertical: 5 },
   fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.softDanger, padding: 12, borderRadius: 14 },
   fileIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: T.softDanger, alignItems: 'center', justifyContent: 'center' },

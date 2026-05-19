@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Image, Modal, ScrollView,
+  ActivityIndicator, Animated, Modal, ScrollView,
   StyleSheet, Text, TouchableOpacity, View, TextInput, Alert, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiUrl, assetUrl } from '../config/api';
+import { FramedAvatar } from '../components/FramedAvatar';
 import { C } from './sensor';
 import { getRankInfo, getRankProgress } from '../utils/rank';
 import { Theme } from '../utils/theme';
@@ -26,6 +27,7 @@ type UserProfile = {
   currentStreak?: number;
   badges?: string[];
   equippedIcon?: string;
+  equippedProfileFrame?: string;
 };
 
 type Friend = {
@@ -34,6 +36,7 @@ type Friend = {
   username: string;
   totalFocusMinutes: number;
   avatarUrl?: string;
+  equippedProfileFrame?: string;
   isOnline?: boolean;
   currentRoom?: string;
 };
@@ -249,13 +252,18 @@ export default function MeScreen() {
           >
             {/* Avatar */}
             <View style={s.avatarContainer}>
-              {user.avatarUrl ? (
-                <Image source={{ uri: assetUrl(user.avatarUrl) ?? undefined }} style={s.avatar} />
-              ) : (
-                <View style={s.avatarFallback}>
-                  <Text style={s.avatarText}>{user.fullName.charAt(0).toUpperCase()}</Text>
-                </View>
-              )}
+              <FramedAvatar
+                uri={assetUrl(user.avatarUrl)}
+                name={user.fullName}
+                frameId={user.equippedProfileFrame}
+                size={64}
+                colors={T}
+                backgroundColor="rgba(255,255,255,0.2)"
+                textColor="#FFF"
+                textSize={26}
+                baseBorderWidth={3}
+                activeBorderWidth={4}
+              />
               {user.isPremium && (
                 <View style={s.premiumBadge}>
                   <FontAwesome5 name="crown" size={9} color={T.accent} solid />
@@ -356,7 +364,7 @@ export default function MeScreen() {
                     friend={friend}
                     onDM={() => router.push({
                       pathname: '/dm',
-                      params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username }
+                      params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username, targetAvatarUrl: friend.avatarUrl || '', targetProfileFrame: friend.equippedProfileFrame || 'none' }
                     } as any)}
                     onNudge={handleNudge}
                   />
@@ -372,7 +380,7 @@ export default function MeScreen() {
                     friend={friend}
                     onDM={() => router.push({
                       pathname: '/dm',
-                      params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username }
+                      params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username, targetAvatarUrl: friend.avatarUrl || '', targetProfileFrame: friend.equippedProfileFrame || 'none' }
                     } as any)}
                     onNudge={handleNudge}
                   />
@@ -413,16 +421,20 @@ export default function MeScreen() {
                       setDmModalVisible(false);
                       router.push({
                         pathname: '/dm',
-                        params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username }
+                        params: { targetUserId: friend.id, targetName: friend.fullName, targetUsername: friend.username, targetAvatarUrl: friend.avatarUrl || '', targetProfileFrame: friend.equippedProfileFrame || 'none' }
                       } as any);
                     }}
                   >
                     <View style={s.friendAvatar}>
-                      {friend.avatarUrl ? (
-                        <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={s.friendAvatarImg} />
-                      ) : (
-                        <Text style={s.friendAvatarText}>{friend.fullName.charAt(0).toUpperCase()}</Text>
-                      )}
+                      <FramedAvatar
+                        uri={assetUrl(friend.avatarUrl)}
+                        name={friend.fullName}
+                        frameId={friend.equippedProfileFrame}
+                        size={46}
+                        colors={T}
+                        backgroundColor={T.softIndigo}
+                        textSize={18}
+                      />
                       <View style={[s.onlineDot, { backgroundColor: friend.isOnline ? T.success : T.textMuted }]} />
                     </View>
                     <View style={s.friendInfo}>
@@ -486,11 +498,15 @@ export default function MeScreen() {
                 requests.map((req) => (
                   <View key={req.id} style={s.dmFriendRow}>
                     <View style={s.friendAvatar}>
-                      {req.sender.avatarUrl ? (
-                        <Image source={{ uri: assetUrl(req.sender.avatarUrl) ?? undefined }} style={s.friendAvatarImg} />
-                      ) : (
-                        <Text style={s.friendAvatarText}>{req.sender.fullName.charAt(0)}</Text>
-                      )}
+                      <FramedAvatar
+                        uri={assetUrl(req.sender.avatarUrl)}
+                        name={req.sender.fullName}
+                        frameId={req.sender.equippedProfileFrame}
+                        size={46}
+                        colors={T}
+                        backgroundColor={T.softIndigo}
+                        textSize={18}
+                      />
                     </View>
 
                     <View style={s.friendInfo}>
@@ -535,11 +551,15 @@ function FriendRow({ friend, onDM, onNudge }: { friend: Friend; onDM: () => void
   return (
     <View style={s.friendRow}>
       <View style={s.friendAvatar}>
-        {friend.avatarUrl ? (
-          <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={s.friendAvatarImg} />
-        ) : (
-          <Text style={s.friendAvatarText}>{friend.fullName.charAt(0).toUpperCase()}</Text>
-        )}
+        <FramedAvatar
+          uri={assetUrl(friend.avatarUrl)}
+          name={friend.fullName}
+          frameId={friend.equippedProfileFrame}
+          size={46}
+          colors={T}
+          backgroundColor={T.softIndigo}
+          textSize={18}
+        />
         <View style={[s.onlineDot, { backgroundColor: friend.isOnline ? T.success : T.textMuted }]} />
       </View>
 
@@ -578,12 +598,6 @@ const s = StyleSheet.create({
     ...Theme.shadows.medium,
   },
   avatarContainer: { position: 'absolute', top: 20, right: 20 },
-  avatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)' },
-  avatarFallback: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)',
-  },
-  avatarText: { color: '#FFF', fontSize: 26, fontWeight: '900' },
   premiumBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 22, height: 22, borderRadius: 11,
@@ -638,12 +652,6 @@ const s = StyleSheet.create({
     ...Theme.shadows.soft,
   },
   friendAvatar: { position: 'relative' },
-  friendAvatarImg: { width: 46, height: 46, borderRadius: 23 },
-  friendAvatarText: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: T.softIndigo, textAlign: 'center', lineHeight: 46,
-    color: T.primary, fontSize: 18, fontWeight: '900',
-  },
   onlineDot: { position: 'absolute', bottom: 1, right: 1, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: T.surface },
   friendInfo: { flex: 1 },
   friendName: { color: T.textDark, fontSize: 15, fontWeight: '800' },

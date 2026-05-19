@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { apiUrl, assetUrl } from './config/api';
 import { AppScreen, PageHeader, SoftCard } from './components/common';
+import { FramedAvatar } from './components/FramedAvatar';
 import { C } from './(tabs)/sensor';
 import { getRankInfo } from './utils/rank';
 
@@ -16,6 +17,7 @@ type Leader = {
   username?: string;
   totalFocusMinutes: number;
   avatarUrl?: string;
+  equippedProfileFrame?: string;
   isPremium?: boolean;
 };
 
@@ -103,13 +105,15 @@ export default function LeaderboardScreen() {
                   )}
                 </View>
 
-                <View style={styles.avatar}>
-                  {item.avatarUrl ? (
-                    <Image source={{ uri: assetUrl(item.avatarUrl) ?? undefined }} style={styles.avatarImage} />
-                  ) : (
-                    <Text style={styles.avatarText}>{item.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
-                  )}
-                </View>
+                <FramedAvatar
+                  uri={assetUrl(item.avatarUrl)}
+                  name={item.fullName}
+                  frameId={item.equippedProfileFrame}
+                  size={48}
+                  colors={T}
+                  backgroundColor={T.softIndigo}
+                  textSize={20}
+                />
 
                 <View style={styles.body}>
                   <Text style={[styles.name, item.isPremium && styles.premiumName]} numberOfLines={1}>
@@ -142,18 +146,6 @@ const styles = StyleSheet.create({
   topRow: { backgroundColor: T.lightAmber, borderColor: T.accent },
   rankBox: { width: 34, alignItems: 'center' },
   rankText: { color: T.textMuted, fontSize: 18, fontWeight: '900' },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: T.softIndigo,
-    borderWidth: 1,
-    borderColor: T.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: { width: '100%', height: '100%', borderRadius: 24 },
-  avatarText: { color: T.primary, fontSize: 20, fontWeight: '900' },
   body: { flex: 1 },
   name: { color: T.textDark, fontSize: 16, fontWeight: '900' },
   premiumName: { color: T.accent },

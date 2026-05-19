@@ -47,6 +47,9 @@ interface ConnectedRoomUser {
   userId: number;
   fullName: string;
   avatarUrl?: string | null;
+  equippedProfileFrame?: string | null;
+  equippedBubbleColor?: string | null;
+  equippedIcon?: string | null;
   roomName: string;
   isAtDesk: boolean;
   isEliteRoom: boolean;
@@ -263,6 +266,9 @@ export class SensorsGateway
         userId: socketUser.sub,
         fullName,
         avatarUrl: currentUser.avatarUrl,
+        equippedProfileFrame: currentUser.equippedProfileFrame,
+        equippedBubbleColor: currentUser.equippedBubbleColor,
+        equippedIcon: currentUser.equippedIcon,
         roomName,
         isAtDesk: false,
         isEliteRoom: lobby.isPremiumOnly,
@@ -308,6 +314,9 @@ export class SensorsGateway
       userId: socketUser.sub,
       fullName,
       avatarUrl: connectedUser?.avatarUrl,
+      equippedProfileFrame: connectedUser?.equippedProfileFrame,
+      equippedBubbleColor: connectedUser?.equippedBubbleColor,
+      equippedIcon: connectedUser?.equippedIcon,
       text: data.text,
       type: data.type,
       fileUrl: data.fileUrl,
@@ -376,6 +385,8 @@ export class SensorsGateway
             targetUserId: socketUser.sub,
             targetName: senderName,
             targetUsername: senderUsername,
+            targetAvatarUrl: sender?.avatarUrl,
+            targetProfileFrame: sender?.equippedProfileFrame,
           },
         );
       });

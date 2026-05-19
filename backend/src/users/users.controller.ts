@@ -214,7 +214,7 @@ export class UsersController {
   @Post('buy')
   async buyItem(
     @CurrentUser() user: User,
-    @Body() body: { itemType: 'color' | 'icon'; itemId: string; price: number }
+    @Body() body: { itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame'; itemId: string; price: number }
   ) {
     const updatedUser = await this.usersService.buyItem(user.id, body.itemType, body.itemId, body.price);
     return { success: true, user: updatedUser };
@@ -223,7 +223,7 @@ export class UsersController {
   @Post('equip')
   async equipItem(
     @CurrentUser() user: User,
-    @Body() body: { itemType: 'color' | 'icon'; itemId: string }
+    @Body() body: { itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame'; itemId: string }
   ) {
     const updatedUser = await this.usersService.equipItem(user.id, body.itemType, body.itemId);
     return { success: true, user: updatedUser };

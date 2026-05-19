@@ -69,4 +69,16 @@ export class User {
 
   @Column({ nullable: true })
   equippedIcon: string;
+
+  @Column('simple-array', { default: 'classic' })
+  ownedSoundPacks: string[];
+
+  @Column({ default: 'classic' })
+  equippedSoundPack: string;
+
+  @Column('simple-array', { default: 'none' })
+  ownedProfileFrames: string[];
+
+  @Column({ default: 'none' })
+  equippedProfileFrame: string;
 }

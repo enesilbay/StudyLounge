@@ -17,6 +17,10 @@ type UserProfile = {
   ownedIcons: string[];
   equippedBubbleColor: string;
   equippedIcon: string;
+  ownedSoundPacks?: string[];
+  equippedSoundPack?: string;
+  ownedProfileFrames?: string[];
+  equippedProfileFrame?: string;
 };
 
 const COLORS = [
@@ -34,6 +38,22 @@ const ICONS = [
   { id: '💎', name: 'Elmas', price: 250 },
   { id: '🎓', name: 'Mezuniyet', price: 300 },
   { id: '🚀', name: 'Roket', price: 400 },
+];
+
+const SOUND_PACKS = [
+  { id: 'classic', name: 'Klasik Lounge', desc: 'Kütüphane, yağmur, doğa ve şömine.', price: 0, icon: 'headphones' },
+  { id: 'rainy', name: 'Yağmur Modu', desc: 'Yağmur ve sessiz kütüphane ağırlıklı.', price: 120, icon: 'cloud-rain' },
+  { id: 'forest', name: 'Orman Odası', desc: 'Doğa ve hafif yağmur atmosferi.', price: 180, icon: 'leaf' },
+  { id: 'fireplace', name: 'Şömine Köşesi', desc: 'Şömine ve sıcak kütüphane tonu.', price: 220, icon: 'fire' },
+  { id: 'deep', name: 'Derin Odak', desc: 'Daha sakin, uzun çalışma presetleri.', price: 300, icon: 'brain' },
+];
+
+const PROFILE_FRAMES = [
+  { id: 'none', name: 'Çerçevesiz', desc: 'Sade profil görünümü.', price: 0, color: T.border },
+  { id: 'gold', name: 'Altın Halka', desc: 'Parlak başarı çerçevesi.', price: 150, color: T.accent },
+  { id: 'emerald', name: 'Zümrüt Odak', desc: 'Yeşil odak çerçevesi.', price: 180, color: T.success },
+  { id: 'ruby', name: 'Yakut Seri', desc: 'Kırmızı seri çerçevesi.', price: 220, color: T.danger },
+  { id: 'cosmic', name: 'Kozmik Lounge', desc: 'Mor premium çerçeve hissi.', price: 320, color: '#7C3AED' },
 ];
 
 export default function ShopScreen() {
@@ -63,7 +83,7 @@ export default function ShopScreen() {
     }, [fetchUserData])
   );
 
-  const handleBuy = async (itemType: 'color' | 'icon', itemId: string, price: number) => {
+  const handleBuy = async (itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame', itemId: string, price: number) => {
     if (!user) return;
     if (user.coins < price) {
       Alert.alert('Yetersiz Bakiye', 'Bu öğeyi almak için yeterli Odak Puanınız yok.');
@@ -103,7 +123,7 @@ export default function ShopScreen() {
     );
   };
 
-  const handleEquip = async (itemType: 'color' | 'icon', itemId: string) => {
+  const handleEquip = async (itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame', itemId: string) => {
     setProcessing(true);
     try {
       const headers = await getAuthHeaders();
@@ -207,6 +227,84 @@ export default function ShopScreen() {
     );
   };
 
+  const renderSoundPackItem = (item: typeof SOUND_PACKS[0]) => {
+    const ownedSoundPacks = user.ownedSoundPacks || ['classic'];
+    const isOwned = item.price === 0 || ownedSoundPacks.includes(item.id);
+    const isEquipped = (user.equippedSoundPack || 'classic') === item.id;
+
+    return (
+      <SoftCard key={item.id} style={styles.itemCard}>
+        <View style={styles.itemLeft}>
+          <View style={styles.soundPreview}>
+            <FontAwesome5 solid name={item.icon} size={18} color={T.primary} />
+          </View>
+          <View style={styles.itemCopy}>
+            <Text style={styles.itemName}>{item.name}</Text>
+            <Text style={styles.itemDesc}>{item.desc}</Text>
+            {!isOwned && <Text style={styles.itemPrice}>{item.price} Puan</Text>}
+            {isOwned && <Text style={styles.itemOwned}>Sahipsin</Text>}
+          </View>
+        </View>
+        <View style={styles.itemRight}>
+          {isEquipped ? (
+            <View style={styles.equippedBadge}>
+              <FontAwesome5 name="check" size={12} color="#FFF" />
+              <Text style={styles.equippedText}>Kuşanıldı</Text>
+            </View>
+          ) : isOwned ? (
+            <TouchableOpacity style={styles.equipBtn} onPress={() => handleEquip('soundPack', item.id)} disabled={processing}>
+              <Text style={styles.equipBtnText}>Kuşan</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.buyBtn} onPress={() => handleBuy('soundPack', item.id, item.price)} disabled={processing}>
+              <FontAwesome5 name="shopping-cart" size={12} color="#FFF" />
+              <Text style={styles.buyBtnText}>Al</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </SoftCard>
+    );
+  };
+
+  const renderProfileFrameItem = (item: typeof PROFILE_FRAMES[0]) => {
+    const ownedProfileFrames = user.ownedProfileFrames || ['none'];
+    const isOwned = item.price === 0 || ownedProfileFrames.includes(item.id);
+    const isEquipped = (user.equippedProfileFrame || 'none') === item.id;
+
+    return (
+      <SoftCard key={item.id} style={styles.itemCard}>
+        <View style={styles.itemLeft}>
+          <View style={[styles.framePreview, { borderColor: item.color }]}>
+            <View style={[styles.framePreviewInner, { backgroundColor: item.color }]} />
+          </View>
+          <View style={styles.itemCopy}>
+            <Text style={styles.itemName}>{item.name}</Text>
+            <Text style={styles.itemDesc}>{item.desc}</Text>
+            {!isOwned && <Text style={styles.itemPrice}>{item.price} Puan</Text>}
+            {isOwned && <Text style={styles.itemOwned}>Sahipsin</Text>}
+          </View>
+        </View>
+        <View style={styles.itemRight}>
+          {isEquipped ? (
+            <View style={styles.equippedBadge}>
+              <FontAwesome5 name="check" size={12} color="#FFF" />
+              <Text style={styles.equippedText}>Kuşanıldı</Text>
+            </View>
+          ) : isOwned ? (
+            <TouchableOpacity style={styles.equipBtn} onPress={() => handleEquip('profileFrame', item.id)} disabled={processing}>
+              <Text style={styles.equipBtnText}>Kuşan</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.buyBtn} onPress={() => handleBuy('profileFrame', item.id, item.price)} disabled={processing}>
+              <FontAwesome5 name="shopping-cart" size={12} color="#FFF" />
+              <Text style={styles.buyBtnText}>Al</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </SoftCard>
+    );
+  };
+
   return (
     <AppScreen scroll>
       <PageHeader title="Odak Mağazası" eyebrow="Puanlarını harca" onBack={() => router.back()} />
@@ -224,6 +322,12 @@ export default function ShopScreen() {
 
       <Text style={[styles.sectionTitle, { marginTop: 20 }]}>İsim Yanı İkonları</Text>
       <View style={styles.itemsList}>{ICONS.map(renderIconItem)}</View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Ses Paketi Skinleri</Text>
+      <View style={styles.itemsList}>{SOUND_PACKS.map(renderSoundPackItem)}</View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Profil Çerçeveleri</Text>
+      <View style={styles.itemsList}>{PROFILE_FRAMES.map(renderProfileFrameItem)}</View>
     </AppScreen>
   );
 }
@@ -247,11 +351,16 @@ const styles = StyleSheet.create({
   sectionTitle: { color: T.textDark, fontSize: 18, fontWeight: '900', marginBottom: 12, marginLeft: 4 },
   itemsList: { gap: 12 },
   itemCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 },
-  itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  itemLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, paddingRight: 10 },
+  itemCopy: { flex: 1 },
   colorPreview: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: T.border },
   iconPreview: { width: 44, height: 44, borderRadius: 22, backgroundColor: T.background, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
   iconPreviewText: { fontSize: 20 },
+  soundPreview: { width: 44, height: 44, borderRadius: 16, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
+  framePreview: { width: 44, height: 44, borderRadius: 22, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: T.surface },
+  framePreviewInner: { width: 24, height: 24, borderRadius: 12, opacity: 0.22 },
   itemName: { color: T.textDark, fontSize: 15, fontWeight: '800' },
+  itemDesc: { color: T.textMuted, fontSize: 11, fontWeight: '600', marginTop: 2, lineHeight: 15 },
   itemPrice: { color: T.primary, fontSize: 13, fontWeight: '700', marginTop: 2 },
   itemOwned: { color: T.textMuted, fontSize: 13, fontWeight: '700', marginTop: 2, fontStyle: 'italic' },
   itemRight: {},

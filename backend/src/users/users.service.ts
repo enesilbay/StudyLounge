@@ -82,13 +82,29 @@ export class UsersService {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (user) {
       delete user.password;
+      user.badges = this.getVisibleBadges(user);
     }
     return user;
   }
 
   private stripPassword(user: User): User {
     delete user.password;
+    user.badges = this.getVisibleBadges(user);
     return user;
+  }
+
+  private normalizeBadges(badges?: string[] | null): string[] {
+    return (Array.isArray(badges) ? badges : []).filter(
+      (badge) => typeof badge === 'string' && badge.trim().length > 0,
+    );
+  }
+
+  private getVisibleBadges(user: User): string[] {
+    const badges = this.normalizeBadges(user.badges);
+    if ((user.totalFocusMinutes || 0) >= 120 && !badges.includes('Maratoncu')) {
+      badges.push('Maratoncu');
+    }
+    return badges;
   }
 
   // ── KULLANICI BUL (E-POSTA İLE) ──
@@ -165,8 +181,8 @@ export class UsersService {
       user.coins = (user.coins || 0) + earnedCoins;
 
       // BAŞARIMLAR (BADGES)
-      if (!user.badges) user.badges = [];
-      if (minutes >= 120 && !user.badges.includes('Maratoncu')) {
+      user.badges = this.normalizeBadges(user.badges);
+      if (user.totalFocusMinutes >= 120 && !user.badges.includes('Maratoncu')) {
         user.badges.push('Maratoncu');
       }
       if ((currentHour >= 0 && currentHour <= 5) && minutes >= 60 && !user.badges.includes('Gece Kuşu')) {
@@ -248,6 +264,7 @@ export class UsersService {
         'totalFocusMinutes',
         'isPremium',
         'avatarUrl',
+        'equippedProfileFrame',
       ],
     });
   }
@@ -264,6 +281,7 @@ export class UsersService {
         fullName: currentUser.fullName,
         totalFocusMinutes: currentUser.totalFocusMinutes,
         avatarUrl: currentUser.avatarUrl,
+        equippedProfileFrame: currentUser.equippedProfileFrame,
         isOnline: currentUser.isOnline,
         currentRoom: currentUser.currentRoom,
       } as any);
@@ -329,7 +347,7 @@ export class UsersService {
       select: {
         id: true,
         status: true,
-        sender: { id: true, username: true, fullName: true, avatarUrl: true },
+        sender: { id: true, username: true, fullName: true, avatarUrl: true, equippedProfileFrame: true },
       },
     });
   }
@@ -372,6 +390,7 @@ export class UsersService {
         fullName: friend.fullName,
         totalFocusMinutes: friend.totalFocusMinutes,
         avatarUrl: friend.avatarUrl,
+        equippedProfileFrame: friend.equippedProfileFrame,
         isOnline: friend.isOnline,
         currentRoom: friend.currentRoom,
       };
@@ -517,7 +536,7 @@ export class UsersService {
   }
 
   // ── AŞAMA 3: MAĞAZA İŞLEMLERİ ──
-  async buyItem(userId: number, itemType: 'color' | 'icon', itemId: string, price: number) {
+  async buyItem(userId: number, itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame', itemId: string, price: number) {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
@@ -528,16 +547,24 @@ export class UsersService {
     if (itemType === 'color') {
       if (user.ownedColors.includes(itemId)) throw new BadRequestException('Bu renge zaten sahipsiniz');
       user.ownedColors.push(itemId);
-    } else {
+    } else if (itemType === 'icon') {
       if (user.ownedIcons.includes(itemId)) throw new BadRequestException('Bu ikona zaten sahipsiniz');
       user.ownedIcons.push(itemId);
+    } else if (itemType === 'soundPack') {
+      user.ownedSoundPacks = user.ownedSoundPacks || ['classic'];
+      if (user.ownedSoundPacks.includes(itemId)) throw new BadRequestException('Bu ses paketine zaten sahipsiniz');
+      user.ownedSoundPacks.push(itemId);
+    } else {
+      user.ownedProfileFrames = user.ownedProfileFrames || ['none'];
+      if (user.ownedProfileFrames.includes(itemId)) throw new BadRequestException('Bu profil çerçevesine zaten sahipsiniz');
+      user.ownedProfileFrames.push(itemId);
     }
 
     user.coins -= price;
     return await this.usersRepository.save(user);
   }
 
-  async equipItem(userId: number, itemType: 'color' | 'icon', itemId: string) {
+  async equipItem(userId: number, itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame', itemId: string) {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
@@ -546,11 +573,23 @@ export class UsersService {
         throw new BadRequestException('Bu renge sahip değilsiniz');
       }
       user.equippedBubbleColor = itemId;
-    } else {
+    } else if (itemType === 'icon') {
       if (!user.ownedIcons.includes(itemId) && itemId !== '') {
         throw new BadRequestException('Bu ikona sahip değilsiniz');
       }
       user.equippedIcon = itemId;
+    } else if (itemType === 'soundPack') {
+      user.ownedSoundPacks = user.ownedSoundPacks || ['classic'];
+      if (!user.ownedSoundPacks.includes(itemId) && itemId !== 'classic') {
+        throw new BadRequestException('Bu ses paketine sahip değilsiniz');
+      }
+      user.equippedSoundPack = itemId;
+    } else {
+      user.ownedProfileFrames = user.ownedProfileFrames || ['none'];
+      if (!user.ownedProfileFrames.includes(itemId) && itemId !== 'none') {
+        throw new BadRequestException('Bu profil çerçevesine sahip değilsiniz');
+      }
+      user.equippedProfileFrame = itemId;
     }
 
     return await this.usersRepository.save(user);

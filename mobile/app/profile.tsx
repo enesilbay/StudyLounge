@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Platform,
   StyleSheet,
   Text,
@@ -16,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { apiUrl, assetUrl, getAuthHeaders } from './config/api';
 import { AppScreen, DarkSheetModal, IconButton, PageHeader, SoftCard } from './components/common';
+import { FramedAvatar } from './components/FramedAvatar';
 import { C } from './(tabs)/sensor';
 import { getRankInfo, getRankProgress } from './utils/rank';
 import { Theme } from './utils/theme';
@@ -34,6 +34,7 @@ type UserProfile = {
   currentStreak?: number;
   badges?: string[];
   equippedIcon?: string;
+  equippedProfileFrame?: string;
 };
 
 export default function ProfileScreen() {
@@ -230,6 +231,9 @@ export default function ProfileScreen() {
   const rank = getRankInfo(score);
   const progress = getRankProgress(score);
   const avatar = assetUrl(user.avatarUrl);
+  const earnedBadges = (Array.isArray(user.badges) ? user.badges : []).filter(
+    (badge) => typeof badge === 'string' && badge.trim().length > 0,
+  );
 
   return (
     <AppScreen scroll>
@@ -247,16 +251,23 @@ export default function ProfileScreen() {
 
       <View style={styles.hero}>
         <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.86}>
-          <View style={styles.avatar}>
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarText}>{user.fullName?.charAt(0).toUpperCase() || 'U'}</Text>
-            )}
+          <FramedAvatar
+            uri={avatar}
+            name={user.fullName}
+            frameId={user.equippedProfileFrame}
+            size={144}
+            colors={T}
+            backgroundColor={T.surface}
+            textSize={46}
+            baseBorderWidth={4}
+            activeBorderWidth={6}
+            style={styles.avatarFrame}
+            imageStyle={styles.avatarImage}
+          >
             <View style={styles.cameraBadge}>
               {isUploading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <FontAwesome5 solid name="camera" size={13} color="#FFFFFF" />}
             </View>
-          </View>
+          </FramedAvatar>
         </TouchableOpacity>
 
         <Text style={styles.name}>
@@ -313,8 +324,8 @@ export default function ProfileScreen() {
       <SoftCard style={styles.badgesCard}>
         <Text style={styles.sectionTitle}>Kazanilan Rozetler</Text>
         <View style={styles.badgesList}>
-          {user.badges && user.badges.length > 0 ? (
-            user.badges.map((badge, i) => (
+          {earnedBadges.length > 0 ? (
+            earnedBadges.map((badge, i) => (
               <View key={i} style={styles.badgeItem}>
                 <FontAwesome5 name="medal" size={20} color={T.accent} />
                 <Text style={styles.badgeText}>{badge}</Text>
@@ -468,9 +479,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...Theme.shadows.medium,
   },
-  avatar: { width: 132, height: 132, borderRadius: 66, backgroundColor: T.softIndigo, borderWidth: 2, borderColor: T.border, alignItems: 'center', justifyContent: 'center' },
-  avatarImage: { width: 128, height: 128, borderRadius: 64 },
-  avatarText: { color: T.primary, fontSize: 46, fontWeight: '900' },
+  avatarFrame: { marginBottom: 0 },
+  avatarImage: { backgroundColor: T.softIndigo },
   cameraBadge: { position: 'absolute', right: 4, bottom: 4, width: 38, height: 38, borderRadius: 19, backgroundColor: T.primary, borderWidth: 3, borderColor: T.surface, alignItems: 'center', justifyContent: 'center' },
   name: { color: T.textDark, fontSize: 26, fontWeight: '900', marginTop: 18, textAlign: 'center' },
   username: { color: T.textMuted, fontSize: 15, fontWeight: '700', marginTop: 4 },
