@@ -13,6 +13,7 @@ export const Theme = {
     softDanger: '#FFEBEE',
     background: '#F8FAFC',
     surface: '#FFFFFF',
+    screenOff: '#000000',
     border: '#E5E7EB',
     textDark: '#1F2937',
     textMuted: '#6B7280',

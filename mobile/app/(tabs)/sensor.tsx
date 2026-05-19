@@ -11,6 +11,7 @@ import { Accelerometer } from 'expo-sensors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { Audio } from 'expo-av';
+import * as Brightness from 'expo-brightness';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
@@ -35,6 +36,9 @@ const POMODORO_OPTIONS = [
   { label: '15 dk', minutes: 15 }, { label: '25 dk', minutes: 25 }, 
   { label: '45 dk', minutes: 45 }, { label: '60 dk', minutes: 60 },
 ];
+
+const FLAT_Z_THRESHOLD = 0.8;
+const FLAT_AXIS_THRESHOLD = 0.3;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -101,12 +105,15 @@ export default function SensorScreen() {
   const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
   const [pomodoroSec, setPomodoroSec] = useState(25 * 60);
   const [pomodoroRunning, setPomodoroRunning] = useState(false);
+  const [isPhoneFaceDownOnDesk, setIsPhoneFaceDownOnDesk] = useState(false);
+  const [focusScreenDimmed, setFocusScreenDimmed] = useState(false);
   const [showPomodoroModal, setShowPomodoroModal] = useState(false);
   const pomTimerRef = useRef<any>(null); 
   const pomAnim = useRef(new Animated.Value(1)).current;
 
   const socketRef = useRef<any>(null);
   const previousDeskState = useRef<boolean | null>(null);
+  const brightnessBeforeFocusRef = useRef<number | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -295,6 +302,19 @@ export default function SensorScreen() {
 
   const togglePomodoro = () => pomodoroSec === 0 ? startPomodoro(pomodoroMinutes) : setPomodoroRunning(!pomodoroRunning);
 
+  const restoreFocusBrightness = async () => {
+    if (Platform.OS === 'web' || brightnessBeforeFocusRef.current === null) return;
+
+    const brightness = brightnessBeforeFocusRef.current;
+    brightnessBeforeFocusRef.current = null;
+
+    try {
+      await Brightness.setBrightnessAsync(brightness);
+    } catch {
+      console.log('Parlaklık geri yüklenemedi');
+    }
+  };
+
   useEffect(() => {
     const initSocket = async () => {
       const token = await AsyncStorage.getItem('access_token');
@@ -390,8 +410,16 @@ export default function SensorScreen() {
         sub = { remove: () => {} };
       } else {
         sub = Accelerometer.addListener(({ x, y, z }) => {
-          const isPhoneFlat = Math.abs(z) > 0.8 && Math.abs(x) < 0.3 && Math.abs(y) < 0.3;
-          const flat = isPhoneFlat && pomodoroRunning; // YALNIZCA pomodoro çalışırken odaklanma başlar
+          const isPhoneFaceDown =
+            z < -FLAT_Z_THRESHOLD &&
+            Math.abs(x) < FLAT_AXIS_THRESHOLD &&
+            Math.abs(y) < FLAT_AXIS_THRESHOLD;
+          const isPhoneFlat =
+            Math.abs(z) > FLAT_Z_THRESHOLD &&
+            Math.abs(x) < FLAT_AXIS_THRESHOLD &&
+            Math.abs(y) < FLAT_AXIS_THRESHOLD;
+          const flat = isPhoneFlat && pomodoroRunning; // Pomodoro çalışırken telefon iki yönde de masadaysa odaklanma başlar
+          setIsPhoneFaceDownOnDesk(isPhoneFaceDown);
           
           if (flat) {
             if (previousDeskState.current !== true) {
@@ -416,6 +444,7 @@ export default function SensorScreen() {
       }
     } else {
       setIsAtDesk(false);
+      setIsPhoneFaceDownOnDesk(false);
       if (socketRef.current?.connected && previousDeskState.current !== false) {
         socketRef.current.emit('update_presence', { isAtDesk: false, roomName });
         previousDeskState.current = false;
@@ -423,8 +452,48 @@ export default function SensorScreen() {
     }
     return () => {
       if (sub && typeof sub.remove === 'function') sub.remove();
+      setIsPhoneFaceDownOnDesk(false);
     };
   }, [isFocused, pomodoroRunning, roomName]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      setFocusScreenDimmed(false);
+      return;
+    }
+
+    let mounted = true;
+    const shouldDimScreen = isFocused && isAtDesk && isPhoneFaceDownOnDesk && pomodoroRunning;
+
+    const syncScreenBrightness = async () => {
+      if (shouldDimScreen) {
+        try {
+          if (brightnessBeforeFocusRef.current === null) {
+            brightnessBeforeFocusRef.current = await Brightness.getBrightnessAsync();
+          }
+          await Brightness.setBrightnessAsync(0);
+          if (mounted) setFocusScreenDimmed(true);
+        } catch {
+          console.log('Odak ekranı karartılamadı');
+        }
+      } else {
+        if (mounted) setFocusScreenDimmed(false);
+        await restoreFocusBrightness();
+      }
+    };
+
+    syncScreenBrightness();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isFocused, isAtDesk, isPhoneFaceDownOnDesk, pomodoroRunning]);
+
+  useEffect(() => {
+    return () => {
+      restoreFocusBrightness();
+    };
+  }, []);
 
   // Web'de sensörü simüle etmek için
   const toggleWebSensor = () => {
@@ -511,7 +580,7 @@ export default function SensorScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={T.background} />
+      <StatusBar hidden={focusScreenDimmed} barStyle="dark-content" backgroundColor={T.background} />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <BackgroundOrbs isElite={isEliteRoom} />
       </View>
@@ -558,7 +627,7 @@ export default function SensorScreen() {
             <Text style={s.statusDesc}>
               {isAtDesk 
                 ? (isEliteRoom ? 'Elite mod aktif! Çarpan ile x2 Puan kazanıyorsun.' : 'Cihaz masada, odak puanı kazanıyorsun.') 
-                : (isEliteRoom ? 'Puan kazanmak için cihazı masaya bırakın.' : 'Puan kazanmak için cihazı masaya bırakın.')}
+                : (isEliteRoom ? 'Puan kazanmak için telefonu ters çevirip masaya bırakın.' : 'Puan kazanmak için telefonu ters çevirip masaya bırakın.')}
             </Text>
           </View>
         </View>
@@ -818,6 +887,8 @@ export default function SensorScreen() {
           </View>
         </View>
       </Modal>
+
+      {focusScreenDimmed && <View pointerEvents="auto" style={s.focusBlackout} />}
     </SafeAreaView>
   );
 }
@@ -827,6 +898,7 @@ export default function SensorScreen() {
 // ─────────────────────────────────────────────
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: T.background },
+  focusBlackout: { ...StyleSheet.absoluteFillObject, backgroundColor: T.screenOff, zIndex: 9999, elevation: 9999 },
   scroll: { paddingHorizontal: 22, paddingTop: 15 },
   offlineBanner: { backgroundColor: T.softDanger, padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: T.danger, alignItems: 'center' },
   offlineText: { color: T.danger, fontSize: 13, fontWeight: '700' },
