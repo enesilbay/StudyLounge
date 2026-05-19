@@ -161,6 +161,8 @@ export class SensorsGateway
     const usersInRoom = Array.from(this.connectedUsers.values()).filter(
       (u) => u.roomName === roomName,
     );
+    const focusedCount = usersInRoom.filter((user) => user.isAtDesk).length;
+    void this.lobbiesService.updateActiveUsers(roomName, focusedCount);
     this.server.to(roomName).emit('room_users', usersInRoom);
   }
 
@@ -324,6 +326,9 @@ export class SensorsGateway
       if (!socketUser) return;
 
       const data = this.parsePayload(payload) as { targetUserId: number; text: string; type?: string; fileUrl?: string };
+      const sender = await this.usersService.findById(socketUser.sub);
+      const senderName = sender?.fullName ?? socketUser.username;
+      const senderUsername = sender?.username ?? socketUser.username;
       const savedMsg = await this.messagesService.createDirectMessage(
         socketUser.sub,
         data.targetUserId,
@@ -340,6 +345,8 @@ export class SensorsGateway
         type: data.type || 'text',
         fileUrl: data.fileUrl,
         createdAt: savedMsg.createdAt || new Date(),
+        senderName,
+        senderUsername,
       };
 
       // Alıcıya gönder
@@ -357,6 +364,21 @@ export class SensorsGateway
           this.server.to(socketId).emit('receive_dm', dmPayload);
         }
       }
+
+      const tokens = await this.usersService.getUserPushTokens([data.targetUserId]);
+      tokens.forEach((token) => {
+        void this.notificationsService.sendNotification(
+          token,
+          'Yeni mesaj',
+          `${senderName} sana bir mesaj gönderdi.`,
+          {
+            type: 'dm',
+            targetUserId: socketUser.sub,
+            targetName: senderName,
+            targetUsername: senderUsername,
+          },
+        );
+      });
     } catch (error) {
       console.error('DM Gönderim Hatası:', error);
     }
@@ -442,7 +464,7 @@ export class SensorsGateway
           senderName,
           senderId: socketUser.sub,
           roomName: data.roomName,
-          message: `${senderName} seni calismaya cagiriyor!`,
+          message: `${senderName} seni ${data.roomName} odasina davet ediyor!`,
         });
         notified = true;
       }
@@ -462,7 +484,13 @@ export class SensorsGateway
         void this.notificationsService.sendNotification(
           token,
           'StudyLounge',
-          `${senderName} seni calismaya davet ediyor!`,
+          `${senderName} seni ${data.roomName} odasina davet ediyor!`,
+          {
+            type: 'room_invite',
+            roomName: data.roomName,
+            senderId: socketUser.sub,
+            senderName,
+          },
         );
       });
     } catch (e) {

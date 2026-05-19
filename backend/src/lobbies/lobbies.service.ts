@@ -18,10 +18,16 @@ export class LobbiesService {
     private readonly usersService: UsersService,
   ) {}
 
-  async findAll(): Promise<Lobby[]> {
+  async findAll(): Promise<(Lobby & { memberCount: number })[]> {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     await this.lobbiesRepository.delete({ createdAt: LessThan(yesterday) });
-    return this.lobbiesRepository.find({ order: { id: 'DESC' } });
+    const lobbies = await this.lobbiesRepository.find({ order: { id: 'DESC' } });
+    const memberCounts = await this.usersService.getRoomMemberCounts(lobbies.map((lobby) => lobby.name));
+
+    return lobbies.map((lobby) => ({
+      ...lobby,
+      memberCount: memberCounts.get(lobby.name) ?? 0,
+    }));
   }
 
   findByName(name: string): Promise<Lobby | null> {
@@ -101,5 +107,9 @@ export class LobbiesService {
     }
 
     return lobby;
+  }
+
+  async updateActiveUsers(lobbyName: string, activeUsers: number): Promise<void> {
+    await this.lobbiesRepository.update({ name: lobbyName }, { activeUsers });
   }
 }

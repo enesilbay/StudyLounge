@@ -329,7 +329,7 @@ export default function ProfileScreen() {
       <TouchableOpacity onPress={() => router.push('/shop' as any)} activeOpacity={0.86}>
         <SoftCard style={[styles.analyticsButton, { backgroundColor: T.primary, marginBottom: 16 }]}>
           <FontAwesome5 solid name="shopping-cart" size={16} color="#FFF" />
-          <Text style={[styles.analyticsText, { color: '#FFF' }]}>Magaza'ya Git (Shop)</Text>
+          <Text style={[styles.analyticsText, { color: '#FFF' }]}>Magazaya Git (Shop)</Text>
           <FontAwesome5 solid name="chevron-right" size={12} color="#FFF" />
         </SoftCard>
       </TouchableOpacity>
@@ -352,9 +352,52 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <DarkSheetModal visible={infoVisible} onClose={() => setInfoVisible(false)}>
-        <Text style={styles.sheetTitle}>Puan nasil kazanilir?</Text>
-        <Text style={styles.sheetText}>Calisma odasinda telefon masadayken her dakika 1 odak puani kazandirir. Elite odalarda bu puan ikiye katlanir.</Text>
-        <TouchableOpacity onPress={() => setInfoVisible(false)} style={styles.primaryBtn}>
+        <View style={styles.infoHero}>
+          <View style={styles.infoIconWrap}>
+            <FontAwesome5 solid name="bolt" size={20} color={T.accent} />
+          </View>
+          <Text style={styles.infoTitle}>Puan nasil kazanilir?</Text>
+          <Text style={styles.infoSubtitle}>Odak puanin calisma odalarinda masada kaldigin sureye gore artar.</Text>
+        </View>
+
+        <View style={styles.infoList}>
+          <View style={styles.infoStep}>
+            <View style={[styles.infoStepIcon, { backgroundColor: T.softIndigo }]}>
+              <FontAwesome5 solid name="play" size={13} color={T.primary} />
+            </View>
+            <View style={styles.infoStepText}>
+              <Text style={styles.infoStepTitle}>Pomodoro baslat</Text>
+              <Text style={styles.infoStepDesc}>Bir calisma odasina girip zamanlayiciyi calistir.</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoStep}>
+            <View style={[styles.infoStepIcon, { backgroundColor: T.softSuccess }]}>
+              <FontAwesome5 solid name="mobile-alt" size={15} color={T.success} />
+            </View>
+            <View style={styles.infoStepText}>
+              <Text style={styles.infoStepTitle}>Telefonu masaya birak</Text>
+              <Text style={styles.infoStepDesc}>Telefon masadayken her dakika 1 odak puani kazanirsin.</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoStep}>
+            <View style={[styles.infoStepIcon, { backgroundColor: T.lightAmber }]}>
+              <FontAwesome5 solid name="crown" size={14} color={T.accent} />
+            </View>
+            <View style={styles.infoStepText}>
+              <Text style={styles.infoStepTitle}>Elite odalarda x2</Text>
+              <Text style={styles.infoStepDesc}>Elite odalarda ayni sure iki kat puan olarak hesabina islenir.</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.infoTip}>
+          <FontAwesome5 solid name="info-circle" size={14} color={T.info} />
+          <Text style={styles.infoTipText}>Telefonu ekran asagi koyarsan odak ekrani kararir ve dikkat dagitmaz.</Text>
+        </View>
+
+        <TouchableOpacity onPress={() => setInfoVisible(false)} style={[styles.primaryBtn, { flex: 0 }]}>
           <Text style={styles.primaryBtnText}>Anladim</Text>
         </TouchableOpacity>
       </DarkSheetModal>
@@ -452,6 +495,18 @@ const styles = StyleSheet.create({
   noBadgeText: { color: T.textMuted, fontSize: 13, fontStyle: 'italic', marginTop: 4 },
   analyticsButton: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 30 },
   analyticsText: { flex: 1, color: T.textDark, fontSize: 15, fontWeight: '900' },
+  infoHero: { alignItems: 'center', marginBottom: 18 },
+  infoIconWrap: { width: 54, height: 54, borderRadius: 18, backgroundColor: T.lightAmber, borderWidth: 1, borderColor: T.accent, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  infoTitle: { color: T.textDark, fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  infoSubtitle: { color: T.textMuted, fontSize: 13, fontWeight: '700', lineHeight: 19, textAlign: 'center', marginTop: 6 },
+  infoList: { gap: 10, marginBottom: 14 },
+  infoStep: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: T.background, borderRadius: 16, borderWidth: 1, borderColor: T.border, padding: 13 },
+  infoStepIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
+  infoStepText: { flex: 1 },
+  infoStepTitle: { color: T.textDark, fontSize: 14, fontWeight: '900', marginBottom: 3 },
+  infoStepDesc: { color: T.textMuted, fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  infoTip: { flexDirection: 'row', gap: 9, alignItems: 'flex-start', backgroundColor: T.softInfo, borderRadius: 14, borderWidth: 1, borderColor: T.border, padding: 12, marginBottom: 16 },
+  infoTipText: { flex: 1, color: T.textDark, fontSize: 12, fontWeight: '700', lineHeight: 17 },
   sheetTitle: { color: T.textDark, fontSize: 20, fontWeight: '900', marginBottom: 10 },
   sheetText: { color: T.textMuted, fontSize: 14, fontWeight: '600', lineHeight: 21, marginBottom: 18 },
   inputLabel: { color: T.textDark, fontSize: 12, fontWeight: '900', marginBottom: 7, marginLeft: 2 },

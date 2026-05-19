@@ -499,6 +499,23 @@ export class UsersService {
     await this.usersRepository.update(userId, { isOnline, currentRoom: roomName || null });
   }
 
+  async getRoomMemberCounts(roomNames: string[]): Promise<Map<string, number>> {
+    if (roomNames.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.usersRepository
+      .createQueryBuilder('user')
+      .select('user.currentRoom', 'roomName')
+      .addSelect('COUNT(user.id)', 'count')
+      .where('user.isOnline = :isOnline', { isOnline: true })
+      .andWhere('user.currentRoom IN (:...roomNames)', { roomNames })
+      .groupBy('user.currentRoom')
+      .getRawMany<{ roomName: string; count: string }>();
+
+    return new Map(rows.map((row) => [row.roomName, Number(row.count)]));
+  }
+
   // ── AŞAMA 3: MAĞAZA İŞLEMLERİ ──
   async buyItem(userId: number, itemType: 'color' | 'icon', itemId: string, price: number) {
     const user = await this.findById(userId);

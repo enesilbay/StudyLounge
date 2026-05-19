@@ -57,16 +57,17 @@ function LobbyCard({ item, onPress, index, friends }: { item: Lobby; onPress: ()
   const pressIn = () => Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true, tension: 150 }).start();
   const pressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 150 }).start();
 
-  const memberCount = item.activeUsers || 0;
+  const memberCount = item.memberCount || 0;
+  const focusedCount = item.activeUsers || 0;
   const isActive = item.isActive !== false;
 
   const friendsInLobby = friends?.filter((f: any) => f.currentRoom === item.name && f.isOnline) || [];
-  let metaText = `${memberCount} kişi odaklanıyor`;
+  let metaText = `${memberCount} kişi odada · ${focusedCount} odaklanıyor`;
   if (friendsInLobby.length > 0) {
     const firstName = friendsInLobby[0].fullName.split(' ')[0];
-    metaText = friendsInLobby.length > 1 
-      ? `${firstName} ve ${friendsInLobby.length - 1} arkadaşın burada` 
-      : `${firstName} burada odaklanıyor`;
+    metaText = friendsInLobby.length > 1
+      ? `${memberCount} kişi odada · ${focusedCount} odak · ${firstName} +${friendsInLobby.length - 1}`
+      : `${memberCount} kişi odada · ${focusedCount} odak · ${firstName} burada`;
   }
 
   return (
@@ -279,7 +280,7 @@ export default function LobbiesScreen() {
     const matchCategory = selectedCategoryFilter === 'Tümü' || l.category === selectedCategoryFilter;
     return matchSearch && matchCategory;
   });
-  const activeCount = lobbies.reduce((sum, lobby) => sum + (lobby.activeUsers || 0), 0);
+  const activeCount = lobbies.reduce((sum, lobby) => sum + (lobby.memberCount || 0), 0);
   const eliteCount = lobbies.filter((lobby) => lobby.isPremiumOnly).length;
   const userName = typeof params.fullName === 'string' ? params.fullName.split(' ')[0] : 'Öğrenci';
 

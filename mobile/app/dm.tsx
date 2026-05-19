@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   StyleSheet,
   Text,
@@ -20,6 +20,7 @@ import { C } from './(tabs)/sensor';
 
 const BACKEND_URL = apiUrl('');
 const T = C;
+const ANDROID_NAV_FALLBACK = 28;
 
 export default function DMScreen() {
   const router = useRouter();
@@ -29,9 +30,31 @@ export default function DMScreen() {
   const [myUserId, setMyUserId] = useState<number>(0);
   const [myBubbleColor, setMyBubbleColor] = useState<string>(T.primary);
   const [isLoading, setIsLoading] = useState(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [inputHeight, setInputHeight] = useState(76);
   const socketRef = useRef<Socket | null>(null);
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+
+  const baseBottomInset = Platform.OS === 'android'
+    ? Math.max(insets.bottom, ANDROID_NAV_FALLBACK)
+    : Math.max(insets.bottom, 12);
+  const inputBottomOffset = keyboardHeight > 0 ? keyboardHeight + 8 : baseBottomInset;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -99,14 +122,23 @@ export default function DMScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.header, { paddingTop: insets.top || 50 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <FontAwesome5 name="chevron-left" size={18} color={T.primary} />
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 18) + 10 }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
+          <FontAwesome5 name="chevron-left" size={16} color={T.primary} />
         </TouchableOpacity>
+        <View style={styles.headerAvatar}>
+          <Text style={styles.headerAvatarText}>
+            {String(targetName || 'M').charAt(0).toUpperCase()}
+          </Text>
+        </View>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerName}>{targetName}</Text>
-          <Text style={styles.headerUser}>@{targetUsername}</Text>
+          <Text style={styles.headerLabel}>Direkt mesaj</Text>
+          <Text style={styles.headerName} numberOfLines={1}>{targetName || 'Mesaj'}</Text>
+          {targetUsername ? <Text style={styles.headerUser}>@{targetUsername}</Text> : null}
+        </View>
+        <View style={styles.headerStatus}>
+          <FontAwesome5 solid name="comment-dots" size={14} color={T.primary} />
         </View>
       </View>
 
@@ -120,7 +152,13 @@ export default function DMScreen() {
             ref={listRef}
             data={messages}
             keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            contentContainerStyle={{
+              padding: 16,
+              gap: 12,
+              paddingBottom: inputHeight + inputBottomOffset + 18,
+            }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             renderItem={({ item }) => {
               const isMe = item.sender?.id === myUserId || item.senderId === myUserId;
@@ -140,10 +178,15 @@ export default function DMScreen() {
         )}
       </View>
 
-      <View style={[styles.inputArea, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
-        <TouchableOpacity style={styles.attachBtn}>
-          <FontAwesome5 name="plus" size={18} color={T.primary} />
-        </TouchableOpacity>
+      <View
+        onLayout={(event) => setInputHeight(event.nativeEvent.layout.height)}
+        style={[
+          styles.inputArea,
+          {
+            bottom: inputBottomOffset,
+          },
+        ]}
+      >
         <TextInput
           style={styles.input}
           placeholder="Mesaj yaz..."
@@ -156,7 +199,7 @@ export default function DMScreen() {
           <FontAwesome5 name="paper-plane" solid size={16} color="#fff" />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -165,7 +208,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     backgroundColor: T.surface,
     borderBottomWidth: 1,
     borderBottomColor: T.border,
@@ -176,33 +220,60 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 10,
   },
-  backBtn: { padding: 8, marginRight: 10 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: T.softIndigo,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: T.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerAvatarText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
   headerInfo: { flex: 1 },
-  headerName: { fontSize: 18, fontWeight: '900', color: T.textDark },
-  headerUser: { fontSize: 13, color: T.textMuted, marginTop: 2 },
-  callBtns: { flexDirection: 'row', alignItems: 'center' },
+  headerLabel: { color: T.accent, fontSize: 11, fontWeight: '900', letterSpacing: 0.8, marginBottom: 2 },
+  headerName: { fontSize: 19, fontWeight: '900', color: T.textDark },
+  headerUser: { fontSize: 12, color: T.textMuted, marginTop: 1, fontWeight: '700' },
+  headerStatus: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: T.softIndigo,
+    borderWidth: 1,
+    borderColor: T.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
   chatBackground: { flex: 1, backgroundColor: T.background },
   inputArea: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
     flexDirection: 'row',
     padding: 12,
     backgroundColor: T.surface,
-    borderTopWidth: 1,
-    borderTopColor: T.border,
+    borderWidth: 1,
+    borderColor: T.border,
+    borderRadius: 24,
     alignItems: 'center',
     gap: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  attachBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: T.softIndigo,
-    alignItems: 'center',
-    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 12,
   },
   input: {
     flex: 1,

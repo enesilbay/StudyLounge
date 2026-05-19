@@ -40,6 +40,15 @@ const POMODORO_OPTIONS = [
 const FLAT_Z_THRESHOLD = 0.8;
 const FLAT_AXIS_THRESHOLD = 0.3;
 
+type Friend = {
+  id: number;
+  fullName: string;
+  username?: string;
+  avatarUrl?: string;
+  isOnline?: boolean;
+  currentRoom?: string | null;
+};
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 // ── DEKORATIF ARKAPLAN NOKTALARI ──
@@ -58,17 +67,19 @@ export default function SensorScreen() {
   const params = useLocalSearchParams();
   const { id, fullName, roomName, score } = params;
 
-  const myUserId = Number(id);
+  const routeUserId = Number(id);
   const safeFullName = typeof fullName === 'string' && fullName.trim() !== '' ? fullName : 'Öğrenci';
 
   const isFocused = useIsFocused();
 
   const [totalScore, setTotalScore] = useState(Number(score) || 0);
+  const [storedUserId, setStoredUserId] = useState<number | null>(Number.isFinite(routeUserId) ? routeUserId : null);
   const [isAtDesk, setIsAtDesk] = useState(false);
   const [isPremium, setIsPremium] = useState(false); 
   const [isConnected, setIsConnected] = useState(true);
 
   const isEliteRoom = params.isElite === 'true';
+  const myUserId = storedUserId ?? routeUserId;
 
   const [availableSounds, setAvailableSounds] = useState(SOUNDS);
   const [isSoundOn, setIsSoundOn] = useState(false);
@@ -96,6 +107,7 @@ export default function SensorScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
+  const [onlineFriends, setOnlineFriends] = useState<Friend[]>([]);
 
   // Nudge (Dürtme) toast state'leri
   const [nudgeToast, setNudgeToast] = useState<{ message: string; senderName: string } | null>(null);
@@ -130,10 +142,19 @@ export default function SensorScreen() {
     fetchChatHistory();
   }, [roomName]);
 
+  useEffect(() => {
+    if (isFocused) {
+      fetchOnlineFriends();
+    }
+  }, [isFocused, roomName]);
+
   const checkPremiumStatus = async () => {
     const stored = await AsyncStorage.getItem('user_data');
     if (stored) {
       const parsed = JSON.parse(stored);
+      if (typeof parsed.id === 'number') {
+        setStoredUserId(parsed.id);
+      }
       setIsPremium(parsed.isPremium === true);
     }
   };
@@ -156,6 +177,20 @@ export default function SensorScreen() {
         isPremium: m.user?.isPremium || false
       })));
     } catch (e) { console.error("Geçmiş yüklenemedi"); }
+  };
+
+  const fetchOnlineFriends = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      const res = await fetch(apiUrl('/users/friends/0'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setOnlineFriends((Array.isArray(data) ? data : []).filter((friend: Friend) => friend.isOnline));
+    } catch {
+      console.log('Online arkadaşlar yüklenemedi');
+    }
   };
 
   const pickDocument = async () => {
@@ -526,8 +561,12 @@ export default function SensorScreen() {
       senderName: safeFullName,
       roomName,
     });
-    Alert.alert('👋 Dürtüldü!', `${targetName} çalışmaya çağrıldı.`);
+    Alert.alert('Davet gönderildi', `${targetName} ${roomName} odasına çağrıldı.`);
   };
+
+  const roomUserIds = new Set(roomUsers.map((u) => Number(u.userId)));
+  const inviteableFriends = onlineFriends.filter((friend) => !roomUserIds.has(Number(friend.id)));
+  const otherRoomUsers = roomUsers.filter(u => Number(u.userId) !== myUserId);
 
   const challengeDuel = (targetId: number, targetName: string) => {
     if (targetId === myUserId) return;
@@ -717,11 +756,51 @@ export default function SensorScreen() {
           </Animated.View>
         )}
 
+        {/* ONLINE ARKADAŞ DAVETLERİ */}
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>ONLINE ARKADAŞLAR ({inviteableFriends.length})</Text>
+          {inviteableFriends.length === 0 ? (
+            <View style={s.inviteEmpty}>
+              <FontAwesome5 solid name="user-clock" size={15} color={T.textMuted} />
+              <Text style={s.inviteEmptyText}>Davet edilecek çevrimiçi arkadaş yok.</Text>
+            </View>
+          ) : (
+            <View style={s.usersWrap}>
+              {inviteableFriends.map((friend) => (
+                <View key={friend.id} style={s.inviteChip}>
+                  <View>
+                    {friend.avatarUrl ? (
+                      <Image source={{ uri: assetUrl(friend.avatarUrl) ?? undefined }} style={s.userAvatar} />
+                    ) : (
+                      <View style={s.userAvatarFallback}>
+                        <Text style={s.userAvatarText}>{friend.fullName?.charAt(0).toUpperCase() || 'A'}</Text>
+                      </View>
+                    )}
+                    <View style={[s.userDot, { backgroundColor: T.success }]} />
+                  </View>
+                  <View style={s.inviteInfo}>
+                    <Text style={s.inviteName} numberOfLines={1}>{friend.fullName?.split(' ')[0] || 'Arkadaş'}</Text>
+                    <Text style={s.inviteSub} numberOfLines={1}>
+                      {friend.currentRoom ? `${friend.currentRoom} odasında` : 'Çevrimiçi'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => sendNudge(Number(friend.id), friend.fullName?.split(' ')[0] || 'Arkadaş')}
+                    style={s.inviteBtn}
+                  >
+                    <FontAwesome5 solid name="paper-plane" size={11} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* AKTİF KULLANICILAR */}
         <View style={s.section}>
-          <Text style={s.sectionLabel}>ODADAKİLER ({roomUsers.filter(u => Number(u.userId) !== myUserId).length})</Text>
+          <Text style={s.sectionLabel}>ODADAKİLER ({otherRoomUsers.length})</Text>
           <View style={s.usersWrap}>
-            {roomUsers.filter(u => Number(u.userId) !== myUserId).map((u, i) => (
+            {otherRoomUsers.map((u, i) => (
               <View key={i} style={[s.userChip, isEliteRoom && u.isAtDesk && { borderColor: T.accent, backgroundColor: T.lightAmber }]}>
                 <View>
                   {u.avatarUrl ? (
@@ -935,6 +1014,13 @@ const s = StyleSheet.create({
   userAvatarFallback: { width: 28, height: 28, borderRadius: 14, backgroundColor: T.softIndigo, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.border },
   userAvatarText: { color: T.primary, fontSize: 12, fontWeight: '900' },
   userDot: { position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: 4.5, borderWidth: 1.5, borderColor: T.surface },
+  inviteEmpty: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, borderRadius: 14, padding: 14, ...Theme.shadows.soft },
+  inviteEmptyText: { color: T.textMuted, fontSize: 13, fontWeight: '700' },
+  inviteChip: { flexDirection: 'row', alignItems: 'center', gap: 9, width: '100%', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: T.surface, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },
+  inviteInfo: { flex: 1, minWidth: 0 },
+  inviteName: { color: T.textDark, fontSize: 13, fontWeight: '800' },
+  inviteSub: { color: T.textMuted, fontSize: 11, fontWeight: '600', marginTop: 2 },
+  inviteBtn: { width: 34, height: 34, borderRadius: 12, backgroundColor: T.primary, alignItems: 'center', justifyContent: 'center' },
   nudgeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: T.lightAmber, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: T.accent },
   nudgeBtnText: { fontSize: 13 },
   nudgeToast: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: T.softIndigo, borderRadius: 18, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: T.border, ...Theme.shadows.soft },

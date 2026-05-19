@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect } from 'react';
 import { Platform, Alert } from 'react-native';
@@ -15,6 +15,14 @@ const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreCl
 
 // Notifications modülünü yalnızca Expo Go dışında yükle
 type NotificationsModule = typeof import('expo-notifications');
+type NotificationData = {
+  type?: unknown;
+  targetUserId?: unknown;
+  targetName?: unknown;
+  targetUsername?: unknown;
+  roomName?: unknown;
+};
+
 let Notifications: NotificationsModule | null = null;
 
 if (!isExpoGo) {
@@ -33,8 +41,52 @@ if (!isExpoGo) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   useEffect(() => {
+    const openNotificationTarget = (data?: NotificationData) => {
+      if (data?.type === 'room_invite' && typeof data.roomName === 'string') {
+        AsyncStorage.getItem('user_data').then((stored) => {
+          const user = stored ? JSON.parse(stored) : {};
+          router.push({
+            pathname: '/sensor',
+            params: {
+              id: user.id,
+              fullName: user.fullName,
+              score: user.totalFocusMinutes,
+              roomName: data.roomName,
+            },
+          } as any);
+        }).catch(() => {});
+        return;
+      }
+
+      if (data?.type !== 'dm' || data.targetUserId === undefined || data.targetUserId === null) {
+        return;
+      }
+
+      router.push({
+        pathname: '/dm',
+        params: {
+          targetUserId: String(data.targetUserId),
+          targetName: typeof data.targetName === 'string' ? data.targetName : 'Mesaj',
+          targetUsername: typeof data.targetUsername === 'string' ? data.targetUsername : '',
+        },
+      } as any);
+    };
+
+    const responseSub = Notifications?.addNotificationResponseReceivedListener((response) => {
+      openNotificationTarget(response.notification.request.content.data as NotificationData);
+    });
+
+    if (!isExpoGo) {
+      Notifications?.getLastNotificationResponseAsync().then((response) => {
+        if (response) {
+          openNotificationTarget(response.notification.request.content.data as NotificationData);
+        }
+      });
+    }
+
     if (!isExpoGo) {
       registerForPushNotificationsAsync().then(token => {
         if (token) {
@@ -57,11 +109,12 @@ export default function TabLayout() {
     connectGlobalSocket();
 
     return () => {
+      responseSub?.remove();
       if (globalSocket) {
         globalSocket.disconnect();
       }
     };
-  }, []);
+  }, [router]);
 
   async function saveTokenToBackend(token: string) {
     try {
