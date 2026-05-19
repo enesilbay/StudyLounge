@@ -1,28 +1,24 @@
-import axios from 'axios';
-import { useStore } from '../store/useStore';
+const DEFAULT_BACKEND_URL = 'http://127.0.0.1:3000'; // Fallback to localhost for web dev
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? DEFAULT_BACKEND_URL;
 
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+export function apiUrl(path: string): string {
+  return `${BACKEND_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
 
-api.interceptors.request.use((config) => {
-  const token = useStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+export function assetUrl(path?: string | null): string | null {
+  if (!path) {
+    return null;
   }
-  return config;
-});
 
-export const apiUrl = (path: string) => {
-  const base = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-  const p = path.startsWith('/') ? path : `/${path}`;
-  return `${base}${p}`;
-};
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
 
-export const assetUrl = (path: string) => {
-  if (!path) return null;
-  if (path.startsWith('http')) return path;
-  return apiUrl(`/uploads/${path}`);
-};
+  return apiUrl(path);
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}

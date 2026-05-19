@@ -1,0 +1,54 @@
+import React from 'react';
+import { Crown, CheckCircle2, Zap } from 'lucide-react';
+
+export default function PremiumPage() {
+  const features = [
+    'Tüm ses mikseri dosyalarına (Atmosfer) erişim',
+    'Atmosferini odadaki diğer kullanıcılarla paylaşma',
+    'Premium profil çerçeveleri ve rozetler',
+    'Sınırsız düello daveti gönderme',
+    'Özel Lobi kurabilme yetkisi',
+  ];
+
+  return (
+    <div className="pb-20 md:pb-0 max-w-3xl mx-auto">
+      <header className="mb-12 text-center">
+        <div className="inline-flex w-20 h-20 bg-lightAmber rounded-full items-center justify-center mb-6 shadow-sm">
+          <Crown className="w-10 h-10 text-accent" />
+        </div>
+        <h1 className="text-4xl font-black text-textDark mb-4">StudyLounge <span className="text-accent">Premium</span></h1>
+        <p className="text-lg text-textMuted font-medium max-w-lg mx-auto">
+          Odaklanma deneyimini en üst seviyeye taşı. Sadece sana özel sesler, rozetler ve ayrıcalıklar.
+        </p>
+      </header>
+
+      <div className="bg-white rounded-[32px] border-2 border-accent shadow-lg overflow-hidden relative">
+        <div className="absolute top-0 right-0 bg-accent text-white font-bold px-6 py-2 rounded-bl-2xl">
+          EN İYİ FİYAT
+        </div>
+        <div className="p-8 md:p-12 border-b border-border bg-gradient-to-b from-lightAmber/30 to-white">
+          <div className="flex items-end gap-2 mb-2">
+            <h2 className="text-5xl font-black text-textDark">₺49</h2>
+            <span className="text-textMuted font-bold mb-1">/aylık</span>
+          </div>
+          <p className="text-textMuted font-medium">İstediğin zaman iptal edebilirsin.</p>
+        </div>
+        
+        <div className="p-8 md:p-12">
+          <ul className="space-y-4 mb-8">
+            {features.map((feature, idx) => (
+              <li key={idx} className="flex items-center gap-4">
+                <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0" />
+                <span className="text-textDark font-bold">{feature}</span>
+              </li>
+            ))}
+          </ul>
+          
+          <button className="w-full bg-accent text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(255,193,7,0.4)] hover:bg-yellow-500 transition-colors flex items-center justify-center gap-3">
+            <Zap className="w-6 h-6" /> Premium'a Geç
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
