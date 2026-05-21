@@ -11,6 +11,7 @@ import AuthPage from './pages/AuthPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import DMPage from './pages/DMPage';
 import PremiumPage from './pages/PremiumPage';
+import SettingsPage from './pages/SettingsPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -73,6 +74,10 @@ const router = createBrowserRouter([
       {
         path: 'premium',
         element: <PremiumPage />,
+      },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
       }
     ],
   },

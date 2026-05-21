@@ -166,8 +166,8 @@ export default function ProfileScreen() {
       Alert.alert('Hata', 'E-posta ve kullanici adi bos olamaz.');
       return;
     }
-    if (newPassword && !currentPassword) {
-      Alert.alert('Hata', 'Sifre degistirmek icin mevcut sifreni yazmalisin.');
+    if (!currentPassword) {
+      Alert.alert('Hata', 'Degisiklikleri kaydetmek icin mevcut sifrenizi girmelisiniz.');
       return;
     }
 
@@ -190,9 +190,8 @@ export default function ProfileScreen() {
         body: JSON.stringify({
           email: editEmail.trim(),
           username: editUsername.trim(),
-          ...(newPassword
-            ? { currentPassword, newPassword }
-            : {}),
+          currentPassword,
+          ...(newPassword ? { newPassword } : {}),
         }),
       });
       const settingsData = await settingsRes.json();
@@ -271,7 +270,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text style={styles.name}>
-          {user.fullName} {user.isPremium ? 'PRO' : ''} {user.equippedIcon ? user.equippedIcon : ''}
+          {user.fullName} {user.equippedIcon ? user.equippedIcon : ''}
         </Text>
         <Text style={styles.username}>@{user.username || 'ogrenci'}</Text>
         <View style={[styles.premiumBadge, user.isPremium ? styles.premiumActive : styles.premiumPassive]}>

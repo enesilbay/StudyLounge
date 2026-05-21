@@ -34,10 +34,11 @@ const durationOptions = [
 ];
 
 const soundTracks = [
-  { key: 'library', name: 'Kütüphane', src: librarySound, defaultVolume: 65 },
-  { key: 'rain', name: 'Yağmur', src: rainSound, defaultVolume: 35 },
-  { key: 'nature', name: 'Doğa', src: natureSound, defaultVolume: 20 },
-  { key: 'fire', name: 'Ateş', src: fireSound, defaultVolume: 0 },
+  { key: 'forest', name: 'Orman', src: natureSound, defaultVolume: 65 },
+  { key: 'fire', name: 'Şömine', src: fireSound, defaultVolume: 35 },
+  { key: 'rain', name: 'Yağmur', src: rainSound, defaultVolume: 20 },
+  { key: 'library', name: 'Kütüphane', src: librarySound, defaultVolume: 0 },
+  { key: 'deepfocus', name: 'Derin Odak', src: natureSound, defaultVolume: 0 },
 ];
 
 type VolumeMap = Record<string, number>;
@@ -49,6 +50,7 @@ export default function FocusRoomPage() {
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
@@ -100,6 +102,10 @@ export default function FocusRoomPage() {
       ignore = true;
     };
   }, [lobby?.name]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   useEffect(() => {
     if (!lobby?.name || !user) return;
@@ -189,7 +195,7 @@ export default function FocusRoomPage() {
     return () => window.clearInterval(timer);
   }, [lobby?.name, running]);
 
-  const focusedUsers = roomUsers.filter((roomUser) => roomUser.isAtDesk);
+
 
   const startFocus = () => {
     if (!lobby?.name) return;
@@ -243,13 +249,11 @@ export default function FocusRoomPage() {
     if (!lobby?.name) return;
     setError(null);
     const formData = new FormData();
-    formData.append('file', file);
     formData.append('roomName', lobby.name);
+    formData.append('file', file);
 
     try {
-      const response = await api.post<Message>('/messages/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post<Message>('/messages/upload', formData);
       const savedMessage = unwrapData<Message>(response.data);
       setMessages((current) => (current.some((item) => messageIdentity(item) === messageIdentity(savedMessage)) ? current : [...current, savedMessage]));
       getSocket().emit('send_message', {
@@ -318,7 +322,7 @@ export default function FocusRoomPage() {
               <div className="flex items-center gap-4">
                 <IconTile icon={ShieldCheck} tone={running ? 'success' : 'primary'} />
                 <div>
-                  <h2 className="text-xl font-black text-textDark">{running ? 'Odak modu aktif' : 'Odak beklemede'}</h2>
+                  <h2 className="text-xl font-black text-textDark">{running ? 'Odaklanıyor' : 'Odak beklemede'}</h2>
                   <p className="text-base font-semibold text-textMuted">
                     Başlatınca pomodoro sayacı, oda presence durumu ve odak sesleri birlikte çalışır.
                   </p>
@@ -361,14 +365,13 @@ export default function FocusRoomPage() {
             </div>
           </Surface>
 
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5">
             <Surface className="p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <IconTile icon={Headphones} tone="accent" />
                   <h2 className="text-lg font-black text-textDark">Ses Mikseri</h2>
                 </div>
-                <Pill tone="accent">{user?.equippedSoundPack ?? 'classic'}</Pill>
               </div>
               <div className="space-y-4">
                 {soundTracks.map((sound) => (
@@ -393,18 +396,6 @@ export default function FocusRoomPage() {
                 ))}
               </div>
             </Surface>
-
-            <Surface className="p-5">
-              <div className="mb-4 flex items-center gap-3">
-                <IconTile icon={UsersRound} tone="success" />
-                <h2 className="text-lg font-black text-textDark">Oda özeti</h2>
-              </div>
-              <div className="space-y-3">
-                <Info label="Odakta" value={`${focusedUsers.length} kişi`} />
-                <Info label="Odada" value={`${roomUsers.length} kişi`} />
-                <Info label="Kapasite" value={`${lobby?.maxUsers ?? 50} kişi`} />
-              </div>
-            </Surface>
           </div>
 
           <Surface className="p-5">
@@ -413,7 +404,7 @@ export default function FocusRoomPage() {
               <h2 className="text-lg font-black text-textDark">Odadakiler</h2>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {roomUsers.map((roomUser) => (
+              {roomUsers.filter(u => u.userId !== user?.id).map((roomUser) => (
                 <div key={roomUser.userId} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar
@@ -445,7 +436,7 @@ export default function FocusRoomPage() {
           </Surface>
         </div>
 
-        <Surface className="flex min-h-[640px] flex-col overflow-hidden">
+        <Surface className="flex h-[620px] flex-col overflow-hidden">
           <div className="border-b border-border p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-black text-textDark">Oda Sohbeti</h2>
@@ -500,6 +491,7 @@ export default function FocusRoomPage() {
               );
             })}
             {messages.length === 0 ? <p className="rounded-xl bg-white p-4 text-base font-bold text-textMuted">Bu odada henüz mesaj yok.</p> : null}
+            <div ref={messagesEndRef} />
           </div>
 
           <form
@@ -554,15 +546,6 @@ function isImageMessage(message: Message) {
 function nudgeNearestUser(roomUsers: RoomUser[], currentUserId: number | undefined, nudgeUser: (targetUserId: number) => void) {
   const target = roomUsers.find((roomUser) => roomUser.userId !== currentUserId);
   if (target) nudgeUser(target.userId);
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-background p-3">
-      <p className="text-base font-black text-textDark">{value}</p>
-      <p className="text-base font-bold text-textMuted">{label}</p>
-    </div>
-  );
 }
 
 function formatDuration(totalSeconds: number) {

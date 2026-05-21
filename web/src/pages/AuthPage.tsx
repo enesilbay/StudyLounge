@@ -51,7 +51,9 @@ export default function AuthPage() {
         navigate('/app/lobbies');
       } else if (mode === 'register') {
         await registerWithCredentials({ fullName: fullName.trim(), username: username.trim(), email: email.trim(), password });
-        navigate('/app/lobbies');
+        setStatus('Kayıt başarılı! Lütfen giriş yapın.');
+        setMode('login');
+        setPassword('');
       } else if (mode === 'forgot') {
         if (!email.trim()) return setLocalError('Lütfen e-posta adresinizi girin.');
         setLocalLoading(true);
@@ -81,7 +83,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background px-6 py-4 lg:px-10">
       <header className="mx-auto mb-4 flex max-w-[1600px] items-center justify-between">
-        <BrandLockup large logoOnly />
+        <BrandLockup />
         <button onClick={() => navigate('/')} className="min-h-11 rounded-xl border border-border bg-white px-5 text-base font-black text-textDark shadow-sm transition hover:bg-softIndigo">
           Ana sayfa
         </button>
@@ -92,8 +94,8 @@ export default function AuthPage() {
           <p className="text-sm font-black uppercase tracking-wide text-primary">StudyLounge hesabı</p>
           <h1 className="mt-3 max-w-3xl text-6xl font-black leading-tight text-textDark">Aynı hesapla web ve mobile devam et.</h1>
           <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-textMuted">Lobi, profil, mağaza ve odak verileri aynı backend contractlarıyla tutulur. Giriş yaptıktan sonra web ve mobile aynı kullanıcı akışını paylaşır.</p>
-          <Surface className="mt-7 grid max-w-2xl grid-cols-[92px_minmax(0,1fr)] gap-5 p-5">
-            <img src={logo} alt="StudyLounge" className="h-24 w-24 object-contain" />
+          <Surface className="mt-7 grid max-w-2xl grid-cols-[80px_minmax(0,1fr)] gap-5 p-5">
+            <img src={logo} alt="StudyLounge" className="h-16 w-16 object-contain" />
             <div className="min-w-0">
               <p className="text-2xl font-black text-textDark">Gerçek auth akışı</p>
               <p className="mt-1 text-base font-semibold leading-7 text-textMuted">JWT, kullanıcı verisi ve şifre sıfırlama mobile ile aynı endpointleri kullanır.</p>
@@ -111,7 +113,7 @@ export default function AuthPage() {
 
         <Surface className="p-6 shadow-md md:p-7">
           <div className="mb-6 text-center">
-            <img src={logo} alt="StudyLounge" className="mx-auto h-20 w-20 object-contain" />
+            <img src={logo} alt="StudyLounge" className="mx-auto h-12 w-12 object-contain" />
             <h2 className="mt-3 text-4xl font-black text-textDark">{titleForMode(mode)}</h2>
             <p className="mt-1 text-base font-semibold text-textMuted">{subtitleForMode(mode)}</p>
           </div>

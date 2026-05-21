@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Search, Send } from 'lucide-react';
-import { Avatar, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
+import { ArrowLeft, Search, Send, UserPlus } from 'lucide-react';
+import { Avatar, PageHeader, Pill, StateBlock, Surface, ModalShell } from '../components/ui';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
-import { unwrapData } from '../lib/apiResponses';
+import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Message, User } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 
@@ -16,7 +16,35 @@ export default function DMPage() {
   const [messageText, setMessageText] = useState('');
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  
+  const [addFriendOpen, setAddFriendOpen] = useState(false);
+  const [friendUsername, setFriendUsername] = useState('');
+  const [addingFriend, setAddingFriend] = useState(false);
+  const [addFriendError, setAddFriendError] = useState<string | null>(null);
+  const [addFriendSuccess, setAddFriendSuccess] = useState<string | null>(null);
+
   const activeFriend = friends.find((friend) => friend.id === activeFriendId) ?? friends[0];
+
+  const handleAddFriend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!friendUsername.trim()) return;
+    setAddingFriend(true);
+    setAddFriendError(null);
+    setAddFriendSuccess(null);
+    try {
+      const res = await api.post('/users/friend-request', { receiverUsername: friendUsername.trim() });
+      setAddFriendSuccess(res.data?.message || 'Arkadaşlık isteği gönderildi.');
+      setFriendUsername('');
+      setTimeout(() => {
+        setAddFriendOpen(false);
+        setAddFriendSuccess(null);
+      }, 2000);
+    } catch (error) {
+      setAddFriendError(getApiErrorMessage(error));
+    } finally {
+      setAddingFriend(false);
+    }
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -108,21 +136,26 @@ export default function DMPage() {
     <div>
       <PageHeader
         eyebrow="Sosyal"
-        title="Mesajlar"
-        description="Arkadaş listesi, direkt mesaj geçmişi ve anlık mesajlaşma mobildeki socket akışıyla çalışır."
+        title="Arkadaşlarım"
+        description="Arkadaşlarını görebilir ve onlara direkt mesaj gönderebilirsin."
       />
 
       <div className="grid h-[calc(100vh-220px)] min-h-[620px] grid-cols-1 gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
         <Surface className="flex flex-col overflow-hidden">
           <div className="border-b border-border p-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Arkadaş ara"
-                className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-semibold outline-none focus:border-primary"
-              />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Arkadaş ara"
+                  className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-semibold outline-none focus:border-primary"
+                />
+              </div>
+              <button onClick={() => setAddFriendOpen(true)} className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-white hover:bg-primary/90">
+                <UserPlus className="h-5 w-5" />
+              </button>
             </div>
           </div>
 
@@ -214,6 +247,32 @@ export default function DMPage() {
           )}
         </Surface>
       </div>
+      
+      <ModalShell open={addFriendOpen} title="Arkadaş Ekle" description="Kullanıcı adını girerek arkadaşlık isteği gönder." onClose={() => setAddFriendOpen(false)}>
+        <form onSubmit={handleAddFriend} className="space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-base font-black text-textDark">Kullanıcı Adı</span>
+            <input
+              type="text"
+              value={friendUsername}
+              onChange={(e) => setFriendUsername(e.target.value)}
+              placeholder="Kullanıcı adı"
+              className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-bold outline-none"
+              required
+            />
+          </label>
+          
+          {addFriendError ? <p className="text-sm font-bold text-red-500">{addFriendError}</p> : null}
+          {addFriendSuccess ? <p className="text-sm font-bold text-green-500">{addFriendSuccess}</p> : null}
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button type="button" onClick={() => setAddFriendOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-black text-textDark">İptal</button>
+            <button disabled={addingFriend || !friendUsername.trim()} className="min-h-12 rounded-xl bg-primary text-base font-black text-white disabled:opacity-60">
+              {addingFriend ? 'Gönderiliyor' : 'İstek Gönder'}
+            </button>
+          </div>
+        </form>
+      </ModalShell>
     </div>
   );
 }

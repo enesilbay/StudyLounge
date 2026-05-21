@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Crown, LockKeyhole, Moon, Plus, Search, Sparkles, Sun, UsersRound } from 'lucide-react';
-import { Avatar, IconTile, ModalShell, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
+import { ChevronRight, Crown, LockKeyhole, Moon, Plus, Search, Sun, UsersRound } from 'lucide-react';
+import { ModalShell, Pill, StateBlock, Surface } from '../components/ui';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Lobby } from '../lib/types';
@@ -81,7 +81,7 @@ export default function LobbiesPage() {
   const eliteCount = lobbies.filter((lobby) => lobby.isPremiumOnly).length;
   const hour = new Date().getHours();
   const GreetingIcon = hour >= 18 || hour < 6 ? Moon : Sun;
-  const greeting = hour >= 18 || hour < 6 ? 'İyi akşamlar' : 'İyi çalışmalar';
+  const greeting = hour >= 18 || hour < 6 ? 'İyi Akşamlar' : 'İyi Çalışmalar';
 
   const openCreate = () => {
     if (!user?.isPremium) {
@@ -166,109 +166,126 @@ export default function LobbiesPage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Dashboard"
-        title={`${greeting}, ${user?.fullName?.split(' ')[0] ?? 'Öğrenci'}`}
-        description="Odalar, arkadaşların ve odak akışların mobile uygulamayla aynı backend contractları üzerinden yönetilir."
-        action={
-          <button onClick={openCreate} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-base font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-secondary hover:shadow-md">
-            <Plus className="h-4 w-4" />
-            Oda Kur
+      {/* Hero Banner */}
+      <div className="mb-8 relative overflow-hidden rounded-3xl bg-textDark p-8 text-white shadow-xl">
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary blur-3xl opacity-30" />
+        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-electric blur-3xl opacity-30" />
+        
+        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-3 text-primary/80">
+              <GreetingIcon className="h-6 w-6 text-primary" />
+              <span className="text-sm font-black uppercase tracking-wider">{greeting}</span>
+            </div>
+            <h1 className="text-3xl font-black md:text-4xl">
+              Çalışmaya hazır mısın, {user?.fullName?.split(' ')[0] ?? 'Öğrenci'}?
+            </h1>
+            <p className="mt-3 text-lg font-semibold text-white/70">
+              Şu an <strong className="text-white">{activeCount}</strong> öğrenci odak modunda. Hemen bir odaya katıl!
+            </p>
+          </div>
+          
+          <button onClick={openCreate} className="group relative inline-flex min-h-14 shrink-0 items-center gap-3 overflow-hidden rounded-xl bg-white px-6 font-black text-textDark transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <span className="relative z-10 flex items-center gap-2 text-base">
+              <Plus className="h-5 w-5" />
+              Yeni Oda Kur
+            </span>
           </button>
-        }
-      />
-
-      <Surface className="mb-4 overflow-hidden">
-        <div className="grid gap-4 bg-gradient-to-r from-primary via-secondary to-electric p-5 text-white md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-          <div className="flex items-center gap-4">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 text-accent">
-              <GreetingIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-black uppercase text-white/70">Bugünkü çalışma alanın</p>
-              <p className="mt-1 text-xl font-black">Odaklanmaya hazır {visibleLobbies.length} oda var.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Summary label="Oda" value={lobbies.length} />
-            <Summary label="Aktif" value={activeCount} />
-            <Summary label="Elite" value={eliteCount} />
-          </div>
         </div>
-      </Surface>
+      </div>
 
-      <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <Surface className="p-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Çalışma odası bul..." className="min-h-12 w-full rounded-xl border border-border bg-white px-4 pl-11 text-base font-semibold outline-none transition focus:border-electric focus:ring-4 focus:ring-electric/10" />
-          </div>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex w-full flex-1 gap-3 overflow-x-auto pb-2 scrollbar-hide lg:pb-0">
+          {categories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`whitespace-nowrap rounded-xl px-5 py-3 text-sm font-black transition-all ${
+                selectedCategory === category
+                  ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                  : 'bg-white text-textMuted hover:bg-background hover:text-textDark shadow-sm'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition ${
-                  selectedCategory === category ? 'border-primary bg-primary text-white shadow-sm' : 'border-border bg-white/70 text-textMuted hover:border-electric/40 hover:bg-softIndigo hover:text-primary'
-                }`}
-              >
-                {category === 'Tümü' ? <Sparkles className="h-4 w-4" /> : null}
-                {category}
-              </button>
-            ))}
-          </div>
-        </Surface>
-
-        <Surface className="p-4">
-          <div className="flex items-center gap-4">
-            <Avatar name={user?.fullName ?? 'StudyLounge'} image={user?.avatarUrl} frame={user?.equippedProfileFrame} premium={user?.isPremium} />
-            <div>
-              <p className="text-base font-black text-textDark">Bugünkü durum</p>
-              <p className="text-sm font-semibold text-textMuted">{user?.currentStreak ?? 0} günlük seri devam ediyor.</p>
-            </div>
-          </div>
+        <Surface className="flex min-w-[300px] shrink-0 items-center gap-3 rounded-2xl p-3 shadow-sm border-border">
+          <Search className="h-5 w-5 text-textMuted ml-1" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Çalışma odası ara..."
+            className="w-full bg-transparent text-base font-bold outline-none placeholder:text-textMuted"
+          />
         </Surface>
       </div>
 
       {error ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{error}</Surface> : null}
-      {isLoading ? <StateBlock loading title="Lobiler yükleniyor" description="Mobile ile aynı /lobbies endpointinden veriler alınıyor." /> : null}
+      {isLoading ? <StateBlock loading title="Odalar yükleniyor" description="En aktif çalışma odaları listeleniyor..." /> : null}
 
       {!isLoading ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           {visibleLobbies.map((lobby) => {
             const friendsInLobby = friends.filter((friend) => friend.currentRoom === lobby.name && friend.isOnline);
             return (
-              <Surface key={lobby.id} className={`p-4 transition hover:-translate-y-0.5 hover:shadow-md ${lobby.isPremiumOnly ? 'border-accent/40 bg-accent/5' : ''}`}>
-                <div className="flex items-start gap-4">
-                  <IconTile icon={lobby.isPremiumOnly ? Crown : lobby.isPrivate ? LockKeyhole : UsersRound} tone={lobby.isPremiumOnly ? 'accent' : 'primary'} />
+              <div
+                key={lobby.id}
+                className={`group relative overflow-hidden rounded-3xl border border-border bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                  lobby.isPremiumOnly ? 'border-accent/40 bg-gradient-to-br from-white to-lightAmber/30' : ''
+                }`}
+              >
+                {lobby.isPremiumOnly && (
+                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-accent/10 blur-2xl transition-all group-hover:bg-accent/20" />
+                )}
+                
+                <div className="relative z-10 flex items-start gap-4">
+                  <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${lobby.isPremiumOnly ? 'bg-lightAmber' : 'bg-softIndigo'}`}>
+                    {lobby.isPremiumOnly ? <Crown className="h-7 w-7 text-accent" /> : lobby.isPrivate ? <LockKeyhole className="h-7 w-7 text-primary" /> : <UsersRound className="h-7 w-7 text-primary" />}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-black text-textDark">{lobby.name}</h2>
+                      <h2 className="truncate text-xl font-black text-textDark">{lobby.name}</h2>
                       {lobby.isPremiumOnly ? <Pill tone="accent">Elite</Pill> : null}
-                      {lobby.isPrivate ? <Pill>Gizli</Pill> : null}
+                      {lobby.isPrivate ? <Pill tone="danger">Gizli</Pill> : null}
                     </div>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-textMuted">{lobby.description || 'Odaklanmak için hazır bir çalışma odası.'}</p>
+                    <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-textMuted">{lobby.description || 'Sessiz ve odaklanmış bir çalışma ortamı.'}</p>
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-3">
-                  <Stat value={lobby.memberCount ?? 0} label="Odada" tone="primary" />
-                  <Stat value={lobby.activeUsers ?? 0} label="Odak" tone="success" />
-                  <Stat value={lobby.maxUsers ?? 50} label="Kapasite" tone="accent" />
+                <div className="relative z-10 mt-6 grid grid-cols-3 gap-2 rounded-2xl bg-background/50 p-3">
+                  <div className="text-center">
+                    <p className="text-xl font-black text-primary">{lobby.memberCount ?? 0}</p>
+                    <p className="text-xs font-bold text-textMuted uppercase tracking-wider">Odada</p>
+                  </div>
+                  <div className="text-center border-l border-r border-border/50">
+                    <p className="text-xl font-black text-success">{lobby.activeUsers ?? 0}</p>
+                    <p className="text-xs font-bold text-textMuted uppercase tracking-wider">Odakta</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-black text-textDark">{lobby.maxUsers ?? 50}</p>
+                    <p className="text-xs font-bold text-textMuted uppercase tracking-wider">Kapasite</p>
+                  </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-black uppercase text-textMuted">{lobby.category ?? 'Genel'}</p>
-                    <p className="mt-1 truncate text-sm font-bold text-textDark">{friendsInLobby.length ? `${friendsInLobby[0].fullName.split(' ')[0]} burada` : 'Arkadaş bekleniyor'}</p>
+                <div className="relative z-10 mt-6 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`h-2 w-2 rounded-full ${friendsInLobby.length ? 'bg-success animate-pulse' : 'bg-textMuted'}`} />
+                    <p className="truncate text-sm font-bold text-textDark">
+                      {friendsInLobby.length ? (
+                        <span><span className="text-success">{friendsInLobby[0].fullName.split(' ')[0]}</span> burada</span>
+                      ) : (
+                        <span className="text-textMuted">{lobby.category ?? 'Genel'}</span>
+                      )}
+                    </p>
                   </div>
-                  <button onClick={() => enterLobby(lobby)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-base font-black text-white transition hover:bg-secondary">
-                    Gir
+                  <button onClick={() => enterLobby(lobby)} className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-textDark px-5 text-sm font-black text-white transition-all hover:bg-primary hover:shadow-lg hover:shadow-primary/30">
+                    Odaya Gir
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-              </Surface>
+              </div>
             );
           })}
         </div>
@@ -312,24 +329,7 @@ export default function LobbiesPage() {
   );
 }
 
-function Summary({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl bg-white/12 p-3 text-center backdrop-blur">
-      <p className="text-xl font-black text-white">{value}</p>
-      <p className="text-xs font-bold text-white/70">{label}</p>
-    </div>
-  );
-}
 
-function Stat({ value, label, tone }: { value: number; label: string; tone: 'primary' | 'success' | 'accent' }) {
-  const text = { primary: 'text-primary', success: 'text-success', accent: 'text-accentDark' };
-  return (
-    <div className="rounded-xl border border-border bg-background p-3">
-      <p className={`text-lg font-black ${text[tone]}`}>{value}</p>
-      <p className="text-sm font-bold text-textMuted">{label}</p>
-    </div>
-  );
-}
 
 function Input({ label, value, onChange, type = 'text', required = false, helper }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; helper?: string }) {
   return (

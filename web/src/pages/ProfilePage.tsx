@@ -20,14 +20,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const { user, login, setUser, refreshUser, logout } = useAuthStore();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editUsername, setEditUsername] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -36,12 +29,7 @@ export default function ProfilePage() {
     void refreshUser();
   }, [refreshUser]);
 
-  useEffect(() => {
-    if (!user) return;
-    setEditName(user.fullName ?? '');
-    setEditEmail(user.email ?? '');
-    setEditUsername(user.username ?? '');
-  }, [user]);
+
 
   if (!user) return <StateBlock loading title="Profil yükleniyor" />;
 
@@ -69,45 +57,7 @@ export default function ProfilePage() {
     }
   };
 
-  const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editName.trim()) {
-      setError('İsim boş olamaz.');
-      return;
-    }
-    if (!editEmail.trim() || !editUsername.trim()) {
-      setError('E-posta ve kullanıcı adı boş olamaz.');
-      return;
-    }
-    if (newPassword && !currentPassword) {
-      setError('Şifre değiştirmek için mevcut şifreni yazmalısın.');
-      return;
-    }
 
-    setIsSaving(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const profileResponse = await api.put(`/users/${user.id}/profile`, { fullName: editName.trim() });
-      const settingsResponse = await api.put('/users/me/settings', {
-        email: editEmail.trim(),
-        username: editUsername.trim(),
-        ...(newPassword ? { currentPassword, newPassword } : {}),
-      });
-      const updatedUser = { ...unwrapUser<User>(profileResponse.data), ...unwrapUser<User>(settingsResponse.data) };
-      const nextToken = settingsResponse.data?.access_token;
-      if (nextToken) login(updatedUser, nextToken);
-      else setUser(updatedUser);
-      setCurrentPassword('');
-      setNewPassword('');
-      setSettingsOpen(false);
-      setStatus('Profil ayarları güncellendi.');
-    } catch (saveError) {
-      setError(getApiErrorMessage(saveError));
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   return (
     <div>
@@ -121,7 +71,7 @@ export default function ProfilePage() {
               <Info className="h-4 w-4" />
               Puan
             </button>
-            <button onClick={() => setSettingsOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark transition hover:bg-softIndigo">
+            <button onClick={() => navigate('/app/settings')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark transition hover:bg-softIndigo">
               <Settings className="h-4 w-4" />
               Ayarlar
             </button>
@@ -214,24 +164,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <ModalShell open={settingsOpen} title="Hesap ayarları" onClose={() => setSettingsOpen(false)}>
-        <form onSubmit={saveProfile} className="space-y-4">
-          <Input label="Ad Soyad" value={editName} onChange={setEditName} required />
-          <Input label="Kullanıcı adı" value={editUsername} onChange={setEditUsername} required />
-          <Input label="E-posta" value={editEmail} onChange={setEditEmail} type="email" required />
-          <Surface className="border-accent/20 bg-accent/10 p-4">
-            <p className="text-base font-black text-textDark">Premium durumu</p>
-            <p className="mt-1 text-sm font-semibold text-textMuted">{user.isPremium ? 'Premium özellikler açık.' : 'Premium özellikler kapalı.'}</p>
-          </Surface>
-          <Input label="Mevcut şifre" value={currentPassword} onChange={setCurrentPassword} type="password" />
-          <Input label="Yeni şifre" value={newPassword} onChange={setNewPassword} type="password" />
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button type="button" onClick={() => setSettingsOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-black text-textDark">İptal</button>
-            <button disabled={isSaving} className="min-h-12 rounded-xl bg-primary text-base font-black text-white disabled:opacity-60">{isSaving ? 'Kaydediliyor' : 'Kaydet'}</button>
-          </div>
-          <button type="button" onClick={logout} className="min-h-12 w-full rounded-xl border border-danger/20 bg-softDanger text-base font-black text-danger">Çıkış Yap</button>
-        </form>
-      </ModalShell>
 
       <ModalShell open={infoOpen} title="Puan nasıl kazanılır?" description="Odak puanın çalışma odalarında masada kaldığın süreye göre artar." onClose={() => setInfoOpen(false)}>
         <div className="space-y-3">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Coins, Headphones, Paintbrush, ShoppingCart, Sparkles, UserRound } from 'lucide-react';
+import { Check, Coins, Paintbrush, ShoppingCart, Sparkles, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
 import type { ShopItem, ShopSection, User } from '../lib/types';
@@ -30,17 +30,7 @@ const sections: ShopSection[] = [
       { id: '🚀', type: 'icon', name: 'Roket', price: 400, text: '🚀' },
     ],
   },
-  {
-    title: 'Ses Paketi Skinleri',
-    icon: Headphones,
-    items: [
-      { id: 'classic', type: 'soundPack', name: 'Klasik Lounge', price: 0, text: 'CL' },
-      { id: 'rainy', type: 'soundPack', name: 'Yağmur Modu', price: 120, text: 'RM' },
-      { id: 'forest', type: 'soundPack', name: 'Orman Odası', price: 180, text: 'FO' },
-      { id: 'fireplace', type: 'soundPack', name: 'Şömine Köşesi', price: 220, text: 'FK' },
-      { id: 'deep', type: 'soundPack', name: 'Derin Odak', price: 300, text: 'DO' },
-    ],
-  },
+
   {
     title: 'Profil Çerçeveleri',
     icon: UserRound,

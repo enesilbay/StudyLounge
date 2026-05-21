@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { BarChart3, Crown, Home, LogOut, MessageCircle, ShoppingBag, Trophy, UserRound } from 'lucide-react';
+import { BarChart3, Crown, Home, LogOut, Users, ShoppingBag, Trophy, UserRound } from 'lucide-react';
 import { Avatar, BrandLockup } from '../ui';
 import { useAuthStore } from '../../store/authStore';
 
@@ -7,9 +7,8 @@ const navItems = [
   { path: '/app/lobbies', icon: Home, label: 'Lobiler' },
   { path: '/app/analytics', icon: BarChart3, label: 'Analitik' },
   { path: '/app/leaderboard', icon: Trophy, label: 'Liderlik' },
-  { path: '/app/dm', icon: MessageCircle, label: 'Mesajlar' },
+  { path: '/app/dm', icon: Users, label: 'Arkadaşlar' },
   { path: '/app/shop', icon: ShoppingBag, label: 'Mağaza' },
-  { path: '/app/premium', icon: Crown, label: 'Premium' },
   { path: '/app/profile', icon: UserRound, label: 'Profil' },
 ];
 

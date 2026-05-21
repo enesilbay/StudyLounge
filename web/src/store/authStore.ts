@@ -64,11 +64,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   registerWithCredentials: async (payload) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post<AuthEnvelope<User>>('/auth/register', payload);
-      const { user, access_token: token } = response.data;
-      localStorage.setItem('access_token', token);
-      localStorage.setItem('user_data', JSON.stringify(user));
-      set({ user, token, isAuthenticated: true, isLoading: false, error: null });
+      await api.post<AuthEnvelope<User>>('/auth/register', payload);
+      set({ isLoading: false, error: null });
     } catch (error) {
       set({ isLoading: false, error: getApiErrorMessage(error) });
       throw error;

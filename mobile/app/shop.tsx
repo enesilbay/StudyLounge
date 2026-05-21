@@ -40,14 +40,6 @@ const ICONS = [
   { id: '🚀', name: 'Roket', price: 400 },
 ];
 
-const SOUND_PACKS = [
-  { id: 'classic', name: 'Klasik Lounge', desc: 'Kütüphane, yağmur, doğa ve şömine.', price: 0, icon: 'headphones' },
-  { id: 'rainy', name: 'Yağmur Modu', desc: 'Yağmur ve sessiz kütüphane ağırlıklı.', price: 120, icon: 'cloud-rain' },
-  { id: 'forest', name: 'Orman Odası', desc: 'Doğa ve hafif yağmur atmosferi.', price: 180, icon: 'leaf' },
-  { id: 'fireplace', name: 'Şömine Köşesi', desc: 'Şömine ve sıcak kütüphane tonu.', price: 220, icon: 'fire' },
-  { id: 'deep', name: 'Derin Odak', desc: 'Daha sakin, uzun çalışma presetleri.', price: 300, icon: 'brain' },
-];
-
 const PROFILE_FRAMES = [
   { id: 'none', name: 'Çerçevesiz', desc: 'Sade profil görünümü.', price: 0, color: T.border },
   { id: 'gold', name: 'Altın Halka', desc: 'Parlak başarı çerçevesi.', price: 150, color: T.accent },
@@ -227,45 +219,6 @@ export default function ShopScreen() {
     );
   };
 
-  const renderSoundPackItem = (item: typeof SOUND_PACKS[0]) => {
-    const ownedSoundPacks = user.ownedSoundPacks || ['classic'];
-    const isOwned = item.price === 0 || ownedSoundPacks.includes(item.id);
-    const isEquipped = (user.equippedSoundPack || 'classic') === item.id;
-
-    return (
-      <SoftCard key={item.id} style={styles.itemCard}>
-        <View style={styles.itemLeft}>
-          <View style={styles.soundPreview}>
-            <FontAwesome5 solid name={item.icon} size={18} color={T.primary} />
-          </View>
-          <View style={styles.itemCopy}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemDesc}>{item.desc}</Text>
-            {!isOwned && <Text style={styles.itemPrice}>{item.price} Puan</Text>}
-            {isOwned && <Text style={styles.itemOwned}>Sahipsin</Text>}
-          </View>
-        </View>
-        <View style={styles.itemRight}>
-          {isEquipped ? (
-            <View style={styles.equippedBadge}>
-              <FontAwesome5 name="check" size={12} color="#FFF" />
-              <Text style={styles.equippedText}>Kuşanıldı</Text>
-            </View>
-          ) : isOwned ? (
-            <TouchableOpacity style={styles.equipBtn} onPress={() => handleEquip('soundPack', item.id)} disabled={processing}>
-              <Text style={styles.equipBtnText}>Kuşan</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.buyBtn} onPress={() => handleBuy('soundPack', item.id, item.price)} disabled={processing}>
-              <FontAwesome5 name="shopping-cart" size={12} color="#FFF" />
-              <Text style={styles.buyBtnText}>Al</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </SoftCard>
-    );
-  };
-
   const renderProfileFrameItem = (item: typeof PROFILE_FRAMES[0]) => {
     const ownedProfileFrames = user.ownedProfileFrames || ['none'];
     const isOwned = item.price === 0 || ownedProfileFrames.includes(item.id);
@@ -322,9 +275,6 @@ export default function ShopScreen() {
 
       <Text style={[styles.sectionTitle, { marginTop: 20 }]}>İsim Yanı İkonları</Text>
       <View style={styles.itemsList}>{ICONS.map(renderIconItem)}</View>
-
-      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Ses Paketi Skinleri</Text>
-      <View style={styles.itemsList}>{SOUND_PACKS.map(renderSoundPackItem)}</View>
 
       <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Profil Çerçeveleri</Text>
       <View style={styles.itemsList}>{PROFILE_FRAMES.map(renderProfileFrameItem)}</View>

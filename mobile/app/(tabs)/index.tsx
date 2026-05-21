@@ -133,9 +133,15 @@ export default function AuthScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
-        await AsyncStorage.setItem('access_token', data.access_token);
-        router.replace({ pathname: '/lobbies' as any, params: data.user });
+        if (!isLogin) {
+          Alert.alert('Kayıt Başarılı', 'Lütfen oluşturduğunuz hesap ile giriş yapın.');
+          switchTab(true);
+          setPassword('');
+        } else {
+          await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+          await AsyncStorage.setItem('access_token', data.access_token);
+          router.replace({ pathname: '/lobbies' as any, params: data.user });
+        }
       } else {
         const errorMsg = Array.isArray(data.message)
           ? data.message.join('\n')

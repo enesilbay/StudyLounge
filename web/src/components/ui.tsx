@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AlertCircle, Crown, Loader2 } from 'lucide-react';
 import logo from '../assets/images/logo.png';
 import type { FrameId } from '../lib/types';
@@ -12,18 +12,13 @@ const frameColors: Record<FrameId, string> = {
   cosmic: '#7C3AED',
 };
 
-export function BrandLockup({ compact = false, large = false, logoOnly = false }: { compact?: boolean; large?: boolean; logoOnly?: boolean }) {
-  const imageSize = compact ? 'h-10 w-10' : large ? 'h-56 w-56' : 'h-12 w-12';
-  const titleSize = large ? 'text-3xl' : 'text-lg';
-  const subtitleSize = large ? 'text-base' : 'text-sm';
+export function BrandLockup({ compact = false, large = false }: { compact?: boolean; large?: boolean; logoOnly?: boolean }) {
+  // We use h-auto and a specific max-height or height to let the width scale naturally since the logo contains text.
+  const imageSize = compact ? 'h-10' : large ? 'h-24 md:h-32' : 'h-16 md:h-20';
 
   return (
-    <div className={`flex items-center ${large ? 'gap-4' : 'gap-3'}`}>
-      <img src={logo} alt="StudyLounge" className={`${imageSize} object-contain`} />
-      {!logoOnly ? <div className={compact ? 'hidden sm:block' : ''}>
-        <p className={`${titleSize} font-black leading-none text-primary`}>StudyLounge</p>
-        {!compact ? <p className={`mt-1 ${subtitleSize} font-bold text-textMuted`}>Odak çalışma alanı</p> : null}
-      </div> : null}
+    <div className="flex items-center">
+      <img src={logo} alt="StudyLounge" className={`${imageSize} w-auto object-contain`} />
     </div>
   );
 }
@@ -74,6 +69,7 @@ export function Avatar({
   size?: 'sm' | 'md' | 'lg' | 'xl';
   premium?: boolean;
 }) {
+  const [imgError, setImgError] = useState(false);
   const sizes = {
     sm: 'h-11 w-11 text-base',
     md: 'h-14 w-14 text-lg',
@@ -88,7 +84,16 @@ export function Avatar({
       className={`relative grid shrink-0 place-items-center overflow-visible rounded-full bg-softIndigo font-black text-primary shadow-sm ${sizes[size]}`}
       style={{ border: `${border}px solid ${frameColors[frame] ?? frameColors.none}` }}
     >
-      {image ? <img src={image} alt={name} className="h-full w-full rounded-full object-cover" /> : initial}
+      {image && !imgError ? (
+        <img 
+          src={image} 
+          alt={name} 
+          onError={() => setImgError(true)}
+          className="h-full w-full rounded-full object-cover" 
+        />
+      ) : (
+        initial
+      )}
       {premium ? (
         <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-accent/15 text-accentDark">
           <Crown className="h-4 w-4" />
@@ -140,9 +145,10 @@ export function ModalShell({ open, title, description, children, onClose }: { op
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-primary/30 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-border bg-white p-5 shadow-xl">
-        <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-primary/30 backdrop-blur-sm">
+      <div className="flex min-h-full items-center justify-center p-4 py-10">
+        <div className="w-full max-w-lg rounded-xl border border-border bg-white p-5 shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-black text-textDark">{title}</h2>
             {description ? <p className="mt-1 text-sm font-semibold text-textMuted">{description}</p> : null}
@@ -152,6 +158,7 @@ export function ModalShell({ open, title, description, children, onClose }: { op
           </button>
         </div>
         {children}
+        </div>
       </div>
     </div>
   );
