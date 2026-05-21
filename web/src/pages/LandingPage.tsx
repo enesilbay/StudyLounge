@@ -15,7 +15,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className="w-full max-w-7xl mx-auto px-6 py-8 flex justify-between items-center z-10">
         <div className="flex items-center gap-2">
-          <Book className="text-primary w-8 h-8" />
+          <img src="/src/assets/images/logo.png" alt="StudyLounge Logo" className="h-10 object-contain drop-shadow-sm" />
           <h1 className="text-2xl font-black text-primary tracking-tight">StudyLounge</h1>
         </div>
         <button 

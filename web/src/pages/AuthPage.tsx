@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Book, LogIn, UserPlus } from 'lucide-react';
+import { LogIn, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { api } from '../lib/api';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -13,20 +14,20 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect to backend API. For now, mock login.
-    const mockToken = 'mock-jwt-token-123';
-    const mockUser = {
-      id: 1,
-      fullName: isLoginMode ? 'Demo User' : fullName,
-      email: email,
-      score: 1450,
-      isPremium: true,
-    };
-    
-    login(mockUser, mockToken);
-    navigate('/app/lobbies');
+    try {
+      if (isLoginMode) {
+        const response = await api.post('/auth/login', { email, password });
+        login(response.data.user, response.data.access_token);
+      } else {
+        const response = await api.post('/auth/register', { email, password, fullName });
+        login(response.data.user, response.data.access_token);
+      }
+      navigate('/app/lobbies');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Bir hata oluştu');
+    }
   };
 
   return (
@@ -37,9 +38,7 @@ export default function AuthPage() {
 
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl p-8 rounded-[24px] shadow-soft border border-border">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-softIndigo rounded-full flex items-center justify-center mb-4 shadow-sm">
-            <Book className="w-8 h-8 text-primary" />
-          </div>
+          <img src="/src/assets/images/logo.png" alt="StudyLounge Logo" className="h-20 mb-4 object-contain drop-shadow-md" />
           <h2 className="text-2xl font-black text-textDark">StudyLounge</h2>
           <p className="text-textMuted font-medium mt-1">
             {isLoginMode ? 'Çalışma odasına giriş yap' : 'Öğrenci topluluğuna katıl'}

@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/Layout/AppLayout';
 import LandingPage from './pages/LandingPage';

@@ -1,7 +1,5 @@
-import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Trophy, User, ShoppingBag, LogOut, Coffee, BarChart, MessageCircle, Crown } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Home, Trophy, User, ShoppingBag, LogOut, BarChart, MessageCircle, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 export default function AppLayout() {
@@ -23,10 +21,8 @@ export default function AppLayout() {
       <aside className="w-64 bg-white border-r border-border flex flex-col justify-between hidden md:flex z-20 shadow-soft">
         <div>
           <div className="h-20 flex items-center px-8 border-b border-border">
-            <h1 className="text-xl font-black text-primary flex items-center gap-2">
-              <Coffee className="w-6 h-6 text-accent" />
-              StudyLounge
-            </h1>
+            <img src="/src/assets/images/logo.png" alt="StudyLounge Logo" className="h-10 object-contain" />
+            <h1 className="text-xl font-black text-primary ml-2">StudyLounge</h1>
           </div>
           <nav className="p-4 flex flex-col gap-2 mt-4">
             {navItems.map((item) => (
@@ -48,7 +44,7 @@ export default function AppLayout() {
           </nav>
         </div>
         <div className="p-4 border-t border-border">
-          <button className="flex items-center gap-4 px-4 py-3 rounded-xl w-full text-danger hover:bg-softDanger font-bold text-sm transition-colors">
+          <button onClick={logout} className="flex items-center gap-4 px-4 py-3 rounded-xl w-full text-danger hover:bg-softDanger font-bold text-sm transition-colors">
             <LogOut className="w-5 h-5" />
             Çıkış Yap
           </button>
@@ -59,8 +55,10 @@ export default function AppLayout() {
       <main className="flex-1 relative flex flex-col bg-background h-screen overflow-y-auto">
         {/* Mobile Header (Hidden on MD+) */}
         <div className="md:hidden h-16 bg-white border-b border-border flex items-center justify-between px-4 sticky top-0 z-20">
-            <h1 className="text-lg font-black text-primary">StudyLounge</h1>
-            <Coffee className="w-5 h-5 text-accent" />
+            <div className="flex items-center">
+              <img src="/src/assets/images/logo.png" alt="StudyLounge Logo" className="h-8 object-contain" />
+              <h1 className="text-lg font-black text-primary ml-2">StudyLounge</h1>
+            </div>
         </div>
 
         <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 w-full">

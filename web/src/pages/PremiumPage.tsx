@@ -1,7 +1,29 @@
-import React from 'react';
+import { useState } from 'react';
 import { Crown, CheckCircle2, Zap } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import { api } from '../lib/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function PremiumPage() {
+  const { user, initAuth } = useAuthStore();
+  const [processing, setProcessing] = useState(false);
+  const navigate = useNavigate();
+
+  const handleUpgrade = async () => {
+    try {
+      setProcessing(true);
+      await api.post('/users/demo/upgrade');
+      await initAuth();
+      alert('Tebrikler! Artık Premium kullanıcısınız.');
+      navigate('/app/profile');
+    } catch (err) {
+      console.error(err);
+      alert('Premium işleminde hata oluştu.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const features = [
     'Tüm ses mikseri dosyalarına (Atmosfer) erişim',
     'Atmosferini odadaki diğer kullanıcılarla paylaşma',
@@ -9,6 +31,18 @@ export default function PremiumPage() {
     'Sınırsız düello daveti gönderme',
     'Özel Lobi kurabilme yetkisi',
   ];
+
+  if (user?.isPremium) {
+    return (
+      <div className="pb-20 md:pb-0 max-w-3xl mx-auto flex flex-col items-center justify-center text-center py-20">
+        <Crown className="w-24 h-24 text-accent mb-6" />
+        <h1 className="text-4xl font-black text-textDark mb-4">Sen Zaten <span className="text-accent">Premium'sun!</span></h1>
+        <p className="text-lg text-textMuted font-medium max-w-lg mx-auto">
+          StudyLounge'un tüm özelliklerine sınırsız erişimin var. Odaklanmanın tadını çıkar!
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-20 md:pb-0 max-w-3xl mx-auto">
@@ -44,8 +78,12 @@ export default function PremiumPage() {
             ))}
           </ul>
           
-          <button className="w-full bg-accent text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(255,193,7,0.4)] hover:bg-yellow-500 transition-colors flex items-center justify-center gap-3">
-            <Zap className="w-6 h-6" /> Premium'a Geç
+          <button 
+            onClick={handleUpgrade}
+            disabled={processing}
+            className="w-full bg-accent text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(255,193,7,0.4)] hover:bg-yellow-500 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            {processing ? 'İşleniyor...' : <><Zap className="w-6 h-6" /> Premium'a Geç (Demo)</>}
           </button>
         </div>
       </div>
