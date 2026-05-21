@@ -115,8 +115,9 @@ export default function SettingsPage() {
             <p className="mt-1 text-sm font-semibold text-textMuted">{user.isPremium ? 'Premium özellikler açık.' : 'Premium özellikler kapalı.'}</p>
           </Surface>
           
-          <Input label="Mevcut şifre" value={currentPassword} onChange={setCurrentPassword} type="password" />
-          <Input label="Yeni şifre" value={newPassword} onChange={setNewPassword} type="password" />
+          <Input label="Güvenlik Doğrulaması (Zorunlu)" value={currentPassword} onChange={setCurrentPassword} type="password" helper="Değişiklikleri kaydetmek için mevcut şifrenizi girmelisiniz." required />
+          <div className="pt-2"></div>
+          <Input label="Yeni Şifre (İsteğe Bağlı)" value={newPassword} onChange={setNewPassword} type="password" helper="Şifrenizi değiştirmek istemiyorsanız boş bırakın." />
           
           <div className="pt-2">
             <button disabled={isSaving} className="min-h-12 w-full rounded-xl bg-primary text-base font-black text-white disabled:opacity-60 transition hover:bg-secondary">

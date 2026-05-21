@@ -441,12 +441,13 @@ export default function ProfileScreen() {
             <Text style={styles.premiumActionText}>{user.isPremium ? 'Gor' : 'Yukselt'}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.inputLabel}>Sifre degistir</Text>
+        <Text style={styles.inputLabel}>Güvenlik Doğrulaması (Zorunlu)</Text>
         <View style={styles.inputWrap}>
-          <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Mevcut sifre" placeholderTextColor={T.textMuted} secureTextEntry />
+          <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Mevcut şifrenizi girin" placeholderTextColor={T.textMuted} secureTextEntry />
         </View>
+        <Text style={styles.inputLabel}>Yeni Şifre (İsteğe Bağlı)</Text>
         <View style={styles.inputWrap}>
-          <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="Yeni sifre" placeholderTextColor={T.textMuted} secureTextEntry />
+          <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="Şifrenizi değiştirmek istiyorsanız girin" placeholderTextColor={T.textMuted} secureTextEntry />
         </View>
         <View style={styles.sheetActions}>
           <TouchableOpacity onPress={() => setSettingsVisible(false)} style={styles.secondaryBtn}>
