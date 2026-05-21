@@ -79,3 +79,9 @@ Thumbs.db
 *.p8
 *.p12
 *.mobileprovision
+
+# Ignored markdown files
+AGENTS.md
+backend/README.md
+mobile/README.md
+web/README.md
