@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  FileTypeValidator,
   Get,
   MaxFileSizeValidator,
   Param,
@@ -17,6 +16,7 @@ import { extname } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../users/user.entity';
+import { CreateDirectMessageDto } from './dto/create-direct-message.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UploadMessageFileDto } from './dto/upload-message-file.dto';
 import { MessagesService } from './messages.service';
@@ -82,10 +82,25 @@ export class MessagesController {
   }
 
   @Get('dm/:userId')
-  async getDirectMessages(@CurrentUser() user: User, @Param('userId') targetId: string) {
-    // Mesajlar getirilirken okundu olarak işaretle
+  async getDirectMessages(
+    @CurrentUser() user: User,
+    @Param('userId') targetId: string,
+  ) {
     await this.messagesService.markAsRead(Number(targetId), user.id);
     return await this.messagesService.getDirectMessages(user.id, Number(targetId));
+  }
+
+  @Post('dm/:userId')
+  async sendDirectMessage(
+    @CurrentUser() user: User,
+    @Param('userId') targetId: string,
+    @Body() body: CreateDirectMessageDto,
+  ) {
+    return await this.messagesService.createDirectMessage(
+      user.id,
+      Number(targetId),
+      body.text,
+    );
   }
 
   @Get(':roomName')

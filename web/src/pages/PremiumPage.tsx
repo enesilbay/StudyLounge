@@ -1,91 +1,88 @@
-import { useState } from 'react';
-import { Crown, CheckCircle2, Zap } from 'lucide-react';
+import { BarChart3, CheckCircle2, Crown, FileUp, LockKeyhole, Sparkles, UsersRound, Zap } from 'lucide-react';
+import { IconTile, PageHeader, Pill, Surface } from '../components/ui';
 import { useAuthStore } from '../store/authStore';
-import { api } from '../lib/api';
-import { useNavigate } from 'react-router-dom';
+import logo from '../assets/images/logo.png';
+
+const features = [
+  { icon: Crown, title: 'Elite odalar', text: 'Premium odalarda gelişmiş çalışma alanlarına eriş.' },
+  { icon: BarChart3, title: 'Detaylı analitik', text: 'Haftalık grafikler ve verimli saatlerini gör.' },
+  { icon: UsersRound, title: 'Daha iyi grup yönetimi', text: 'Gizli odalarda daha fazla kişiyle çalış.' },
+  { icon: FileUp, title: 'Paylaşım araçları', text: 'PDF ve görselleri çalışma odalarında düzenli paylaş.' },
+];
 
 export default function PremiumPage() {
-  const { user, initAuth } = useAuthStore();
-  const [processing, setProcessing] = useState(false);
-  const navigate = useNavigate();
-
-  const handleUpgrade = async () => {
-    try {
-      setProcessing(true);
-      await api.post('/users/demo/upgrade');
-      await initAuth();
-      alert('Tebrikler! Artık Premium kullanıcısınız.');
-      navigate('/app/profile');
-    } catch (err) {
-      console.error(err);
-      alert('Premium işleminde hata oluştu.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const features = [
-    'Tüm ses mikseri dosyalarına (Atmosfer) erişim',
-    'Atmosferini odadaki diğer kullanıcılarla paylaşma',
-    'Premium profil çerçeveleri ve rozetler',
-    'Sınırsız düello daveti gönderme',
-    'Özel Lobi kurabilme yetkisi',
-  ];
-
-  if (user?.isPremium) {
-    return (
-      <div className="pb-20 md:pb-0 max-w-3xl mx-auto flex flex-col items-center justify-center text-center py-20">
-        <Crown className="w-24 h-24 text-accent mb-6" />
-        <h1 className="text-4xl font-black text-textDark mb-4">Sen Zaten <span className="text-accent">Premium'sun!</span></h1>
-        <p className="text-lg text-textMuted font-medium max-w-lg mx-auto">
-          StudyLounge'un tüm özelliklerine sınırsız erişimin var. Odaklanmanın tadını çıkar!
-        </p>
-      </div>
-    );
-  }
+  const user = useAuthStore((state) => state.user);
 
   return (
-    <div className="pb-20 md:pb-0 max-w-3xl mx-auto">
-      <header className="mb-12 text-center">
-        <div className="inline-flex w-20 h-20 bg-lightAmber rounded-full items-center justify-center mb-6 shadow-sm">
-          <Crown className="w-10 h-10 text-accent" />
-        </div>
-        <h1 className="text-4xl font-black text-textDark mb-4">StudyLounge <span className="text-accent">Premium</span></h1>
-        <p className="text-lg text-textMuted font-medium max-w-lg mx-auto">
-          Odaklanma deneyimini en üst seviyeye taşı. Sadece sana özel sesler, rozetler ve ayrıcalıklar.
-        </p>
-      </header>
+    <div>
+      <PageHeader
+        eyebrow="Premium"
+        title="StudyLounge Premium"
+        description="PRO deneyimi web üzerinde avantaj kartları ve hesap durumuna göre gösterilir."
+        action={<Pill tone={user?.isPremium ? 'success' : 'accent'}>{user?.isPremium ? 'Premium aktif' : 'Yükseltilebilir'}</Pill>}
+      />
 
-      <div className="bg-white rounded-[32px] border-2 border-accent shadow-lg overflow-hidden relative">
-        <div className="absolute top-0 right-0 bg-accent text-white font-bold px-6 py-2 rounded-bl-2xl">
-          EN İYİ FİYAT
-        </div>
-        <div className="p-8 md:p-12 border-b border-border bg-gradient-to-b from-lightAmber/30 to-white">
-          <div className="flex items-end gap-2 mb-2">
-            <h2 className="text-5xl font-black text-textDark">₺49</h2>
-            <span className="text-textMuted font-bold mb-1">/aylık</span>
-          </div>
-          <p className="text-textMuted font-medium">İstediğin zaman iptal edebilirsin.</p>
-        </div>
-        
-        <div className="p-8 md:p-12">
-          <ul className="space-y-4 mb-8">
-            {features.map((feature, idx) => (
-              <li key={idx} className="flex items-center gap-4">
-                <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0" />
-                <span className="text-textDark font-bold">{feature}</span>
-              </li>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="space-y-5">
+          <Surface className="overflow-hidden">
+            <div className="grid grid-cols-1 gap-6 p-7 md:grid-cols-[160px_minmax(0,1fr)] md:items-center">
+              <div className="grid h-36 w-36 place-items-center rounded-3xl bg-lightAmber">
+                <img src={logo} alt="StudyLounge Premium" className="h-24 w-24 object-contain" />
+              </div>
+              <div>
+                <Pill tone="accent">Elite çalışma paketi</Pill>
+                <h2 className="mt-4 text-4xl font-black text-textDark">Odak oturumlarını daha güçlü yönet.</h2>
+                <p className="mt-3 text-base font-semibold leading-6 text-textMuted">
+                  Elite odalar, analitik, ses paketleri, profil çerçeveleri ve özel oda yönetimi tek pakette.
+                </p>
+              </div>
+            </div>
+          </Surface>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {features.map((feature) => (
+              <Surface key={feature.title} className="p-5">
+                <IconTile icon={feature.icon} tone="accent" />
+                <h3 className="mt-4 text-lg font-black text-textDark">{feature.title}</h3>
+                <p className="mt-2 text-base font-semibold leading-6 text-textMuted">{feature.text}</p>
+              </Surface>
             ))}
-          </ul>
-          
-          <button 
-            onClick={handleUpgrade}
-            disabled={processing}
-            className="w-full bg-accent text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(255,193,7,0.4)] hover:bg-yellow-500 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
-          >
-            {processing ? 'İşleniyor...' : <><Zap className="w-6 h-6" /> Premium'a Geç (Demo)</>}
-          </button>
+          </div>
         </div>
+
+        <Surface className="p-6">
+          <div className="flex items-center justify-between">
+            <IconTile icon={Sparkles} tone="accent" />
+            <Pill tone={user?.isPremium ? 'success' : 'accent'}>{user?.isPremium ? 'Hesabında aktif' : 'Hazır'}</Pill>
+          </div>
+          <div className="mt-6">
+            <p className="text-base font-black uppercase text-textMuted">Premium plan</p>
+            <div className="mt-2 flex items-end gap-2">
+              <span className="text-5xl font-black text-textDark">₺49</span>
+              <span className="pb-2 text-base font-bold text-textMuted">/ay</span>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {['Elite oda erişimi', 'Premium profil çerçeveleri', 'Ses mikseri presetleri', 'Detaylı haftalık analiz'].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-success" />
+                <p className="text-base font-bold text-textDark">{item}</p>
+              </div>
+            ))}
+          </div>
+
+          <button disabled className="mt-7 flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-accent px-5 text-base font-black text-white opacity-70">
+            <Zap className="h-4 w-4" />
+            Ödeme entegrasyonu bekleniyor
+          </button>
+          <div className="mt-4 flex items-start gap-3 rounded-xl bg-background p-4">
+            <LockKeyhole className="mt-0.5 h-4 w-4 text-textMuted" />
+            <p className="text-base font-semibold leading-5 text-textMuted">
+              Bu ekran gerçek hesap durumunu okur; ödeme sağlayıcısı bağlandığında yükseltme akışı buradan tamamlanacak.
+            </p>
+          </div>
+        </Surface>
       </div>
     </div>
   );

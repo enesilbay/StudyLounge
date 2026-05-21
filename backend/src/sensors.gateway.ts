@@ -294,7 +294,7 @@ export class SensorsGateway
   }
 
   @SubscribeMessage('send_message')
-  handleSendMessage(
+  async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: SendMessageDto | string,
   ) {
@@ -310,9 +310,19 @@ export class SensorsGateway
 
     console.log(`[Chat - ${data.roomName}] ${fullName}: ${data.text}`);
 
+    const savedMessage = data.fileUrl
+      ? null
+      : await this.messagesService.createMessage(
+          data.text,
+          data.roomName,
+          socketUser.sub,
+        );
+
     this.server.to(data.roomName).emit('receive_message', {
+      id: savedMessage?.id,
       userId: socketUser.sub,
       fullName,
+      user: savedMessage?.user,
       avatarUrl: connectedUser?.avatarUrl,
       equippedProfileFrame: connectedUser?.equippedProfileFrame,
       equippedBubbleColor: connectedUser?.equippedBubbleColor,
@@ -321,7 +331,8 @@ export class SensorsGateway
       type: data.type,
       fileUrl: data.fileUrl,
       isPremium: connectedUser?.isPremium ?? false,
-      timestamp: new Date().toISOString(),
+      createdAt: savedMessage?.createdAt ?? new Date().toISOString(),
+      timestamp: savedMessage?.createdAt ?? new Date().toISOString(),
     });
   }
 

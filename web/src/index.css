@@ -3,8 +3,11 @@
 @theme {
   --color-primary: #1A237E;
   --color-secondary: #303F9F;
-  --color-softIndigo: #E8EAF6;
+  --color-electric: #2563EB;
+  --color-violet: #7C3AED;
+  --color-softIndigo: #EEF2FF;
   --color-accent: #FFC107;
+  --color-accentDark: #B7791F;
   --color-lightAmber: #FFF8E1;
   --color-success: #2E7D32;
   --color-softSuccess: #E8F5E9;
@@ -12,17 +15,38 @@
   --color-softInfo: #E1F5FE;
   --color-danger: #D32F2F;
   --color-softDanger: #FFEBEE;
-  --color-background: #F8FAFC;
+  --color-background: #F3F6FB;
   --color-surface: #FFFFFF;
   --color-screenOff: #000000;
-  --color-border: #E5E7EB;
+  --color-border: #DDE3EE;
   --color-textDark: #1F2937;
   --color-textMuted: #6B7280;
   --font-montserrat: "Montserrat", sans-serif;
 }
 
 @layer base {
+  html {
+    font-size: 16px;
+  }
+
   body {
     @apply font-montserrat bg-background text-textDark antialiased;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font-size: 1rem;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #6B7280;
+    opacity: 0.82;
+  }
+
+  * {
+    box-sizing: border-box;
   }
 }

@@ -1,470 +1,577 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, CheckCircle, Clock, Play, Pause, Settings, Focus, AlertCircle, MessageSquare, Send, Volume2, Paperclip, FileText, Download } from 'lucide-react';
-import { getSocket, disconnectSocket } from '../lib/socket';
-import { useAuthStore } from '../store/authStore';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Bell,
+  FileImage,
+  FileText,
+  Headphones,
+  Pause,
+  Play,
+  Send,
+  ShieldCheck,
+  Swords,
+  TimerReset,
+  UsersRound,
+  Volume2,
+} from 'lucide-react';
+import { Avatar, IconTile, PageHeader, Pill, Surface } from '../components/ui';
 import { api, assetUrl } from '../lib/api';
-import AvatarWithFrame from '../components/UI/AvatarWithFrame';
+import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
+import { getSocket } from '../lib/socket';
+import type { DuelRequest, DuelResult, Lobby, Message, RoomUser } from '../lib/types';
+import { useAuthStore } from '../store/authStore';
+import fireSound from '../assets/sounds/fire.mp3';
+import librarySound from '../assets/sounds/library.mp3';
+import natureSound from '../assets/sounds/nature.mp3';
+import rainSound from '../assets/sounds/rain.mp3';
 
-interface ChatMessage {
-  id: number;
-  text: string;
-  user?: {
-    id: number;
-    fullName: string;
-    avatarUrl?: string;
-    activeProfileFrame?: string;
-    isPremium?: boolean;
-  };
-  fileUrl?: string;
-  fileName?: string;
-  type?: string;
-  createdAt: string;
-  // Socket'ten gelen ham veri:
-  fullName?: string;
-  senderName?: string;
-  isPremium?: boolean;
-}
+const durationOptions = [
+  { label: '15 dk', seconds: 15 * 60 },
+  { label: '25 dk', seconds: 25 * 60 },
+  { label: '45 dk', seconds: 45 * 60 },
+  { label: '60 dk', seconds: 60 * 60 },
+];
+
+const soundTracks = [
+  { key: 'library', name: 'Kütüphane', src: librarySound, defaultVolume: 65 },
+  { key: 'rain', name: 'Yağmur', src: rainSound, defaultVolume: 35 },
+  { key: 'nature', name: 'Doğa', src: natureSound, defaultVolume: 20 },
+  { key: 'fire', name: 'Ateş', src: fireSound, defaultVolume: 0 },
+];
+
+type VolumeMap = Record<string, number>;
 
 export default function FocusRoomPage() {
-  const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { roomId } = useParams();
+  const user = useAuthStore((state) => state.user);
+  const refreshUser = useAuthStore((state) => state.refreshUser);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
-  // Core Focus States
-  const [isFocused, setIsFocused] = useState(false);
-  const [pomodoroSec, setPomodoroSec] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [warning, setWarning] = useState('');
+  const [lobbies, setLobbies] = useState<Lobby[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [roomUsers, setRoomUsers] = useState<RoomUser[]>([]);
+  const [running, setRunning] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(25 * 60);
+  const [remainingSeconds, setRemainingSeconds] = useState(25 * 60);
+  const [volumes, setVolumes] = useState<VolumeMap>(() =>
+    Object.fromEntries(soundTracks.map((track) => [track.key, track.defaultVolume])),
+  );
+  const [chatText, setChatText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [pendingDuel, setPendingDuel] = useState<DuelRequest | null>(null);
+  const [activeDuel, setActiveDuel] = useState<string | null>(null);
 
-  // Socket & Chat States
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Audio Mixer States
-  const [volumes, setVolumes] = useState({ rain: 0, library: 0, fire: 0 });
-  const audioRefs = {
-    rain: useRef<HTMLAudioElement | null>(null),
-    library: useRef<HTMLAudioElement | null>(null),
-    fire: useRef<HTMLAudioElement | null>(null),
-  };
-
-  const timerRef = useRef<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
   useEffect(() => {
-    if (isChatOpen) {
-      scrollToBottom();
-    }
-  }, [messages, isChatOpen]);
-
-  // Fetch chat history
-  useEffect(() => {
-    const fetchHistory = async () => {
+    let ignore = false;
+    async function loadLobbies() {
       try {
-        const res = await api.get(`/messages/${roomId}`);
-        setMessages(res.data);
-      } catch (err) {
-        console.error('Mesaj gecmisi alinamadi', err);
+        const response = await api.get<Lobby[]>('/lobbies');
+        if (!ignore) setLobbies(unwrapData<Lobby[]>(response.data));
+      } catch {
+        if (!ignore) setLobbies([]);
       }
+    }
+    void loadLobbies();
+    return () => {
+      ignore = true;
     };
-    fetchHistory();
-  }, [roomId]);
+  }, []);
 
-  // Initialize Socket
+  const lobby = useMemo(() => lobbies.find((item) => String(item.id) === String(roomId)), [lobbies, roomId]);
+
   useEffect(() => {
-    const socket = getSocket();
-    
-    socket.emit('join_lobby', { roomName: roomId, fullName: user?.fullName || 'Anonim' });
-
-    socket.on('receive_message', (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-    socket.on('nudge_received', (data) => alert(`${data.senderName} seni dürtüyor!`));
-    socket.on('duel_received', (data) => {
-      if (window.confirm(`${data.challengerName} sana ${data.betAmount} puanlık düello teklif etti! Kabul ediyor musun?`)) {
-        socket.emit('accept_duel', { duelId: data.duelId });
+    let ignore = false;
+    async function loadMessages() {
+      if (!lobby?.name) return;
+      try {
+        const response = await api.get<Message[]>(`/messages/${encodeURIComponent(lobby.name)}`);
+        if (!ignore) setMessages(unwrapData<Message[]>(response.data));
+      } catch {
+        if (!ignore) setMessages([]);
       }
-    });
+    }
+    void loadMessages();
+    return () => {
+      ignore = true;
+    };
+  }, [lobby?.name]);
+
+  useEffect(() => {
+    if (!lobby?.name || !user) return;
+
+    const socket = getSocket();
+    const roomName = lobby.name;
+
+    const handleRoomUsers = (users: RoomUser[]) => setRoomUsers(users);
+    const handleReceiveMessage = (message: Message) => {
+      setMessages((current) => {
+        const normalized = normalizeSocketMessage(message, roomName);
+        const exists = current.some((item) => messageIdentity(item) === messageIdentity(normalized));
+        return exists ? current : [...current, normalized];
+      });
+    };
+    const handleNudge = (payload: { senderName: string; message?: string }) => {
+      setNotice(payload.message ?? `${payload.senderName} seni çalışmaya davet ediyor.`);
+    };
+    const handleDuelReceived = (payload: DuelRequest) => setPendingDuel(payload);
+    const handleDuelStarted = (payload: { opponentName?: string; betAmount: number }) => {
+      setPendingDuel(null);
+      setActiveDuel(`${payload.opponentName ?? 'Rakip'} ile ${payload.betAmount} puanlık düello başladı.`);
+      void refreshUser();
+    };
+    const handleDuelEnded = (payload: DuelResult) => {
+      setActiveDuel(null);
+      setNotice(payload.winner ? `Düelloyu kazandın. ${payload.betAmount * 2} puan kasana eklendi.` : `Düelloyu kaybettin. ${payload.opponentName ?? 'Rakibin'} kazandı.`);
+      void refreshUser();
+    };
+    const handleSocketError = (payload: { message?: string }) => {
+      setError(payload.message ?? 'Socket işlemi tamamlanamadı.');
+    };
+    const handleJoinError = (payload: { message?: string }) => {
+      setError(payload.message ?? 'Odaya katılım reddedildi.');
+    };
+
+    socket.emit('join_lobby', { roomName, maxUsers: lobby.maxUsers });
+    socket.on('room_users', handleRoomUsers);
+    socket.on('receive_message', handleReceiveMessage);
+    socket.on('nudge_received', handleNudge);
+    socket.on('duel_received', handleDuelReceived);
+    socket.on('duel_started', handleDuelStarted);
+    socket.on('duel_ended', handleDuelEnded);
+    socket.on('error', handleSocketError);
+    socket.on('join_lobby_error', handleJoinError);
 
     return () => {
-      disconnectSocket();
+      socket.emit('update_presence', { isAtDesk: false, roomName });
+      socket.off('room_users', handleRoomUsers);
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('nudge_received', handleNudge);
+      socket.off('duel_received', handleDuelReceived);
+      socket.off('duel_started', handleDuelStarted);
+      socket.off('duel_ended', handleDuelEnded);
+      socket.off('error', handleSocketError);
+      socket.off('join_lobby_error', handleJoinError);
+      pauseAmbient();
     };
-  }, [roomId, user]);
+  }, [lobby?.maxUsers, lobby?.name, refreshUser, user]);
 
-  // Tab change detection (Sensor logic)
   useEffect(() => {
-    const socket = getSocket();
+    soundTracks.forEach((track) => {
+      const audio = audioRefs.current[track.key];
+      if (!audio) return;
+      audio.loop = true;
+      audio.volume = Math.max(0, Math.min(1, (volumes[track.key] ?? 0) / 100));
+    });
+  }, [volumes]);
 
-    const handleVisibilityChange = () => {
-      if (document.hidden && isFocused) {
-        setIsFocused(false);
-        setIsRunning(false);
-        setWarning('Başka bir sekmeye geçtiğin için odaklanman bozuldu!');
-        socket.emit('update_presence', { isAtDesk: false, roomName: roomId });
-      }
-    };
-
-    const handleBlur = () => {
-      if (isFocused) {
-        setIsFocused(false);
-        setIsRunning(false);
-        setWarning('Pencere odağını kaybettiğin için odaklanman bozuldu!');
-        socket.emit('update_presence', { isAtDesk: false, roomName: roomId });
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [isFocused, roomId]);
-
-  // Pomodoro logic
   useEffect(() => {
-    if (isRunning && isFocused) {
-      timerRef.current = window.setInterval(() => {
-        setPomodoroSec((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            setIsRunning(false);
-            setIsFocused(false);
-            return 0;
+    if (!running) return;
+    const timer = window.setInterval(() => {
+      setRemainingSeconds((current) => {
+        if (current <= 1) {
+          if (lobby?.name) {
+            getSocket().emit('update_presence', { isAtDesk: false, roomName: lobby.name });
           }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRunning, isFocused]);
-
-  // Audio Sync
-  useEffect(() => {
-    const shouldPlay = isFocused && isRunning;
-    Object.entries(volumes).forEach(([key, vol]) => {
-      const audio = audioRefs[key as keyof typeof audioRefs].current;
-      if (audio) {
-        audio.volume = vol;
-        if (shouldPlay && vol > 0) {
-          audio.play().catch(() => {});
-        } else {
-          audio.pause();
+          setRunning(false);
+          pauseAmbient();
+          setNotice('Pomodoro tamamlandı.');
+          return 0;
         }
-      }
-    });
-  }, [isFocused, isRunning, volumes]);
+        return current - 1;
+      });
+    }, 1000);
 
-  const toggleFocus = () => {
-    const socket = getSocket();
-    if (!isFocused) {
-      setWarning('');
-      setIsFocused(true);
-      setIsRunning(true);
-      socket.emit('update_presence', { isAtDesk: true, roomName: roomId });
-    } else {
-      setIsFocused(false);
-      setIsRunning(false);
-      socket.emit('update_presence', { isAtDesk: false, roomName: roomId });
+    return () => window.clearInterval(timer);
+  }, [lobby?.name, running]);
+
+  const focusedUsers = roomUsers.filter((roomUser) => roomUser.isAtDesk);
+
+  const startFocus = () => {
+    if (!lobby?.name) return;
+    setError(null);
+    if (remainingSeconds <= 0) {
+      setRemainingSeconds(selectedDuration);
+    }
+    playAmbient();
+    setRunning(true);
+    getSocket().emit('update_presence', { isAtDesk: true, roomName: lobby.name });
+  };
+
+  const stopFocus = () => {
+    if (!lobby?.name) return;
+    setRunning(false);
+    pauseAmbient();
+    getSocket().emit('update_presence', { isAtDesk: false, roomName: lobby.name });
+  };
+
+  const selectDuration = (seconds: number) => {
+    setSelectedDuration(seconds);
+    setRemainingSeconds(seconds);
+    if (running && lobby?.name) {
+      setRunning(false);
+      pauseAmbient();
+      getSocket().emit('update_presence', { isAtDesk: false, roomName: lobby.name });
     }
   };
 
-  const sendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
-    
-    getSocket().emit('send_message', { 
-      fullName: user?.fullName, 
-      roomName: roomId, 
-      text: inputText,
-      isPremium: user?.isPremium,
-      user: user // socket payload
+  const playAmbient = () => {
+    soundTracks.forEach((track) => {
+      const audio = audioRefs.current[track.key];
+      if (!audio || (volumes[track.key] ?? 0) <= 0) return;
+      audio.play().catch(() => {
+        setError('Tarayıcı sesi başlatamadı. Bir kez daha Başlat düğmesine basmayı dene.');
+      });
     });
-    setInputText('');
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Dosya boyutu 5MB altında olmalıdır.');
-      return;
-    }
+  const pauseAmbient = () => {
+    Object.values(audioRefs.current).forEach((audio) => audio?.pause());
+  };
 
+  const handleSend = () => {
+    if (!chatText.trim() || !lobby?.name) return;
+    getSocket().emit('send_message', { roomName: lobby.name, text: chatText.trim(), type: 'text' });
+    setChatText('');
+  };
+
+  const uploadFile = async (file: File, type: 'file' | 'image') => {
+    if (!lobby?.name) return;
+    setError(null);
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('roomName', roomId || '');
+    formData.append('roomName', lobby.name);
 
     try {
-      setIsUploading(true);
-      await api.post('/messages/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await api.post<Message>('/messages/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      // The backend creates the message and probably broadcasts it, or we may need to reload
-      // But typically backend's message service should broadcast the new message. Wait, let's assume it broadcasts.
-      // If not, we can trigger a refetch, but let's rely on socket for now.
-    } catch (error) {
-      console.error(error);
-      alert('Dosya yüklenirken hata oluştu.');
+      const savedMessage = unwrapData<Message>(response.data);
+      setMessages((current) => (current.some((item) => messageIdentity(item) === messageIdentity(savedMessage)) ? current : [...current, savedMessage]));
+      getSocket().emit('send_message', {
+        roomName: lobby.name,
+        text: savedMessage.text,
+        type: savedMessage.type ?? type,
+        fileUrl: savedMessage.fileUrl,
+      });
+      setNotice(type === 'image' ? 'Fotoğraf odaya eklendi.' : 'Dosya odaya eklendi.');
+    } catch (uploadError) {
+      setError(getApiErrorMessage(uploadError));
     } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (type === 'image' && imageInputRef.current) imageInputRef.current.value = '';
+      if (type === 'file' && fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const pad = (n: number) => String(n).padStart(2, '0');
+  const nudgeUser = (targetUserId: number) => {
+    if (!lobby?.name) return;
+    getSocket().emit('nudge_friend', { targetUserId, roomName: lobby.name });
+    setNotice('Çalışma daveti gönderildi.');
+  };
+
+  const challengeUser = (targetUserId: number) => {
+    if (!lobby?.name) return;
+    getSocket().emit('challenge_duel', { targetUserId, roomName: lobby.name, betAmount: 10 });
+  };
+
+  const acceptDuel = () => {
+    if (!pendingDuel) return;
+    getSocket().emit('accept_duel', { duelId: pendingDuel.duelId });
+  };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-6 overflow-hidden pb-10">
-      
-      {/* Hidden Audio Elements */}
-      <audio ref={audioRefs.rain} loop src="https://cdn.freesound.org/previews/531/531947_10915663-lq.mp3" />
-      <audio ref={audioRefs.library} loop src="https://cdn.freesound.org/previews/415/415516_5121236-lq.mp3" />
-      <audio ref={audioRefs.fire} loop src="https://cdn.freesound.org/previews/411/411088_5121236-lq.mp3" />
-
-      {/* Main Focus Area */}
-      <div className="flex-1 flex flex-col max-w-3xl mx-auto overflow-y-auto pr-2 pb-20">
-        <header className="flex items-center justify-between mb-8">
-          <button 
-            onClick={() => navigate('/app/lobbies')}
-            className="w-10 h-10 rounded-full bg-white border border-border flex items-center justify-center hover:bg-gray-50 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5 text-textDark" />
+    <div>
+      <PageHeader
+        eyebrow={lobby?.isPremiumOnly ? 'Elite oda' : 'Odak odası'}
+        title={lobby?.name ?? 'Çalışma Odası'}
+        description={lobby?.description ?? 'Oda bilgileri backend üzerinden yükleniyor.'}
+        action={
+          <button onClick={() => navigate('/app/lobbies')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark">
+            <ArrowLeft className="h-4 w-4" />
+            Lobiler
           </button>
-          <div className="text-center">
-            <span className="text-xs font-bold text-accent bg-lightAmber px-2 py-1 rounded-md">ODAK ODASI</span>
-            <h1 className="text-xl font-black text-textDark mt-1">{roomId}</h1>
-          </div>
-          <button 
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            className="w-10 h-10 rounded-full bg-softIndigo border border-primary/20 flex items-center justify-center text-primary relative md:hidden"
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-danger rounded-full" />
+        }
+      />
+
+      {error ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{error}</Surface> : null}
+      {notice ? <Surface className="mb-4 p-4 text-base font-bold text-primary">{notice}</Surface> : null}
+      {pendingDuel ? (
+        <Surface className="mb-4 flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+          <p className="text-base font-bold text-textDark">
+            {pendingDuel.challengerName} seni {pendingDuel.betAmount} puanlık düelloya çağırdı.
+          </p>
+          <button onClick={acceptDuel} className="rounded-xl bg-danger px-4 py-2 text-base font-black text-white">
+            Kabul Et
           </button>
-        </header>
+        </Surface>
+      ) : null}
+      {activeDuel ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{activeDuel}</Surface> : null}
 
-        {warning && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-softDanger border border-danger text-danger p-4 rounded-xl mb-6 flex items-center gap-3 font-bold shadow-sm"
-          >
-            <AlertCircle className="w-5 h-5" />
-            {warning}
-          </motion.div>
-        )}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="space-y-5">
+          <Surface className={`p-5 ${running ? 'border-success bg-softSuccess' : ''}`}>
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <IconTile icon={ShieldCheck} tone={running ? 'success' : 'primary'} />
+                <div>
+                  <h2 className="text-xl font-black text-textDark">{running ? 'Odak modu aktif' : 'Odak beklemede'}</h2>
+                  <p className="text-base font-semibold text-textMuted">
+                    Başlatınca pomodoro sayacı, oda presence durumu ve odak sesleri birlikte çalışır.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={running ? stopFocus : startFocus}
+                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-black text-white ${
+                  running ? 'bg-danger hover:bg-danger/90' : 'bg-primary hover:bg-secondary'
+                }`}
+              >
+                {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {running ? 'Durdur' : 'Başlat'}
+              </button>
+            </div>
+          </Surface>
 
-        <div className={`p-6 rounded-[24px] border-2 transition-all duration-300 flex items-center gap-5 mb-8 ${
-          isFocused ? 'bg-softSuccess border-success' : 'bg-white border-border shadow-sm'
-        }`}>
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
-            isFocused ? 'bg-success text-white' : 'bg-gray-100 text-textMuted'
-          }`}>
-            {isFocused ? <CheckCircle className="w-7 h-7" /> : <Clock className="w-7 h-7" />}
+          <Surface className="p-7">
+            <div className="flex flex-col items-center text-center">
+              <Pill tone="primary">
+                <TimerReset className="h-3 w-3" />
+                Pomodoro
+              </Pill>
+              <div className="mt-7 grid h-64 w-64 place-items-center rounded-full border-8 border-primary bg-background shadow-sm">
+                <span className="font-mono text-6xl font-black text-textDark">{formatDuration(remainingSeconds)}</span>
+              </div>
+              <div className="mt-7 flex flex-wrap justify-center gap-3">
+                {durationOptions.map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={() => selectDuration(item.seconds)}
+                    className={`rounded-xl border px-4 py-2 text-base font-black ${
+                      selectedDuration === item.seconds ? 'border-primary bg-softIndigo text-primary' : 'border-border bg-white text-textMuted hover:bg-softIndigo hover:text-primary'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Surface>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <Surface className="p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <IconTile icon={Headphones} tone="accent" />
+                  <h2 className="text-lg font-black text-textDark">Ses Mikseri</h2>
+                </div>
+                <Pill tone="accent">{user?.equippedSoundPack ?? 'classic'}</Pill>
+              </div>
+              <div className="space-y-4">
+                {soundTracks.map((sound) => (
+                  <div key={sound.key}>
+                    <audio ref={(element) => { audioRefs.current[sound.key] = element; }} src={sound.src} preload="auto" loop />
+                    <div className="mb-2 flex justify-between text-base font-bold">
+                      <span className="flex items-center gap-2 text-textDark">
+                        <Volume2 className="h-4 w-4 text-primary" />
+                        {sound.name}
+                      </span>
+                      <span className="text-textMuted">{volumes[sound.key] ?? 0}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={volumes[sound.key] ?? 0}
+                      onChange={(event) => setVolumes((current) => ({ ...current, [sound.key]: Number(event.target.value) }))}
+                      className="h-2 w-full accent-primary"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Surface>
+
+            <Surface className="p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <IconTile icon={UsersRound} tone="success" />
+                <h2 className="text-lg font-black text-textDark">Oda özeti</h2>
+              </div>
+              <div className="space-y-3">
+                <Info label="Odakta" value={`${focusedUsers.length} kişi`} />
+                <Info label="Odada" value={`${roomUsers.length} kişi`} />
+                <Info label="Kapasite" value={`${lobby?.maxUsers ?? 50} kişi`} />
+              </div>
+            </Surface>
           </div>
-          <div>
-            <h2 className={`text-xl font-black ${isFocused ? 'text-success' : 'text-textDark'}`}>
-              {isFocused ? 'Odaklanıyor' : 'Bekleniyor...'}
-            </h2>
-            <p className={isFocused ? 'text-success/80 font-medium' : 'text-textMuted'}>
-              {isFocused ? 'Sekmeyi değiştirme!' : 'Odaklanmayı başlatmak için tıkla.'}
-            </p>
-          </div>
+
+          <Surface className="p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <IconTile icon={UsersRound} tone="primary" />
+              <h2 className="text-lg font-black text-textDark">Odadakiler</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {roomUsers.map((roomUser) => (
+                <div key={roomUser.userId} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar
+                      name={roomUser.fullName}
+                      image={roomUser.avatarUrl}
+                      frame={roomUser.equippedProfileFrame ?? undefined}
+                      size="sm"
+                      premium={roomUser.isPremium}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-black text-textDark">{roomUser.fullName}</p>
+                      <p className="text-base font-bold text-textMuted">{roomUser.isAtDesk ? 'Odakta' : 'Beklemede'}</p>
+                    </div>
+                  </div>
+                  {roomUser.userId !== user?.id ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => nudgeUser(roomUser.userId)} className="grid h-9 w-9 place-items-center rounded-xl bg-lightAmber text-accent" title="Dürt">
+                        <Bell className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => challengeUser(roomUser.userId)} className="grid h-9 w-9 place-items-center rounded-xl bg-softDanger text-danger" title="Düello">
+                        <Swords className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+              {roomUsers.length === 0 ? <p className="text-base font-bold text-textMuted">Socket bağlantısı bekleniyor.</p> : null}
+            </div>
+          </Surface>
         </div>
 
-        <button
-          onClick={toggleFocus}
-          className={`w-full py-5 rounded-2xl font-bold text-lg text-white shadow-lg transition-all flex items-center justify-center gap-3 mb-8 ${
-            isFocused ? 'bg-danger hover:bg-danger/90' : 'bg-primary hover:bg-secondary'
-          }`}
-        >
-          <Focus className="w-6 h-6" />
-          {isFocused ? 'Odaklanmayı Durdur' : 'Odaklanmayı Başlat'}
-        </button>
-
-        <div className="bg-white rounded-[24px] p-8 border border-border shadow-sm flex flex-col items-center flex-1 justify-center mb-8">
-          <h3 className="text-textMuted font-bold text-sm tracking-widest mb-8">POMODORO SAYACI</h3>
-          <div className={`w-64 h-64 rounded-full border-8 flex items-center justify-center mb-8 transition-colors ${
-            isRunning ? 'border-primary shadow-[0_0_40px_rgba(26,35,126,0.2)]' : 'border-gray-100'
-          }`}>
-            <span className="text-6xl font-black text-textDark font-mono tracking-tighter">
-              {pad(Math.floor(pomodoroSec / 60))}:{pad(pomodoroSec % 60)}
-            </span>
+        <Surface className="flex min-h-[640px] flex-col overflow-hidden">
+          <div className="border-b border-border p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black text-textDark">Oda Sohbeti</h2>
+              <Pill tone="success">{messages.length} mesaj</Pill>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background text-base font-black text-textMuted"
+              >
+                <FileImage className="h-4 w-4" />
+                Fotoğraf Ekle
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background text-base font-black text-textMuted"
+              >
+                <FileText className="h-4 w-4" />
+                Dosya Ekle
+              </button>
+              <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], 'image')} />
+              <input ref={fileInputRef} type="file" className="hidden" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], 'file')} />
+            </div>
           </div>
-          <div className="flex gap-4">
-            <button className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 text-textMuted">
-              <Settings className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={() => setIsRunning(!isRunning)}
-              disabled={!isFocused}
-              className={`w-20 h-14 rounded-2xl flex items-center justify-center transition-colors text-white ${
-                !isFocused ? 'bg-gray-200 cursor-not-allowed' : isRunning ? 'bg-gray-300' : 'bg-primary'
-              }`}
-            >
-              {isRunning ? <Pause className="w-6 h-6 text-textDark" /> : <Play className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
 
-        {/* Audio Mixer */}
-        <div className="bg-white p-6 rounded-[24px] border border-border shadow-sm">
-          <h3 className="font-bold text-textDark mb-4 flex items-center gap-2">
-            <Volume2 className="w-5 h-5 text-primary" /> Ses Mikseri
-          </h3>
-          <div className="space-y-4">
-            {Object.keys(volumes).map((key) => (
-               <div key={key} className="flex items-center gap-4">
-                 <span className="w-20 text-sm font-bold text-textMuted capitalize">{key}</span>
-                 <input 
-                   type="range" 
-                   min="0" max="1" step="0.1" 
-                   value={volumes[key as keyof typeof volumes]}
-                   onChange={(e) => setVolumes(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
-                   className="flex-1 accent-primary"
-                 />
-               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Room Participants */}
-        <div className="bg-white p-6 rounded-[24px] border border-border shadow-sm mb-8">
-          <h3 className="font-bold text-textDark mb-4">Odaktakiler</h3>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {[...new Set(messages.map(m => m.user?.id || m.fullName).filter(Boolean))].map((identifier, idx) => {
-              const userMsg = messages.find(m => m.user?.id === identifier || m.fullName === identifier);
-              const name = userMsg?.user?.fullName || userMsg?.fullName || 'Anonim';
-              const avatar = userMsg?.user?.avatarUrl ? assetUrl(userMsg.user.avatarUrl) : null;
-              const frame = userMsg?.user?.activeProfileFrame;
-              
+          <div className="flex-1 space-y-4 overflow-y-auto bg-background p-4">
+            {messages.map((message, index) => {
+              const senderId = message.user?.id ?? message.userId;
+              const mine = senderId === user?.id;
+              const fileHref = assetUrl(message.fileUrl);
+              const imageMessage = isImageMessage(message);
               return (
-                <div key={idx} className="flex flex-col items-center flex-shrink-0 w-20 cursor-pointer hover:opacity-80 transition-opacity">
-                  <AvatarWithFrame size={56} uri={avatar} name={name} frameId={frame} />
-                  <span className="text-xs font-bold text-textDark mt-2 truncate w-full text-center">{name}</span>
-                  <span className="text-[10px] text-textMuted flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-success" /> Masa Başında
-                  </span>
+                <div key={message.id ?? `${message.text}-${index}`} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${mine ? 'bg-primary text-white' : 'border border-border bg-white text-textDark'}`}>
+                    {!mine ? <p className="mb-1 text-base font-black text-accent">{message.user?.fullName ?? message.fullName ?? 'Öğrenci'}</p> : null}
+                    {fileHref && imageMessage ? (
+                      <a href={fileHref} target="_blank" rel="noreferrer" className="block">
+                        <img src={fileHref} alt={message.text} className="mb-2 max-h-64 rounded-xl object-cover" />
+                      </a>
+                    ) : null}
+                    {fileHref && !imageMessage ? (
+                      <a href={fileHref} target="_blank" rel="noreferrer" className="mb-2 block font-black underline">
+                        {message.text}
+                      </a>
+                    ) : null}
+                    {!fileHref ? <p className="text-base font-semibold leading-6">{message.text}</p> : null}
+                    <p className={`mt-1 text-base font-bold ${mine ? 'text-white/70' : 'text-textMuted'}`}>{formatTime(message.createdAt ?? message.timestamp)}</p>
+                  </div>
                 </div>
               );
             })}
-            {messages.length === 0 && (
-              <div className="text-sm text-textMuted w-full text-center py-4">
-                Henüz kimse yok.
-              </div>
-            )}
+            {messages.length === 0 ? <p className="rounded-xl bg-white p-4 text-base font-bold text-textMuted">Bu odada henüz mesaj yok.</p> : null}
           </div>
-        </div>
-      </div>
 
-      {/* Chat Sidebar */}
-      <AnimatePresence>
-        {(isChatOpen || window.innerWidth > 768) && (
-          <motion.div 
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            className="w-96 bg-white border border-border rounded-[24px] shadow-sm flex flex-col overflow-hidden hidden md:flex"
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSend();
+            }}
+            className="border-t border-border bg-white p-4"
           >
-            <div className="p-4 border-b border-border bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-textDark flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-primary" /> Oda Sohbeti
-              </h3>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-5">
-              {messages.map((msg, i) => {
-                const isMe = msg.user?.id === user?.id || msg.fullName === user?.fullName;
-                const senderName = msg.user?.fullName || msg.fullName || msg.senderName || 'Anonim';
-                const senderAvatar = msg.user?.avatarUrl ? assetUrl(msg.user.avatarUrl) : null;
-                const senderFrame = msg.user?.activeProfileFrame;
-                
-                return (
-                  <div key={i} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <AvatarWithFrame 
-                      size={36} 
-                      uri={senderAvatar} 
-                      name={senderName} 
-                      frameId={senderFrame} 
-                    />
-                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]`}>
-                      <span className="text-[10px] font-bold text-textMuted mb-1 mx-1">{senderName}</span>
-                      
-                      {msg.type === 'image' && msg.fileUrl && (
-                        <a href={assetUrl(msg.fileUrl) || '#'} target="_blank" rel="noreferrer" className="block mb-1">
-                          <img src={assetUrl(msg.fileUrl) || ''} alt="Attachment" className="max-w-full rounded-xl border border-border object-cover max-h-40" />
-                        </a>
-                      )}
-                      
-                      {msg.type === 'file' && msg.fileUrl && (
-                        <a href={assetUrl(msg.fileUrl) || '#'} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gray-100 p-3 rounded-xl border border-border mb-1 hover:bg-gray-200 transition">
-                          <FileText className="w-5 h-5 text-primary" />
-                          <span className="text-sm font-bold text-textDark flex-1 truncate">{msg.fileName || 'Dosya'}</span>
-                          <Download className="w-4 h-4 text-textMuted" />
-                        </a>
-                      )}
-
-                      {msg.text && (
-                        <div className={`px-4 py-2.5 rounded-2xl ${
-                          isMe ? 'bg-primary text-white rounded-tr-sm' : 'bg-gray-100 text-textDark rounded-tl-sm'
-                        }`}>
-                          <p className="text-sm">{msg.text}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <form onSubmit={sendMessage} className="p-3 border-t border-border bg-white flex items-center gap-2">
-              <input 
-                type="file" 
-                className="hidden" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept="image/*,.pdf,.doc,.docx"
-              />
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="w-10 h-10 flex-shrink-0 bg-gray-50 text-textMuted rounded-xl flex items-center justify-center hover:bg-gray-100 border border-border transition-colors"
-                title="Dosya veya Resim Yükle"
-              >
-                {isUploading ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <Paperclip className="w-4 h-4" />}
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => nudgeNearestUser(roomUsers, user?.id, nudgeUser)} className="grid h-11 w-11 place-items-center rounded-xl bg-lightAmber text-accent">
+                <Bell className="h-4 w-4" />
               </button>
-              <input 
-                type="text" 
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+              <input
+                value={chatText}
+                onChange={(event) => setChatText(event.target.value)}
                 placeholder="Mesaj yaz..."
-                className="flex-1 bg-gray-50 border border-border rounded-xl px-4 py-2.5 outline-none focus:border-primary transition-colors text-sm"
+                className="min-h-11 flex-1 rounded-xl border border-border bg-background px-4 text-base font-semibold outline-none focus:border-primary"
               />
-              <button type="submit" disabled={!inputText.trim() && !isUploading} className="w-10 h-10 flex-shrink-0 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-secondary disabled:opacity-50 transition-colors">
-                <Send className="w-4 h-4 ml-0.5" />
+              <button disabled={!chatText.trim()} className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-white disabled:cursor-not-allowed disabled:opacity-60">
+                <Send className="h-4 w-4" />
               </button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          </form>
+        </Surface>
+      </div>
     </div>
   );
+}
+
+function normalizeSocketMessage(message: Message, roomName: string): Message {
+  return {
+    ...message,
+    id: message.id ?? Date.now(),
+    roomName,
+    createdAt: message.createdAt ?? message.timestamp ?? new Date().toISOString(),
+    user: message.user ?? (message.userId ? { id: message.userId, fullName: message.fullName ?? 'Öğrenci', email: '', username: '' } : undefined),
+  };
+}
+
+function messageIdentity(message: Message) {
+  if (message.id) return `id:${message.id}`;
+  if (message.fileUrl) return `file:${message.fileUrl}`;
+  return `${message.user?.id ?? message.userId ?? 'anon'}:${message.text}:${message.createdAt ?? message.timestamp ?? ''}`;
+}
+
+function isImageMessage(message: Message) {
+  if (message.type === 'image') return true;
+  return /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(message.fileUrl ?? '');
+}
+
+function nudgeNearestUser(roomUsers: RoomUser[], currentUserId: number | undefined, nudgeUser: (targetUserId: number) => void) {
+  const target = roomUsers.find((roomUser) => roomUser.userId !== currentUserId);
+  if (target) nudgeUser(target.userId);
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-background p-3">
+      <p className="text-base font-black text-textDark">{value}</p>
+      <p className="text-base font-bold text-textMuted">{label}</p>
+    </div>
+  );
+}
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatTime(value?: string) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }

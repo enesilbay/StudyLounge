@@ -1,88 +1,91 @@
-import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Trophy, User, ShoppingBag, LogOut, BarChart, MessageCircle, Crown } from 'lucide-react';
+import { NavLink, Outlet } from 'react-router-dom';
+import { BarChart3, Crown, Home, LogOut, MessageCircle, ShoppingBag, Trophy, UserRound } from 'lucide-react';
+import { Avatar, BrandLockup } from '../ui';
 import { useAuthStore } from '../../store/authStore';
 
-export default function AppLayout() {
-  const logout = useAuthStore(state => state.logout);
+const navItems = [
+  { path: '/app/lobbies', icon: Home, label: 'Lobiler' },
+  { path: '/app/analytics', icon: BarChart3, label: 'Analitik' },
+  { path: '/app/leaderboard', icon: Trophy, label: 'Liderlik' },
+  { path: '/app/dm', icon: MessageCircle, label: 'Mesajlar' },
+  { path: '/app/shop', icon: ShoppingBag, label: 'Mağaza' },
+  { path: '/app/premium', icon: Crown, label: 'Premium' },
+  { path: '/app/profile', icon: UserRound, label: 'Profil' },
+];
 
-  const navItems = [
-    { path: '/app/lobbies', icon: Home, label: 'Lobiler' },
-    { path: '/app/analytics', icon: BarChart, label: 'İstatistik' },
-    { path: '/app/leaderboard', icon: Trophy, label: 'Sıralama' },
-    { path: '/app/dm', icon: MessageCircle, label: 'Mesajlar' },
-    { path: '/app/shop', icon: ShoppingBag, label: 'Market' },
-    { path: '/app/premium', icon: Crown, label: 'Premium' },
-    { path: '/app/profile', icon: User, label: 'Profil' },
-  ];
+export default function AppLayout() {
+  const { user, logout } = useAuthStore();
+  const displayName = user?.fullName ?? 'StudyLounge';
 
   return (
-    <div className="flex h-screen bg-background text-textDark font-montserrat overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-border flex flex-col justify-between hidden md:flex z-20 shadow-soft">
-        <div>
-          <div className="h-20 flex items-center px-8 border-b border-border">
-            <img src="/src/assets/images/logo.png" alt="StudyLounge Logo" className="h-10 object-contain" />
-            <h1 className="text-xl font-black text-primary ml-2">StudyLounge</h1>
-          </div>
-          <nav className="p-4 flex flex-col gap-2 mt-4">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-4 px-4 py-3 rounded-xl transition-all font-bold text-sm ${
-                    isActive
-                      ? 'bg-softIndigo text-primary shadow-sm'
-                      : 'text-textMuted hover:bg-gray-50 hover:text-textDark'
-                  }`
-                }
-              >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+    <div className="min-h-screen bg-background text-textDark">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-white px-4 py-4 shadow-sm lg:flex lg:flex-col">
+        <div className="mb-6">
+          <BrandLockup />
         </div>
-        <div className="p-4 border-t border-border">
-          <button onClick={logout} className="flex items-center gap-4 px-4 py-3 rounded-xl w-full text-danger hover:bg-softDanger font-bold text-sm transition-colors">
-            <LogOut className="w-5 h-5" />
+
+        <nav className="flex flex-1 flex-col gap-1">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `relative flex items-center gap-4 rounded-xl border-l-[3px] px-3 py-2.5 text-sm font-black transition-all ${
+                  isActive
+                    ? 'border-primary bg-softIndigo text-primary shadow-sm'
+                    : 'border-transparent text-textMuted hover:border-electric/40 hover:bg-background hover:text-textDark'
+                }`
+              }
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="rounded-xl border border-border bg-background p-3">
+          <div className="flex items-center gap-3">
+            <Avatar name={displayName} image={user?.avatarUrl} frame={user?.equippedProfileFrame} premium={user?.isPremium} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black text-textDark">{displayName}</p>
+              <p className="truncate text-sm font-bold text-textMuted">@{user?.username ?? 'kullanici'}</p>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-3 py-2.5 text-sm font-black text-danger transition hover:bg-softDanger"
+          >
+            <LogOut className="h-4 w-4" />
             Çıkış Yap
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 relative flex flex-col bg-background h-screen overflow-y-auto">
-        {/* Mobile Header (Hidden on MD+) */}
-        <div className="md:hidden h-16 bg-white border-b border-border flex items-center justify-between px-4 sticky top-0 z-20">
-            <div className="flex items-center">
-              <img src="/src/assets/images/logo.png" alt="StudyLounge Logo" className="h-8 object-contain" />
-              <h1 className="text-lg font-black text-primary ml-2">StudyLounge</h1>
-            </div>
-        </div>
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-20 border-b border-border bg-white/92 backdrop-blur md:hidden">
+          <div className="flex h-16 items-center justify-between px-4">
+            <BrandLockup compact />
+            <Avatar name={displayName} image={user?.avatarUrl} frame={user?.equippedProfileFrame} size="sm" premium={user?.isPremium} />
+          </div>
+        </header>
 
-        <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 w-full">
+        <main className="mx-auto min-h-screen w-full max-w-[1180px] px-4 py-5 pb-24 md:px-6 md:py-6 lg:pb-6">
           <Outlet />
-        </div>
+        </main>
 
-        {/* Mobile Bottom Tab (Hidden on MD+) */}
-        <nav className="md:hidden bg-white border-t border-border h-16 flex justify-around items-center sticky bottom-0 z-20 pb-safe">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-                    isActive ? 'text-primary' : 'text-textMuted'
-                  }`
-                }
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-bold">{item.label}</span>
-              </NavLink>
-            ))}
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid h-16 grid-cols-7 border-t border-border bg-white shadow-sm lg:hidden">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs font-black ${isActive ? 'text-primary' : 'text-textMuted'}`}
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
         </nav>
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,191 +1,224 @@
-import { useState, useEffect, useRef } from 'react';
-import { Send, Search } from 'lucide-react';
-import { api, assetUrl } from '../lib/api';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Search, Send } from 'lucide-react';
+import { Avatar, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
+import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
+import { unwrapData } from '../lib/apiResponses';
+import type { Message, User } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import AvatarWithFrame from '../components/UI/AvatarWithFrame';
-
-interface Friend {
-  id: number;
-  fullName: string;
-  avatarUrl?: string;
-  equippedProfileFrame?: string;
-}
-
-interface DirectMessage {
-  id: number;
-  senderId: number;
-  receiverId: number;
-  text: string;
-  createdAt: string;
-}
 
 export default function DMPage() {
-  const { user } = useAuthStore();
-  const [activeChat, setActiveChat] = useState<number | null>(null);
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [messages, setMessages] = useState<DirectMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const user = useAuthStore((state) => state.user);
+  const [friends, setFriends] = useState<User[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeFriendId, setActiveFriendId] = useState<number | null>(null);
+  const [query, setQuery] = useState('');
+  const [messageText, setMessageText] = useState('');
+  const [isLoadingFriends, setIsLoadingFriends] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const activeFriend = friends.find((friend) => friend.id === activeFriendId) ?? friends[0];
 
   useEffect(() => {
-    const fetchFriends = async () => {
+    let ignore = false;
+
+    async function loadFriends() {
+      if (!user?.id) return;
+      setIsLoadingFriends(true);
       try {
-        const res = await api.get('/users/friends/me');
-        setFriends(res.data);
-      } catch (err) {
-        console.error('Arkadaş listesi alınamadı', err);
+        const response = await api.get<User[]>(`/users/friends/${user.id}`);
+        const nextFriends = unwrapData<User[]>(response.data);
+        if (!ignore) {
+          setFriends(nextFriends);
+          setActiveFriendId((current) => current ?? nextFriends[0]?.id ?? null);
+        }
+      } catch {
+        if (!ignore) setFriends([]);
+      } finally {
+        if (!ignore) setIsLoadingFriends(false);
       }
-    };
-    fetchFriends();
-  }, []);
+    }
 
-  useEffect(() => {
-    if (!activeChat) return;
-    
-    const fetchMessages = async () => {
-      try {
-        const res = await api.get(`/messages/dm/${activeChat}`);
-        setMessages(res.data);
-      } catch (err) {
-        console.error('Mesajlar alınamadı', err);
-      }
-    };
-    fetchMessages();
-  }, [activeChat]);
-
-  useEffect(() => {
-    const socket = getSocket();
-    
-    const handleReceiveDm = (msg: DirectMessage) => {
-      if (
-        (activeChat && msg.senderId === activeChat && msg.receiverId === user?.id) ||
-        (activeChat && msg.senderId === user?.id && msg.receiverId === activeChat)
-      ) {
-        setMessages((prev) => [...prev, msg]);
-      }
-    };
-
-    socket.on('receive_dm', handleReceiveDm);
-    
+    void loadFriends();
     return () => {
-      socket.off('receive_dm', handleReceiveDm);
+      ignore = true;
     };
-  }, [activeChat, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    let ignore = false;
+
+    async function loadMessages() {
+      if (!activeFriend?.id) {
+        setMessages([]);
+        return;
+      }
+      setIsLoadingMessages(true);
+      try {
+        const response = await api.get<Message[]>(`/messages/dm/${activeFriend.id}`);
+        if (!ignore) setMessages(unwrapData<Message[]>(response.data));
+      } catch {
+        if (!ignore) setMessages([]);
+      } finally {
+        if (!ignore) setIsLoadingMessages(false);
+      }
+    }
+
+    void loadMessages();
+    return () => {
+      ignore = true;
+    };
+  }, [activeFriend?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const socket = getSocket();
+
+    const onReceiveDm = (message: Message) => {
+      const senderId = message.senderId ?? message.sender?.id;
+      const receiverId = message.receiverId ?? message.receiver?.id;
+      if (
+        (senderId === user.id && receiverId === activeFriend?.id) ||
+        (senderId === activeFriend?.id && receiverId === user.id)
+      ) {
+        setMessages((current) => (current.some((item) => item.id === message.id) ? current : [...current, message]));
+      }
+    };
+
+    socket.on('receive_dm', onReceiveDm);
+    return () => {
+      socket.off('receive_dm', onReceiveDm);
+    };
+  }, [activeFriend?.id, user?.id]);
+
+  const filteredFriends = useMemo(() => {
+    const needle = query.toLowerCase();
+    return friends.filter((friend) => `${friend.fullName} ${friend.username ?? ''}`.toLowerCase().includes(needle));
+  }, [friends, query]);
 
   const handleSend = () => {
-    if (!newMessage.trim() || !activeChat) return;
-    
-    const socket = getSocket();
-    socket.emit('send_dm', { targetUserId: activeChat, text: newMessage });
-    setNewMessage('');
+    if (!activeFriend?.id || !messageText.trim()) return;
+    getSocket().emit('send_dm', {
+      targetUserId: activeFriend.id,
+      text: messageText.trim(),
+    });
+    setMessageText('');
   };
 
-  const activeFriend = friends.find(f => f.id === activeChat);
-
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-6 overflow-hidden pb-10">
-      <div className={`w-80 bg-white border border-border rounded-[24px] shadow-sm flex flex-col overflow-hidden ${activeChat ? 'hidden md:flex' : 'flex flex-1 md:flex-none'}`}>
-        <div className="p-4 border-b border-border bg-gray-50">
-          <h3 className="font-bold text-textDark text-lg">Mesajlar</h3>
-          <div className="mt-4 relative">
-            <Search className="w-4 h-4 text-textMuted absolute left-3 top-1/2 -translate-y-1/2" />
-            <input type="text" placeholder="Arkadaş ara..." className="w-full bg-white border border-border rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:border-primary transition-colors" />
+    <div>
+      <PageHeader
+        eyebrow="Sosyal"
+        title="Mesajlar"
+        description="Arkadaş listesi, direkt mesaj geçmişi ve anlık mesajlaşma mobildeki socket akışıyla çalışır."
+      />
+
+      <div className="grid h-[calc(100vh-220px)] min-h-[620px] grid-cols-1 gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <Surface className="flex flex-col overflow-hidden">
+          <div className="border-b border-border p-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Arkadaş ara"
+                className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-semibold outline-none focus:border-primary"
+              />
+            </div>
           </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {friends.length === 0 ? (
-            <p className="text-center text-textMuted p-4 text-sm">Henüz arkadaşın yok.</p>
-          ) : (
-            friends.map((friend) => (
-              <button 
+
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingFriends ? <StateBlock loading title="Arkadaşlar yükleniyor" /> : null}
+            {!isLoadingFriends && filteredFriends.map((friend) => (
+              <button
                 key={friend.id}
-                onClick={() => setActiveChat(friend.id)}
-                className={`w-full flex items-center gap-4 p-4 border-b border-border transition-colors hover:bg-gray-50 text-left ${activeChat === friend.id ? 'bg-softIndigo' : ''}`}
+                onClick={() => setActiveFriendId(friend.id)}
+                className={`flex w-full items-center gap-4 border-b border-border p-4 text-left transition-colors ${
+                  activeFriend?.id === friend.id ? 'bg-softIndigo' : 'bg-white hover:bg-background'
+                }`}
               >
-                <AvatarWithFrame 
-                  size={48} 
-                  uri={friend.avatarUrl ? assetUrl(friend.avatarUrl) : null} 
-                  name={friend.fullName} 
-                  frameId={friend.equippedProfileFrame} 
-                />
-                <div className="flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center mb-1">
-                    <h4 className="font-bold text-textDark truncate">{friend.fullName}</h4>
-                  </div>
+                <Avatar name={friend.fullName} image={friend.avatarUrl} frame={friend.equippedProfileFrame} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-black text-textDark">{friend.fullName}</p>
+                  <p className="mt-1 truncate text-base font-semibold text-textMuted">
+                    {friend.isOnline ? 'Çevrim içi ve çalışmaya hazır' : `${friend.totalFocusMinutes ?? 0} dk odak`}
+                  </p>
                 </div>
               </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className={`flex-1 bg-white border border-border rounded-[24px] shadow-sm flex flex-col overflow-hidden ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
-        {!activeChat ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="w-20 h-20 bg-softIndigo rounded-full flex items-center justify-center mb-4">
-              <Send className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="text-xl font-bold text-textDark mb-2">Mesajlaşmaya Başla</h3>
-            <p className="text-textMuted">Sol taraftan bir arkadaşını seçerek sohbet edebilirsin.</p>
+            ))}
+            {!isLoadingFriends && filteredFriends.length === 0 ? <StateBlock title="Arkadaş bulunamadı" description="Arkadaş ekledikçe konuşmalar burada görünecek." /> : null}
           </div>
-        ) : (
-          <>
-            <div className="p-4 border-b border-border bg-gray-50 flex items-center gap-4">
-              <button className="md:hidden text-primary font-bold" onClick={() => setActiveChat(null)}>Geri</button>
-              <AvatarWithFrame 
-                size={40} 
-                uri={activeFriend?.avatarUrl ? assetUrl(activeFriend.avatarUrl) : null} 
-                name={activeFriend?.fullName || ''} 
-                frameId={activeFriend?.equippedProfileFrame} 
-              />
-              <h3 className="font-bold text-textDark text-lg">{activeFriend?.fullName}</h3>
-            </div>
-            
-            <div className="flex-1 p-4 overflow-y-auto bg-background flex flex-col gap-4">
-              {messages.map((msg, idx) => {
-                const isMe = msg.senderId === user?.id;
-                return (
-                  <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${
-                      isMe ? 'bg-primary text-white rounded-tr-sm' : 'bg-white border border-border text-textDark rounded-tl-sm shadow-sm'
-                    }`}>
-                      <p className="text-sm break-words">{msg.text}</p>
-                    </div>
-                    <span className="text-[10px] text-textMuted mt-1 px-1">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+        </Surface>
+
+        <Surface className="flex flex-col overflow-hidden">
+          {activeFriend ? (
+            <>
+              <div className="flex items-center justify-between border-b border-border bg-white p-4">
+                <div className="flex items-center gap-4">
+                  <button className="grid h-10 w-10 place-items-center rounded-xl bg-background text-textMuted lg:hidden">
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isOnline} />
+                  <div>
+                    <h2 className="font-black text-textDark">{activeFriend.fullName}</h2>
+                    <p className="text-base font-bold text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-            
-            <div className="p-3 border-t border-border bg-white flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Mesaj yaz..." 
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                className="flex-1 bg-gray-50 border border-border rounded-xl px-4 py-3 outline-none focus:border-primary transition-colors text-sm" 
-              />
-              <button 
-                onClick={handleSend}
-                disabled={!newMessage.trim()}
-                className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                </div>
+                <Pill tone={activeFriend.isOnline ? 'success' : 'neutral'}>{activeFriend.isOnline ? 'Çevrim içi' : 'Çevrim dışı'}</Pill>
+              </div>
+
+              <div className="flex-1 space-y-4 overflow-y-auto bg-background p-5">
+                {isLoadingMessages ? <StateBlock loading title="Mesajlar yükleniyor" /> : null}
+                {!isLoadingMessages && messages.map((message) => {
+                  const senderId = message.senderId ?? message.sender?.id;
+                  const mine = senderId === user?.id;
+                  return (
+                    <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-xl rounded-2xl px-4 py-3 ${mine ? 'bg-primary text-white' : 'border border-border bg-white text-textDark'}`}>
+                        {!mine ? <p className="mb-1 text-base font-black text-accent">{message.sender?.fullName ?? message.senderName ?? activeFriend.fullName}</p> : null}
+                        <p className="text-base font-semibold leading-6">{message.text}</p>
+                        <p className={`mt-1 text-base font-bold ${mine ? 'text-white/70' : 'text-textMuted'}`}>{formatTime(message.createdAt)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!isLoadingMessages && messages.length === 0 ? <StateBlock title="Henüz mesaj yok" description="İlk mesajı yazarak sohbeti başlat." /> : null}
+              </div>
+
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSend();
+                }}
+                className="border-t border-border bg-white p-4"
               >
-                <Send className="w-5 h-5 ml-1" />
-              </button>
+                <div className="flex items-center gap-3">
+                  <input
+                    value={messageText}
+                    onChange={(event) => setMessageText(event.target.value)}
+                    placeholder="Mesaj yaz..."
+                    className="min-h-12 flex-1 rounded-xl border border-border bg-background px-4 text-base font-semibold outline-none focus:border-primary"
+                  />
+                  <button
+                    disabled={!messageText.trim()}
+                    className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <div className="grid flex-1 place-items-center p-8 text-center">
+              <StateBlock title="Sohbet seçilmedi" description="Arkadaş ekledikçe konuşmalar burada görünecek." />
             </div>
-          </>
-        )}
+          )}
+        </Surface>
       </div>
     </div>
   );
+}
+
+function formatTime(value?: string) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }

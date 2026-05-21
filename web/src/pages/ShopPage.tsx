@@ -1,206 +1,192 @@
-import { useState } from 'react';
-import { ShoppingBag, Star, Check } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { useEffect, useState } from 'react';
+import { Check, Coins, Headphones, Paintbrush, ShoppingCart, Sparkles, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
+import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
+import type { ShopItem, ShopSection, User } from '../lib/types';
+import { IconTile, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
+import { useAuthStore } from '../store/authStore';
 
-const PROFILE_FRAMES = [
-  { id: 'none', name: 'Çerçevesiz', desc: 'Sade profil görünümü.', price: 0, color: '#E2E8F0' },
-  { id: 'gold', name: 'Altın Halka', desc: 'Parlak başarı çerçevesi.', price: 150, color: '#FFC107' },
-  { id: 'emerald', name: 'Zümrüt Odak', desc: 'Yeşil odak çerçevesi.', price: 180, color: '#10B981' },
-  { id: 'ruby', name: 'Yakut Seri', desc: 'Kırmızı seri çerçevesi.', price: 220, color: '#EF4444' },
-  { id: 'cosmic', name: 'Kozmik Lounge', desc: 'Mor premium çerçeve hissi.', price: 320, color: '#7C3AED' },
-];
-
-const COLORS = [
-  { id: '#4F46E5', name: 'StudyLounge Mavisi', price: 0 },
-  { id: '#059669', name: 'Zümrüt Yeşili', price: 100 },
-  { id: '#E11D48', name: 'Yakut Kırmızısı', price: 150 },
-  { id: '#D97706', name: 'Kehribar Sarısı', price: 150 },
-  { id: '#7C3AED', name: 'Ametist Moru', price: 200 },
-];
-
-const ICONS = [
-  { id: '', name: 'Yok', price: 0 },
-  { id: '🔥', name: 'Ateş', price: 50 },
-  { id: '⚡', name: 'Yıldırım', price: 80 },
-  { id: '💎', name: 'Elmas', price: 250 },
-  { id: '🎓', name: 'Mezuniyet', price: 300 },
-  { id: '🚀', name: 'Roket', price: 400 },
-];
-
-const SOUND_PACKS = [
-  { id: 'classic', name: 'Klasik Lounge', desc: 'Kütüphane, yağmur, doğa.', price: 0 },
-  { id: 'rainy', name: 'Yağmur Modu', desc: 'Yağmur ağırlıklı.', price: 120 },
-  { id: 'forest', name: 'Orman Odası', desc: 'Doğa ve hafif yağmur.', price: 180 },
-  { id: 'fireplace', name: 'Şömine Köşesi', desc: 'Şömine ve sıcak kütüphane.', price: 220 },
-  { id: 'deep', name: 'Derin Odak', desc: 'Daha sakin presetler.', price: 300 },
+const sections: ShopSection[] = [
+  {
+    title: 'Sohbet Balonu Renkleri',
+    icon: Paintbrush,
+    items: [
+      { id: '#4F46E5', type: 'color', name: 'StudyLounge Mavisi', price: 0, color: '#4F46E5' },
+      { id: '#059669', type: 'color', name: 'Zümrüt Yeşili', price: 100, color: '#059669' },
+      { id: '#E11D48', type: 'color', name: 'Yakut Kırmızısı', price: 150, color: '#E11D48' },
+      { id: '#D97706', type: 'color', name: 'Kehribar Sarısı', price: 150, color: '#D97706' },
+      { id: '#7C3AED', type: 'color', name: 'Ametist Moru', price: 200, color: '#7C3AED' },
+    ],
+  },
+  {
+    title: 'İsim Yanı İkonları',
+    icon: Sparkles,
+    items: [
+      { id: '', type: 'icon', name: 'Yok', price: 0, text: '🚫' },
+      { id: '🔥', type: 'icon', name: 'Ateş', price: 50, text: '🔥' },
+      { id: '⚡', type: 'icon', name: 'Yıldırım', price: 80, text: '⚡' },
+      { id: '💎', type: 'icon', name: 'Elmas', price: 250, text: '💎' },
+      { id: '🎓', type: 'icon', name: 'Mezuniyet', price: 300, text: '🎓' },
+      { id: '🚀', type: 'icon', name: 'Roket', price: 400, text: '🚀' },
+    ],
+  },
+  {
+    title: 'Ses Paketi Skinleri',
+    icon: Headphones,
+    items: [
+      { id: 'classic', type: 'soundPack', name: 'Klasik Lounge', price: 0, text: 'CL' },
+      { id: 'rainy', type: 'soundPack', name: 'Yağmur Modu', price: 120, text: 'RM' },
+      { id: 'forest', type: 'soundPack', name: 'Orman Odası', price: 180, text: 'FO' },
+      { id: 'fireplace', type: 'soundPack', name: 'Şömine Köşesi', price: 220, text: 'FK' },
+      { id: 'deep', type: 'soundPack', name: 'Derin Odak', price: 300, text: 'DO' },
+    ],
+  },
+  {
+    title: 'Profil Çerçeveleri',
+    icon: UserRound,
+    items: [
+      { id: 'none', type: 'profileFrame', name: 'Çerçevesiz', price: 0, color: '#E5E7EB' },
+      { id: 'gold', type: 'profileFrame', name: 'Altın Halka', price: 150, color: '#FFC107' },
+      { id: 'emerald', type: 'profileFrame', name: 'Zümrüt Odak', price: 180, color: '#2E7D32' },
+      { id: 'ruby', type: 'profileFrame', name: 'Yakut Seri', price: 220, color: '#D32F2F' },
+      { id: 'cosmic', type: 'profileFrame', name: 'Kozmik Lounge', price: 320, color: '#7C3AED' },
+    ],
+  },
 ];
 
 export default function ShopPage() {
-  const { user, initAuth } = useAuthStore();
-  const [processing, setProcessing] = useState(false);
+  const { user, setUser, refreshUser } = useAuthStore();
+  const [busyItem, setBusyItem] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleBuy = async (itemType: string, itemId: string, price: number) => {
+  useEffect(() => {
+    refreshUser().finally(() => setLoading(false));
+  }, [refreshUser]);
+
+  const handleItemAction = async (item: ShopItem) => {
     if (!user) return;
-    if (user.coins! < price) {
-      alert('Yetersiz puan!');
+    const owned = isOwned(user, item);
+    const active = isActive(user, item);
+    if (active) return;
+
+    if (!owned && item.price > (user.coins ?? 0)) {
+      setMessage('Yetersiz Bakiye. Bu öğeyi almak için yeterli Odak Puanın yok.');
       return;
     }
-    
+
+    setBusyItem(`${item.type}:${item.id}`);
+    setMessage(null);
     try {
-      setProcessing(true);
-      await api.post('/users/buy', { itemType, itemId, price });
-      await initAuth();
-      alert('Satın alma başarılı!');
-    } catch (err) {
-      console.error(err);
-      alert('Satın alma işlemi başarısız.');
+      if (owned || item.price === 0) {
+        const response = await api.post('/users/equip', { itemType: item.type, itemId: item.id });
+        setUser(unwrapUser<User>(response.data));
+      } else {
+        const buyResponse = await api.post('/users/buy', { itemType: item.type, itemId: item.id, price: item.price });
+        const boughtUser = unwrapUser<User>(buyResponse.data);
+        setUser(boughtUser);
+        setMessage('Öğe başarıyla satın alındı.');
+      }
+    } catch (error) {
+      setMessage(getApiErrorMessage(error));
     } finally {
-      setProcessing(false);
+      setBusyItem(null);
     }
   };
 
-  const handleEquip = async (itemType: string, itemId: string) => {
-    try {
-      setProcessing(true);
-      await api.post('/users/equip', { itemType, itemId });
-      await initAuth();
-    } catch (err) {
-      console.error(err);
-      alert('Kullanma işlemi başarısız.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  if (!user) return <div>Yükleniyor...</div>;
-
-  const renderShopItem = (item: any, type: string, isOwned: boolean, isEquipped: boolean, renderIcon: () => React.ReactNode) => {
-    return (
-      <div key={item.id} className="bg-white p-6 rounded-[24px] border border-border flex flex-col items-center text-center shadow-sm hover:shadow-md transition-shadow">
-        {renderIcon()}
-        <h3 className="font-bold text-textDark mb-1">{item.name}</h3>
-        <p className="text-xs text-textMuted mb-4 h-8">{item.desc || ''}</p>
-        
-        {isEquipped ? (
-          <button disabled className="w-full bg-softSuccess text-success font-bold py-2 rounded-xl flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" /> Kullanılıyor
-          </button>
-        ) : isOwned ? (
-          <button 
-            disabled={processing} 
-            onClick={() => handleEquip(type, item.id)}
-            className="w-full bg-white border-2 border-primary text-primary font-bold py-1.5 rounded-xl hover:bg-softIndigo transition-colors flex items-center justify-center gap-2"
-          >
-            Kullan
-          </button>
-        ) : (
-          <button 
-            disabled={processing}
-            onClick={() => handleBuy(type, item.id, item.price)}
-            className="w-full bg-softSuccess text-success font-bold py-2 rounded-xl hover:bg-success hover:text-white transition-colors flex items-center justify-center gap-2"
-          >
-            <Star className="w-4 h-4" /> {item.price}
-          </button>
-        )}
-      </div>
-    );
-  };
-
-  const renderProfileFrameItem = (item: typeof PROFILE_FRAMES[0]) => {
-    const ownedProfileFrames = user.ownedProfileFrames || ['none'];
-    const isOwned = item.price === 0 || ownedProfileFrames.includes(item.id);
-    const isEquipped = (user.equippedProfileFrame || 'none') === item.id;
-
-    return (
-      <div key={item.id} className="bg-white p-6 rounded-[24px] border border-border flex flex-col items-center text-center shadow-sm hover:shadow-md transition-shadow">
-        <div className="w-16 h-16 rounded-full border-4 flex items-center justify-center mb-4" style={{ borderColor: item.color, backgroundColor: `${item.color}20` }}>
-          <ShoppingBag className="w-8 h-8" style={{ color: item.color !== '#E2E8F0' ? item.color : '#94a3b8' }} />
-        </div>
-        <h3 className="font-bold text-textDark mb-1">{item.name}</h3>
-        <p className="text-xs text-textMuted mb-4 h-8">{item.desc}</p>
-        
-        {isEquipped ? (
-          <button disabled className="w-full bg-softSuccess text-success font-bold py-2 rounded-xl flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" /> Kullanılıyor
-          </button>
-        ) : isOwned ? (
-          <button 
-            disabled={processing} 
-            onClick={() => handleEquip('profileFrame', item.id)}
-            className="w-full bg-white border-2 border-primary text-primary font-bold py-1.5 rounded-xl hover:bg-softIndigo transition-colors flex items-center justify-center gap-2"
-          >
-            Kullan
-          </button>
-        ) : (
-          <button 
-            disabled={processing}
-            onClick={() => handleBuy('profileFrame', item.id, item.price)}
-            className="w-full bg-softSuccess text-success font-bold py-2 rounded-xl hover:bg-success hover:text-white transition-colors flex items-center justify-center gap-2"
-          >
-            <Star className="w-4 h-4" /> {item.price}
-          </button>
-        )}
-      </div>
-    );
-  };
+  if (loading || !user) {
+    return <StateBlock loading title="Odak Mağazası yükleniyor" />;
+  }
 
   return (
-    <div className="pb-20 md:pb-0">
-      <header className="mb-8 flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-black text-textDark mb-2">Market</h1>
-          <p className="text-textMuted font-medium">Odak puanlarınla yeni özellikler aç.</p>
-        </div>
-        <div className="bg-lightAmber text-accent font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm border border-accent/20">
-          <Star className="w-5 h-5" /> {user.coins || 0}
-        </div>
-      </header>
+    <div>
+      <PageHeader
+        eyebrow="Puanlarını harca"
+        title="Odak Mağazası"
+        description="Mobile mağazadaki renk, ikon, ses paketi ve profil çerçevesi contractlarıyla aynı itemType ve itemId değerleri kullanılır."
+        action={
+          <div className="inline-flex items-center gap-3 rounded-xl border border-accent bg-lightAmber px-4 py-3 text-accent">
+            <Coins className="h-5 w-5" />
+            <span className="font-black">{user.coins ?? 0} Odak Puanı</span>
+          </div>
+        }
+      />
 
-      <h2 className="text-xl font-bold text-textDark mb-4 mt-8">Profil Çerçeveleri</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {PROFILE_FRAMES.map(renderProfileFrameItem)}
-      </div>
+      {message ? <Surface className={`mb-5 p-4 text-base font-bold ${message.startsWith('Öğe') ? 'text-primary' : 'text-danger'}`}>{message}</Surface> : null}
 
-      <h2 className="text-xl font-bold text-textDark mb-4 mt-8">Sohbet Balonu Renkleri</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {COLORS.map(item => {
-          const ownedColors = (user as any).ownedColors || ['#4F46E5'];
-          const isOwned = item.price === 0 || ownedColors.includes(item.id);
-          const isEquipped = (user.equippedBubbleColor || '#4F46E5') === item.id;
-          return renderShopItem(item, 'color', isOwned, isEquipped, () => (
-            <div className="w-16 h-16 rounded-full mb-4 border-2 border-border shadow-sm" style={{ backgroundColor: item.id }} />
-          ));
-        })}
-      </div>
-
-      <h2 className="text-xl font-bold text-textDark mb-4 mt-8">İsim Yanı İkonları</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {ICONS.map(item => {
-          const ownedIcons = (user as any).ownedIcons || [''];
-          const isOwned = item.price === 0 || ownedIcons.includes(item.id);
-          const isEquipped = (user.equippedIcon || '') === item.id;
-          return renderShopItem(item, 'icon', isOwned, isEquipped, () => (
-            <div className="w-16 h-16 rounded-full mb-4 border border-border shadow-sm bg-gray-50 flex items-center justify-center text-3xl">
-              {item.id || '-'}
+      <div className="space-y-7">
+        {sections.map((section) => (
+          <section key={section.title}>
+            <div className="mb-3 flex items-center gap-3">
+              <IconTile icon={section.icon} tone="primary" />
+              <h2 className="text-xl font-black text-textDark">{section.title}</h2>
             </div>
-          ));
-        })}
-      </div>
-
-      <h2 className="text-xl font-bold text-textDark mb-4 mt-8">Ses Paketleri</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {SOUND_PACKS.map(item => {
-          const ownedSoundPacks = (user as any).ownedSoundPacks || ['classic'];
-          const isOwned = item.price === 0 || ownedSoundPacks.includes(item.id);
-          const isEquipped = ((user as any).equippedSoundPack || 'classic') === item.id;
-          return renderShopItem(item, 'soundPack', isOwned, isEquipped, () => (
-            <div className="w-16 h-16 rounded-2xl mb-4 border border-border shadow-sm bg-softIndigo flex items-center justify-center text-primary">
-              <ShoppingBag className="w-8 h-8" />
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {section.items.map((item) => {
+                const owned = isOwned(user, item);
+                const active = isActive(user, item);
+                const busy = busyItem === `${item.type}:${item.id}`;
+                return (
+                  <Surface key={`${item.type}:${item.id}`} className="flex items-center justify-between gap-4 p-5">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <Preview item={item} />
+                      <div className="min-w-0">
+                        <h3 className="truncate text-lg font-black text-textDark">{item.name}</h3>
+                        <p className="mt-1 text-base font-semibold text-textMuted">
+                          {owned ? 'Sahipsin' : `${item.price} Puan`}
+                        </p>
+                      </div>
+                    </div>
+                    {active ? (
+                      <Pill tone="success">
+                        <Check className="h-4 w-4" />
+                        Kuşanıldı
+                      </Pill>
+                    ) : (
+                      <button
+                        disabled={busy}
+                        onClick={() => void handleItemAction(item)}
+                        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-base font-black disabled:cursor-not-allowed disabled:opacity-70 ${
+                          owned || item.price === 0 ? 'border border-primary bg-white text-primary' : 'bg-primary text-white hover:bg-secondary'
+                        }`}
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        {busy ? 'İşleniyor' : owned || item.price === 0 ? 'Kuşan' : 'Al'}
+                      </button>
+                    )}
+                  </Surface>
+                );
+              })}
             </div>
-          ));
-        })}
+          </section>
+        ))}
       </div>
     </div>
   );
+}
+
+function isOwned(user: User, item: ShopItem) {
+  if (item.price === 0) return true;
+  if (item.type === 'color') return user.ownedColors?.includes(item.id) ?? false;
+  if (item.type === 'icon') return user.ownedIcons?.includes(item.id) ?? false;
+  if (item.type === 'soundPack') return (user.ownedSoundPacks ?? ['classic']).includes(item.id);
+  return (user.ownedProfileFrames ?? ['none']).includes(item.id);
+}
+
+function isActive(user: User, item: ShopItem) {
+  if (item.type === 'color') return user.equippedBubbleColor === item.id;
+  if (item.type === 'icon') return (user.equippedIcon ?? '') === item.id;
+  if (item.type === 'soundPack') return (user.equippedSoundPack ?? 'classic') === item.id;
+  return (user.equippedProfileFrame ?? 'none') === item.id;
+}
+
+function Preview({ item }: { item: { color?: string; text?: string } }) {
+  if (item.color) {
+    return (
+      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 bg-white" style={{ borderColor: item.color }}>
+        <div className="h-7 w-7 rounded-full" style={{ backgroundColor: item.color, opacity: 0.25 }} />
+      </div>
+    );
+  }
+  return <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-softIndigo text-lg font-black text-primary">{item.text}</div>;
 }
