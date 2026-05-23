@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Award, Camera, Coins, Flame, Info, Mail, Settings, ShieldCheck, ShoppingCart, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
@@ -19,7 +18,7 @@ const ranks = [
 export default function ProfilePage() {
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const { user, login, setUser, refreshUser, logout } = useAuthStore();
+  const { user, setUser, refreshUser } = useAuthStore();
   const [infoOpen, setInfoOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,15 +208,6 @@ function InfoRow({ icon, label, value }: { icon: typeof UserRound; label: string
         <p className="text-sm font-bold text-textDark">{value}</p>
       </div>
     </div>
-  );
-}
-
-function Input({ label, value, onChange, type = 'text', required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-base font-black text-textDark">{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-bold outline-none" />
-    </label>
   );
 }
 

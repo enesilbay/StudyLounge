@@ -78,7 +78,6 @@ export default function LobbiesPage() {
   }, [lobbies, query, selectedCategory]);
 
   const activeCount = lobbies.reduce((sum, lobby) => sum + (lobby.memberCount ?? 0), 0);
-  const eliteCount = lobbies.filter((lobby) => lobby.isPremiumOnly).length;
   const hour = new Date().getHours();
   const GreetingIcon = hour >= 18 || hour < 6 ? Moon : Sun;
   const greeting = hour >= 18 || hour < 6 ? 'İyi Akşamlar' : 'İyi Çalışmalar';

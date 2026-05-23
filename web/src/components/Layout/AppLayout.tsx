@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { BarChart3, Crown, Home, LogOut, Users, ShoppingBag, Trophy, UserRound } from 'lucide-react';
+import { BarChart3, Home, LogOut, Users, ShoppingBag, Trophy, UserRound } from 'lucide-react';
 import { Avatar, BrandLockup } from '../ui';
 import { useAuthStore } from '../../store/authStore';
 

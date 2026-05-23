@@ -1,13 +1,28 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { PageHeader, Surface } from '../components/ui';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
 import type { User } from '../lib/types';
 
-function Input({ label, type = 'text', value, onChange, required, helper }: any) {
+function Input({
+  label,
+  type = 'text',
+  value,
+  onChange,
+  required = false,
+  helper,
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  helper?: string;
+}) {
   return (
     <label className="block">
       <span className="mb-2 block text-base font-black text-textDark">{label}</span>
@@ -98,7 +113,12 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Hesabını yönet"
         title="Hesap Ayarları"
-        onBack={() => navigate(-1)}
+        action={
+          <button onClick={() => navigate(-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark transition hover:bg-softIndigo">
+            <ArrowLeft className="h-4 w-4" />
+            Geri
+          </button>
+        }
       />
 
       {error ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{error}</Surface> : null}
