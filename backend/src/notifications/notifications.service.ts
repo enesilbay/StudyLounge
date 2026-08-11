@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { Expo, ExpoPushMessage } from 'expo-server-sdk';
+import type { Expo as ExpoType, ExpoPushMessage } from 'expo-server-sdk';
 
 @Injectable()
 export class NotificationsService {
-  private expo = new Expo();
+  private expoInstance: ExpoType | null = null;
+
+  private async getExpo(): Promise<ExpoType> {
+    if (!this.expoInstance) {
+      const { Expo } = await import('expo-server-sdk');
+      this.expoInstance = new Expo();
+    }
+    return this.expoInstance;
+  }
 
   async sendNotification(
     pushToken: string,
@@ -11,6 +19,7 @@ export class NotificationsService {
     body: string,
     data?: any,
   ) {
+    const { Expo } = await import('expo-server-sdk');
     if (!Expo.isExpoPushToken(pushToken)) {
       console.error(`Push token geçerli değil: ${String(pushToken)}`);
       return;
@@ -27,9 +36,10 @@ export class NotificationsService {
     ];
 
     try {
-      const chunks = this.expo.chunkPushNotifications(messages);
+      const expo = await this.getExpo();
+      const chunks = expo.chunkPushNotifications(messages);
       for (const chunk of chunks) {
-        await this.expo.sendPushNotificationsAsync(chunk);
+        await expo.sendPushNotificationsAsync(chunk);
       }
       console.log(`Bildirim başarıyla gönderildi: ${title}`);
     } catch (error) {
