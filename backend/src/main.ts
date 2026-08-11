@@ -19,10 +19,25 @@ async function bootstrap() {
     }),
   );
 
-  // 1. CORS Ayari: Olmazsa olmaz. Mobil cihazlarin baglanti izni almasini saglar.
-  const corsOrigin = getConfigString(configService, 'CORS_ORIGIN', '*');
+  // 1. CORS Ayari: Production ortaminda * yerine acikca belirtilmis bir origin beklenir.
+  const isProduction = configService.get('NODE_ENV') === 'production';
+  const corsOrigin = configService.get('CORS_ORIGIN');
+  
+  let originValue: string | string[] | boolean = '*';
+  
+  if (isProduction) {
+    if (!corsOrigin || corsOrigin === '*') {
+      console.warn('WARNING: CORS_ORIGIN is not set properly for production. Disabling CORS origins.');
+      originValue = false; // Production'da guvenlik geregi acikca belirtilmezse kapat
+    } else {
+      originValue = corsOrigin.split(',');
+    }
+  } else {
+    originValue = corsOrigin && corsOrigin !== '*' ? corsOrigin.split(',') : '*';
+  }
+
   app.enableCors({
-    origin: corsOrigin === '*' ? '*' : corsOrigin.split(','),
+    origin: originValue,
   });
 
   // 2. Statik Dosyalar: PDF ve diger yuklemelerin URL uzerinden acilmasi icin.
@@ -40,17 +55,29 @@ async function bootstrap() {
   // IP Adresini dinamik bulma
   const interfaces = os.networkInterfaces();
   let localIp = '127.0.0.1';
+  // Öncelikle gerçek Ethernet/Wi‑Fi kartını bulmaya çalışıyoruz.
+  // Docker/WSL sanal ağları (192.168.56.*, 172.* vb.) ve
+  // "vEthernet"/"Virtual" isimli arayüzler atlanır.
   for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name] || []) {
+    // Atla: sanal ağlar ve vEthernet
+    if (name.toLowerCase().includes('vEthernet') || name.toLowerCase().includes('virtual') || name.toLowerCase().includes('docker')) {
+      continue;
+    }
+    for (const iface of interfaces[name] ?? []) {
       if (
         iface.family === 'IPv4' &&
         !iface.internal &&
-        !name.includes('vEthernet') &&
-        !name.includes('Virtual')
+        // Docker Desktop’ın tipik IP bloğu 192.168.56.*
+        !iface.address.startsWith('192.168.56.') &&
+        !iface.address.startsWith('172.')
       ) {
         localIp = iface.address;
+        // En uygun IP bulundu, döngüyü kır
         break;
       }
+    }
+    if (localIp !== '127.0.0.1') {
+      break;
     }
   }
 

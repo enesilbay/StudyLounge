@@ -236,3 +236,5 @@ const bg = StyleSheet.create({
     opacity: 0.45,
   },
 });
+
+export default function Dummy() { return null; }

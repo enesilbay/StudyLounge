@@ -11,6 +11,32 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-enes_admin} -d ${DB_NAME:-studylounge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: studylounge_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-enes_admin}
+      - DB_PASSWORD=${DB_PASSWORD:-studylounge_secret}
+      - DB_NAME=${DB_NAME:-studylounge}
+      - CORS_ORIGIN=*
+      - JWT_SECRET=docker-secret-key-123
+      - JWT_EXPIRES_IN=7d
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

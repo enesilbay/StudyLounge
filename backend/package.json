@@ -92,6 +92,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^expo-server-sdk$": "<rootDir>/../test/mocks/expo-server-sdk.ts"
+    }
   }
 }

@@ -12,6 +12,7 @@ import { LobbiesController } from '../src/lobbies/lobbies.controller';
 import { LobbiesService } from '../src/lobbies/lobbies.service';
 import { MailService } from '../src/mail/mail.service';
 import { UsersController } from '../src/users/users.controller';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { User } from '../src/users/user.entity';
 import { UsersService } from '../src/users/users.service';
 
@@ -60,6 +61,10 @@ describe('StudyLounge API (e2e)', () => {
         {
           provide: MailService,
           useValue: { sendResetPasswordEmail: jest.fn() },
+        },
+        {
+          provide: NotificationsService,
+          useValue: { sendNudgeNotification: jest.fn() },
         },
         {
           provide: ConfigService,
@@ -226,7 +231,7 @@ class InMemoryUsersService {
   private nextFriendshipId = 1;
 
   create(userData: Partial<TestUser>) {
-    const user: TestUser = {
+    const user = {
       id: this.nextUserId,
       username: userData.username ?? '',
       fullName: userData.fullName ?? '',
@@ -238,7 +243,7 @@ class InMemoryUsersService {
       expoPushToken: '',
       resetPasswordToken: null,
       resetPasswordExpires: null,
-    };
+    } as TestUser;
     this.nextUserId += 1;
     this.users.push(user);
     return this.sanitize(user);

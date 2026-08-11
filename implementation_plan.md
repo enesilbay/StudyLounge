@@ -1,63 +1,84 @@
-# StudyLounge Web Entegrasyon ve İyileştirme Planı
+# StudyLounge Portfolyo Hazırlık Yol Haritası
 
-Bu plan, StudyLounge web uygulamasının mock verilerden kurtulup gerçek backend'e bağlanması ve mobil taraftaki özelliklerle eşzamanlı çalışabilmesi için hazırlanmıştır. Ayrıca build hatalarını giderip stabil bir web versiyonu oluşturmayı amaçlar.
+Projenin portfolyöye uygun hale getirilmesi için odak noktamız: projeyi **mobil + NestJS backend** ürünü olarak netleştirmek, ayrı Vite `web/` uygulamasını aktif kapsamdan çıkarmak, DevOps görünürlüğünü (CI/CD, Docker) güçlendirmek ve mevcut kalite açıklarını kapatmaktır.
 
 ## User Review Required
 
 > [!WARNING]
-> Web ve mobil arasında bazı UI/UX farkları var. Mobildeki AvatarWithFrame, Rank Badge gibi bileşenleri web için yeniden yazmamız gerekecek (veya mobilden ortak bir klasöre taşıma, ancak monorepo yapısı kurulu olmadığı için web içerisinde oluşturacağız). 
-> Bu bileşenlerin tasarımlarında mobildeki "C" (Colors) sabitleriyle uyumlu web için Tailwind konfigürasyonunu güncel tutacağız. Lütfen bu yaklaşımı onaylayın.
+> Web klasörü (`web/`) silinmeyecektir, ancak aktif akıştan çıkarılacak ve bakım yapılmadığına dair (archived) not düşülecektir.
+> Mobil uygulamada Premium / Ödeme sistemi gerçek bir ödeme altyapısı (Stripe/Iyzico) ile değil, portfolyoda gösterilebilir bir "demo" akışı olarak kalacaktır. Bu yaklaşımı onaylıyor musunuz?
 
 ## Open Questions
 
 > [!IMPORTANT]
-> - Backend'de web üzerinden (örn: dosya yükleme - resim/pdf) atılacak veriler için AWS S3 veya benzeri bir depolama servisi halihazırda bağlı mı?
-> - Web'deki Premium demo sayfası, mobildeki gibi basit bir `upgrade` endpoint'ine mi vuracak yoksa Stripe/Iyzico entegrasyonu var mı?
+> - Mobil taraftaki lint uyarılarını temizlerken, çok fazla efor gerektiren kısımlarda (örneğin any tipleri) bunları düzeltmek yerine `eslint-disable` ile gerekçelendirmeyi mi tercih edersiniz, yoksa hepsini tek tek refactor edelim mi?
 
 ## Proposed Changes
 
-### 1. Web Build Temizliği
-Bu aşamada sadece `npm run build` sonucunda patlayan kullanılmayan değişken hatalarını temizleyeceğiz.
-- **`src/App.tsx`, `src/pages/*.tsx`, `src/components/Layout/AppLayout.tsx`, `src/router.tsx`**: Kullanılmayan tüm `React`, `motion`, `logout`, `roomUsers`, ikon (Shield, Bell, Medal vb.) ve router (`Outlet`) import ve değişkenlerini silme/düzenleme.
+### Web Archival & Documentation
 
-### 2. Auth & Store Standardizasyonu
-- **`src/store/authStore.ts`**: Uygulama açıldığında (app load) local storage'daki token ile `/users/me` API'sine istek atıp gerçek kullanıcı verilerini çekecek `initAuth` fonksiyonunun yazılması.
-- **`src/pages/AuthPage.tsx`**: Mock token yerine `axios` ile backend `/auth/login` ve `/auth/register` servislerine bağlanılması, hata yakalama eklenmesi.
+#### [MODIFY] [README.md](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/README.md)
+Portfolyo odaklı olarak yeniden yazılacak. Özellikler, mimari (backend + mobile), kurulum, test, Docker, demo senaryosu ve ekran görüntüsü alanları eklenecek. Web kısımları çıkarılacak.
 
-### 3. Ortak Web Utility/Component Seti
-Mobil tarafta olan ancak web tarafında eksik olan temel UI bileşenlerinin oluşturulması.
-- **`src/components/UI/AvatarWithFrame.tsx`**: [NEW] Avatar çerçevelerini (ör. neon, legendary) render edecek bileşen.
-- **`src/components/UI/RankBadge.tsx`**: [NEW] Rank seviyesini (Demir, Bronz, Elmas vb.) ikonla gösterecek bileşen.
-- **`src/lib/api.ts`**: [MODIFY] Axios client'ı oluşturup token interceptor ekleme, standart HTTP çağrılarını yönetme.
+#### [MODIFY] [implementation_plan.md](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/implementation_plan.md)
+Eski web entegrasyon planı yerine bu portfolyo yol haritası kopyalanacak/değiştirilecek.
 
-### 4. Lobbies Ekranı (Gerçek API)
-- **`src/pages/LobbiesPage.tsx`**: `mockRooms` yerine `/lobbies` endpointinden aktif lobileri çekme. Kategori bazlı filtrelemenin ve "Oda Kur", "Şifreli Oda" giriş senaryolarının bağlanması.
+### Backend Production Readiness & Fixes
 
-### 5. Focus Room (Sensör/Mobil Özellikleriyle Eşitleme)
-- **`src/pages/FocusRoomPage.tsx`**: 
-  - Chat geçmişi API bağlantısı (`/messages/:roomName`).
-  - Gelen mesajlarda `AvatarWithFrame` ve baloncuk rengi kullanılması.
-  - "Nudge" (Dürtme), Düello gibi web tarafında backend'den tetiklenebilecek WebSocket olaylarının mobildeki ile eşlenmesi.
-  - (Görsel/PDF yükleme web'de masaüstü dosya seçimi olarak eklenecek).
+#### [MODIFY] [backend/src/app.module.ts](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/backend/src/app.module.ts)
+TypeORM ayarlarında `synchronize: true` değerinin production ortamında kapalı olması (migration bazlı çalışması) sağlanacak.
 
-### 6. Profile + Shop + Premium API Bağlantısı
-- **`src/pages/ProfilePage.tsx`**: Sabit `Enes` ismini kaldırıp `/users/me` verisinden Avatar, Streak, Rank bilgilerini gösterme.
-- **`src/pages/ShopPage.tsx`**: `/shop/items` ile ürünleri çekme, `/users/buy` ve `/users/equip` ile satın alma işlemlerini yönetme.
-- **`src/pages/PremiumPage.tsx`**: Mock premium butonunu `/users/demo/upgrade` API'sine bağlama.
+#### [MODIFY] [backend/src/app.controller.ts](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/backend/src/app.controller.ts)
+Sistemin ayakta olduğunu doğrulamak (ve Docker/CI healthcheck'leri için) basit bir `/health` endpoint'i eklenecek.
 
-### 7. Leaderboard, Analytics ve DM
-- **`src/pages/LeaderboardPage.tsx`**: `/users/leaderboard` API'sinden sıralama verisini çekme.
-- **`src/pages/AnalyticsPage.tsx`**: `/users/analytics` verisini çekip Recharts veya benzeri bir kütüphaneyle Heatmap ve bar chart çizdirme.
-- **`src/pages/DMPage.tsx`**: Arkadaş listesi, okunmamış bildirimler ve `send_dm/receive_dm` soket işlemlerinin uygulanması.
+#### [MODIFY] [backend/src/main.ts](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/backend/src/main.ts)
+CORS ayarları production'da kısıtlı olacak şekilde çevre değişkenine (Environment Variable) bağlanacak.
 
-### 8. QA & Final Build Kontrolü
-Tüm sayfalar responsive tasarım için test edilecek ve sonunda temiz bir `npm run build` alındığı doğrulanacak.
+#### [MODIFY] [backend/package.json](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/backend/package.json)
+Jest konfigürasyonu güncellenerek, `expo-server-sdk` ESM import hatasını çözmek için `moduleNameMapper` veya mock ayarları eklenecek.
+
+#### [MODIFY] [backend/.env.example](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/backend/.env.example)
+`JWT_SECRET`, DB ayarları ve upload path gibi değerler için açıklayıcı notlar eklenecek. Lokal `uploads/` kullanımının portfolyo/demo amaçlı olduğu dokümante edilecek.
+
+### DevOps & CI/CD
+
+#### [NEW] [backend/Dockerfile](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/backend/Dockerfile)
+NestJS uygulamasını production ortamında çalıştırmak için multi-stage Dockerfile eklenecek.
+
+#### [MODIFY] [docker-compose.yml](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/docker-compose.yml)
+Backend ve Postgres container'ları yapılandırılacak. Postgres için `healthcheck` tanımı eklenecek.
+
+#### [NEW] [.github/workflows/ci.yml](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/.github/workflows/ci.yml)
+GitHub Actions workflow dosyası oluşturulacak. İçeriği:
+- Backend install, build ve test (`npm test -- --runInBand`, e2e testleri)
+- Mobile install, typecheck (`npm run typecheck`) ve lint (`npm run lint`)
+
+### Mobile App Refinement
+
+#### [MODIFY] [mobile/app/config/api.ts](file:///c:/Users/Enes/OneDrive/Desktop/studylounge/mobile/app/config/api.ts)
+`10.192.24.96` gibi sabit LAN IP'leri kaldırılıp tamamen environment (`EXPO_PUBLIC_BACKEND_URL`) odaklı yapı güçlendirilecek.
+
+#### [MODIFY] Mobile Components
+`npm run lint` sonucunda çıkan uyarılar (kullanılmayan değişkenler, bağımlılık array'leri vb.) temizlenecek veya bilinçli olarak ignore edilip yorum eklenecek.
 
 ## Verification Plan
 
 ### Automated Tests
-- Kodun `npm run build` (tsc ve vite build) sırasında hiç uyarı veya hata vermediğinden emin olunacak.
+- `cd backend && npm run build`
+- `cd backend && npm test -- --runInBand`
+- `cd backend && npm run test:e2e -- --runInBand`
+- `cd mobile && npm run typecheck`
+- `cd mobile && npm run lint`
+
+### DevOps Verification
+- `docker-compose up --build` komutuyla sistemin sorunsuz ayağa kalktığı ve db/backend bağlantısının kurulduğu görülecek.
+- GitHub Actions CI workflow'unun commit sonrası hatasız çalıştığı doğrulanacak.
 
 ### Manual Verification
-- Bir web kullanıcısının sıfırdan kayıt olması, lobiye girmesi, profil bilgilerini güncellemesi ve marketten eşya alması senaryosu baştan sona test edilecek.
-- Konsolda WebSocket bağlantılarında hata olup olmadığı (cors, auth token eksikliği vb.) incelenecek.
+- Expo üzerinden uygulamanın başlatılıp:
+  - Kayıt/Giriş
+  - Lobi oluşturma/girme
+  - Sensör odak akışı
+  - Sohbet ve dosya paylaşımı (demo amaçlı)
+  - Profil, Liderlik ve Premium demo ekranlarının API bağlantılarının doğru çalıştığı test edilecek.
+- `http://localhost:3000/health` (veya ilgili port üzerinden) backend healthcheck kontrolü yapılacak.

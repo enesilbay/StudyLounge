@@ -6,6 +6,8 @@ import {
   getConfigNumber,
   getConfigString,
 } from './config/env';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
@@ -54,7 +56,7 @@ import { UsersModule } from './users/users.module';
             DirectMessage,
           ],
           autoLoadEntities: true,
-          synchronize: true,
+          synchronize: getConfigString(configService, 'NODE_ENV', 'development') !== 'production',
         };
       },
     }),
@@ -64,7 +66,7 @@ import { UsersModule } from './users/users.module';
     MailModule,
     AuthModule,
   ],
-  controllers: [],
-  providers: [SensorsGateway, NotificationsService],
+  controllers: [AppController],
+  providers: [AppService, SensorsGateway, NotificationsService],
 })
 export class AppModule {}

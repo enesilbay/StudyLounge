@@ -1,195 +1,81 @@
 # StudyLounge
 
-StudyLounge, ogrencilerin birlikte calisabilecekleri, telefonun masada olup olmadigini sensorlerle takip eden sosyal odaklanma uygulamasidir.
+StudyLounge, öğrencilerin birlikte çalışabilecekleri, telefonun masada olup olmadığını sensörlerle takip eden sosyal odaklanma uygulamasıdır. 
+*Ayrı Masalarda, Aynı Lobide.*
 
-Proje uc parcadan olusur:
+> **Not:** Bu proje portfolyo amaçlı geliştirilmiştir. Projenin eski `web` uygulaması aktif geliştirme kapsamından çıkarılmış (archived) olup, odak noktası tamamen **Backend (NestJS)** ve **Mobil (React Native/Expo)** üzerine kurulmuştur.
 
-- `backend`: NestJS, TypeScript, TypeORM, PostgreSQL, Socket.IO
-- `mobile`: Expo / React Native, TypeScript
-- `web`: Vite / React / TypeScript
+## Mimari
 
-## Ozellikler
+Proje iki ana bileşenden oluşur:
+- **`backend`**: NestJS, TypeScript, TypeORM, PostgreSQL, Socket.IO. Gerçek zamanlı haberleşme, JWT auth, lobi ve sensör verilerini yönetir.
+- **`mobile`**: Expo / React Native, TypeScript. Sensör takibi, lobi sohbeti, profil yönetimi ve gerçek zamanlı etkileşimleri sağlar.
+- *(Arşivlenmiş)* **`web`**: Vite / React (Aktif olarak bakımı yapılmamaktadır).
 
-- JWT tabanli kayit, giris ve korumali API akislari
-- Lobi olusturma, listeleme, premium/elite oda kontrolu
-- Socket.IO ile odadaki kullanicilarin anlik durum takibi
-- Sensor tabanli odak durumu ve odak puani kazanimi
-- Lobi sohbeti, dosya/gorsel paylasimi ve avatarli mesaj gosterimi
-- Arkadaslik istegi, kabul/red ve arkadas listesi
-- Profil fotografi yukleme ve avatarin profil, lobi, liderlik ve sensor ekranlarinda gosterimi
-- Profil ayarlari: ad soyad, e-posta, kullanici adi ve sifre degistirme
-- Profil ayarlari degisince mobil token ve yerel kullanici bilgisi otomatik yenilenir
-- Premium demo akisi, premium rozetleri, analitik ve ses mikseri
-- Liderlik tablosu, rutbe sistemi ve haftalik analitik ekranlari
-- Web arayuzu: login/register, dashboard, lobbies, leaderboard, profile
+## Özellikler
 
-## Son Guncellemeler (Sensor, DM & Lobi)
-- **Global Socket Yonetimi:** Kullanicilar sisteme baglandiginda tum sekmelerde online durumu ve mesajlasmayi senkron tutan global socket `userSockets` yapisi kuruldu.
-- **Okunmamis DM Bildirimleri:** `DirectMessage` entity'sine okundu bilgisi (`isRead`) eklendi. Ben (Profil) sayfasindaki "Istekler" kisminda okunmamis DM gonderenler artik listeleniyor.
-- **Odadakiler Listesi Duzenlemesi:** Bir odaya (sensore) girdiginizde `Odadakiler` listesinde artik kendi adiniz filtrelenerek gizleniyor.
-- **Global Durtme (Nudge) Guncellemesi:** Arkadasiniza calisma teklifi sunan "Durtme (👋)" ozelligi odadan cikarilarak genel "Ben" sayfasina eklendi. Arkadasiniz uygulamanin neresinde olursa olsun anlik Toast/Alert (Push haric) bildirimi aliyor.
-- **Lobi Gorunurlugu:** Lobi sayfasindaki odalarda o an eger bir arkadasiniz odaklaniyorsa (ornegin "Ahmet burada odaklaniyor"), bu bilgi aktif olarak odanin uzerinde belirtiliyor.
+- **Sensör Tabanlı Odaklanma**: Telefon masaya bırakıldığında odaklanma süresi başlar, kaldırıldığında durur.
+- **Gerçek Zamanlı Lobiler (Socket.IO)**: Odadaki arkadaşlarınızın anlık durum (odaklanıyor/boşta) takibi.
+- **Lobi Sohbeti & Dosya Paylaşımı**: Lobide anlık mesajlaşma ve dosya/görsel paylaşımı.
+- **Arkadaşlık & Nudge Sistemi**: Arkadaş ekleme, mesajlaşma ve uygulamayı kullanan arkadaşa anlık "Dürtme (👋)" bildirimi.
+- **Kapsamlı Profil & Liderlik**: Rutbe sistemi, haftalık analitik ekranları ve profil yönetimi.
+- **Güvenli API**: JWT tabanlı kimlik doğrulama, şifreli veritabanı yönetimi ve kısıtlı CORS (production).
 
-## Kurulum
+## Kurulum ve Çalıştırma
 
-Gerekenler:
+### Gereksinimler
+- Node.js & npm
+- PostgreSQL veya Docker
+- Expo Go (veya Android/iOS simülatörü)
 
-- Node.js
-- npm
-- PostgreSQL
-- Expo Go veya Android/iOS simulator
-
-Bagimliliklari kurmak icin:
-
+### 1. Backend Kurulumu
 ```bash
 cd backend
 npm install
-
-cd ../mobile
-npm install
-
-cd ../web
-npm install
-```
-
-## Ortam Degiskenleri
-
-Backend icin `backend/.env.example` dosyasini `backend/.env` olarak kopyalayin:
-
-```bash
-cd backend
 cp .env.example .env
 ```
+`.env` dosyasındaki `JWT_SECRET`, veritabanı bağlantı bilgilerini ve `CORS_ORIGIN` değişkenini kendi ortamınıza göre düzenleyin.
 
-Temel backend degiskenleri:
-
-```env
-NODE_ENV=development
-PORT=3000
-HOST=0.0.0.0
-CORS_ORIGIN=*
-
-JWT_SECRET=change-this-to-a-long-random-secret
-JWT_EXPIRES_IN=7d
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=enes_admin
-DB_PASSWORD=studylounge_secret
-DB_NAME=studylounge
-
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_FROM=StudyLounge <your-email@gmail.com>
+### 2. Veritabanını Başlatma (Docker)
+PostgreSQL ve backend uygulamasını Docker ile tek bir komutta çalıştırabilirsiniz:
+```bash
+docker compose up --build -d
+```
+VEYA sadece lokal postgres veritabanını başlatmak isterseniz:
+```bash
+docker compose up postgres -d
 ```
 
-Mobile backend adresi icin:
-
-```env
-EXPO_PUBLIC_BACKEND_URL=http://YOUR_LOCAL_IP:3000
-```
-
-Mobile tarafinda API adresleri `mobile/app/config/api.ts` icinden tek merkezden yonetilir.
-
-## Calistirma
-
-Backend:
-
+### 3. Backend'i Lokal Çalıştırma
 ```bash
 cd backend
 npm run start:dev
 ```
+Backend ayağa kalktığında `http://localhost:3000/health` adresinden çalıştığını doğrulayabilirsiniz.
 
-Mobile:
-
+### 4. Mobil Uygulamayı Çalıştırma
+Mobil uygulamanın backend'e bağlanabilmesi için lokal IP adresinizi belirtmeniz gereklidir:
 ```bash
 cd mobile
-npm start
+npm install
+EXPO_PUBLIC_BACKEND_URL=http://<LOKAL_IP_ADRESINIZ>:3000 npx expo start
 ```
+*Not: `10.x.x.x` veya `192.168.x.x` gibi kendi ağınızdaki lokal IP'nizi kullanın.*
 
-Web:
+## CI/CD ve DevOps (GitHub Actions)
+Projede portfolyo gösterimi amacıyla bir CI/CD pipeline'ı (`.github/workflows/ci.yml`) bulunmaktadır:
+- **Backend Testleri**: Jest unit ve e2e testleri çalıştırılır.
+- **Mobil Doğrulama**: TypeScript typecheck ve ESLint kuralları kontrol edilir.
+- **Docker**: `Dockerfile` ve `docker-compose.yml` kullanılarak sistemin konteynerize çalışabilirliği doğrulanır.
 
-```bash
-cd web
-npm run dev
-```
+## Sunum / Demo Senaryosu
+1. Kullanıcı uygulamaya kayıt olur ve profil resmi ekler.
+2. Bir lobi oluşturur (Premium demo özelliği ile Elite lobi seçeneği incelenebilir).
+3. Lobideyken telefonu masaya bırakır, sensör devreye girer ve lobideki diğer kullanıcılara "Ahmet burada odaklanıyor" bildirimi gider.
+4. Odaklanma sonlandırıldığında Analytics ve Liderlik tablosu güncellenir.
+5. Kullanıcı arkadaşlarına anlık Toast (Nudge) atarak çalışmaya davet edebilir.
 
-Docker ile PostgreSQL:
-
-```bash
-docker compose up -d
-```
-
-## Test ve Kontroller
-
-Backend:
-
-```bash
-cd backend
-npm run lint
-npm test -- --runInBand
-npm run test:e2e -- --runInBand
-npm run build
-```
-
-Mobile:
-
-```bash
-cd mobile
-npm run typecheck
-npm run lint
-```
-
-Web:
-
-```bash
-cd web
-npm run lint
-npm run build
-```
-
-## Son Test Kapsami
-
-Backend unit testleri artik sadece "defined olmali" seviyesinde degil; su davranislari kontrol eder:
-
-- Auth register/login ve JWT payload uretimi
-- Hatali login reddi
-- Kullanici olusturmada sifre hashleme
-- Login sonrasi password alaninin gizlenmesi
-- Arkadaslik istegi olusturma
-- Odak dakikasinin kullanici puanina ve gunluk analitige yazilmasi
-- Lobi olusturma, private lobby password hash ve premium-only kontrolu
-- Profil ayarlarinda e-posta/kullanici adi guncelleme
-- Profil ayari sonrasi yeni JWT dondurme
-- Sifre degistirmede mevcut sifre kontrolu
-
-Backend e2e testleri:
-
-- Register -> login
-- Login -> create lobby
-- Friend request -> accept
-- Path `userId` ile baska kullanicinin profilini guncelleyememe
-
-## Sunum Senaryosu
-
-1. Kullanici kayit olur ve giris yapar.
-2. Profil fotografi ekler, kullanici adi/e-posta ayarlarini gorur.
-3. Lobi olusturur veya var olan lobiye girer.
-4. Telefonu masaya birakarak odak durumunu baslatir.
-5. Odadaki kullanicilarin avatarlarini ve odak durumlarini gorur.
-6. Lobi sohbetinden mesaj gonderir.
-7. Arkadaslik istegi gonderir ve kabul eder.
-8. Liderlik tablosu, rutbe ve analitik ekranlarini inceler.
-9. Premium demo akisiyle elite oda ve ses mikeri ozelliklerini gosterir.
-
-## Repo Hijyeni
-
-- Secret degerleri `.env` dosyalarinda tutulur ve git'e eklenmez.
-- `backend/uploads/` kullanici yuklemeleri icindir ve repo disinda tutulur.
-- `.agents/` lokal agent verisi olarak ignore edilir.
-
-## Proje Sahibi
-
-Enes Ilbay
+## Repo Hijyeni ve Güvenlik
+- Gizli anahtarlar, veritabanı şifreleri (`.env`) repoda tutulmaz.
+- Backend testleri `expo-server-sdk` gibi ESM paketleriyle uyumlu çalışacak şekilde izole edilmiştir.
+- Kullanıcı yüklemeleri (ör. profil fotoğrafları) lokal development ortamında `backend/uploads/` altında toplanır. (Production için S3 vb. harici storage entegrasyonu planlanmıştır).

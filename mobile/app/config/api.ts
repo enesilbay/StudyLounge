@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const DEFAULT_BACKEND_URL = 'http://10.192.24.96:3000';
+// Varsayilan olarak localhost. Gercek cihazda test ederken EXPO_PUBLIC_BACKEND_URL kullanilmali.
+const DEFAULT_BACKEND_URL = 'http://localhost:3000';
 
 const extraBackendUrl =
   Constants.expoConfig?.extra?.backendUrl ??
