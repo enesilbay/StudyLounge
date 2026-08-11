@@ -72,4 +72,5 @@ import { UsersModule } from './users/users.module';
   controllers: [AppController],
   providers: [AppService, SensorsGateway, NotificationsService],
 })
-export class AppModule {}
+export class AppModule { }
+//test
