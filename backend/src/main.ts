@@ -22,9 +22,9 @@ async function bootstrap() {
   // 1. CORS Ayari: Production ortaminda * yerine acikca belirtilmis bir origin beklenir.
   const isProduction = configService.get('NODE_ENV') === 'production';
   const corsOrigin = configService.get('CORS_ORIGIN');
-  
+
   let originValue: string | string[] | boolean = '*';
-  
+
   if (isProduction) {
     if (!corsOrigin || corsOrigin === '*') {
       console.warn('WARNING: CORS_ORIGIN is not set properly for production. Disabling CORS origins.');
@@ -90,3 +90,4 @@ async function bootstrap() {
 bootstrap().catch((err) => {
   console.error('Uygulama başlatılamadı:', err);
 });
+// test
