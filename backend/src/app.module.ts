@@ -33,7 +33,8 @@ import { UsersModule } from './users/users.module';
           getConfigBoolean(configService, 'DB_SSL', false) ||
           dbHost.includes('neon.tech') ||
           dbHost.includes('render.com') ||
-          dbHost.includes('render.internal');
+          dbHost.includes('render.internal') ||
+          dbHost.startsWith('dpg-');
         const dbName = getConfigString(configService, 'DB_NAME', 'studylounge');
         const dbUser = getConfigString(configService, 'DB_USER', 'enes_admin');
 
