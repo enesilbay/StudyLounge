@@ -31,7 +31,9 @@ import { UsersModule } from './users/users.module';
         const dbHost = getConfigString(configService, 'DB_HOST', 'localhost');
         const dbSsl =
           getConfigBoolean(configService, 'DB_SSL', false) ||
-          dbHost.includes('neon.tech');
+          dbHost.includes('neon.tech') ||
+          dbHost.includes('render.com') ||
+          dbHost.includes('render.internal');
         const dbName = getConfigString(configService, 'DB_NAME', 'studylounge');
         const dbUser = getConfigString(configService, 'DB_USER', 'enes_admin');
 
