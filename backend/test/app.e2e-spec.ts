@@ -60,7 +60,11 @@ describe('StudyLounge API (e2e)', () => {
         { provide: LobbiesService, useClass: InMemoryLobbiesService },
         {
           provide: MailService,
-          useValue: { sendResetPasswordEmail: jest.fn() },
+          useValue: {
+            sendResetPasswordEmail: jest.fn().mockResolvedValue(true),
+            sendVerificationEmail: jest.fn().mockResolvedValue(true),
+            sendPasswordChangeCodeEmail: jest.fn().mockResolvedValue(true),
+          },
         },
         {
           provide: NotificationsService,
@@ -204,7 +208,7 @@ describe('StudyLounge API (e2e)', () => {
   });
 
   async function registerUser(username: string, email: string) {
-    const response = await request(getServer(app))
+    await request(getServer(app))
       .post('/auth/register')
       .send({
         username,
@@ -214,7 +218,12 @@ describe('StudyLounge API (e2e)', () => {
       })
       .expect(201);
 
-    const body = response.body as unknown as AuthResponse;
+    const loginResponse = await request(getServer(app))
+      .post('/auth/verify-email')
+      .send({ email, token: '123456' })
+      .expect(201);
+
+    const body = loginResponse.body as unknown as AuthResponse;
     return body.access_token;
   }
 });
@@ -237,6 +246,8 @@ class InMemoryUsersService {
       fullName: userData.fullName ?? '',
       email: userData.email ?? '',
       password: userData.password,
+      isEmailVerified: false,
+      emailVerificationToken: '123456',
       isPremium: false,
       totalFocusMinutes: 0,
       avatarUrl: '',
@@ -247,6 +258,26 @@ class InMemoryUsersService {
     this.nextUserId += 1;
     this.users.push(user);
     return this.sanitize(user);
+  }
+
+  findByEmail(email: string) {
+    const user = this.users.find((candidate) => candidate.email === email);
+    return user ? this.sanitize(user) : null;
+  }
+
+  updateVerificationToken(userId: number, token: string) {
+    const user = this.users.find((candidate) => candidate.id === userId);
+    if (user) {
+      user.emailVerificationToken = token;
+    }
+  }
+
+  markEmailAsVerified(userId: number) {
+    const user = this.users.find((candidate) => candidate.id === userId);
+    if (user) {
+      user.isEmailVerified = true;
+      user.emailVerificationToken = null;
+    }
   }
 
   login(email: string, password: string) {
