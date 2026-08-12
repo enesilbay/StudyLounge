@@ -14,8 +14,11 @@ export class MailService {
 
     if (host && host.includes('gmail')) {
       this.transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: { user, pass },
+        tls: { rejectUnauthorized: false },
       });
     } else {
       this.transporter = nodemailer.createTransport({
