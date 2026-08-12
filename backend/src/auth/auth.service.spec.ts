@@ -12,8 +12,16 @@ describe('AuthService', () => {
     create: jest.Mock;
     login: jest.Mock;
     findByEmail: jest.Mock;
+    findById: jest.Mock;
     updateResetToken: jest.Mock;
     updatePassword: jest.Mock;
+    updateVerificationToken: jest.Mock;
+    markEmailAsVerified: jest.Mock;
+  };
+  let mailService: {
+    sendVerificationEmail: jest.Mock;
+    sendResetPasswordEmail: jest.Mock;
+    sendPasswordChangeCodeEmail: jest.Mock;
   };
   let jwtService: { sign: jest.Mock };
 
@@ -22,6 +30,8 @@ describe('AuthService', () => {
     username: 'ada',
     fullName: 'Ada Lovelace',
     email: 'ada@example.com',
+    isEmailVerified: true,
+    emailVerificationToken: '123456',
     isPremium: false,
     totalFocusMinutes: 0,
     avatarUrl: '',
@@ -35,8 +45,16 @@ describe('AuthService', () => {
       create: jest.fn(),
       login: jest.fn(),
       findByEmail: jest.fn(),
+      findById: jest.fn(),
       updateResetToken: jest.fn(),
       updatePassword: jest.fn(),
+      updateVerificationToken: jest.fn(),
+      markEmailAsVerified: jest.fn(),
+    };
+    mailService = {
+      sendVerificationEmail: jest.fn().mockResolvedValue(true),
+      sendResetPasswordEmail: jest.fn().mockResolvedValue(true),
+      sendPasswordChangeCodeEmail: jest.fn().mockResolvedValue(true),
     };
     jwtService = { sign: jest.fn().mockReturnValue('signed.jwt') };
 
@@ -45,17 +63,14 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
-        {
-          provide: MailService,
-          useValue: { sendResetPasswordEmail: jest.fn() },
-        },
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
   });
 
-  it('registers a user and signs a standard JWT payload', async () => {
+  it('registers a user and sends verification email', async () => {
     usersService.create.mockResolvedValue(user);
 
     const result = await service.register({
@@ -71,6 +86,26 @@ describe('AuthService', () => {
       email: 'ada@example.com',
       password: 'secret123',
     });
+    expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
+      'ada@example.com',
+      '123456',
+    );
+    expect(result).toEqual({
+      success: true,
+      requiresVerification: true,
+      email: 'ada@example.com',
+      message:
+        'Kayıt başarılı! Lütfen e-postanıza gönderilen 6 haneli doğrulama kodunu girin.',
+    });
+  });
+
+  it('verifies email with valid code and returns access_token', async () => {
+    usersService.findByEmail.mockResolvedValue(user);
+    usersService.findById.mockResolvedValue(user);
+
+    const result = await service.verifyEmail('ada@example.com', '123456');
+
+    expect(usersService.markEmailAsVerified).toHaveBeenCalledWith(7);
     expect(jwtService.sign).toHaveBeenCalledWith({
       sub: 7,
       email: 'ada@example.com',
@@ -80,10 +115,11 @@ describe('AuthService', () => {
       success: true,
       user,
       access_token: 'signed.jwt',
+      message: 'E-posta adresiniz başarıyla doğrulandı!',
     });
   });
 
-  it('logs in with valid credentials', async () => {
+  it('logs in with valid credentials when verified', async () => {
     usersService.login.mockResolvedValue(user);
 
     const result = await service.login('ada@example.com', 'secret123');
