@@ -50,12 +50,16 @@ export class AuthService {
 
   async register(body: RegisterDto) {
     const user = await this.usersService.create(body);
-    if (user.emailVerificationToken) {
-      await this.mailService.sendVerificationEmail(
-        user.email,
-        user.emailVerificationToken,
-      );
+    const token =
+      user.emailVerificationToken ||
+      Math.floor(100000 + Math.random() * 900000).toString();
+
+    if (!user.emailVerificationToken) {
+      await this.usersService.updateVerificationToken(user.id, token);
     }
+
+    await this.mailService.sendVerificationEmail(user.email, token);
+
     return {
       success: true,
       requiresVerification: true,

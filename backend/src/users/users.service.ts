@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,7 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -21,6 +22,18 @@ export class UsersService {
     @InjectRepository(DailyAnalytics)
     private dailyAnalyticsRepository: Repository<DailyAnalytics>,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.usersRepository.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS "isEmailVerified" boolean DEFAULT false;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS "emailVerificationToken" varchar;
+      `);
+      console.log('[UsersService] PostgreSQL veritabanı sütunları doğrulandı.');
+    } catch (e) {
+      console.warn('[UsersService] Sütun doğrulama uyarısı:', e);
+    }
+  }
 
   // ── 1. KAYIT OL ──
   async create(userData: Partial<User>): Promise<User> {
