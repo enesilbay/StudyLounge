@@ -36,6 +36,12 @@ export class User {
   @Column({ nullable: true })
   expoPushToken: string;
 
+  @Column({ default: false })
+  isEmailVerified: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  emailVerificationToken: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   resetPasswordToken: string | null;
 

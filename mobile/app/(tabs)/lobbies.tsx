@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, FlatList,
   TextInput, Modal, Alert, Animated, Dimensions,
-  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Switch, ActivityIndicator
+  Platform, KeyboardAvoidingView, StatusBar, ScrollView, Switch, ActivityIndicator, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -204,8 +204,8 @@ export default function LobbiesScreen() {
       }
       const data = await response.json();
       setLobbies(Array.isArray(data) ? data : []);
-    } catch {
-      console.error('Lobi listesi yüklenemedi');
+    } catch (e) {
+      console.warn('[lobbies] Lobi listesi yüklenemedi:', e);
     }
   };
 
@@ -298,9 +298,12 @@ export default function LobbiesScreen() {
         {/* ── HEADER ── */}
         <Animated.View style={[s.header, { opacity: headerAnim }]}>
           <View style={s.headerTopRow}>
-            <View>
-              <Text style={s.greeting}>İyi Çalışmalar,</Text>
-              <Text style={s.pageTitle}>{userName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Image source={require('../../assets/images/logo.png')} style={{ width: 38, height: 38, borderRadius: 10 }} resizeMode="contain" />
+              <View>
+                <Text style={s.greeting}>İyi Çalışmalar,</Text>
+                <Text style={s.pageTitle}>{userName}</Text>
+              </View>
             </View>
             <TouchableOpacity onPress={() => router.push({ pathname: '/profile', params: { id: myUserId } } as any)} activeOpacity={0.7}>
               <FramedAvatar

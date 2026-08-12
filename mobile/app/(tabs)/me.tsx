@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Modal, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View, TextInput, Alert, RefreshControl
+  StyleSheet, Text, TouchableOpacity, View, TextInput, Alert, RefreshControl, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiUrl, assetUrl } from '../config/api';
 import { FramedAvatar } from '../components/FramedAvatar';
+import { FocusSummaryStrip } from '../components/common';
 import { C } from './sensor';
 import { getRankInfo, getRankProgress } from '../utils/rank';
 import { Theme } from '../utils/theme';
@@ -220,7 +221,10 @@ export default function MeScreen() {
       >
         {/* ── HEADER ── */}
         <View style={s.header}>
-          <Text style={s.headerTitle}>Ben</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Image source={require('../../assets/images/logo.png')} style={{ width: 34, height: 34, borderRadius: 10 }} resizeMode="contain" />
+            <Text style={s.headerTitle}>Ben</Text>
+          </View>
           <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
             <TouchableOpacity onPress={() => setIsFriendModalVisible(true)}>
               <FontAwesome5 name="user-plus" size={18} color={T.primary} />
@@ -307,6 +311,14 @@ export default function MeScreen() {
             </View>
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* ── ÖZET ŞERİDİ ── */}
+        <FocusSummaryStrip
+          todayMinutes={user.totalFocusMinutes ?? 0}
+          streakDays={user.currentStreak ?? 1}
+          coins={user.coins ?? 0}
+          onPressCoins={() => router.push('/shop' as any)}
+        />
 
         {/* ── HIZLI ERİŞİM IZGARASI ── */}
         <Text style={s.sectionTitle}>Hızlı Erişim</Text>

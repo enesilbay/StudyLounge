@@ -28,7 +28,7 @@ describe('AuthService', () => {
     expoPushToken: '',
     resetPasswordToken: null,
     resetPasswordExpires: null,
-  };
+  } as User;
 
   beforeEach(async () => {
     usersService = {

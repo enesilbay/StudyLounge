@@ -22,7 +22,7 @@ export class RegisterDto {
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: 'Şifreniz en az 8 karakter olmalıdır.' })
   @MaxLength(72)
   password: string;
 

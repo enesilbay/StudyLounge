@@ -19,6 +19,23 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Hatalı e-posta veya şifre girdiniz.');
     }
+
+    if (!user.isEmailVerified) {
+      let token = user.emailVerificationToken;
+      if (!token) {
+        token = Math.floor(100000 + Math.random() * 900000).toString();
+        await this.usersService.updateVerificationToken(user.id, token);
+      }
+      await this.mailService.sendVerificationEmail(user.email, token);
+      return {
+        success: false,
+        requiresVerification: true,
+        email: user.email,
+        message:
+          'Hesabınız henüz doğrulanmamış. Yeni doğrulama kodu e-postanıza gönderildi.',
+      };
+    }
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -33,15 +50,44 @@ export class AuthService {
 
   async register(body: RegisterDto) {
     const user = await this.usersService.create(body);
-    const payload: JwtPayload = {
-      sub: user.id,
+    if (user.emailVerificationToken) {
+      await this.mailService.sendVerificationEmail(
+        user.email,
+        user.emailVerificationToken,
+      );
+    }
+    return {
+      success: true,
+      requiresVerification: true,
       email: user.email,
-      username: user.username,
+      message:
+        'Kayıt başarılı! Lütfen e-postanıza gönderilen 6 haneli doğrulama kodunu girin.',
+    };
+  }
+
+  async verifyEmail(email: string, token: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (
+      !user ||
+      !user.emailVerificationToken ||
+      user.emailVerificationToken !== token
+    ) {
+      throw new UnauthorizedException('Geçersiz veya hatalı doğrulama kodu.');
+    }
+
+    await this.usersService.markEmailAsVerified(user.id);
+    const updatedUser = await this.usersService.findById(user.id);
+
+    const payload: JwtPayload = {
+      sub: updatedUser!.id,
+      email: updatedUser!.email,
+      username: updatedUser!.username,
     };
     return {
       success: true,
-      user,
+      user: updatedUser,
       access_token: this.jwtService.sign(payload),
+      message: 'E-posta adresiniz başarıyla doğrulandı!',
     };
   }
 
@@ -63,7 +109,10 @@ export class AuthService {
     expiry.setHours(expiry.getHours() + 1); // 1 saat geçerli
 
     await this.usersService.updateResetToken(user.id, token, expiry);
-    await this.mailService.sendResetPasswordEmail(email, token);
+    const sent = await this.mailService.sendResetPasswordEmail(email, token);
+    if (!sent) {
+      throw new UnauthorizedException('E-posta gönderilemedi, lütfen SMTP ayarlarınızı kontrol edin veya tekrar deneyin.');
+    }
 
     return {
       success: true,

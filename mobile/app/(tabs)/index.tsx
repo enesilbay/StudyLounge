@@ -68,6 +68,7 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
+  const [isVerifyEmail, setIsVerifyEmail] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [email, setEmail] = useState('');
@@ -75,6 +76,7 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [resetToken, setResetToken] = useState('');
+  const [verifyToken, setVerifyToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -99,6 +101,7 @@ export default function AuthScreen() {
     setIsLogin(toLogin);
     setIsForgotPassword(false);
     setIsResetPassword(false);
+    setIsVerifyEmail(false);
   };
 
   const checkExistingLogin = async () => {
@@ -112,7 +115,7 @@ export default function AuthScreen() {
   };
 
   const handleAuth = async () => {
-    if (!email || !password || (!isLogin && (!fullName || !username))) {
+    if (!email || (!isForgotPassword && !isResetPassword && !password) || (!isLogin && (!fullName || !username))) {
       Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.');
       return;
     }
@@ -120,6 +123,10 @@ export default function AuthScreen() {
       const usernameRegex = /^[a-zA-Z0-9_]+$/;
       if (!usernameRegex.test(username)) {
         Alert.alert('Geçersiz Kullanıcı Adı', 'Sadece harf, rakam ve alt çizgi (_) kullanın.');
+        return;
+      }
+      if (password.length < 8) {
+        Alert.alert('Zayıf Şifre', 'Şifreniz en az 8 karakter olmalıdır.');
         return;
       }
     }
@@ -133,20 +140,52 @@ export default function AuthScreen() {
       });
       const data = await response.json();
       if (response.ok) {
-        if (!isLogin) {
-          Alert.alert('Kayıt Başarılı', 'Lütfen oluşturduğunuz hesap ile giriş yapın.');
-          switchTab(true);
-          setPassword('');
+        if (data.requiresVerification) {
+          Alert.alert('Doğrulama Kodu Gönderildi', data.message);
+          setIsVerifyEmail(true);
         } else {
           await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
           await AsyncStorage.setItem('access_token', data.access_token);
           router.replace({ pathname: '/lobbies' as any, params: data.user });
         }
       } else {
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join('\n')
-          : (data.message || 'Bir sorun oluştu.');
-        Alert.alert('Hata', errorMsg);
+        if (data.requiresVerification) {
+          Alert.alert('E-posta Doğrulama', data.message);
+          setIsVerifyEmail(true);
+        } else {
+          const errorMsg = Array.isArray(data.message)
+            ? data.message.join('\n')
+            : (data.message || 'Bir sorun oluştu.');
+          Alert.alert('Hata', errorMsg);
+        }
+      }
+    } catch {
+      Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!email || !verifyToken) {
+      Alert.alert('Eksik Bilgi', 'Lütfen 6 haneli doğrulama kodunu girin.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(apiUrl('/auth/verify-email'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token: verifyToken.trim() }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Tebrikler! 🎉', data.message);
+        await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+        await AsyncStorage.setItem('access_token', data.access_token);
+        router.replace({ pathname: '/lobbies' as any, params: data.user });
+      } else {
+        Alert.alert('Hata', data.message || 'Doğrulama kodu hatalı.');
       }
     } catch {
       Alert.alert('Bağlantı Hatası', 'Sunucuya ulaşılamıyor.');
@@ -178,6 +217,7 @@ export default function AuthScreen() {
 
   const handleResetPassword = async () => {
     if (!email || !resetToken || !newPassword) { Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun.'); return; }
+    if (newPassword.length < 8) { Alert.alert('Zayıf Şifre', 'Yeni şifreniz en az 8 karakter olmalıdır.'); return; }
     setIsLoading(true);
     try {
       const response = await fetch(apiUrl('/auth/reset-password'), {
@@ -248,54 +288,83 @@ export default function AuthScreen() {
 
               {/* FORM */}
               <View style={s.form}>
-                {!isLogin && (
+                {isVerifyEmail ? (
                   <>
-                    <InputField placeholder="Ad Soyad" value={fullName} onChangeText={setFullName} autoCapitalize="words" iconName="user-circle" />
-                    <InputField placeholder="Kullanıcı Adı (örn: enes_123)" value={username} onChangeText={setUsername} iconName="at" />
+                    <Text style={{ color: T.textDark, fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 12, lineHeight: 18 }}>
+                      {email} adresine gönderilen 6 haneli doğrulama kodunu girin:
+                    </Text>
+                    <InputField placeholder="6 Haneli Doğrulama Kodu" value={verifyToken} onChangeText={setVerifyToken} keyboardType="number-pad" iconName="key" />
+                    <TouchableOpacity
+                      onPress={handleVerifyEmail}
+                      disabled={isLoading}
+                      activeOpacity={0.85}
+                      style={s.btn}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Text style={s.btnText}>HESABI DOĞRULA VE BAŞLA</Text>
+                          <FontAwesome5 solid name="check-circle" size={13} color="#FFFFFF" />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setIsVerifyEmail(false)} style={s.backToLoginBtn}>
+                      <Text style={s.backToLoginText}>← İptal / Giriş Ekranına Dön</Text>
+                    </TouchableOpacity>
                   </>
-                )}
-                <InputField placeholder="E-posta adresi" value={email} onChangeText={setEmail} keyboardType="email-address" iconName="envelope" />
-
-                {!isForgotPassword && !isResetPassword && (
-                  <InputField placeholder="Şifre" value={password} onChangeText={setPassword} secureTextEntry iconName="lock" />
-                )}
-
-                {isResetPassword && (
+                ) : (
                   <>
-                    <InputField placeholder="6 Haneli Kod" value={resetToken} onChangeText={setResetToken} keyboardType="number-pad" iconName="key" />
-                    <InputField placeholder="Yeni Şifre" value={newPassword} onChangeText={setNewPassword} secureTextEntry iconName="lock" />
+                    {!isLogin && (
+                      <>
+                        <InputField placeholder="Ad Soyad" value={fullName} onChangeText={setFullName} autoCapitalize="words" iconName="user-circle" />
+                        <InputField placeholder="Kullanıcı Adı (örn: enes_123)" value={username} onChangeText={setUsername} iconName="at" />
+                      </>
+                    )}
+                    <InputField placeholder="E-posta adresi" value={email} onChangeText={setEmail} keyboardType="email-address" iconName="envelope" />
+
+                    {!isForgotPassword && !isResetPassword && (
+                      <InputField placeholder="Şifre" value={password} onChangeText={setPassword} secureTextEntry iconName="lock" />
+                    )}
+
+                    {isResetPassword && (
+                      <>
+                        <InputField placeholder="6 Haneli Kod" value={resetToken} onChangeText={setResetToken} keyboardType="number-pad" iconName="key" />
+                        <InputField placeholder="Yeni Şifre" value={newPassword} onChangeText={setNewPassword} secureTextEntry iconName="lock" />
+                      </>
+                    )}
+
+                    {isLogin && !isForgotPassword && !isResetPassword && (
+                      <TouchableOpacity onPress={() => setIsForgotPassword(true)} style={s.forgotBtn}>
+                        <Text style={s.forgotText}>Şifremi Unuttum</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* ANA BUTON */}
+                    <TouchableOpacity
+                      onPress={isForgotPassword ? handleForgotPassword : (isResetPassword ? handleResetPassword : handleAuth)}
+                      disabled={isLoading}
+                      activeOpacity={0.85}
+                      style={s.btn}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Text style={s.btnText}>
+                            {isForgotPassword ? 'KOD GÖNDER' : (isResetPassword ? 'ŞİFREYİ GÜNCELLE' : (isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'))}
+                          </Text>
+                          <FontAwesome5 solid name="arrow-right" size={13} color="#FFFFFF" />
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    {(isForgotPassword || isResetPassword) && (
+                      <TouchableOpacity onPress={() => { setIsForgotPassword(false); setIsResetPassword(false); }} style={s.backToLoginBtn}>
+                        <Text style={s.backToLoginText}>← Giriş Ekranına Dön</Text>
+                      </TouchableOpacity>
+                    )}
                   </>
-                )}
-
-                {isLogin && !isForgotPassword && !isResetPassword && (
-                  <TouchableOpacity onPress={() => setIsForgotPassword(true)} style={s.forgotBtn}>
-                    <Text style={s.forgotText}>Şifremi Unuttum</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* ANA BUTON */}
-                <TouchableOpacity
-                  onPress={isForgotPassword ? handleForgotPassword : (isResetPassword ? handleResetPassword : handleAuth)}
-                  disabled={isLoading}
-                  activeOpacity={0.85}
-                  style={s.btn}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Text style={s.btnText}>
-                        {isForgotPassword ? 'KOD GÖNDER' : (isResetPassword ? 'ŞİFREYİ GÜNCELLE' : (isLogin ? 'GİRİŞ YAP' : 'HESAP OLUŞTUR'))}
-                      </Text>
-                      <FontAwesome5 solid name="arrow-right" size={13} color="#FFFFFF" />
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                {(isForgotPassword || isResetPassword) && (
-                  <TouchableOpacity onPress={() => { setIsForgotPassword(false); setIsResetPassword(false); }} style={s.backToLoginBtn}>
-                    <Text style={s.backToLoginText}>← Giriş Ekranına Dön</Text>
-                  </TouchableOpacity>
                 )}
               </View>
 

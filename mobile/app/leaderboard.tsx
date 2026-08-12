@@ -38,12 +38,12 @@ export default function LeaderboardScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
-        throw new Error('Liderlik alinamadi.');
+        throw new Error('Liderlik alınamadı.');
       }
       const data = await response.json();
       setLeaders(Array.isArray(data) ? data : []);
     } catch {
-      setError('Liderlik tablosu yuklenemedi.');
+      setError('Liderlik tablosu yüklenemedi.');
       setLeaders([]);
     } finally {
       setIsLoading(false);
@@ -56,7 +56,7 @@ export default function LeaderboardScreen() {
 
   return (
     <AppScreen>
-      <PageHeader title="Liderlik" eyebrow="Haftanin odak siralamasi" onBack={() => router.back()} />
+      <PageHeader title="Liderlik" eyebrow="Haftanın odak sıralaması" onBack={() => router.back()} />
 
       <View style={styles.tabContainer}>
         <TouchableOpacity style={[styles.tabButton, tab === 'global' && styles.tabActive]} onPress={() => setTab('global')}>
@@ -70,7 +70,7 @@ export default function LeaderboardScreen() {
       {isLoading ? (
         <SoftCard style={styles.stateCard}>
           <ActivityIndicator color={T.primary} />
-          <Text style={styles.muted}>Tablo hazirlaniyor.</Text>
+          <Text style={styles.muted}>Tablo hazırlanıyor.</Text>
         </SoftCard>
       ) : error ? (
         <SoftCard style={styles.stateCard}>
@@ -86,8 +86,8 @@ export default function LeaderboardScreen() {
           ListEmptyComponent={
             <SoftCard style={styles.stateCard}>
               <FontAwesome5 solid name="medal" size={24} color={T.textMuted} />
-              <Text style={styles.stateTitle}>Henuz siralama yok</Text>
-              <Text style={styles.muted}>Odak puanlari biriktikce burada gorunecek.</Text>
+              <Text style={styles.stateTitle}>Henüz sıralama yok</Text>
+              <Text style={styles.muted}>Odak puanları biriktikçe burada görünecek.</Text>
             </SoftCard>
           }
           renderItem={({ item, index }) => {
@@ -119,7 +119,7 @@ export default function LeaderboardScreen() {
                   <Text style={[styles.name, item.isPremium && styles.premiumName]} numberOfLines={1}>
                     {item.fullName} {item.isPremium ? 'PRO' : ''}
                   </Text>
-                  <Text style={styles.score}>{item.totalFocusMinutes} odak puani</Text>
+                  <Text style={styles.score}>{item.totalFocusMinutes} odak puanı</Text>
                 </View>
 
                 <View style={[styles.badge, { backgroundColor: `${rank.color}16`, borderColor: `${rank.color}40` }]}>

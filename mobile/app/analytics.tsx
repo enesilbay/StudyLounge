@@ -30,7 +30,7 @@ export default function AnalyticsScreen() {
       const stored = await AsyncStorage.getItem('user_data');
       const token = await AsyncStorage.getItem('access_token');
       if (!stored || !token) {
-        throw new Error('Oturum bulunamadi.');
+        throw new Error('Oturum bulunamadı.');
       }
 
       const user = JSON.parse(stored);
@@ -39,13 +39,13 @@ export default function AnalyticsScreen() {
       });
 
       if (!res.ok) {
-        throw new Error('Analitik alinamadi.');
+        throw new Error('Analitik alınamadı.');
       }
 
       const data = await res.json();
       setRecords(Array.isArray(data) ? data : []);
     } catch {
-      setError('Analitik verileri yuklenemedi.');
+      setError('Analitik verileri yüklenemedi.');
       setRecords([]);
     } finally {
       setIsLoading(false);
@@ -66,7 +66,7 @@ export default function AnalyticsScreen() {
 
     const labels = last7Days.map((date) => {
       const day = new Date(date).getDay();
-      return ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt'][day];
+      return ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'][day];
     });
 
     const points = last7Days.map((date) => {
@@ -113,12 +113,12 @@ export default function AnalyticsScreen() {
 
   return (
     <AppScreen scroll>
-      <PageHeader title="Analitik" eyebrow="PRO panel" onBack={() => router.back()} right={<FontAwesome5 solid name="crown" size={18} color={T.accent} />} />
+      <PageHeader title="Analitik" eyebrow="PRO Panel" onBack={() => router.back()} right={<FontAwesome5 solid name="crown" size={18} color={T.accent} />} />
 
       {isLoading ? (
         <SoftCard style={styles.stateCard}>
           <ActivityIndicator color={T.primary} />
-          <Text style={styles.muted}>Odak verilerin hazirlaniyor.</Text>
+          <Text style={styles.muted}>Odak verilerin hazırlanıyor.</Text>
         </SoftCard>
       ) : error ? (
         <SoftCard style={styles.stateCard}>
@@ -139,8 +139,8 @@ export default function AnalyticsScreen() {
           {!hasData ? (
             <SoftCard style={styles.stateCard}>
               <FontAwesome5 solid name="seedling" size={24} color={T.primary} />
-              <Text style={styles.stateTitle}>Henuz analitik yok</Text>
-              <Text style={styles.muted}>Bir odada odak oturumu tamamladiginda grafikler burada dolacak.</Text>
+              <Text style={styles.stateTitle}>Henüz analitik yok</Text>
+              <Text style={styles.muted}>Bir odada odak oturumu tamamladığında grafikler burada dolacak.</Text>
             </SoftCard>
           ) : null}
 

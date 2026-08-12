@@ -50,14 +50,17 @@ export class UsersService {
       throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor.');
     }
 
-    if (!userData.password) {
-      throw new BadRequestException('Şifre alanı zorunludur.');
+    if (!userData.password || userData.password.length < 8) {
+      throw new BadRequestException('Şifre alanı zorunludur ve en az 8 karakter olmalıdır.');
     }
     const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const emailToken = Math.floor(100000 + Math.random() * 900000).toString();
 
     const newUser = this.usersRepository.create({
       ...userData,
       password: hashedPassword,
+      isEmailVerified: false,
+      emailVerificationToken: emailToken,
     });
 
     const savedUser = await this.usersRepository.save(newUser);
@@ -75,6 +78,19 @@ export class UsersService {
       return user;
     }
     return null;
+  }
+
+  async markEmailAsVerified(userId: number) {
+    await this.usersRepository.update(userId, {
+      isEmailVerified: true,
+      emailVerificationToken: null,
+    });
+  }
+
+  async updateVerificationToken(userId: number, token: string) {
+    await this.usersRepository.update(userId, {
+      emailVerificationToken: token,
+    });
   }
 
   // ── KULLANICI BUL (JWT İÇİN) ──

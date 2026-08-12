@@ -16,6 +16,7 @@ import { MessagesModule } from './messages/messages.module';
 import { Message } from './messages/message.entity';
 import { DirectMessage } from './messages/direct-message.entity';
 import { NotificationsService } from './notifications/notifications.service';
+import { PaymentsModule } from './payments/payments.module';
 import { SensorsGateway } from './sensors.gateway';
 import { DailyAnalytics } from './users/daily-analytics.entity';
 import { Friendship } from './users/friendship.entity';
@@ -68,6 +69,7 @@ import { UsersModule } from './users/users.module';
     MessagesModule,
     MailModule,
     AuthModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService, SensorsGateway, NotificationsService],

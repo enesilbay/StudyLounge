@@ -19,6 +19,11 @@ export class AuthController {
     return this.authService.login(body.email, body.password);
   }
 
+  @Post('verify-email')
+  async verifyEmail(@Body() body: { email: string; token: string }) {
+    return this.authService.verifyEmail(body.email, body.token);
+  }
+
   @Post('forgot-password')
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.forgotPassword(body.email);
