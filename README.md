@@ -297,7 +297,7 @@ Bu proje **Mezuniyet Projesi ve Portfolyo Çalışması** olarak geliştirilmiş
 
 - 👤 **Geliştirici:** Enes İlbay
 - 📧 **E-Posta:** enesilbayy@gmail.com
-- 🔗 **LinkedIn:** [LinkedIn Profiliniz](https://linkedin.com)
+- 🔗 **LinkedIn:** [https://www.linkedin.com/in/enes-ilbay/]
 - 🐙 **GitHub:** [@enesilbay](https://github.com)
 
 ---
