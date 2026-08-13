@@ -301,5 +301,5 @@ EXPO_PUBLIC_BACKEND_URL=http://192.168.x.x:3000 npx expo start
 ---
 
 <p align="center">
-  <sub>StudyLounge — Ayrı Masalarda, Aynı Lobide. ❤️ ile geliştirildi.</sub>
+  <sub>StudyLounge — Ayrı Masalarda, Aynı Lobide.</sub>
 </p>
