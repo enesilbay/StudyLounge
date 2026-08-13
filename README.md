@@ -291,9 +291,7 @@ EXPO_PUBLIC_BACKEND_URL=http://192.168.x.x:3000 npx expo start
 
 ---
 
-## 👨‍💻 İletişim ve Katkıda Bulunma
-
-Bu proje **Mezuniyet Projesi ve Portfolyo Çalışması** olarak geliştirilmiştir. Soru, öneri ve geri bildirimleriniz için iletişim kanalları:
+## 👨‍💻 İletişim
 
 - 👤 **Geliştirici:** Enes İlbay
 - 📧 **E-Posta:** enesilbayy@gmail.com
