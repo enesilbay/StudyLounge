@@ -87,3 +87,6 @@ backend/README.md
 mobile/README.md
 web/README.md
 
+
+# Playwright MCP test ciktilari
+.playwright-mcp/

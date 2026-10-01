@@ -35,11 +35,11 @@ const sections: ShopSection[] = [
     title: 'Profil Çerçeveleri',
     icon: UserRound,
     items: [
-      { id: 'none', type: 'profileFrame', name: 'Çerçevesiz', price: 0, color: '#E5E7EB' },
-      { id: 'gold', type: 'profileFrame', name: 'Altın Halka', price: 150, color: '#FFC107' },
-      { id: 'emerald', type: 'profileFrame', name: 'Zümrüt Odak', price: 180, color: '#2E7D32' },
-      { id: 'ruby', type: 'profileFrame', name: 'Yakut Seri', price: 220, color: '#D32F2F' },
-      { id: 'cosmic', type: 'profileFrame', name: 'Kozmik Lounge', price: 320, color: '#7C3AED' },
+      { id: 'none', type: 'profileFrame', name: 'Çerçevesiz', price: 0, color: 'var(--sl-border)' },
+      { id: 'gold', type: 'profileFrame', name: 'Altın Halka', price: 150, color: '#d9a748' },
+      { id: 'emerald', type: 'profileFrame', name: 'Zümrüt Odak', price: 180, color: '#3a8264' },
+      { id: 'ruby', type: 'profileFrame', name: 'Yakut Seri', price: 220, color: '#c0533f' },
+      { id: 'cosmic', type: 'profileFrame', name: 'Kozmik Lounge', price: 320, color: '#8b7fd0' },
     ],
   },
 ];
@@ -93,23 +93,23 @@ export default function ShopPage() {
       <PageHeader
         eyebrow="Puanlarını harca"
         title="Odak Mağazası"
-        description="Mobile mağazadaki renk, ikon, ses paketi ve profil çerçevesi contractlarıyla aynı itemType ve itemId değerleri kullanılır."
+        description="Odaklandıkça kazandığın puanlarla sohbet rengi, isim ikonu ve profil çerçevesi al. Aldıkların telefonda da görünür."
         action={
           <div className="inline-flex items-center gap-3 rounded-xl border border-accent bg-lightAmber px-4 py-3 text-accent">
             <Coins className="h-5 w-5" />
-            <span className="font-black">{user.coins ?? 0} Odak Puanı</span>
+            <span className="font-semibold">{user.coins ?? 0} Odak Puanı</span>
           </div>
         }
       />
 
-      {message ? <Surface className={`mb-5 p-4 text-base font-bold ${message.startsWith('Öğe') ? 'text-primary' : 'text-danger'}`}>{message}</Surface> : null}
+      {message ? <Surface className={`mb-5 p-4 text-base font-semibold ${message.startsWith('Öğe') ? 'text-primary' : 'text-danger'}`}>{message}</Surface> : null}
 
       <div className="space-y-7">
         {sections.map((section) => (
           <section key={section.title}>
             <div className="mb-3 flex items-center gap-3">
               <IconTile icon={section.icon} tone="primary" />
-              <h2 className="text-xl font-black text-textDark">{section.title}</h2>
+              <h2 className="text-xl font-semibold text-textDark">{section.title}</h2>
             </div>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {section.items.map((item) => {
@@ -121,8 +121,8 @@ export default function ShopPage() {
                     <div className="flex min-w-0 items-center gap-4">
                       <Preview item={item} />
                       <div className="min-w-0">
-                        <h3 className="truncate text-lg font-black text-textDark">{item.name}</h3>
-                        <p className="mt-1 text-base font-semibold text-textMuted">
+                        <h3 className="truncate text-lg font-semibold text-textDark">{item.name}</h3>
+                        <p className="mt-1 text-base text-textMuted">
                           {owned ? 'Sahipsin' : `${item.price} Puan`}
                         </p>
                       </div>
@@ -136,8 +136,8 @@ export default function ShopPage() {
                       <button
                         disabled={busy}
                         onClick={() => void handleItemAction(item)}
-                        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-base font-black disabled:cursor-not-allowed disabled:opacity-70 ${
-                          owned || item.price === 0 ? 'border border-primary bg-white text-primary' : 'bg-primary text-white hover:bg-secondary'
+                        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-70 ${
+                          owned || item.price === 0 ? 'border border-primary bg-surface text-primary' : 'bg-primary text-white hover:bg-secondary'
                         }`}
                       >
                         <ShoppingCart className="h-4 w-4" />
@@ -173,10 +173,10 @@ function isActive(user: User, item: ShopItem) {
 function Preview({ item }: { item: { color?: string; text?: string } }) {
   if (item.color) {
     return (
-      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 bg-white" style={{ borderColor: item.color }}>
+      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 bg-surface" style={{ borderColor: item.color }}>
         <div className="h-7 w-7 rounded-full" style={{ backgroundColor: item.color, opacity: 0.25 }} />
       </div>
     );
   }
-  return <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-softIndigo text-lg font-black text-primary">{item.text}</div>;
+  return <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-softIndigo text-lg font-semibold text-primary">{item.text}</div>;
 }

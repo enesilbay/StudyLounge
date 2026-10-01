@@ -25,15 +25,15 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-base font-black text-textDark">{label}</span>
+      <span className="mb-2 block text-base font-semibold text-textDark">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-bold outline-none focus:border-primary"
+        className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-semibold outline-none focus:border-primary"
       />
-      {helper ? <p className="mt-2 text-sm font-semibold text-textMuted">{helper}</p> : null}
+      {helper ? <p className="mt-2 text-sm text-textMuted">{helper}</p> : null}
     </label>
   );
 }
@@ -114,15 +114,15 @@ export default function SettingsPage() {
         eyebrow="Hesabını yönet"
         title="Hesap Ayarları"
         action={
-          <button onClick={() => navigate(-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark transition hover:bg-softIndigo">
+          <button onClick={() => navigate(-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-textDark transition hover:bg-softIndigo">
             <ArrowLeft className="h-4 w-4" />
             Geri
           </button>
         }
       />
 
-      {error ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{error}</Surface> : null}
-      {status ? <Surface className="mb-4 p-4 text-base font-bold text-primary">{status}</Surface> : null}
+      {error ? <Surface className="mb-4 p-4 text-base font-semibold text-danger">{error}</Surface> : null}
+      {status ? <Surface className="mb-4 p-4 text-base font-semibold text-primary">{status}</Surface> : null}
 
       <Surface className="p-5">
         <form onSubmit={saveProfile} className="space-y-4">
@@ -131,8 +131,8 @@ export default function SettingsPage() {
           <Input label="E-posta" value={editEmail} onChange={setEditEmail} type="email" required />
           
           <Surface className="border-accent/20 bg-accent/10 p-4">
-            <p className="text-base font-black text-textDark">Premium durumu</p>
-            <p className="mt-1 text-sm font-semibold text-textMuted">{user.isPremium ? 'Premium özellikler açık.' : 'Premium özellikler kapalı.'}</p>
+            <p className="text-base font-semibold text-textDark">Premium durumu</p>
+            <p className="mt-1 text-sm text-textMuted">{user.isPremium ? 'Premium özellikler açık.' : 'Premium özellikler kapalı.'}</p>
           </Surface>
           
           <Input label="Güvenlik Doğrulaması (Zorunlu)" value={currentPassword} onChange={setCurrentPassword} type="password" helper="Değişiklikleri kaydetmek için mevcut şifrenizi girmelisiniz." required />
@@ -140,12 +140,12 @@ export default function SettingsPage() {
           <Input label="Yeni Şifre (İsteğe Bağlı)" value={newPassword} onChange={setNewPassword} type="password" helper="Şifrenizi değiştirmek istemiyorsanız boş bırakın." />
           
           <div className="pt-2">
-            <button disabled={isSaving} className="min-h-12 w-full rounded-xl bg-primary text-base font-black text-white disabled:opacity-60 transition hover:bg-secondary">
+            <button disabled={isSaving} className="min-h-12 w-full rounded-xl bg-primary text-base font-semibold text-white disabled:opacity-60 transition hover:bg-secondary">
               {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
             </button>
           </div>
           <div className="pt-6 mt-6 border-t border-border">
-            <button type="button" onClick={logout} className="min-h-12 w-full rounded-xl border border-danger/20 bg-softDanger text-base font-black text-danger transition hover:bg-danger/20">
+            <button type="button" onClick={logout} className="min-h-12 w-full rounded-xl border border-danger/20 bg-softDanger text-base font-semibold text-danger transition hover:bg-danger/20">
               Hesaptan Çıkış Yap
             </button>
           </div>

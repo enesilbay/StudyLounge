@@ -38,6 +38,8 @@ export interface Lobby {
   maxUsers?: number;
   isPrivate?: boolean;
   isPremiumOnly?: boolean;
+  /** Kamera ve ekran paylaşımına izin verilen oda (sadece web). */
+  allowVideo?: boolean;
   createdAt?: string;
 }
 
@@ -72,6 +74,17 @@ export interface RoomUser {
   isAtDesk: boolean;
   isEliteRoom: boolean;
   isPremium: boolean;
+  // Web aramasındaki medya durumu; mobil istemciler için her zaman false gelir.
+  isInCall?: boolean;
+  isCameraOn?: boolean;
+  isMicOn?: boolean;
+  isScreenSharing?: boolean;
+}
+
+export interface MediaState {
+  camera: boolean;
+  mic: boolean;
+  screen: boolean;
 }
 
 export interface DuelRequest {

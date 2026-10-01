@@ -166,13 +166,13 @@ export default function DMPage() {
                 key={friend.id}
                 onClick={() => setActiveFriendId(friend.id)}
                 className={`flex w-full items-center gap-4 border-b border-border p-4 text-left transition-colors ${
-                  activeFriend?.id === friend.id ? 'bg-softIndigo' : 'bg-white hover:bg-background'
+                  activeFriend?.id === friend.id ? 'bg-softIndigo' : 'bg-surface hover:bg-background'
                 }`}
               >
                 <Avatar name={friend.fullName} image={friend.avatarUrl} frame={friend.equippedProfileFrame} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-black text-textDark">{friend.fullName}</p>
-                  <p className="mt-1 truncate text-base font-semibold text-textMuted">
+                  <p className="truncate font-semibold text-textDark">{friend.fullName}</p>
+                  <p className="mt-1 truncate text-base text-textMuted">
                     {friend.isOnline ? 'Çevrim içi ve çalışmaya hazır' : `${friend.totalFocusMinutes ?? 0} dk odak`}
                   </p>
                 </div>
@@ -185,15 +185,15 @@ export default function DMPage() {
         <Surface className="flex flex-col overflow-hidden">
           {activeFriend ? (
             <>
-              <div className="flex items-center justify-between border-b border-border bg-white p-4">
+              <div className="flex items-center justify-between border-b border-border bg-surface p-4">
                 <div className="flex items-center gap-4">
                   <button className="grid h-10 w-10 place-items-center rounded-xl bg-background text-textMuted lg:hidden">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isOnline} />
                   <div>
-                    <h2 className="font-black text-textDark">{activeFriend.fullName}</h2>
-                    <p className="text-base font-bold text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>
+                    <h2 className="font-semibold text-textDark">{activeFriend.fullName}</h2>
+                    <p className="text-base text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>
                   </div>
                 </div>
                 <Pill tone={activeFriend.isOnline ? 'success' : 'neutral'}>{activeFriend.isOnline ? 'Çevrim içi' : 'Çevrim dışı'}</Pill>
@@ -206,10 +206,10 @@ export default function DMPage() {
                   const mine = senderId === user?.id;
                   return (
                     <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xl rounded-2xl px-4 py-3 ${mine ? 'bg-primary text-white' : 'border border-border bg-white text-textDark'}`}>
-                        {!mine ? <p className="mb-1 text-base font-black text-accent">{message.sender?.fullName ?? message.senderName ?? activeFriend.fullName}</p> : null}
+                      <div className={`max-w-xl rounded-xl px-4 py-3 ${mine ? 'bg-primary text-white' : 'border border-border bg-surface text-textDark'}`}>
+                        {!mine ? <p className="mb-1 text-base font-semibold text-accent">{message.sender?.fullName ?? message.senderName ?? activeFriend.fullName}</p> : null}
                         <p className="text-base font-semibold leading-6">{message.text}</p>
-                        <p className={`mt-1 text-base font-bold ${mine ? 'text-white/70' : 'text-textMuted'}`}>{formatTime(message.createdAt)}</p>
+                        <p className={`mt-1 text-base font-semibold ${mine ? 'text-white/70' : 'text-textMuted'}`}>{formatTime(message.createdAt)}</p>
                       </div>
                     </div>
                   );
@@ -222,7 +222,7 @@ export default function DMPage() {
                   event.preventDefault();
                   handleSend();
                 }}
-                className="border-t border-border bg-white p-4"
+                className="border-t border-border bg-surface p-4"
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -251,23 +251,23 @@ export default function DMPage() {
       <ModalShell open={addFriendOpen} title="Arkadaş Ekle" description="Kullanıcı adını girerek arkadaşlık isteği gönder." onClose={() => setAddFriendOpen(false)}>
         <form onSubmit={handleAddFriend} className="space-y-4">
           <label className="block">
-            <span className="mb-2 block text-base font-black text-textDark">Kullanıcı Adı</span>
+            <span className="mb-2 block text-base font-semibold text-textDark">Kullanıcı Adı</span>
             <input
               type="text"
               value={friendUsername}
               onChange={(e) => setFriendUsername(e.target.value)}
               placeholder="Kullanıcı adı"
-              className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-bold outline-none"
+              className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-semibold outline-none"
               required
             />
           </label>
           
-          {addFriendError ? <p className="text-sm font-bold text-red-500">{addFriendError}</p> : null}
-          {addFriendSuccess ? <p className="text-sm font-bold text-green-500">{addFriendSuccess}</p> : null}
+          {addFriendError ? <p className="text-sm font-semibold text-red-500">{addFriendError}</p> : null}
+          {addFriendSuccess ? <p className="text-sm font-semibold text-green-500">{addFriendSuccess}</p> : null}
 
           <div className="grid grid-cols-2 gap-3 pt-2">
-            <button type="button" onClick={() => setAddFriendOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-black text-textDark">İptal</button>
-            <button disabled={addingFriend || !friendUsername.trim()} className="min-h-12 rounded-xl bg-primary text-base font-black text-white disabled:opacity-60">
+            <button type="button" onClick={() => setAddFriendOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-semibold text-textDark">İptal</button>
+            <button disabled={addingFriend || !friendUsername.trim()} className="min-h-12 rounded-xl bg-primary text-base font-semibold text-white disabled:opacity-60">
               {addingFriend ? 'Gönderiliyor' : 'İstek Gönder'}
             </button>
           </div>

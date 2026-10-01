@@ -11,6 +11,11 @@ interface RegisterPayload {
   password: string;
 }
 
+export interface LoginResult {
+  requiresVerification: boolean;
+  message?: string;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -19,7 +24,9 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (user: User, token: string) => void;
-  loginWithCredentials: (email: string, password: string) => Promise<void>;
+  /** Hesap e-posta doğrulaması bekliyorsa token kaydedilmez, `requiresVerification` döner. */
+  loginWithCredentials: (email: string, password: string) => Promise<LoginResult>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   registerWithCredentials: (payload: RegisterPayload) => Promise<void>;
   setUser: (user: User) => void;
   refreshUser: () => Promise<User | null>;
@@ -51,7 +58,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithCredentials: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post<AuthEnvelope<User>>('/auth/login', { email, password });
+      const response = await api.post<AuthEnvelope<User> & { requiresVerification?: boolean; message?: string }>('/auth/login', { email, password });
+      const { user, access_token: token, requiresVerification, message } = response.data;
+      if (requiresVerification || !token) {
+        set({ isLoading: false, error: null });
+        return { requiresVerification: true, message };
+      }
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+      set({ user, token, isAuthenticated: true, isLoading: false, error: null });
+      return { requiresVerification: false };
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+  verifyEmail: async (email, code) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post<AuthEnvelope<User>>('/auth/verify-email', { email, token: code });
       const { user, access_token: token } = response.data;
       localStorage.setItem('access_token', token);
       localStorage.setItem('user_data', JSON.stringify(user));

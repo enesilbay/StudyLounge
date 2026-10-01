@@ -1,36 +1,144 @@
 @import "tailwindcss";
 
-@theme {
-  --color-primary: #1A237E;
-  --color-secondary: #303F9F;
-  --color-electric: #2563EB;
-  --color-violet: #7C3AED;
-  --color-softIndigo: #EEF2FF;
-  --color-accent: #FFC107;
-  --color-accentDark: #B7791F;
-  --color-lightAmber: #FFF8E1;
-  --color-success: #2E7D32;
-  --color-softSuccess: #E8F5E9;
-  --color-info: #0288D1;
-  --color-softInfo: #E1F5FE;
-  --color-danger: #D32F2F;
-  --color-softDanger: #FFEBEE;
-  --color-background: #F3F6FB;
-  --color-surface: #FFFFFF;
+/*
+ * StudyLounge Web — "Kütüphane lambası" tasarım sistemi
+ * Koyu kütüphane yeşili zemin, kağıt tonunda metin, odaklanan masada yanan
+ * pirinç lamba ışığı. Token isimleri eski sayfalarla uyumlu kalsın diye korunur;
+ * değerler tema değişkenlerinden gelir.
+ */
+
+@theme inline {
+  --color-primary: var(--sl-primary);
+  --color-secondary: var(--sl-primary-strong);
+  --color-electric: var(--sl-primary);
+  --color-violet: var(--sl-violet);
+  --color-softIndigo: var(--sl-primary-soft);
+  --color-accent: var(--sl-brass);
+  --color-accentDark: var(--sl-brass-ink);
+  --color-lightAmber: var(--sl-brass-soft);
+  --color-success: var(--sl-success);
+  --color-softSuccess: var(--sl-success-soft);
+  --color-info: var(--sl-info);
+  --color-softInfo: var(--sl-info-soft);
+  --color-danger: var(--sl-danger);
+  --color-softDanger: var(--sl-danger-soft);
+  --color-background: var(--sl-bg);
+  --color-surface: var(--sl-surface);
+  --color-sunken: var(--sl-sunken);
   --color-screenOff: #000000;
-  --color-border: #DDE3EE;
-  --color-textDark: #1F2937;
-  --color-textMuted: #6B7280;
-  --font-montserrat: "Montserrat", sans-serif;
+  --color-border: var(--sl-border);
+  --color-textDark: var(--sl-ink);
+  --color-textMuted: var(--sl-muted);
+  --color-onPrimary: var(--sl-on-primary);
+
+  --font-display: "Literata", Georgia, "Times New Roman", serif;
+  --font-sans: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "Cascadia Mono", monospace;
+  --font-montserrat: var(--font-sans);
+}
+
+/* Koyu tema: gece kütüphanesi (varsayılan) */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --sl-bg: #101a16;
+  --sl-surface: #17241f;
+  --sl-sunken: #0c1411;
+  --sl-border: #273b33;
+  --sl-ink: #ebe5d5;
+  --sl-muted: #98a89e;
+  --sl-primary: #3a8264;
+  --sl-primary-strong: #2f6e54;
+  --sl-primary-soft: rgb(58 130 100 / 0.16);
+  --sl-on-primary: #f4f1e8;
+  --sl-brass: #d9a748;
+  --sl-brass-ink: #e8c27a;
+  --sl-brass-soft: rgb(217 167 72 / 0.13);
+  --sl-success: #86c9a1;
+  --sl-success-soft: rgb(134 201 161 / 0.13);
+  --sl-danger: #e8866f;
+  --sl-danger-soft: rgb(232 134 111 / 0.13);
+  --sl-info: #8bbdd1;
+  --sl-info-soft: rgb(139 189 209 / 0.13);
+  --sl-violet: #b2a6dd;
+  --sl-lamp: rgb(240 190 92 / 0.28);
+  --sl-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px rgb(0 0 0 / 0.28);
+}
+
+/* Açık tema: gündüz okuma salonu */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --sl-bg: #e7ebe2;
+    --sl-surface: #f6f7f1;
+    --sl-sunken: #dce2d6;
+    --sl-border: #c6d0c1;
+    --sl-ink: #15211c;
+    --sl-muted: #55645b;
+    --sl-primary: #2e6a51;
+    --sl-primary-strong: #225540;
+    --sl-primary-soft: rgb(46 106 81 / 0.11);
+    --sl-on-primary: #f6f7f1;
+    --sl-brass: #b07d1c;
+    --sl-brass-ink: #855c0c;
+    --sl-brass-soft: rgb(176 125 28 / 0.12);
+    --sl-success: #2d7a4d;
+    --sl-success-soft: rgb(45 122 77 / 0.11);
+    --sl-danger: #b5442f;
+    --sl-danger-soft: rgb(181 68 47 / 0.1);
+    --sl-info: #2c6c88;
+    --sl-info-soft: rgb(44 108 136 / 0.1);
+    --sl-violet: #5d4d99;
+    --sl-lamp: rgb(214 160 60 / 0.3);
+    --sl-shadow: 0 1px 2px rgb(21 33 28 / 0.06), 0 10px 28px rgb(21 33 28 / 0.07);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --sl-bg: #e7ebe2;
+  --sl-surface: #f6f7f1;
+  --sl-sunken: #dce2d6;
+  --sl-border: #c6d0c1;
+  --sl-ink: #15211c;
+  --sl-muted: #55645b;
+  --sl-primary: #2e6a51;
+  --sl-primary-strong: #225540;
+  --sl-primary-soft: rgb(46 106 81 / 0.11);
+  --sl-on-primary: #f6f7f1;
+  --sl-brass: #b07d1c;
+  --sl-brass-ink: #855c0c;
+  --sl-brass-soft: rgb(176 125 28 / 0.12);
+  --sl-success: #2d7a4d;
+  --sl-success-soft: rgb(45 122 77 / 0.11);
+  --sl-danger: #b5442f;
+  --sl-danger-soft: rgb(181 68 47 / 0.1);
+  --sl-info: #2c6c88;
+  --sl-info-soft: rgb(44 108 136 / 0.1);
+  --sl-violet: #5d4d99;
+  --sl-lamp: rgb(214 160 60 / 0.3);
+  --sl-shadow: 0 1px 2px rgb(21 33 28 / 0.06), 0 10px 28px rgb(21 33 28 / 0.07);
 }
 
 @layer base {
   html {
     font-size: 16px;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply font-montserrat bg-background text-textDark antialiased;
+    @apply font-sans bg-background text-textDark antialiased;
+    font-feature-settings: "kern", "liga";
+    line-height: 1.55;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
   button,
@@ -38,15 +146,63 @@
   textarea,
   select {
     font-size: 1rem;
+    font-family: inherit;
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: #6B7280;
-    opacity: 0.82;
+    color: var(--sl-muted);
+    opacity: 0.8;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--sl-brass);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--sl-brass-soft);
   }
 
   * {
     box-sizing: border-box;
+  }
+
+  input[type="range"] {
+    accent-color: var(--sl-brass);
+  }
+}
+
+@layer components {
+  .sl-panel {
+    background: var(--sl-surface);
+    border: 1px solid var(--sl-border);
+    border-radius: 14px;
+    box-shadow: var(--sl-shadow);
+  }
+
+  /* Odaklanan masanın üstünde yanan lamba ışığı */
+  .sl-lamp-on {
+    background-image: radial-gradient(120% 70% at 50% -10%, var(--sl-lamp), transparent 65%);
+    border-color: color-mix(in srgb, var(--sl-brass) 55%, var(--sl-border));
+  }
+
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

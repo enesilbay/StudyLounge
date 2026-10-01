@@ -47,18 +47,18 @@ export default function LeaderboardPage() {
       <PageHeader
         eyebrow="Sıralama"
         title="Liderlik tablosu"
-        description="Global ve arkadaş sıralaması gerçek kullanıcı verileriyle listelenir."
+        description="En çok odaklananlar. Tüm kullanıcılar ya da sadece arkadaşların arasında bak."
         action={
-          <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-white p-1">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface p-1">
             <button
               onClick={() => setScope('global')}
-              className={`rounded-lg px-4 py-2 text-base font-black ${scope === 'global' ? 'bg-softIndigo text-primary' : 'text-textMuted'}`}
+              className={`rounded-lg px-4 py-2 text-base font-semibold ${scope === 'global' ? 'bg-softIndigo text-primary' : 'text-textMuted'}`}
             >
               Global
             </button>
             <button
               onClick={() => setScope('friends')}
-              className={`rounded-lg px-4 py-2 text-base font-black ${scope === 'friends' ? 'bg-softIndigo text-primary' : 'text-textMuted'}`}
+              className={`rounded-lg px-4 py-2 text-base font-semibold ${scope === 'friends' ? 'bg-softIndigo text-primary' : 'text-textMuted'}`}
             >
               Arkadaşlar
             </button>
@@ -68,7 +68,7 @@ export default function LeaderboardPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Surface className="overflow-hidden">
-          <div className="grid grid-cols-[72px_minmax(0,1fr)_140px_130px] gap-4 border-b border-border bg-background px-5 py-3 text-base font-black uppercase text-textMuted max-md:hidden">
+          <div className="grid grid-cols-[72px_minmax(0,1fr)_140px_130px] gap-4 border-b border-border bg-background px-5 py-3 text-base font-semibold text-textMuted max-md:hidden">
             <span>Sıra</span>
             <span>Öğrenci</span>
             <span>Odak</span>
@@ -80,7 +80,7 @@ export default function LeaderboardPage() {
               <div
                 key={user.id}
                 className={`grid grid-cols-[44px_minmax(0,1fr)] items-center gap-4 border-b border-border px-5 py-4 last:border-0 md:grid-cols-[72px_minmax(0,1fr)_140px_130px] ${
-                  rank === 1 ? 'bg-lightAmber/60' : 'bg-white'
+                  rank === 1 ? 'bg-lightAmber/60' : 'bg-surface'
                 }`}
               >
                 <div className="flex items-center">
@@ -89,13 +89,13 @@ export default function LeaderboardPage() {
                 <div className="flex min-w-0 items-center gap-4">
                   <Avatar name={user.fullName} image={user.avatarUrl} frame={user.equippedProfileFrame} premium={user.isPremium} />
                   <div className="min-w-0">
-                    <p className="truncate font-black text-textDark">
+                    <p className="truncate font-semibold text-textDark">
                       {user.fullName} {user.equippedIcon ?? ''}
                     </p>
-                    <p className="truncate text-base font-bold text-textMuted">@{user.username ?? 'kullanici'}</p>
+                    <p className="truncate text-base text-textMuted">@{user.username ?? 'kullanici'}</p>
                   </div>
                 </div>
-                <p className="hidden text-lg font-black text-primary md:block">{user.totalFocusMinutes ?? 0}</p>
+                <p className="hidden text-lg font-semibold text-primary md:block">{user.totalFocusMinutes ?? 0}</p>
                 <div className="hidden md:block">
                   <Pill tone={rank <= 3 ? 'accent' : 'primary'}>{rank <= 3 ? 'Usta' : 'Yükselen'}</Pill>
                 </div>
@@ -104,16 +104,16 @@ export default function LeaderboardPage() {
           })}
 
           {!isLoading && users.length === 0 ? (
-            <div className="p-6 text-base font-bold text-textMuted">Bu sıralamada gösterilecek kullanıcı yok.</div>
+            <div className="p-6 text-base text-textMuted">Bu sıralamada gösterilecek kullanıcı yok.</div>
           ) : null}
-          {isLoading ? <div className="p-6 text-base font-bold text-textMuted">Sıralama yükleniyor...</div> : null}
+          {isLoading ? <div className="p-6 text-base text-textMuted">Sıralama yükleniyor...</div> : null}
         </Surface>
 
         <Surface className="p-5">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-lightAmber text-accent">
+          <div className="grid h-16 w-16 place-items-center rounded-xl bg-lightAmber text-accent">
             <Trophy className="h-8 w-8" />
           </div>
-          <h2 className="mt-5 text-2xl font-black text-textDark">Haftanın vitrini</h2>
+          <h2 className="mt-5 text-2xl font-semibold text-textDark">Haftanın vitrini</h2>
           <p className="mt-2 text-base font-semibold leading-6 text-textMuted">
             {topUser
               ? `${topUser.fullName}, ${topUser.totalFocusMinutes ?? 0} dakika ile şu an listenin başında.`
@@ -145,5 +145,5 @@ function RankIcon({ rank }: { rank: number }) {
       </span>
     );
   }
-  return <span className="grid h-10 w-10 place-items-center rounded-xl bg-background text-base font-black text-textMuted">{rank}</span>;
+  return <span className="grid h-10 w-10 place-items-center rounded-xl bg-background text-base text-textMuted">{rank}</span>;
 }

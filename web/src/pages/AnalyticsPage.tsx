@@ -48,9 +48,9 @@ export default function AnalyticsPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="PRO panel"
+        eyebrow="Premium"
         title="Analitik"
-        description="Haftalık odak, verimli saatler ve çalışma düzeni gerçek analitik kayıtlarından okunur."
+        description="Bu hafta ne kadar odaklandın, en verimli saatlerin hangileri?"
         action={<Pill tone={user?.isPremium ? 'accent' : 'primary'}>{user?.isPremium ? 'Premium aktif' : 'Standart'}</Pill>}
       />
 
@@ -64,8 +64,8 @@ export default function AnalyticsPage() {
         <Surface className="p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black text-textDark">Haftalık odaklanma</h2>
-              <p className="text-sm font-semibold text-textMuted">Dakika bazlı son 7 gün</p>
+              <h2 className="text-lg font-semibold text-textDark">Haftalık odaklanma</h2>
+              <p className="text-sm text-textMuted">Dakika bazlı son 7 gün</p>
             </div>
             <BarChart3 className="h-5 w-5 text-primary" />
           </div>
@@ -74,15 +74,15 @@ export default function AnalyticsPage() {
               const height = value ? Math.max(10, (value / maxFocus) * 100) : 5;
               return (
                 <div key={days[index]} className="flex h-full flex-1 flex-col justify-end gap-3">
-                  <div className="flex flex-1 items-end rounded-lg bg-white/70">
+                  <div className="flex flex-1 items-end rounded-lg bg-surface/70">
                     <div
-                      className={`w-full rounded-t-lg ${value ? 'bg-gradient-to-t from-primary to-electric' : 'bg-primary/5'}`}
+                      className={`w-full rounded-t-lg ${value ? 'bg-primary' : 'bg-primary/5'}`}
                       style={{ height: `${height}%` }}
                     />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-black text-textDark">{value}</p>
-                    <p className="text-sm font-bold text-textMuted">{days[index]}</p>
+                    <p className="text-sm font-semibold text-textDark">{value}</p>
+                    <p className="text-sm text-textMuted">{days[index]}</p>
                   </div>
                 </div>
               );
@@ -92,14 +92,14 @@ export default function AnalyticsPage() {
 
         <Surface className="p-4">
           <IconTile icon={TrendingUp} tone="accent" />
-          <h2 className="mt-4 text-xl font-black text-textDark">{total ? 'Canlı ilerleme' : 'Veri bekleniyor'}</h2>
+          <h2 className="mt-4 text-xl font-semibold text-textDark">{total ? 'Canlı ilerleme' : 'Veri bekleniyor'}</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-textMuted">
             {total
               ? 'Odak oturumları tamamlandıkça bu panel günlük kayıtlarla güncellenir.'
               : 'Henüz analitik kaydı yok. Bir odak oturumu tamamlandığında grafikler dolmaya başlayacak.'}
           </p>
           <div className="mt-4 rounded-xl border border-accent/20 bg-accent/10 p-4">
-            <p className="text-sm font-bold text-accentDark">Verim notu</p>
+            <p className="text-sm font-semibold text-accentDark">Verim notu</p>
             <p className="mt-1 text-sm font-semibold text-textDark">
               {isLoading ? 'Analitik veriler yükleniyor.' : total ? 'En yoğun saatlerini ısı haritasından takip edebilirsin.' : 'İlk çalışma verini bekliyoruz.'}
             </p>
@@ -108,18 +108,18 @@ export default function AnalyticsPage() {
       </div>
 
       <Surface className="mt-4 p-4">
-        <h2 className="text-lg font-black text-textDark">Verimli saatler</h2>
+        <h2 className="text-lg font-semibold text-textDark">Verimli saatler</h2>
         <div className="mt-4 grid grid-cols-6 gap-2 md:grid-cols-12">
           {heatmap.map((value, index) => (
             <div key={index} className="text-center">
               <div
                 className="h-10 rounded-xl border"
                 style={{
-                  backgroundColor: value ? `rgba(255, 193, 7, ${0.14 + Math.min(value, 100) / 150})` : 'rgba(26, 35, 126, 0.04)',
-                  borderColor: value ? 'rgba(255, 193, 7, 0.5)' : 'rgba(221, 227, 238, 0.9)',
+                  backgroundColor: value ? `color-mix(in srgb, var(--sl-brass) ${Math.round(18 + Math.min(value, 100) * 0.6)}%, transparent)` : 'var(--sl-sunken)',
+                  borderColor: value ? 'color-mix(in srgb, var(--sl-brass) 55%, transparent)' : 'var(--sl-border)',
                 }}
               />
-              <p className="mt-1 text-sm font-bold text-textMuted">{String(index).padStart(2, '0')}</p>
+              <p className="mt-1 text-sm text-textMuted">{String(index).padStart(2, '0')}</p>
             </div>
           ))}
         </div>
@@ -163,8 +163,8 @@ function Metric({ icon, label, value, tone }: { icon: typeof Flame; label: strin
   return (
     <Surface className="p-4">
       <IconTile icon={icon} tone={tone} />
-      <p className="mt-3 text-xl font-black text-textDark">{value}</p>
-      <p className="text-sm font-bold text-textMuted">{label}</p>
+      <p className="mt-3 text-xl font-semibold text-textDark">{value}</p>
+      <p className="text-sm text-textMuted">{label}</p>
     </Surface>
   );
 }

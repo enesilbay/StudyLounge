@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Crown, LockKeyhole, Moon, Plus, Search, Sun, UsersRound } from 'lucide-react';
-import { ModalShell, Pill, StateBlock, Surface } from '../components/ui';
+import { Crown, LockKeyhole, Plus, Search, Video } from 'lucide-react';
+import { Button, ModalShell, Notice, StateBlock, TextField, Toggle } from '../components/ui';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Lobby } from '../lib/types';
@@ -24,22 +24,31 @@ const categories = [
 
 const roomCategories = categories.filter((category) => category !== 'Tümü');
 
+// Backend ile aynı sınır (lobbies.service.ts → MAX_VIDEO_ROOM_USERS)
+const MAX_VIDEO_ROOM_USERS = 6;
+const MAX_LAMPS = 10;
+
+type FriendPresence = { currentRoom?: string | null; isOnline?: boolean; fullName: string };
+
 export default function LobbiesPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [query, setQuery] = useState('');
+  const [videoOnly, setVideoOnly] = useState(false);
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
-  const [friends, setFriends] = useState<Array<{ currentRoom?: string | null; isOnline?: boolean; fullName: string }>>([]);
+  const [friends, setFriends] = useState<FriendPresence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newCategory, setNewCategory] = useState('Genel');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isPremiumOnly, setIsPremiumOnly] = useState(false);
+  const [allowVideo, setAllowVideo] = useState(false);
   const [roomPassword, setRoomPassword] = useState('');
   const [creating, setCreating] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -70,60 +79,63 @@ export default function LobbiesPage() {
   }, [loadData]);
 
   const visibleLobbies = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('tr-TR');
     return lobbies.filter((lobby) => {
-      const categoryMatch = selectedCategory === 'Tümü' || lobby.category === selectedCategory;
-      const haystack = `${lobby.name} ${lobby.description ?? ''}`.toLowerCase();
-      return categoryMatch && haystack.includes(query.toLowerCase());
+      if (selectedCategory !== 'Tümü' && lobby.category !== selectedCategory) return false;
+      if (videoOnly && !lobby.allowVideo) return false;
+      return `${lobby.name} ${lobby.description ?? ''}`.toLocaleLowerCase('tr-TR').includes(needle);
     });
-  }, [lobbies, query, selectedCategory]);
+  }, [lobbies, query, selectedCategory, videoOnly]);
 
-  const activeCount = lobbies.reduce((sum, lobby) => sum + (lobby.memberCount ?? 0), 0);
-  const hour = new Date().getHours();
-  const GreetingIcon = hour >= 18 || hour < 6 ? Moon : Sun;
-  const greeting = hour >= 18 || hour < 6 ? 'İyi Akşamlar' : 'İyi Çalışmalar';
+  const totalInRooms = lobbies.reduce((sum, lobby) => sum + (lobby.memberCount ?? 0), 0);
+  const totalFocused = lobbies.reduce((sum, lobby) => sum + (lobby.activeUsers ?? 0), 0);
+  const firstName = user?.fullName?.split(' ')[0] ?? 'Hoş geldin';
 
   const openCreate = () => {
     if (!user?.isPremium) {
       navigate('/app/premium');
       return;
     }
+    setFormError(null);
     setCreateOpen(true);
+  };
+
+  const resetForm = () => {
+    setNewName('');
+    setNewDesc('');
+    setNewCategory('Genel');
+    setIsPrivate(false);
+    setIsPremiumOnly(false);
+    setAllowVideo(false);
+    setRoomPassword('');
   };
 
   const createLobby = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!newName.trim()) {
-      setError('Lütfen bir lobi ismi girin.');
-      return;
-    }
-    if (isPrivate && !roomPassword.trim()) {
-      setError('Lütfen gizli oda için bir şifre belirleyin.');
-      return;
-    }
+    if (!newName.trim()) return setFormError('Odaya bir ad ver.');
+    if (isPrivate && !roomPassword.trim()) return setFormError('Şifreli oda için bir şifre belirle.');
 
     setCreating(true);
-    setError(null);
+    setFormError(null);
     try {
+      const privateCap = user?.isPremium ? 5 : 2;
+      const baseCap = isPrivate ? privateCap : 50;
       await api.post('/lobbies', {
         name: newName.trim(),
         description: newDesc.trim(),
         category: newCategory,
-        icon: isPremiumOnly ? 'crown' : 'users',
+        icon: allowVideo ? 'video' : isPremiumOnly ? 'crown' : 'users',
         isPrivate,
         isPremiumOnly,
+        allowVideo,
         password: isPrivate ? roomPassword : undefined,
-        maxUsers: isPrivate ? (user?.isPremium ? 5 : 2) : 50,
+        maxUsers: allowVideo ? Math.min(baseCap, MAX_VIDEO_ROOM_USERS) : baseCap,
       });
       setCreateOpen(false);
-      setNewName('');
-      setNewDesc('');
-      setNewCategory('Genel');
-      setIsPrivate(false);
-      setIsPremiumOnly(false);
-      setRoomPassword('');
+      resetForm();
       await loadData();
     } catch (createError) {
-      setError(getApiErrorMessage(createError));
+      setFormError(getApiErrorMessage(createError));
     } finally {
       setCreating(false);
     }
@@ -136,6 +148,7 @@ export default function LobbiesPage() {
     }
     if (lobby.isPrivate) {
       setSelectedLobby(lobby);
+      setFormError(null);
       setPasswordOpen(true);
       return;
     }
@@ -145,19 +158,16 @@ export default function LobbiesPage() {
   const verifyPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedLobby) return;
-    if (!enterPassword.trim()) {
-      setError('Lütfen şifre girin.');
-      return;
-    }
+    if (!enterPassword.trim()) return setFormError('Şifreyi gir.');
     setVerifying(true);
-    setError(null);
+    setFormError(null);
     try {
       await api.post('/lobbies/verify-password', { lobbyId: selectedLobby.id, password: enterPassword });
       setPasswordOpen(false);
       setEnterPassword('');
       navigate(`/app/focus/${selectedLobby.id}`);
     } catch (verifyError) {
-      setError(getApiErrorMessage(verifyError));
+      setFormError(getApiErrorMessage(verifyError));
     } finally {
       setVerifying(false);
     }
@@ -165,162 +175,157 @@ export default function LobbiesPage() {
 
   return (
     <div>
-      {/* Hero Banner */}
-      <div className="mb-8 relative overflow-hidden rounded-3xl bg-textDark p-8 text-white shadow-xl">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary blur-3xl opacity-30" />
-        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-electric blur-3xl opacity-30" />
-        
-        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="mb-2 flex items-center gap-3 text-primary/80">
-              <GreetingIcon className="h-6 w-6 text-primary" />
-              <span className="text-sm font-black uppercase tracking-wider">{greeting}</span>
-            </div>
-            <h1 className="text-3xl font-black md:text-4xl">
-              Çalışmaya hazır mısın, {user?.fullName?.split(' ')[0] ?? 'Öğrenci'}?
-            </h1>
-            <p className="mt-3 text-lg font-semibold text-white/70">
-              Şu an <strong className="text-white">{activeCount}</strong> öğrenci odak modunda. Hemen bir odaya katıl!
-            </p>
-          </div>
-          
-          <button onClick={openCreate} className="group relative inline-flex min-h-14 shrink-0 items-center gap-3 overflow-hidden rounded-xl bg-white px-6 font-black text-textDark transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            <span className="relative z-10 flex items-center gap-2 text-base">
-              <Plus className="h-5 w-5" />
-              Yeni Oda Kur
-            </span>
+      <header className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-4xl md:text-5xl">{firstName}, hangi masaya oturuyorsun?</h1>
+          <p className="mt-3 text-lg text-textMuted">
+            {totalInRooms > 0
+              ? `${lobbies.length} odada ${totalInRooms} kişi var, ${totalFocused > 0 ? `${totalFocused} kişinin lambası şu an yanıyor.` : 'şu an kimse odaklanmıyor.'}`
+              : 'Odalar şu an sessiz. İlk lambayı sen yak.'}
+          </p>
+        </div>
+        <Button onClick={openCreate} icon={user?.isPremium ? Plus : Crown} size="lg" variant={user?.isPremium ? 'primary' : 'secondary'}>
+          {user?.isPremium ? 'Oda kur' : 'Oda kurmak için Premium'}
+        </Button>
+      </header>
+
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <label className="flex min-h-11 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface px-3.5 focus-within:border-accent">
+          <Search className="h-[18px] w-[18px] shrink-0 text-textMuted" />
+          <span className="sr-only">Oda ara</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Oda adı ya da konu ara" className="w-full bg-transparent text-base outline-none" />
+        </label>
+        <button
+          type="button"
+          onClick={() => setVideoOnly((v) => !v)}
+          aria-pressed={videoOnly}
+          className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3.5 text-[15px] font-semibold transition ${
+            videoOnly ? 'border-primary bg-softIndigo text-primary' : 'border-border bg-surface text-textMuted hover:text-textDark'
+          }`}
+        >
+          <Video className="h-[18px] w-[18px]" />
+          Sadece kameralı odalar
+        </button>
+      </div>
+
+      <div className="scrollbar-hide -mx-4 mb-6 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label="Kategori">
+        {categories.map((category) => (
+          <button
+            key={category}
+            type="button"
+            onClick={() => setSelectedCategory(category)}
+            aria-pressed={selectedCategory === category}
+            className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+              selectedCategory === category ? 'bg-textDark text-background' : 'text-textMuted hover:bg-sunken hover:text-textDark'
+            }`}
+          >
+            {category}
           </button>
-        </div>
+        ))}
       </div>
 
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex w-full flex-1 gap-3 overflow-x-auto pb-2 scrollbar-hide lg:pb-0">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`whitespace-nowrap rounded-xl px-5 py-3 text-sm font-black transition-all ${
-                selectedCategory === category
-                  ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                  : 'bg-white text-textMuted hover:bg-background hover:text-textDark shadow-sm'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        <Surface className="flex min-w-[300px] shrink-0 items-center gap-3 rounded-2xl p-3 shadow-sm border-border">
-          <Search className="h-5 w-5 text-textMuted ml-1" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Çalışma odası ara..."
-            className="w-full bg-transparent text-base font-bold outline-none placeholder:text-textMuted"
-          />
-        </Surface>
-      </div>
-
-      {error ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{error}</Surface> : null}
-      {isLoading ? <StateBlock loading title="Odalar yükleniyor" description="En aktif çalışma odaları listeleniyor..." /> : null}
-
-      {!isLoading ? (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {visibleLobbies.map((lobby) => {
-            const friendsInLobby = friends.filter((friend) => friend.currentRoom === lobby.name && friend.isOnline);
-            return (
-              <div
-                key={lobby.id}
-                className={`group relative overflow-hidden rounded-3xl border border-border bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-                  lobby.isPremiumOnly ? 'border-accent/40 bg-gradient-to-br from-white to-lightAmber/30' : ''
-                }`}
-              >
-                {lobby.isPremiumOnly && (
-                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-accent/10 blur-2xl transition-all group-hover:bg-accent/20" />
-                )}
-                
-                <div className="relative z-10 flex items-start gap-4">
-                  <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${lobby.isPremiumOnly ? 'bg-lightAmber' : 'bg-softIndigo'}`}>
-                    {lobby.isPremiumOnly ? <Crown className="h-7 w-7 text-accent" /> : lobby.isPrivate ? <LockKeyhole className="h-7 w-7 text-primary" /> : <UsersRound className="h-7 w-7 text-primary" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="truncate text-xl font-black text-textDark">{lobby.name}</h2>
-                      {lobby.isPremiumOnly ? <Pill tone="accent">Elite</Pill> : null}
-                      {lobby.isPrivate ? <Pill tone="danger">Gizli</Pill> : null}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-textMuted">{lobby.description || 'Sessiz ve odaklanmış bir çalışma ortamı.'}</p>
-                  </div>
-                </div>
-
-                <div className="relative z-10 mt-6 grid grid-cols-3 gap-2 rounded-2xl bg-background/50 p-3">
-                  <div className="text-center">
-                    <p className="text-xl font-black text-primary">{lobby.memberCount ?? 0}</p>
-                    <p className="text-xs font-bold text-textMuted uppercase tracking-wider">Odada</p>
-                  </div>
-                  <div className="text-center border-l border-r border-border/50">
-                    <p className="text-xl font-black text-success">{lobby.activeUsers ?? 0}</p>
-                    <p className="text-xs font-bold text-textMuted uppercase tracking-wider">Odakta</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xl font-black text-textDark">{lobby.maxUsers ?? 50}</p>
-                    <p className="text-xs font-bold text-textMuted uppercase tracking-wider">Kapasite</p>
-                  </div>
-                </div>
-
-                <div className="relative z-10 mt-6 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`h-2 w-2 rounded-full ${friendsInLobby.length ? 'bg-success animate-pulse' : 'bg-textMuted'}`} />
-                    <p className="truncate text-sm font-bold text-textDark">
-                      {friendsInLobby.length ? (
-                        <span><span className="text-success">{friendsInLobby[0].fullName.split(' ')[0]}</span> burada</span>
-                      ) : (
-                        <span className="text-textMuted">{lobby.category ?? 'Genel'}</span>
-                      )}
-                    </p>
-                  </div>
-                  <button onClick={() => enterLobby(lobby)} className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-textDark px-5 text-sm font-black text-white transition-all hover:bg-primary hover:shadow-lg hover:shadow-primary/30">
-                    Odaya Gir
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      {error ? (
+        <div className="mb-4">
+          <Notice tone="danger" onDismiss={() => setError(null)}>{error}</Notice>
         </div>
       ) : null}
 
-      {!isLoading && visibleLobbies.length === 0 ? <StateBlock title="Henüz lobi yok" description="İlk çalışma odasını sen kur veya arama filtreni değiştir." /> : null}
+      {isLoading ? <StateBlock loading title="Odalar yükleniyor" /> : null}
 
-      <ModalShell open={createOpen} title="Yeni Çalışma Odası" description="Mobile uygulamadaki oda kurma formuyla aynı alanlar kullanılır." onClose={() => setCreateOpen(false)}>
+      {!isLoading && visibleLobbies.length > 0 ? (
+        <ul className="sl-panel divide-y divide-border overflow-hidden">
+          {visibleLobbies.map((lobby) => {
+            const friendsInLobby = friends.filter((friend) => friend.currentRoom === lobby.name && friend.isOnline);
+            const members = lobby.memberCount ?? 0;
+            const focused = Math.min(lobby.activeUsers ?? 0, members);
+            const full = members >= (lobby.maxUsers ?? 50);
+            return (
+              <li key={lobby.id}>
+                <div className="flex flex-col gap-4 px-5 py-5 transition hover:bg-sunken/50 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <h2 className="text-xl md:text-2xl">{lobby.name}</h2>
+                      {lobby.allowVideo ? <Badge icon={Video} tone="primary">Kameralı</Badge> : null}
+                      {lobby.isPremiumOnly ? <Badge icon={Crown} tone="accent">Elite</Badge> : null}
+                      {lobby.isPrivate ? <Badge icon={LockKeyhole} tone="neutral">Şifreli</Badge> : null}
+                    </div>
+                    <p className="mt-1 line-clamp-2 max-w-2xl text-[15px] leading-6 text-textMuted">
+                      {lobby.description || 'Sessiz, odaklı bir çalışma masası.'}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-textMuted">
+                      <LampRow total={members} lit={focused} />
+                      <span>
+                        {members === 0 ? 'Boş' : `${members}/${lobby.maxUsers ?? 50} kişi`}
+                        {focused > 0 ? `, ${focused} odakta` : ''}
+                      </span>
+                      <span>{lobby.category ?? 'Genel'}</span>
+                      {friendsInLobby.length ? (
+                        <span className="font-semibold text-success">
+                          {friendsInLobby[0].fullName.split(' ')[0]}
+                          {friendsInLobby.length > 1 ? ` ve ${friendsInLobby.length - 1} arkadaşın` : ''} burada
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <Button
+                    variant={lobby.isPremiumOnly && !user?.isPremium ? 'secondary' : 'primary'}
+                    onClick={() => enterLobby(lobby)}
+                    disabled={full}
+                    className="sm:w-32"
+                  >
+                    {full ? 'Dolu' : lobby.isPremiumOnly && !user?.isPremium ? 'Premium' : 'Katıl'}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {!isLoading && visibleLobbies.length === 0 ? (
+        <StateBlock
+          title={lobbies.length === 0 ? 'Henüz açık oda yok' : 'Bu filtreye uyan oda yok'}
+          description={lobbies.length === 0 ? 'Odalar 24 saat açık kalır. İlk odayı sen kurabilirsin.' : 'Kategoriyi ya da aramayı değiştirip tekrar bak.'}
+          action={lobbies.length === 0 ? <Button onClick={openCreate} icon={Plus}>Oda kur</Button> : undefined}
+        />
+      ) : null}
+
+      <ModalShell open={createOpen} title="Yeni çalışma odası" description="Oda 24 saat açık kalır." onClose={() => setCreateOpen(false)}>
         <form onSubmit={createLobby} className="space-y-4">
-          <Input label="Oda İsmi" value={newName} onChange={setNewName} required />
-          <label className="block">
-            <span className="mb-2 block text-base font-black text-textDark">Kategori Seç</span>
-            <select value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-bold outline-none">
+          <TextField label="Oda adı" value={newName} onChange={setNewName} required placeholder="Örn. Final haftası, sessiz" />
+          <div>
+            <label htmlFor="room-category" className="mb-1.5 block text-sm font-semibold text-textDark">Kategori</label>
+            <select id="room-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="min-h-11 w-full rounded-lg border border-border bg-sunken px-3 text-base text-textDark outline-none focus:border-accent">
               {roomCategories.map((category) => <option key={category}>{category}</option>)}
             </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-base font-black text-textDark">Açıklama</span>
-            <textarea value={newDesc} onChange={(event) => setNewDesc(event.target.value)} className="min-h-24 w-full rounded-xl border border-border bg-background px-4 py-3 text-base font-bold outline-none" />
-          </label>
-          <Toggle label="Gizli Oda" checked={isPrivate} onChange={setIsPrivate} />
-          {user?.isPremium ? <Toggle label="Elite Oda" checked={isPremiumOnly} onChange={setIsPremiumOnly} /> : null}
-          {isPrivate ? <Input label="Oda Şifresi" value={roomPassword} onChange={setRoomPassword} type="password" required helper={`Gizli odalar ${user?.isPremium ? 'Premium olduğun için en fazla 5' : 'ücretsiz planda en fazla 2'} kişiliktir.`} /> : null}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button type="button" onClick={() => setCreateOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-black text-textDark">İptal</button>
-            <button disabled={creating} className="min-h-12 rounded-xl bg-primary text-base font-black text-white disabled:opacity-60">{creating ? 'Oluşturuluyor' : 'Oluştur'}</button>
+          </div>
+          <TextField label="Açıklama" value={newDesc} onChange={setNewDesc} multiline placeholder="Ne çalışılıyor, oda kuralları neler?" />
+
+          <Toggle
+            label="Kamera ve ekran paylaşımı"
+            description={`Katılımcılar web'den kamerasını açıp ekran paylaşabilir. En fazla ${MAX_VIDEO_ROOM_USERS} kişi.`}
+            checked={allowVideo}
+            onChange={setAllowVideo}
+          />
+          <Toggle label="Şifreli oda" description={`Sadece şifreyi bilenler girer, en fazla ${user?.isPremium ? 5 : 2} kişi.`} checked={isPrivate} onChange={setIsPrivate} />
+          <Toggle label="Elite oda" description="Sadece Premium üyeler girer, odak süresi 2 kat sayılır." checked={isPremiumOnly} onChange={setIsPremiumOnly} />
+          {isPrivate ? <TextField label="Oda şifresi" value={roomPassword} onChange={setRoomPassword} type="password" required /> : null}
+
+          {formError ? <Notice tone="danger">{formError}</Notice> : null}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Vazgeç</Button>
+            <Button type="submit" loading={creating}>Odayı kur</Button>
           </div>
         </form>
       </ModalShell>
 
-      <ModalShell open={passwordOpen} title="Gizli Oda" description={`"${selectedLobby?.name ?? ''}" odasına girmek için şifreyi gir.`} onClose={() => setPasswordOpen(false)}>
+      <ModalShell open={passwordOpen} title="Şifreli oda" description={`"${selectedLobby?.name ?? ''}" odasına girmek için şifreyi gir.`} onClose={() => setPasswordOpen(false)}>
         <form onSubmit={verifyPassword} className="space-y-4">
-          <Input label="Şifre" value={enterPassword} onChange={setEnterPassword} type="password" required />
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button type="button" onClick={() => setPasswordOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-black text-textDark">İptal</button>
-            <button disabled={verifying} className="min-h-12 rounded-xl bg-primary text-base font-black text-white disabled:opacity-60">{verifying ? 'Kontrol ediliyor' : 'Giriş Yap'}</button>
+          <TextField label="Şifre" value={enterPassword} onChange={setEnterPassword} type="password" required />
+          {formError ? <Notice tone="danger">{formError}</Notice> : null}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setPasswordOpen(false)}>Vazgeç</Button>
+            <Button type="submit" loading={verifying}>Odaya gir</Button>
           </div>
         </form>
       </ModalShell>
@@ -328,23 +333,33 @@ export default function LobbiesPage() {
   );
 }
 
-
-
-function Input({ label, value, onChange, type = 'text', required = false, helper }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; helper?: string }) {
+/** Odadaki her kişi için bir lamba; odaklananlarınki yanar. */
+function LampRow({ total, lit }: { total: number; lit: number }) {
+  if (total === 0) return null;
+  const shown = Math.min(total, MAX_LAMPS);
   return (
-    <label className="block">
-      <span className="mb-2 block text-base font-black text-textDark">{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-bold outline-none" />
-      {helper ? <span className="mt-1 block text-sm font-bold text-textMuted">{helper}</span> : null}
-    </label>
+    <span className="inline-flex items-center gap-1" aria-hidden="true">
+      {Array.from({ length: shown }, (_, index) => (
+        <span
+          key={index}
+          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-accent shadow-[0_0_8px_var(--sl-brass)]' : 'border border-textMuted/50'}`}
+        />
+      ))}
+      {total > MAX_LAMPS ? <span className="ml-0.5 text-xs">+{total - MAX_LAMPS}</span> : null}
+    </span>
   );
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+function Badge({ icon: Icon, tone, children }: { icon: typeof Video; tone: 'primary' | 'accent' | 'neutral'; children: string }) {
+  const cls = {
+    primary: 'bg-softIndigo text-primary',
+    accent: 'bg-lightAmber text-accentDark',
+    neutral: 'bg-sunken text-textMuted',
+  }[tone];
   return (
-    <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-4">
-      <span className="text-base font-black text-textDark">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-5 w-5 accent-primary" />
-    </label>
+    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[13px] font-semibold ${cls}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {children}
+    </span>
   );
 }

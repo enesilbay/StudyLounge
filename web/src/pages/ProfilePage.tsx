@@ -63,14 +63,14 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow="Odak kimliğin"
         title="Profil"
-        description="Avatar, hesap ayarları, rozet ve rütbe akışları mobile ile aynı endpointleri kullanır."
+        description="Rütben, serin ve rozetlerin. Telefondaki hesabınla aynı."
         action={
           <div className="flex gap-2">
-            <button onClick={() => setInfoOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark transition hover:bg-softIndigo">
+            <button onClick={() => setInfoOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-textDark transition hover:bg-softIndigo">
               <Info className="h-4 w-4" />
               Puan
             </button>
-            <button onClick={() => navigate('/app/settings')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-white px-4 text-base font-black text-textDark transition hover:bg-softIndigo">
+            <button onClick={() => navigate('/app/settings')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-textDark transition hover:bg-softIndigo">
               <Settings className="h-4 w-4" />
               Ayarlar
             </button>
@@ -78,12 +78,12 @@ export default function ProfilePage() {
         }
       />
 
-      {error ? <Surface className="mb-4 p-4 text-base font-bold text-danger">{error}</Surface> : null}
-      {status ? <Surface className="mb-4 p-4 text-base font-bold text-primary">{status}</Surface> : null}
+      {error ? <Surface className="mb-4 p-4 text-base font-semibold text-danger">{error}</Surface> : null}
+      {status ? <Surface className="mb-4 p-4 text-base font-semibold text-primary">{status}</Surface> : null}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[330px_minmax(0,1fr)]">
         <Surface className="overflow-hidden text-center">
-          <div className="h-28 bg-gradient-to-br from-primary via-secondary to-electric" />
+          <div className="h-28 bg-sunken sl-lamp-on" />
           <div className="-mt-16 px-5 pb-5">
             <div className="relative mx-auto w-fit">
               <button onClick={() => avatarInputRef.current?.click()} className="block rounded-full border-4 border-white">
@@ -94,10 +94,10 @@ export default function ProfilePage() {
               </button>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && void uploadAvatar(event.target.files[0])} />
             </div>
-            <h2 className="mt-4 text-2xl font-black text-textDark">
+            <h2 className="mt-4 text-2xl font-semibold text-textDark">
               {user.fullName} {user.equippedIcon ?? ''}
             </h2>
-            <p className="mt-1 text-sm font-bold text-textMuted">@{user.username ?? 'ogrenci'}</p>
+            <p className="mt-1 text-sm text-textMuted">@{user.username ?? 'ogrenci'}</p>
             <div className="mt-4 flex justify-center gap-2">
               {user.isPremium ? <Pill tone="accent">Premium aktif</Pill> : <Pill>Standart hesap</Pill>}
               {user.equippedProfileFrame && user.equippedProfileFrame !== 'none' ? <Pill tone="primary">Çerçeve aktif</Pill> : null}
@@ -116,45 +116,45 @@ export default function ProfilePage() {
           <Surface className="p-4">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-black text-textDark">Sonraki rütbe</h2>
-                <p className="text-sm font-semibold text-textMuted">{progress.nextRank ?? 'Maksimum rütbe'}</p>
+                <h2 className="text-lg font-semibold text-textDark">Sonraki rütbe</h2>
+                <p className="text-sm text-textMuted">{progress.nextRank ?? 'Maksimum rütbe'}</p>
               </div>
               <Pill tone="primary">{Math.round(progress.percentage)}%</Pill>
             </div>
-            <div className="h-5 overflow-hidden rounded-full bg-background shadow-inner">
-              <div className="h-full rounded-full bg-gradient-to-r from-electric to-primary transition-all" style={{ width: `${progress.percentage}%` }} />
+            <div className="h-5 overflow-hidden rounded-full bg-background ">
+              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress.percentage}%` }} />
             </div>
-            <p className="mt-2 text-sm font-bold text-textMuted">{progress.nextRank ? `${progress.current} / ${progress.total} dakika` : 'Tüm rütbeler tamamlandı.'}</p>
+            <p className="mt-2 text-sm text-textMuted">{progress.nextRank ? `${progress.current} / ${progress.total} dakika` : 'Tüm rütbeler tamamlandı.'}</p>
           </Surface>
 
           <Surface className="p-4">
-            <h2 className="text-lg font-black text-textDark">Kazanılan Rozetler</h2>
+            <h2 className="text-lg font-semibold text-textDark">Kazanılan Rozetler</h2>
             {badges.length ? (
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                 {badges.map((badge) => (
                   <div key={badge} className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
                     <IconTile icon={ShieldCheck} tone="accent" />
-                    <p className="font-black text-textDark">{badge}</p>
+                    <p className="font-semibold text-textDark">{badge}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="mt-3 rounded-xl border border-border bg-background p-4 text-sm font-semibold text-textMuted">Henüz rozet kazanılmadı.</p>
+              <p className="mt-3 rounded-xl border border-border bg-background p-4 text-sm text-textMuted">Henüz rozet kazanılmadı.</p>
             )}
           </Surface>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <button onClick={() => navigate('/app/shop')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-primary px-5 text-base font-black text-white transition hover:bg-secondary">
+            <button onClick={() => navigate('/app/shop')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-primary px-5 text-base font-semibold text-white transition hover:bg-secondary">
               <ShoppingCart className="h-5 w-5" />
               Mağazaya Git
             </button>
-            <button onClick={() => navigate(user.isPremium ? '/app/analytics' : '/app/premium')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl border border-border bg-white px-5 text-base font-black text-textDark transition hover:bg-softIndigo">
+            <button onClick={() => navigate(user.isPremium ? '/app/analytics' : '/app/premium')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl border border-border bg-surface px-5 text-base font-semibold text-textDark transition hover:bg-softIndigo">
               {user.isPremium ? 'Analitik paneline git' : 'Analitik için PRO gerekli'}
             </button>
           </div>
 
           <Surface className="p-4">
-            <h2 className="text-lg font-black text-textDark">Hesap bilgileri</h2>
+            <h2 className="text-lg font-semibold text-textDark">Hesap bilgileri</h2>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <InfoRow icon={UserRound} label="Kullanıcı adı" value={`@${user.username ?? 'ogrenci'}`} />
               <InfoRow icon={Mail} label="E-posta" value={user.email ?? '-'} />
@@ -192,8 +192,8 @@ function Metric({ icon, label, value, tone }: { icon: typeof Award; label: strin
   return (
     <Surface className="p-4">
       <IconTile icon={icon} tone={tone} />
-      <p className="mt-3 text-xl font-black text-textDark">{value}</p>
-      <p className="text-sm font-bold text-textMuted">{label}</p>
+      <p className="mt-3 text-xl font-semibold text-textDark">{value}</p>
+      <p className="text-sm text-textMuted">{label}</p>
     </Surface>
   );
 }
@@ -204,8 +204,8 @@ function InfoRow({ icon, label, value }: { icon: typeof UserRound; label: string
     <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
       <Icon className="h-5 w-5 text-primary" />
       <div>
-        <p className="text-xs font-black uppercase text-textMuted">{label}</p>
-        <p className="text-sm font-bold text-textDark">{value}</p>
+        <p className="text-xs font-semibold text-textMuted">{label}</p>
+        <p className="text-sm font-semibold text-textDark">{value}</p>
       </div>
     </div>
   );
@@ -214,8 +214,8 @@ function InfoRow({ icon, label, value }: { icon: typeof UserRound; label: string
 function InfoCard({ title, text }: { title: string; text: string }) {
   return (
     <div className="rounded-xl border border-border bg-background p-4">
-      <p className="text-base font-black text-textDark">{title}</p>
-      <p className="mt-1 text-sm font-semibold text-textMuted">{text}</p>
+      <p className="text-base font-semibold text-textDark">{title}</p>
+      <p className="mt-1 text-sm text-textMuted">{text}</p>
     </div>
   );
 }
