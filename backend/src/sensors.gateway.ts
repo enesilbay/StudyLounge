@@ -278,13 +278,22 @@ export class SensorsGateway
       );
       const fullName = currentUser.fullName ?? socketUser.username;
 
+      // Kapasite sunucudaki lobi kaydindan okunur (video odalari 6 kisiyle sinirli).
+      const capacity = lobby.maxUsers ?? maxUsers;
       const usersInRoom = Array.from(this.connectedUsers.values()).filter(
-        (u) => u.roomName === roomName,
+        (u) => u.roomName === roomName && u.userId !== socketUser.sub,
       );
 
-      if (maxUsers && usersInRoom.length >= maxUsers) {
+      if (capacity && usersInRoom.length >= capacity) {
         client.emit('room_full', { message: 'Bu oda kapasitesine ulasti.' });
+        client.emit('join_lobby_error', { message: 'Bu oda dolu.' });
         return;
+      }
+
+      // Ayni soketle baska bir odaya gecildiyse once eski odadan cik.
+      const previous = this.connectedUsers.get(client.id);
+      if (previous && previous.roomName !== roomName) {
+        await this.leaveLobby(client, previous);
       }
 
       void client.join(roomName);
@@ -320,6 +329,24 @@ export class SensorsGateway
     }
   }
 
+  private async leaveLobby(client: Socket, user: ConnectedRoomUser) {
+    await this.resolveDuel(user.userId);
+    await this.finishFocusSession(user);
+    this.leaveCall(user.userId, client.id);
+    void client.leave(user.roomName);
+    this.connectedUsers.delete(client.id);
+    this.broadcastRoomUsers(user.roomName);
+  }
+
+  // Web: sayfadan ayrilirken soket acik kaldigi icin odadan acikca cikilir.
+  @SubscribeMessage('leave_lobby')
+  async handleLeaveLobby(@ConnectedSocket() client: Socket) {
+    const user = this.connectedUsers.get(client.id);
+    if (!user) return;
+    await this.leaveLobby(client, user);
+    console.log(`[Lobi Ayrilis] ${user.fullName}, '${user.roomName}' lobisinden ayrildi.`);
+  }
+
   @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
@@ -347,6 +374,7 @@ export class SensorsGateway
 
     this.server.to(data.roomName).emit('receive_message', {
       id: savedMessage?.id,
+      roomName: data.roomName,
       userId: socketUser.sub,
       fullName,
       user: savedMessage?.user,
