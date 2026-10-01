@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
   NotFoundException,
@@ -9,6 +10,10 @@ import { UsersService } from '../users/users.service';
 import { CreateLobbyDto } from './dto/create-lobby.dto';
 import { Lobby } from './lobby.entity';
 import * as bcrypt from 'bcrypt';
+
+// P2P mesh WebRTC'de her katilimci digerlerine ayri baglanti actigi icin
+// video odalari kucuk tutulur.
+export const MAX_VIDEO_ROOM_USERS = 6;
 
 @Injectable()
 export class LobbiesService {
@@ -35,6 +40,21 @@ export class LobbiesService {
   }
 
   async create(lobbyData: CreateLobbyDto, ownerId: number): Promise<Lobby> {
+    const allowVideo = lobbyData.allowVideo ?? false;
+    if (allowVideo) {
+      const owner = await this.usersService.findById(ownerId);
+      if (!owner?.isPremium) {
+        throw new ForbiddenException(
+          'Kamerali oda olusturmak icin Premium gereklidir.',
+        );
+      }
+    }
+
+    const requestedMaxUsers = lobbyData.maxUsers ?? 50;
+    const maxUsers = allowVideo
+      ? Math.min(requestedMaxUsers, MAX_VIDEO_ROOM_USERS)
+      : requestedMaxUsers;
+
     const passwordHash =
       lobbyData.isPrivate && lobbyData.password
         ? await bcrypt.hash(lobbyData.password, 10)
@@ -47,7 +67,8 @@ export class LobbiesService {
       description: lobbyData.description,
       isPrivate: lobbyData.isPrivate ?? false,
       isPremiumOnly: lobbyData.isPremiumOnly ?? false,
-      maxUsers: lobbyData.maxUsers ?? 50,
+      allowVideo,
+      maxUsers,
       passwordHash,
       owner: { id: ownerId },
     });

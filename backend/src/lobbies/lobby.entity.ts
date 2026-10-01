@@ -36,6 +36,10 @@ export class Lobby {
   @Column({ default: false })
   isPremiumOnly!: boolean;
 
+  // Web: kamera ve ekran paylasimina izin verilen oda (P2P WebRTC)
+  @Column({ default: false })
+  allowVideo!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

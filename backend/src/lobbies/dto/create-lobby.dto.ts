@@ -52,4 +52,8 @@ export class CreateLobbyDto {
   @IsOptional()
   @IsBoolean()
   isPremiumOnly?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allowVideo?: boolean;
 }

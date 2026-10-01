@@ -16,6 +16,7 @@ import { getJwtSecret } from './config/env';
 import { JwtPayload } from './auth/jwt-payload.interface';
 import { LobbiesService } from './lobbies/lobbies.service';
 import { MessagesService } from './messages/messages.service';
+import { MediaState, RtcService } from './rtc/rtc.service';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -56,6 +57,15 @@ interface ConnectedRoomUser {
   isPremium: boolean;
 }
 
+interface RtcJoinDto {
+  roomName: string;
+}
+
+interface RtcSignalDto {
+  targetUserId: number;
+  data: unknown;
+}
+
 interface Duel {
   id: string;
   challengerId: number;
@@ -87,6 +97,7 @@ export class SensorsGateway
     private readonly configService: ConfigService,
     private readonly lobbiesService: LobbiesService,
     private readonly messagesService: MessagesService,
+    private readonly rtcService: RtcService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -122,6 +133,7 @@ export class SensorsGateway
     if (payload?.sub) {
       const userId = payload.sub;
       const userSocketSet = this.userSockets.get(userId);
+      this.leaveCall(userId, client.id);
       if (userSocketSet) {
         userSocketSet.delete(client.id);
         if (userSocketSet.size === 0) {
@@ -166,7 +178,22 @@ export class SensorsGateway
     );
     const focusedCount = usersInRoom.filter((user) => user.isAtDesk).length;
     void this.lobbiesService.updateActiveUsers(roomName, focusedCount);
-    this.server.to(roomName).emit('room_users', usersInRoom);
+
+    // Web istemcileri icin kamera/mikrofon/ekran durumu eklenir; mobil bu alanlari yok sayar.
+    const payload = usersInRoom.map((user) => {
+      const media: MediaState | null =
+        this.rtcService.getRoomOf(user.userId) === roomName
+          ? this.rtcService.getMedia(user.userId)
+          : null;
+      return {
+        ...user,
+        isInCall: media !== null,
+        isCameraOn: media?.camera ?? false,
+        isMicOn: media?.mic ?? false,
+        isScreenSharing: media?.screen ?? false,
+      };
+    });
+    this.server.to(roomName).emit('room_users', payload);
   }
 
   private async finishFocusSession(user: ConnectedRoomUser) {
@@ -624,5 +651,109 @@ export class SensorsGateway
       this.server.to(challengerSocket).emit('duel_started', { opponentName: challenged.fullName, betAmount: duel.betAmount });
     }
     client.emit('duel_started', { opponentName: 'Rakip', betAmount: duel.betAmount });
+  }
+
+  // ── WEB: P2P WEBRTC SINYALLESMESI (kamera + ekran paylasimi) ──
+  private leaveCall(userId: number, socketId?: string) {
+    const roomName = socketId
+      ? this.rtcService.leaveBySocket(userId, socketId)
+      : this.rtcService.leave(userId);
+    if (roomName) {
+      this.server.to(roomName).emit('rtc_peer_left', { userId });
+      this.broadcastRoomUsers(roomName);
+    }
+  }
+
+  @SubscribeMessage('rtc_join')
+  async handleRtcJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: RtcJoinDto | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+
+    const data = this.parsePayload(payload);
+    const roomUser = this.connectedUsers.get(client.id);
+    if (!roomUser || roomUser.roomName !== data.roomName) {
+      client.emit('rtc_error', { message: 'Once lobiye katilmalisin.' });
+      return;
+    }
+
+    try {
+      const lobby = await this.lobbiesService.findByName(data.roomName);
+      const { peers, previousRoom } = this.rtcService.join(
+        data.roomName,
+        socketUser.sub,
+        client.id,
+        lobby?.allowVideo ?? false,
+      );
+
+      if (previousRoom) {
+        this.server
+          .to(previousRoom)
+          .emit('rtc_peer_left', { userId: socketUser.sub });
+      }
+
+      client.emit('rtc_peers', {
+        peers: peers.map((peer) => ({ userId: peer.userId, media: peer.media })),
+      });
+      client
+        .to(data.roomName)
+        .emit('rtc_peer_joined', { userId: socketUser.sub });
+      this.broadcastRoomUsers(data.roomName);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Aramaya katilinamadi.';
+      client.emit('rtc_error', { message });
+    }
+  }
+
+  @SubscribeMessage('rtc_signal')
+  handleRtcSignal(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: RtcSignalDto | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+
+    const data = this.parsePayload(payload);
+    const targetSocketId = this.rtcService.resolveSignalTarget(
+      socketUser.sub,
+      Number(data.targetUserId),
+    );
+    if (!targetSocketId) return;
+
+    this.server.to(targetSocketId).emit('rtc_signal', {
+      fromUserId: socketUser.sub,
+      data: data.data,
+    });
+  }
+
+  @SubscribeMessage('rtc_media_state')
+  handleRtcMediaState(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: Partial<MediaState> | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+
+    const media = this.rtcService.updateMedia(
+      socketUser.sub,
+      this.parsePayload(payload),
+    );
+    const roomName = this.rtcService.getRoomOf(socketUser.sub);
+    if (media && roomName) {
+      this.server
+        .to(roomName)
+        .emit('rtc_media_changed', { userId: socketUser.sub, media });
+      this.broadcastRoomUsers(roomName);
+    }
+  }
+
+  @SubscribeMessage('rtc_leave')
+  handleRtcLeave(@ConnectedSocket() client: Socket) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+    this.leaveCall(socketUser.sub, client.id);
   }
 }

@@ -1,10 +1,14 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { Lobby } from './lobby.entity';
-import { LobbiesService } from './lobbies.service';
+import { LobbiesService, MAX_VIDEO_ROOM_USERS } from './lobbies.service';
 
 describe('LobbiesService', () => {
   let service: LobbiesService;
@@ -92,6 +96,31 @@ describe('LobbiesService', () => {
     await expect(
       service.verifyPassword(1, undefined, 3),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects non-premium users creating a video lobby', async () => {
+    usersService.findById.mockResolvedValue({ id: 3, isPremium: false });
+
+    await expect(
+      service.create({ name: 'Cam Room', icon: 'video', allowVideo: true }, 3),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(lobbiesRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('caps video lobby capacity for premium owners', async () => {
+    usersService.findById.mockResolvedValue({ id: 3, isPremium: true });
+    lobbiesRepository.create.mockImplementation((input: Partial<Lobby>) => input);
+    lobbiesRepository.save.mockImplementation((input: Lobby) =>
+      Promise.resolve(input),
+    );
+
+    const result = await service.create(
+      { name: 'Cam Room', icon: 'video', allowVideo: true, maxUsers: 40 },
+      3,
+    );
+
+    expect(result.allowVideo).toBe(true);
+    expect(result.maxUsers).toBe(MAX_VIDEO_ROOM_USERS);
   });
 
   it('throws when verifying a missing lobby', async () => {
