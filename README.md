@@ -1,9 +1,11 @@
-# 🎓 StudyLounge — Sensör Tabanlı Sosyal Odaklanma Platformu
+# 🎓 StudyLounge — Sosyal Odaklanma Platformu (Mobil + Web)
 
 > **"Ayrı Masalarda, Aynı Lobide."**
 
 [![NestJS](https://img.shields.io/badge/Backend-NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![React Native](https://img.shields.io/badge/Mobile-React%20Native%20%2F%20Expo-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://expo.dev/)
+[![React](https://img.shields.io/badge/Web-React%20%2B%20Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+[![WebRTC](https://img.shields.io/badge/Video-WebRTC%20P2P-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -17,11 +19,16 @@
 **StudyLounge**, evde veya kütüphanede tek başına ders çalışırken yaşanan yalnızlık, motivasyon kaybı ve dikkat dağılması sorunlarına yenilikçi bir çözüm sunan **mezuniyet projesi (portfolyo)** çalışmasıdır.
 
 ### 💡 Temel Çözüm ve Felsefe
-Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet endişesi yaratmaktadır. **StudyLounge**, akıllı telefonların dahili **ivmeölçer (accelerometer)** ve **jiroskop (gyroscope)** sensörlerini kullanarak kullanıcının masada odaklanıp odaklanmadığını otomatik algılar.
+Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet endişesi yaratmaktadır. StudyLounge iki istemciyle iki farklı çalışma biçimi sunar:
 
-- 🔕 **Tam Mahremiyet:** Kamera veya mikrofon kullanılmaz.
-- 📱 **Sensör Tabanlı Algılama:** Telefon masaya bırakıldığında çalışma süresi otomatik başlar, telefon ele alındığında duraklatılır.
-- 🤝 **Akademik Dayanışma:** Çalışma odasındaki (lobi) arkadaşlara küçük durum göstergeleri ve ışıklarla "Birlikte çalışıyoruz" hissi aktarılır.
+| İstemci | Çalışma biçimi |
+| :--- | :--- |
+| 📱 **Mobil** (Expo) | Telefonun **ivmeölçeri (accelerometer)** ile telefonun masada düz durup durmadığı algılanır. Telefon masaya bırakılınca odak süresi başlar, ele alınınca mola verilir. Kamera ve mikrofon **hiç** kullanılmaz. |
+| 💻 **Web** (React) | Normal odalar mobildeki gibi kamerasızdır. Ek olarak Premium kullanıcıların kurduğu **kameralı odalarda** katılımcılar isteğe bağlı olarak **kamera, mikrofon ve ekran paylaşımı** açabilir. |
+
+- 🔕 **Varsayılan mahremiyet:** Kamera hiçbir odada zorunlu değildir; kameralı odalarda da kamera ve mikrofon kullanıcı açana kadar kapalıdır.
+- 🔗 **Doğrudan bağlantı:** Görüntü ve ses sunucudan geçmez, tarayıcılar arasında **P2P WebRTC** ile akar ve kaydedilmez.
+- 🤝 **Akademik dayanışma:** Odadaki herkesin masasında küçük bir "lamba" vardır; odaklananın lambası yanar.
 
 ---
 
@@ -29,12 +36,24 @@ Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet end
 
 StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir görsel dille tasarlanmıştır.
 
+**Mobil** uygulama mevcut kimliğini korur (`mobile/app/(tabs)/sensor.tsx` içindeki `C` renk sabitleri):
+
+| Eleman | Seçim |
+| :--- | :--- |
+| Ana renk | `#1A237E` *(Deep Indigo)* |
+| Yardımcı renk | `#FFC107` *(Amber)* |
+| Tipografi | `Montserrat` |
+
+**Web** istemcisi "kütüphane lambası" temasıyla yeniden tasarlandı (`web/src/index.css`):
+
 | Eleman | Seçim | Açıklama |
 | :--- | :--- | :--- |
-| **Ana Renk** | `#1A237E` *(Deep Indigo)* | Güven, odaklanma ve akademik derinlik hissi |
-| **Yardımcı Renk** | `#FFC107` *(Amber)* | Enerji, motivasyon ve başarı vurgusu |
-| **Tipografi** | `Montserrat` | Geometrik, okunabilir ve modern sans-serif |
-| **Tasarım İlkesi** | Soft Dark Mode & Minimalizm | Göz yormayan, uzun çalışma seanslarına uygun arayüz |
+| Zemin | `#101A16` koyu / `#E7EBE2` açık | Gece kütüphanesi ve gündüz okuma salonu; açık/koyu tema sistem tercihine uyar |
+| Cam yeşili | `#3A8264` | Banker lambasının yeşil camı, birincil eylemler |
+| Pirinç / lamba ışığı | `#D9A748` | Sadece "odakta" durumu ve ana eylem için kullanılır |
+| Başlık fontu | `Literata` | E-kitap okuma için tasarlanmış serif |
+| Arayüz fontu | `Atkinson Hyperlegible Next` | Okunabilirlik odaklı sans-serif; sayaçta `Atkinson Hyperlegible Mono` |
+| İmza öğe | Masa lambası | Odaklanan kullanıcının masa kartında lamba yanar |
 
 ---
 
@@ -50,8 +69,16 @@ graph TD
         SocketClient[Socket.IO Client]
     end
 
+    subgraph Web Client [React + Vite]
+        WebUI[React Sayfaları]
+        Media[getUserMedia / getDisplayMedia]
+        Peer[RTCPeerConnection - PeerManager]
+        WebSocket[Socket.IO Client]
+    end
+
     subgraph Backend Core [NestJS Engine]
         Gateway[Sensors & Lobby WebSocket Gateway]
+        Rtc[RtcService: WebRTC Sinyalleşme]
         AuthModule[JWT Auth Module]
         LobbyModule[Lobbies Service & Controller]
         UserModule[Users & Analytics Service]
@@ -66,6 +93,12 @@ graph TD
     UI -->|Auth / HTTP REST| AuthModule
     UI <-->|Real-time Events| Gateway
     SocketClient <-->|WebSocket Connection| Gateway
+
+    WebUI -->|HTTP REST| LobbyModule
+    WebSocket <-->|Presence, sohbet, rtc_signal| Gateway
+    Gateway --> Rtc
+    Media --> Peer
+    Peer <-.->|P2P medya: kamera, ses, ekran| Peer
 
     AuthModule --> UserModule
     LobbyModule --> Gateway
@@ -97,6 +130,37 @@ sequenceDiagram
     WS-->>Lobby: Broadcast: "Ahmet Mola Verdi 🟡"
 ```
 
+### 🎥 Web: Kamera ve Ekran Paylaşımı (P2P WebRTC)
+
+Kameralı odalarda her katılımcı diğerleriyle doğrudan bir `RTCPeerConnection` kurar (**mesh** topolojisi). Bu yüzden kameralı odalar **en fazla 6 kişiliktir**. Sunucu medyayı görmez, yalnızca bağlantı kurulumu için gereken SDP ve ICE mesajlarını aynı odadaki kullanıcılar arasında taşır.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Ayşe (Tarayıcı)
+    participant WS as NestJS Gateway + RtcService
+    participant B as Burak (Tarayıcı)
+
+    A->>WS: join_lobby → rtc_join {roomName}
+    WS-->>A: rtc_peers [Burak]
+    WS-->>B: rtc_peer_joined {Ayşe}
+    A->>A: Kamerayı aç (getUserMedia) → addTrack
+    A->>WS: rtc_signal {target: Burak, SDP offer}
+    WS->>B: rtc_signal {from: Ayşe, offer}
+    B->>WS: rtc_signal {target: Ayşe, SDP answer}
+    WS->>A: rtc_signal {from: Burak, answer}
+    A-->>B: ICE adayları (aynı yoldan)
+    A<<->>B: Doğrudan medya akışı (SRTP)
+    A->>WS: rtc_media_state {camera: true}
+    WS-->>B: room_users (isCameraOn: true)
+```
+
+- **Perfect negotiation:** İki taraf aynı anda teklif gönderirse kullanıcı kimliği küçük olan taraf "kibar" davranıp geri çekilir. Böylece kamera ve ekran paylaşımı istenen sırayla açılıp kapatılabilir.
+- **Ekran paylaşımı** ayrı bir `MediaStream` olarak gönderilir. Karşı taraf hangi stream'in ekran olduğunu bir `meta` sinyaliyle öğrenir ve onu büyük sahnede gösterir.
+- **NAT geçişi:** Varsayılan olarak Google STUN kullanılır. Kurumsal ve okul ağlarında bağlantı kurulamazsa `TURN_URL`, `TURN_USERNAME` ve `TURN_CREDENTIAL` ile bir TURN sunucusu eklenebilir. İstemci bu listeyi `GET /rtc/ice-servers` ile alır.
+- **Yetki:** Kameralı oda yalnızca **Premium** kullanıcılar tarafından kurulabilir (backend `403` döner). Odaya katılan herkes kamera açabilir.
+- **Web'de odak takibi:** Tarayıcıda sensör olmadığı için odaklanma "Odaklan" düğmesiyle başlar. Sekme 60 saniyeden uzun gizli kalırsa odak otomatik duraklatılır (Page Visibility API).
+
 ---
 
 ## 🛠️ Teknoloji Yığını (Tech Stack)
@@ -106,15 +170,24 @@ sequenceDiagram
 - **Veritabanı & ORM:** PostgreSQL & TypeORM
 - **Gerçek Zamanlı İletişim:** WebSockets via Socket.IO
 - **Kimlik Doğrulama:** JWT (JSON Web Tokens) & Passport.js
-- **Doğrulama & Güvenlik:** Class-Validator, Helmet, CORS Policies
+- **WebRTC Sinyalleşme:** `RtcService` + Socket.IO event'leri (`rtc_join`, `rtc_signal`, `rtc_media_state`, `rtc_leave`)
+- **Doğrulama & Güvenlik:** Class-Validator (`ValidationPipe` whitelist), JWT korumalı soketler, CORS politikaları
 - **Test:** Jest (Unit Tests & E2E Integration Tests)
 
 ### 📱 Mobile (`/mobile`)
 - **Framework:** React Native (Expo SDK)
 - **Dil:** TypeScript
-- **Sensör Entegrasyonu:** `expo-sensors` (`Accelerometer`, `Gyroscope`)
+- **Sensör Entegrasyonu:** `expo-sensors` (`Accelerometer`)
 - **Durum Yönetimi & HTTP:** React Hooks, Axios / Custom Fetch Wrapper
 - **Stil & Arayüz:** Custom Color Tokens (`#1A237E`, `#FFC107`), Custom Components
+
+### 💻 Web (`/web`)
+- **Framework:** React 19 + Vite, TypeScript
+- **Stil:** Tailwind CSS v4 (`@theme` token'ları, açık/koyu tema)
+- **Durum Yönetimi:** Zustand (oturum), React hook'ları
+- **Gerçek Zamanlı:** Socket.IO Client
+- **Görüntülü İletişim:** Tarayıcı WebRTC API'leri (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`), harici kütüphane yok
+- **Barındırma:** Netlify (`web/netlify.toml`)
 
 ### 🐳 DevOps, CI/CD & Cloud Infrastructure
 - **Containerization:** Multi-stage Dockerfile & Docker Compose Orchestration
@@ -145,6 +218,11 @@ sequenceDiagram
 5. 📊 **Analitik & Liderlik Tablosu (Leaderboard):**
    - Günlük, haftalık ve aylık toplam odaklanma süreleri grafiksel analizi.
    - Odaklanma sürelerine göre rütbe kazanma ve sıralamada yükselme.
+
+6. 🎥 **Kameralı Odalar & Ekran Paylaşımı (Web):**
+   - Premium kullanıcılar en fazla 6 kişilik kameralı oda kurabilir.
+   - Katılımcılar kamera, mikrofon ve ekran paylaşımını istedikleri an açıp kapatabilir.
+   - Paylaşılan ekran büyük sahnede gösterilir; birden fazla paylaşım varsa aralarında geçiş yapılır.
 
 ---
 
@@ -283,10 +361,28 @@ EXPO_PUBLIC_BACKEND_URL=http://192.168.x.x:3000 npx expo start
 
 ---
 
+### 5️⃣ Web Uygulamasını Çalıştırma
+
+```bash
+cd web
+npm install
+
+# Windows PowerShell için:
+$env:VITE_BACKEND_URL="http://localhost:3000"; npm run dev
+
+# Linux/macOS için:
+VITE_BACKEND_URL=http://localhost:3000 npm run dev
+```
+
+> ⚠️ Kamera ve ekran paylaşımı tarayıcı güvenliği gereği yalnızca **`localhost` veya HTTPS** üzerinde çalışır. Aynı ağdaki başka bir cihazdan `http://192.168.x.x` ile bağlanırsanız tarayıcı kameraya erişim vermez.
+
+---
+
 ## 🛡️ Repo Hijyeni ve Güvenlik Standartları
 
 - 🔐 **Ortam Değişkenleri İzolasyonu:** Şifreler, API key'leri ve `JWT_SECRET` bilgileri kesinlikle versiyon kontrolüne (Git) eklenmez; `.env.example` şablonları kullanılır.
 - 🛡️ **Gelişmiş DTO Validasyonu:** NestJS `ValidationPipe` ile gelen tüm payload'lar `whitelist: true` ve `forbidNonWhitelisted: true` kurallarıyla filtreler.
+- 🎥 **Görüntülü İletişim Gizliliği:** Medya P2P akar ve kaydedilmez. Sunucu sinyalleri yalnızca aynı video odasındaki kullanıcılar arasında iletir (`RtcService.resolveSignalTarget`).
 - 📂 **Statik Dosya Yönetimi:** Kullanıcı avatarları ve yüklenen notlar `/uploads` dizininde izole tutulur (Production için AWS S3 / Cloudinary mimarisi ile uyumludur).
 
 ---
