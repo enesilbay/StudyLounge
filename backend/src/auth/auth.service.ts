@@ -41,6 +41,8 @@ export class AuthService {
       email: user.email,
       username: user.username,
     };
+    // Dogrulama kodu yalnizca yukaridaki kontrol icin yuklendi; yanita girmesin.
+    user.emailVerificationToken = null;
     return {
       success: true,
       user,
@@ -70,7 +72,7 @@ export class AuthService {
   }
 
   async verifyEmail(email: string, token: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailWithSecrets(email);
     if (
       !user ||
       !user.emailVerificationToken ||
@@ -126,7 +128,7 @@ export class AuthService {
 
   // ── 4. ŞİFREYİ SIFIRLA ──
   async resetPassword(email: string, token: string, newPass: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailWithSecrets(email);
     if (
       !user ||
       !user.resetPasswordToken ||

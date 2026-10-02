@@ -115,9 +115,20 @@ describe('UsersService', () => {
     expect(result.password).toBeUndefined();
   });
 
+  // Gizli alanlar select: false; servis bunlari query builder ile acikca secer.
+  const mockUserQuery = (user: Partial<User> | null) => {
+    const query = {
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(user),
+    };
+    usersRepository.createQueryBuilder.mockReturnValue(query);
+    return query;
+  };
+
   it('logs in with the correct password and removes the password field', async () => {
     const hashedPassword = await bcrypt.hash('secret123', 10);
-    usersRepository.findOne.mockResolvedValue({
+    const query = mockUserQuery({
       id: 1,
       username: 'ada',
       fullName: 'Ada Lovelace',
@@ -127,6 +138,9 @@ describe('UsersService', () => {
 
     const result = await service.login('ada@example.com', 'secret123');
 
+    expect(query.addSelect).toHaveBeenCalledWith(
+      expect.arrayContaining(['user.password']),
+    );
     expect(result?.id).toBe(1);
     expect(result?.password).toBeUndefined();
   });
@@ -207,13 +221,13 @@ describe('UsersService', () => {
   });
 
   it('updates account email and username while hiding password', async () => {
+    mockUserQuery({
+      id: 1,
+      username: 'ada',
+      email: 'ada@example.com',
+      password: 'hashed-password',
+    });
     usersRepository.findOne
-      .mockResolvedValueOnce({
-        id: 1,
-        username: 'ada',
-        email: 'ada@example.com',
-        password: 'hashed-password',
-      })
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
     usersRepository.save.mockImplementation((input: User) =>
@@ -236,7 +250,7 @@ describe('UsersService', () => {
 
   it('requires the current password before changing password', async () => {
     const hashedPassword = await bcrypt.hash('old-secret', 10);
-    usersRepository.findOne.mockResolvedValue({
+    mockUserQuery({
       id: 1,
       username: 'ada',
       email: 'ada@example.com',

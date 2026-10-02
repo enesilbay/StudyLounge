@@ -15,7 +15,9 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ nullable: true })
+  // Gizli alanlar (select: false) hicbir sorguda ya da iliskide (or. mesajin
+  // yazari) kendiliginden yuklenmez; gereken akislar acikca addSelect eder.
+  @Column({ nullable: true, select: false })
   password?: string;
 
   @Column({ default: false })
@@ -33,19 +35,19 @@ export class User {
   @Column({ nullable: true })
   avatarUrl: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false })
   expoPushToken: string;
 
   @Column({ default: false })
   isEmailVerified: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
   emailVerificationToken: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
   resetPasswordToken: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, select: false })
   resetPasswordExpires: Date | null;
 
   // ── AŞAMA 3: OYUNLAŞTIRMA VE EKONOMİ ──

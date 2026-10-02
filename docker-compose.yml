@@ -17,12 +17,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Yerelde backend `npm run start:dev` ile çalışır. Docker'da da çalıştırmak
+  # için: docker compose --profile docker-backend up -d
   backend:
+    profiles: ["docker-backend"]
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: studylounge_backend
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:

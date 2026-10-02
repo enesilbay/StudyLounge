@@ -84,7 +84,12 @@ export class UsersService implements OnModuleInit {
 
   // ── 2. GİRİŞ YAP ──
   async login(email: string, pass: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { email } });
+    // Sifre ve dogrulama kodu select: false; giris icin acikca istenir.
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect(['user.password', 'user.emailVerificationToken'])
+      .where('user.email = :email', { email })
+      .getOne();
 
     if (user && user.password && (await bcrypt.compare(pass, user.password))) {
       delete user.password;
@@ -139,6 +144,22 @@ export class UsersService implements OnModuleInit {
   // ── KULLANICI BUL (E-POSTA İLE) ──
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
+  }
+
+  /**
+   * E-posta dogrulama ve sifre sifirlama kontrolu icin gizli alanlarla getirir.
+   * Sonucu istemciye dondurme.
+   */
+  async findByEmailWithSecrets(email: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect([
+        'user.emailVerificationToken',
+        'user.resetPasswordToken',
+        'user.resetPasswordExpires',
+      ])
+      .where('user.email = :email', { email })
+      .getOne();
   }
 
   // ── ŞİFRE SIFIRLAMA TOKEN GÜNCELLE ──
@@ -461,7 +482,12 @@ export class UsersService implements OnModuleInit {
     userId: number,
     settings: UpdateAccountSettingsDto,
   ) {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    // Mevcut sifre kontrolu icin sifre ozeti acikca secilir.
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id: userId })
+      .getOne();
     if (!user) {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
@@ -521,20 +547,19 @@ export class UsersService implements OnModuleInit {
       relations: ['sender', 'receiver'],
     });
 
-    const tokens = friendships
-      .map((f) => {
-        const friend = f.sender.id === userId ? f.receiver : f.sender;
-        return friend.expoPushToken;
-      })
-      .filter((token) => !!token);
-
-    return tokens;
+    // Push token select: false oldugu icin iliskiyle gelmez; ayrica secilir.
+    const friendIds = friendships.map((f) =>
+      f.sender.id === userId ? f.receiver.id : f.sender.id,
+    );
+    return this.getUserPushTokens(friendIds);
   }
 
   // ── 14. BELİRLİ KULLANICILARIN PUSH TOKENLARINI GETİR (NUDGE İÇİN) ──
   async getUserPushTokens(userIds: number[]): Promise<string[]> {
+    if (!userIds.length) return [];
     const users = await this.usersRepository
       .createQueryBuilder('user')
+      .addSelect('user.expoPushToken')
       .where('user.id IN (:...ids)', { ids: userIds })
       .andWhere('user.expoPushToken IS NOT NULL')
       .getMany();

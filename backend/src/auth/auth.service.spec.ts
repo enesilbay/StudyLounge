@@ -12,6 +12,7 @@ describe('AuthService', () => {
     create: jest.Mock;
     login: jest.Mock;
     findByEmail: jest.Mock;
+    findByEmailWithSecrets: jest.Mock;
     findById: jest.Mock;
     updateResetToken: jest.Mock;
     updatePassword: jest.Mock;
@@ -45,6 +46,7 @@ describe('AuthService', () => {
       create: jest.fn(),
       login: jest.fn(),
       findByEmail: jest.fn(),
+      findByEmailWithSecrets: jest.fn(),
       findById: jest.fn(),
       updateResetToken: jest.fn(),
       updatePassword: jest.fn(),
@@ -100,7 +102,7 @@ describe('AuthService', () => {
   });
 
   it('verifies email with valid code and returns access_token', async () => {
-    usersService.findByEmail.mockResolvedValue(user);
+    usersService.findByEmailWithSecrets.mockResolvedValue(user);
     usersService.findById.mockResolvedValue(user);
 
     const result = await service.verifyEmail('ada@example.com', '123456');

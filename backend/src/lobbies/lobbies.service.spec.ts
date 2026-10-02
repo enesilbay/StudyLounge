@@ -63,12 +63,15 @@ describe('LobbiesService', () => {
       3,
     );
 
+    const [[saved]] = lobbiesRepository.create.mock.calls as [[Lobby]];
     expect(result.owner).toEqual({ id: 3 });
-    expect(result.passwordHash).toEqual(expect.any(String));
-    expect(result.passwordHash).not.toBe('room-secret');
+    expect(saved.passwordHash).toEqual(expect.any(String));
+    expect(saved.passwordHash).not.toBe('room-secret');
     await expect(
-      bcrypt.compare('room-secret', result.passwordHash ?? ''),
+      bcrypt.compare('room-secret', saved.passwordHash ?? ''),
     ).resolves.toBe(true);
+    // Ozet veritabanina yazilir ama yanitla istemciye donmez.
+    expect(result).not.toHaveProperty('passwordHash');
   });
 
   it('verifies a private lobby password', async () => {
@@ -109,7 +112,9 @@ describe('LobbiesService', () => {
 
   it('caps video lobby capacity for premium owners', async () => {
     usersService.findById.mockResolvedValue({ id: 3, isPremium: true });
-    lobbiesRepository.create.mockImplementation((input: Partial<Lobby>) => input);
+    lobbiesRepository.create.mockImplementation(
+      (input: Partial<Lobby>) => input,
+    );
     lobbiesRepository.save.mockImplementation((input: Lobby) =>
       Promise.resolve(input),
     );

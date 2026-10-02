@@ -1,3 +1,5 @@
+// Saat dilimsiz tarihleri her ortamda UTC oku/yaz (bkz. config/pg-utc.ts).
+import './config/pg-utc';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';

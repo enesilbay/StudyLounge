@@ -73,7 +73,10 @@ export class LobbiesService {
       owner: { id: ownerId },
     });
 
-    return this.lobbiesRepository.save(newLobby);
+    const saved = await this.lobbiesRepository.save(newLobby);
+    // Sifreli odanin bcrypt ozeti yanitla istemciye gitmesin.
+    delete saved.passwordHash;
+    return saved;
   }
 
   async verifyPassword(

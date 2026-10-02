@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { unlink } from 'fs/promises';
 import { extname } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,6 +23,17 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { UploadMessageFileDto } from './dto/upload-message-file.dto';
 import { MessagesService } from './messages.service';
 import type { Express } from 'express';
+
+// Sohbet dosyalari 5 MB; ders notu PDF'leri (ortak tahta) 20 MB'a kadar.
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+function isPdf(file: Express.Multer.File) {
+  return (
+    file.mimetype === 'application/pdf' &&
+    extname(file.originalname).toLowerCase() === '.pdf'
+  );
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('messages')
@@ -48,7 +61,7 @@ export class MessagesController {
         },
       }),
       limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: MAX_PDF_BYTES,
       },
     }),
   )
@@ -57,13 +70,20 @@ export class MessagesController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new MaxFileSizeValidator({ maxSize: MAX_PDF_BYTES }),
         ],
       }),
     )
     file: Express.Multer.File,
     @Body() body: UploadMessageFileDto,
   ) {
+    if (!isPdf(file) && file.size > MAX_FILE_BYTES) {
+      await unlink(file.path).catch(() => undefined);
+      throw new BadRequestException(
+        "Dosya en fazla 5 MB olabilir. PDF'ler 20 MB'a kadar yüklenebilir.",
+      );
+    }
+
     const fileUrl = `/uploads/${file.filename}`;
     const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
 

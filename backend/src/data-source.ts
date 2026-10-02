@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import './config/pg-utc';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Lobby } from './lobbies/lobby.entity';
