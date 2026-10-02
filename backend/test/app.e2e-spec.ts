@@ -265,6 +265,11 @@ class InMemoryUsersService {
     return user ? this.sanitize(user) : null;
   }
 
+  // Gercek serviste dogrulama/sifirlama tokenlari yalnizca bu metotla secilir.
+  findByEmailWithSecrets(email: string) {
+    return this.findByEmail(email);
+  }
+
   updateVerificationToken(userId: number, token: string) {
     const user = this.users.find((candidate) => candidate.id === userId);
     if (user) {
