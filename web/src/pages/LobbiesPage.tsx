@@ -342,7 +342,7 @@ function LampRow({ total, lit }: { total: number; lit: number }) {
       {Array.from({ length: shown }, (_, index) => (
         <span
           key={index}
-          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-accent shadow-[0_0_8px_var(--sl-brass)]' : 'border border-textMuted/50'}`}
+          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-accent shadow-[0_0_8px_var(--sl-blush)]' : 'border border-textMuted/50'}`}
         />
       ))}
       {total > MAX_LAMPS ? <span className="ml-0.5 text-xs">+{total - MAX_LAMPS}</span> : null}

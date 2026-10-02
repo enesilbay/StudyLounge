@@ -153,7 +153,7 @@ export default function DMPage() {
                   className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-semibold outline-none focus:border-primary"
                 />
               </div>
-              <button onClick={() => setAddFriendOpen(true)} className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-white hover:bg-primary/90">
+              <button onClick={() => setAddFriendOpen(true)} className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-onPrimary hover:bg-secondary">
                 <UserPlus className="h-5 w-5" />
               </button>
             </div>
@@ -206,8 +206,8 @@ export default function DMPage() {
                   const mine = senderId === user?.id;
                   return (
                     <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xl rounded-xl px-4 py-3 ${mine ? 'bg-primary text-white' : 'border border-border bg-surface text-textDark'}`}>
-                        {!mine ? <p className="mb-1 text-base font-semibold text-accent">{message.sender?.fullName ?? message.senderName ?? activeFriend.fullName}</p> : null}
+                      <div className={`max-w-xl rounded-xl px-4 py-3 ${mine ? 'bg-primary text-onPrimary' : 'border border-border bg-surface text-textDark'}`}>
+                        {!mine ? <p className="mb-1 text-base font-semibold text-accentDark">{message.sender?.fullName ?? message.senderName ?? activeFriend.fullName}</p> : null}
                         <p className="text-base font-semibold leading-6">{message.text}</p>
                         <p className={`mt-1 text-base font-semibold ${mine ? 'text-white/70' : 'text-textMuted'}`}>{formatTime(message.createdAt)}</p>
                       </div>
@@ -233,7 +233,7 @@ export default function DMPage() {
                   />
                   <button
                     disabled={!messageText.trim()}
-                    className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-onPrimary disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Send className="h-5 w-5" />
                   </button>
@@ -267,7 +267,7 @@ export default function DMPage() {
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button type="button" onClick={() => setAddFriendOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-semibold text-textDark">İptal</button>
-            <button disabled={addingFriend || !friendUsername.trim()} className="min-h-12 rounded-xl bg-primary text-base font-semibold text-white disabled:opacity-60">
+            <button disabled={addingFriend || !friendUsername.trim()} className="min-h-12 rounded-xl bg-primary text-base font-semibold text-onPrimary disabled:opacity-60">
               {addingFriend ? 'Gönderiliyor' : 'İstek Gönder'}
             </button>
           </div>

@@ -110,7 +110,7 @@ export default function LeaderboardPage() {
         </Surface>
 
         <Surface className="p-5">
-          <div className="grid h-16 w-16 place-items-center rounded-xl bg-lightAmber text-accent">
+          <div className="grid h-16 w-16 place-items-center rounded-xl bg-lightAmber text-accentDark">
             <Trophy className="h-8 w-8" />
           </div>
           <h2 className="mt-5 text-2xl font-semibold text-textDark">Haftanın vitrini</h2>
@@ -133,7 +133,7 @@ export default function LeaderboardPage() {
 function RankIcon({ rank }: { rank: number }) {
   if (rank === 1) {
     return (
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-white">
+      <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-onAccent">
         <Crown className="h-5 w-5" />
       </span>
     );

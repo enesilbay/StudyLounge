@@ -12,9 +12,9 @@ export function LampMark({ lit = true, className = 'h-7 w-7' }: { lit?: boolean;
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
       {lit ? <ellipse cx="16" cy="17" rx="12" ry="5" fill="var(--sl-lamp)" /> : null}
       <path d="M5 14.5C5 10.4 10 7.5 16 7.5s11 2.9 11 7H5Z" fill={lit ? 'var(--sl-primary)' : 'var(--sl-muted)'} opacity={lit ? 1 : 0.55} />
-      <path d="M7 14.5h18l-1.8 2.6H8.8L7 14.5Z" fill={lit ? 'var(--sl-brass)' : 'var(--sl-muted)'} />
-      <rect x="15" y="17" width="2" height="7.5" fill="var(--sl-brass-ink)" />
-      <rect x="10" y="24" width="12" height="2.4" rx="1.2" fill="var(--sl-brass-ink)" />
+      <path d="M7 14.5h18l-1.8 2.6H8.8L7 14.5Z" fill={lit ? 'var(--sl-blush)' : 'var(--sl-muted)'} />
+      <rect x="15" y="17" width="2" height="7.5" fill="var(--sl-blush-ink)" />
+      <rect x="10" y="24" width="12" height="2.4" rx="1.2" fill="var(--sl-blush-ink)" />
     </svg>
   );
 }
@@ -125,7 +125,7 @@ export function Avatar({
         <span aria-hidden="true">{initial}</span>
       )}
       {premium ? (
-        <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2 border-surface bg-accent text-background" title="Premium">
+        <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2 border-surface bg-accent text-onAccent" title="Premium">
           <Crown className="h-2.5 w-2.5" />
         </span>
       ) : null}
@@ -147,7 +147,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   secondary: 'border border-border bg-surface text-textDark hover:bg-sunken',
   ghost: 'text-textMuted hover:bg-sunken hover:text-textDark',
   danger: 'bg-danger text-background hover:opacity-90',
-  lamp: 'bg-accent text-background hover:brightness-110',
+  lamp: 'bg-accent text-onAccent hover:brightness-110',
 };
 
 export function Button({
@@ -281,7 +281,7 @@ export function StateBlock({
   const toneClass = { neutral: 'text-textMuted', danger: 'text-danger', primary: 'text-primary' }[tone];
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-12 text-center">
-      {loading ? <Loader2 className="h-6 w-6 animate-spin text-accent" /> : <LampMark lit={false} className={`h-9 w-9 ${toneClass}`} />}
+      {loading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <LampMark lit={false} className={`h-9 w-9 ${toneClass}`} />}
       <h2 className="mt-3 text-xl text-textDark">{title}</h2>
       {description ? <p className="mt-1 max-w-md text-base text-textMuted">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}

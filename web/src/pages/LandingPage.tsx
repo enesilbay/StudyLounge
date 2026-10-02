@@ -78,7 +78,7 @@ export default function LandingPage() {
               Kim odaklanıyorsa onun lambası yanar. Kendi lambanı yakmak için masana otur.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <Link to={primaryHref} className="inline-flex min-h-13 items-center gap-2.5 rounded-lg bg-accent px-6 text-base font-semibold text-background transition hover:brightness-110">
+              <Link to={primaryHref} className="inline-flex min-h-13 items-center gap-2.5 rounded-lg bg-accent px-6 text-base font-semibold text-onAccent transition hover:brightness-110">
                 <LampMark className="h-5 w-5" />
                 {isAuthenticated ? 'Bir odaya otur' : 'Ücretsiz hesap aç'}
               </Link>
@@ -127,7 +127,7 @@ export default function LandingPage() {
             <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
               {ways.map((way) => (
                 <div key={way.title}>
-                  <way.icon className="h-6 w-6 text-accent" />
+                  <way.icon className="h-6 w-6 text-primary" />
                   <h3 className="mt-4 text-2xl">{way.title}</h3>
                   <p className="mt-2 text-base leading-7 text-textMuted">{way.text}</p>
                 </div>
@@ -156,7 +156,7 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-4xl">Bu akşam bir masa boş.</h2>
               <p className="mt-2 text-lg text-textMuted">Hesap açmak bir dakika sürer, ücretsizdir.</p>
             </div>
-            <Link to={primaryHref} className="inline-flex min-h-13 shrink-0 items-center gap-2.5 rounded-lg bg-accent px-6 text-base font-semibold text-background transition hover:brightness-110">
+            <Link to={primaryHref} className="inline-flex min-h-13 shrink-0 items-center gap-2.5 rounded-lg bg-accent px-6 text-base font-semibold text-onAccent transition hover:brightness-110">
               <LampMark className="h-5 w-5" />
               {isAuthenticated ? 'Odalara git' : 'Masanı ayır'}
             </Link>

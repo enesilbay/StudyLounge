@@ -140,7 +140,7 @@ export default function SettingsPage() {
           <Input label="Yeni Şifre (İsteğe Bağlı)" value={newPassword} onChange={setNewPassword} type="password" helper="Şifrenizi değiştirmek istemiyorsanız boş bırakın." />
           
           <div className="pt-2">
-            <button disabled={isSaving} className="min-h-12 w-full rounded-xl bg-primary text-base font-semibold text-white disabled:opacity-60 transition hover:bg-secondary">
+            <button disabled={isSaving} className="min-h-12 w-full rounded-xl bg-primary text-base font-semibold text-onPrimary disabled:opacity-60 transition hover:bg-secondary">
               {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
             </button>
           </div>

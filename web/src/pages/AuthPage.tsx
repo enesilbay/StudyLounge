@@ -108,7 +108,7 @@ export default function AuthPage() {
         </section>
 
         <section className="sl-panel p-6 md:p-8">
-          {mode === 'verify' ? <MailCheck className="mb-3 h-8 w-8 text-accent" /> : null}
+          {mode === 'verify' ? <MailCheck className="mb-3 h-8 w-8 text-primary" /> : null}
           <h2 className="text-3xl">{titleForMode(mode)}</h2>
           <p className="mt-1 text-base text-textMuted">{subtitleForMode(mode)}</p>
 

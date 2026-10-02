@@ -39,13 +39,13 @@ export default function AppLayout() {
               to={item.path}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-semibold transition ${
-                  isActive ? 'bg-lightAmber text-textDark' : 'text-textMuted hover:bg-sunken hover:text-textDark'
+                  isActive ? 'bg-softIndigo text-textDark' : 'text-textMuted hover:bg-sunken hover:text-textDark'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-accent' : ''}`} />
+                  <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-primary' : ''}`} />
                   {item.label}
                 </>
               )}
@@ -103,7 +103,7 @@ export default function AppLayout() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-[11px] font-semibold ${isActive ? 'text-accent' : 'text-textMuted'}`}
+              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-[11px] font-semibold ${isActive ? 'text-primary' : 'text-textMuted'}`}
             >
               <item.icon className="h-5 w-5" />
               <span className="max-w-full truncate px-0.5">{item.label}</span>

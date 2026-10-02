@@ -86,10 +86,10 @@ export default function ProfilePage() {
           <div className="h-28 bg-sunken sl-lamp-on" />
           <div className="-mt-16 px-5 pb-5">
             <div className="relative mx-auto w-fit">
-              <button onClick={() => avatarInputRef.current?.click()} className="block rounded-full border-4 border-white">
+              <button onClick={() => avatarInputRef.current?.click()} className="block rounded-full border-4 border-surface">
                 <Avatar name={user.fullName} image={user.avatarUrl} frame={user.equippedProfileFrame} size="xl" premium={user.isPremium} />
               </button>
-              <button onClick={() => avatarInputRef.current?.click()} disabled={isUploading} className="absolute bottom-1 right-1 grid h-10 w-10 place-items-center rounded-full border-4 border-white bg-primary text-white disabled:opacity-70">
+              <button onClick={() => avatarInputRef.current?.click()} disabled={isUploading} className="absolute bottom-1 right-1 grid h-10 w-10 place-items-center rounded-full border-4 border-surface bg-primary text-onPrimary disabled:opacity-70">
                 <Camera className="h-4 w-4" />
               </button>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && void uploadAvatar(event.target.files[0])} />
@@ -144,7 +144,7 @@ export default function ProfilePage() {
           </Surface>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <button onClick={() => navigate('/app/shop')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-primary px-5 text-base font-semibold text-white transition hover:bg-secondary">
+            <button onClick={() => navigate('/app/shop')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-primary px-5 text-base font-semibold text-onPrimary transition hover:bg-secondary">
               <ShoppingCart className="h-5 w-5" />
               Mağazaya Git
             </button>

@@ -72,7 +72,7 @@ export default function PremiumPage() {
             ))}
           </div>
 
-          <button disabled className="mt-7 flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-accent px-5 text-base font-semibold text-white opacity-70">
+          <button disabled className="mt-7 flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-accent px-5 text-base font-semibold text-onAccent opacity-70">
             <Zap className="h-4 w-4" />
             Ödeme entegrasyonu bekleniyor
           </button>

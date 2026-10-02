@@ -115,8 +115,8 @@ export default function AnalyticsPage() {
               <div
                 className="h-10 rounded-xl border"
                 style={{
-                  backgroundColor: value ? `color-mix(in srgb, var(--sl-brass) ${Math.round(18 + Math.min(value, 100) * 0.6)}%, transparent)` : 'var(--sl-sunken)',
-                  borderColor: value ? 'color-mix(in srgb, var(--sl-brass) 55%, transparent)' : 'var(--sl-border)',
+                  backgroundColor: value ? `color-mix(in srgb, var(--sl-blush) ${Math.round(18 + Math.min(value, 100) * 0.6)}%, transparent)` : 'var(--sl-sunken)',
+                  borderColor: value ? 'color-mix(in srgb, var(--sl-blush) 55%, transparent)' : 'var(--sl-border)',
                 }}
               />
               <p className="mt-1 text-sm text-textMuted">{String(index).padStart(2, '0')}</p>

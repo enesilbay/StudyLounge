@@ -95,7 +95,7 @@ export default function ShopPage() {
         title="Odak Mağazası"
         description="Odaklandıkça kazandığın puanlarla sohbet rengi, isim ikonu ve profil çerçevesi al. Aldıkların telefonda da görünür."
         action={
-          <div className="inline-flex items-center gap-3 rounded-xl border border-accent bg-lightAmber px-4 py-3 text-accent">
+          <div className="inline-flex items-center gap-3 rounded-xl border border-accent bg-lightAmber px-4 py-3 text-accentDark">
             <Coins className="h-5 w-5" />
             <span className="font-semibold">{user.coins ?? 0} Odak Puanı</span>
           </div>
@@ -137,7 +137,7 @@ export default function ShopPage() {
                         disabled={busy}
                         onClick={() => void handleItemAction(item)}
                         className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-70 ${
-                          owned || item.price === 0 ? 'border border-primary bg-surface text-primary' : 'bg-primary text-white hover:bg-secondary'
+                          owned || item.price === 0 ? 'border border-primary bg-surface text-primary' : 'bg-primary text-onPrimary hover:bg-secondary'
                         }`}
                       >
                         <ShoppingCart className="h-4 w-4" />
