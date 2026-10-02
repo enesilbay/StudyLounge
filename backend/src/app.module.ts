@@ -23,6 +23,7 @@ import { DailyAnalytics } from './users/daily-analytics.entity';
 import { Friendship } from './users/friendship.entity';
 import { User } from './users/user.entity';
 import { UsersModule } from './users/users.module';
+import { WhiteboardModule } from './whiteboard/whiteboard.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     PaymentsModule,
     RtcModule,
+    WhiteboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, SensorsGateway, NotificationsService],

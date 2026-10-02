@@ -17,6 +17,7 @@ import { JwtPayload } from './auth/jwt-payload.interface';
 import { LobbiesService } from './lobbies/lobbies.service';
 import { MessagesService } from './messages/messages.service';
 import { MediaState, RtcService } from './rtc/rtc.service';
+import { WhiteboardService } from './whiteboard/whiteboard.service';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -66,6 +67,13 @@ interface RtcSignalDto {
   data: unknown;
 }
 
+interface BoardOpenDto {
+  /** true ise PDF'siz bos beyaz tahta acilir. */
+  blank?: boolean;
+  fileUrl?: string;
+  fileName?: string;
+}
+
 interface Duel {
   id: string;
   challengerId: number;
@@ -98,6 +106,7 @@ export class SensorsGateway
     private readonly lobbiesService: LobbiesService,
     private readonly messagesService: MessagesService,
     private readonly rtcService: RtcService,
+    private readonly whiteboardService: WhiteboardService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -176,6 +185,11 @@ export class SensorsGateway
     const usersInRoom = Array.from(this.connectedUsers.values()).filter(
       (u) => u.roomName === roomName,
     );
+    if (usersInRoom.length === 0) {
+      this.whiteboardService.scheduleDrop(roomName);
+    } else {
+      this.whiteboardService.cancelDrop(roomName);
+    }
     const focusedCount = usersInRoom.filter((user) => user.isAtDesk).length;
     void this.lobbiesService.updateActiveUsers(roomName, focusedCount);
 
@@ -322,6 +336,12 @@ export class SensorsGateway
         fullName,
         userId: socketUser.sub,
       });
+
+      // Web: odada acik bir PDF tahtasi varsa yeni gelen kisiye gonderilir.
+      const board = this.whiteboardService.getState(roomName);
+      if (board) {
+        client.emit('board_state', { board });
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Lobiye giris reddedildi.';
@@ -783,5 +803,141 @@ export class SensorsGateway
     const socketUser = this.getSocketUser(client);
     if (!socketUser) return;
     this.leaveCall(socketUser.sub, client.id);
+  }
+
+  // ── WEB: ORTAK PDF TAHTASI (cizim + sayfa senkronu) ──
+  private getBoardRoom(client: Socket): ConnectedRoomUser | null {
+    return this.connectedUsers.get(client.id) ?? null;
+  }
+
+  @SubscribeMessage('board_sync')
+  handleBoardSync(@ConnectedSocket() client: Socket) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    client.emit('board_state', {
+      board: this.whiteboardService.getState(user.roomName),
+    });
+  }
+
+  @SubscribeMessage('board_open')
+  handleBoardOpen(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: BoardOpenDto | string,
+  ) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    const data = this.parsePayload(payload);
+    try {
+      const board =
+        data?.blank === true
+          ? this.whiteboardService.openBlank(
+              user.roomName,
+              user.userId,
+              user.fullName,
+            )
+          : this.whiteboardService.open(
+              user.roomName,
+              user.userId,
+              user.fullName,
+              data?.fileUrl,
+              data?.fileName,
+            );
+      this.server.to(user.roomName).emit('board_state', { board });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'PDF tahtada acilamadi.';
+      client.emit('board_error', { message });
+    }
+  }
+
+  @SubscribeMessage('board_close')
+  handleBoardClose(@ConnectedSocket() client: Socket) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    if (this.whiteboardService.close(user.roomName)) {
+      this.server.to(user.roomName).emit('board_state', { board: null });
+    }
+  }
+
+  @SubscribeMessage('board_page')
+  handleBoardPage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { page: number } | string,
+  ) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    const result = this.whiteboardService.setPage(
+      user.roomName,
+      this.parsePayload(payload)?.page,
+    );
+    if (result) {
+      this.server.to(user.roomName).emit('board_page', result);
+    }
+  }
+
+  /** Cizilmekte olan cizgi: saklanmaz, yalnizca odadaki digerlerine iletilir. */
+  @SubscribeMessage('board_live')
+  handleBoardLive(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { stroke: unknown } | string,
+  ) {
+    const user = this.getBoardRoom(client);
+    if (!user || !this.whiteboardService.getState(user.roomName)) return;
+    const stroke = this.whiteboardService.sanitizeLive(
+      user.userId,
+      this.parsePayload(payload)?.stroke,
+    );
+    if (stroke) {
+      client.volatile.to(user.roomName).emit('board_live', { stroke });
+    }
+  }
+
+  @SubscribeMessage('board_stroke')
+  handleBoardStroke(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { stroke: unknown } | string,
+  ) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    const stroke = this.whiteboardService.addStroke(
+      user.roomName,
+      user.userId,
+      this.parsePayload(payload)?.stroke,
+    );
+    if (stroke) {
+      this.server.to(user.roomName).emit('board_stroke', { stroke });
+    }
+  }
+
+  @SubscribeMessage('board_erase')
+  handleBoardErase(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { ids: unknown } | string,
+  ) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    const ids = this.whiteboardService.removeStrokes(
+      user.roomName,
+      this.parsePayload(payload)?.ids,
+    );
+    if (ids.length) {
+      this.server.to(user.roomName).emit('board_erased', { ids });
+    }
+  }
+
+  @SubscribeMessage('board_clear')
+  handleBoardClear(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { page: number } | string,
+  ) {
+    const user = this.getBoardRoom(client);
+    if (!user) return;
+    const page = this.whiteboardService.clearPage(
+      user.roomName,
+      this.parsePayload(payload)?.page,
+    );
+    if (page !== null) {
+      this.server.to(user.roomName).emit('board_cleared', { page });
+    }
   }
 }

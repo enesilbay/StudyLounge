@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,12 +6,20 @@ import {
   CameraOff,
   Coffee,
   Crown,
+  FileText,
+  Maximize2,
+  Minimize2,
+  PanelRightClose,
+  PanelRightOpen,
+  Presentation,
   Mic,
   MicOff,
   MonitorUp,
   MonitorX,
   Paperclip,
+  PenLine,
   ImagePlus,
+  Loader2,
   Send,
   Video,
 } from 'lucide-react';
@@ -22,12 +30,18 @@ import { api, assetUrl } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import { getSocket } from '../lib/socket';
 import { useRoomCall } from '../lib/rtc/useRoomCall';
+import { hasLiveVideo } from '../lib/rtc/media';
+import { useRoomBoard } from '../lib/board/useRoomBoard';
+import { isPdfUrl, MAX_PDF_BYTES } from '../lib/board/types';
 import type { DuelRequest, DuelResult, Lobby, Message, RoomUser } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 import fireSound from '../assets/sounds/fire.mp3';
 import librarySound from '../assets/sounds/library.mp3';
 import natureSound from '../assets/sounds/nature.mp3';
 import rainSound from '../assets/sounds/rain.mp3';
+
+// pdf.js büyük bir kütüphane; yalnızca odada tahta açıldığında yüklenir.
+const PdfBoard = lazy(() => import('../components/room/PdfBoard').then((module) => ({ default: module.PdfBoard })));
 
 const durationOptions = [15, 25, 45, 60].map((minutes) => ({ label: `${minutes} dk`, seconds: minutes * 60 }));
 
@@ -45,13 +59,23 @@ const HIDDEN_TAB_GRACE_MS = 60_000;
 type VolumeMap = Record<string, number>;
 type SideTab = 'chat' | 'sound';
 
+interface StageSource {
+  key: string;
+  label: string;
+  kind: 'board' | 'screen' | 'camera';
+  stream?: MediaStream;
+  mirror?: boolean;
+}
+
 export default function FocusRoomPage() {
   const { roomId } = useParams();
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
@@ -68,7 +92,12 @@ export default function FocusRoomPage() {
   const [pendingDuel, setPendingDuel] = useState<DuelRequest | null>(null);
   const [activeDuel, setActiveDuel] = useState<string | null>(null);
   const [sideTab, setSideTab] = useState<SideTab>('chat');
-  const [pinnedSharer, setPinnedSharer] = useState<number | null>(null);
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
+  const [chatHidden, setChatHidden] = useState(false);
+  const [stageFullscreen, setStageFullscreen] = useState(false);
+  const [openingPdf, setOpeningPdf] = useState(false);
+  // Sahne kaynaklarının görünme sırası; en son başlayan paylaşım sahneye gelir.
+  const [sourceOrder, setSourceOrder] = useState<string[]>([]);
 
   useEffect(() => {
     let ignore = false;
@@ -88,6 +117,13 @@ export default function FocusRoomPage() {
   const joinedLobby = Boolean(user && roomUsers.some((roomUser) => roomUser.userId === user.id));
 
   const call = useRoomCall({ roomName, selfId: user?.id ?? null, enabled: videoRoom && joinedLobby });
+  const board = useRoomBoard({ roomName, enabled: joinedLobby });
+
+  useEffect(() => {
+    const onChange = () => setStageFullscreen(document.fullscreenElement === stageRef.current && stageRef.current !== null);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -102,7 +138,9 @@ export default function FocusRoomPage() {
   }, [roomName]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Yalnızca sohbet kutusu kayar; scrollIntoView tüm sayfayı kaydırıp tahtadaki çizimi bozuyordu.
+    const list = messagesRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
   }, [messages, sideTab]);
 
   const pauseAmbient = useCallback(() => {
@@ -256,8 +294,8 @@ export default function FocusRoomPage() {
     setChatText('');
   };
 
-  const uploadFile = async (file: File, type: 'file' | 'image') => {
-    if (!roomName) return;
+  const uploadFile = async (file: File, type: 'file' | 'image'): Promise<Message | null> => {
+    if (!roomName) return null;
     setError(null);
     const formData = new FormData();
     formData.append('roomName', roomName);
@@ -265,15 +303,52 @@ export default function FocusRoomPage() {
 
     try {
       const response = await api.post<Message>('/messages/upload', formData);
-      const savedMessage = unwrapData<Message>(response.data);
+      // Uç kaydedilen mesajı zarfsız döndürür; mesajdaki `user` alanı zarf sanılmasın.
+      const body = response.data as Message | { data?: Message };
+      const savedMessage = body && typeof body === 'object' && 'fileUrl' in body ? (body as Message) : unwrapData<Message>(body);
       setMessages((current) => (current.some((item) => messageIdentity(item) === messageIdentity(savedMessage)) ? current : [...current, savedMessage]));
       getSocket().emit('send_message', { roomName, text: savedMessage.text, type: savedMessage.type ?? type, fileUrl: savedMessage.fileUrl });
+      return savedMessage;
     } catch (uploadError) {
       setError(getApiErrorMessage(uploadError));
+      return null;
     } finally {
       if (imageInputRef.current) imageInputRef.current.value = '';
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // PDF önce sohbete dosya olarak yüklenir, sonra herkes için tahtada açılır.
+  const openPdfFile = async (file: File) => {
+    if (pdfInputRef.current) pdfInputRef.current.value = '';
+    if (file.type !== 'application/pdf' && !/.pdf$/i.test(file.name)) {
+      setError('Tahtada yalnızca PDF dosyaları açılabilir.');
+      return;
+    }
+    if (file.size > MAX_PDF_BYTES) {
+      setError('PDF en fazla 20 MB olabilir. Dosyayı küçültüp tekrar dene.');
+      return;
+    }
+    setOpeningPdf(true);
+    const saved = await uploadFile(file, 'file');
+    setOpeningPdf(false);
+    if (saved?.fileUrl) {
+      board.open(saved.fileUrl, saved.text || file.name);
+      setPinnedKey('board');
+    }
+  };
+
+  // Kamerayı sahneye al; aynı karta tekrar tıklanınca sahneden indir.
+  const toggleCameraPin = (personId: number) => {
+    const key = `camera:${personId}`;
+    setPinnedKey((current) => (current === key ? null : key));
+  };
+
+  const toggleStageFullscreen = () => {
+    const el = stageRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void el.requestFullscreen?.().catch(() => setError('Tarayıcı tam ekrana geçmeye izin vermedi.'));
   };
 
   const nudgeUser = (targetUserId: number, name: string) => {
@@ -334,18 +409,29 @@ export default function FocusRoomPage() {
     return list;
   })();
 
-  const sharers = (() => {
-    const list: Array<{ userId: number; name: string; stream: MediaStream }> = [];
-    if (call.media.screen && call.screenStream && user) list.push({ userId: user.id, name: 'Senin ekranın', stream: call.screenStream });
-    roomUsers.forEach((roomUser) => {
-      if (roomUser.userId === user?.id || !roomUser.isScreenSharing) return;
-      const screen = call.remote(roomUser.userId)?.screen;
-      if (screen) list.push({ userId: roomUser.userId, name: `${roomUser.fullName} ekranı`, stream: screen });
-    });
-    return list;
-  })();
+  /* ── Sahne: PDF tahtası, paylaşılan ekranlar ve büyütülen kamera ── */
+  const autoSources: StageSource[] = [];
+  if (board.board) autoSources.push({ key: 'board', label: board.board.fileName, kind: 'board' });
+  if (call.media.screen && call.screenStream && user) autoSources.push({ key: `screen:${user.id}`, label: 'Senin ekranın', kind: 'screen', stream: call.screenStream });
+  roomUsers.forEach((roomUser) => {
+    if (roomUser.userId === user?.id || !roomUser.isScreenSharing) return;
+    const screen = call.remote(roomUser.userId)?.screen;
+    if (screen) autoSources.push({ key: `screen:${roomUser.userId}`, label: `${roomUser.fullName} ekranı`, kind: 'screen', stream: screen });
+  });
 
-  const stage = sharers.find((sharer) => sharer.userId === pinnedSharer) ?? sharers[0] ?? null;
+  // Yeni başlayan paylaşım sahneye kendiliğinden gelir (Discord'daki gibi).
+  const autoKeys = autoSources.map((source) => source.key);
+  const nextOrder = [...sourceOrder.filter((key) => autoKeys.includes(key)), ...autoKeys.filter((key) => !sourceOrder.includes(key))];
+  if (nextOrder.join('|') !== sourceOrder.join('|')) setSourceOrder(nextOrder);
+
+  const pinnedCamera = pinnedKey?.startsWith('camera:') ? people.find((person) => `camera:${person.userId}` === pinnedKey) : undefined;
+  const sources: StageSource[] =
+    pinnedCamera && hasLiveVideo(pinnedCamera.cameraStream)
+      ? [...autoSources, { key: pinnedKey!, label: pinnedCamera.isSelf ? 'Senin kameran' : `${pinnedCamera.name} kamerası`, kind: 'camera', stream: pinnedCamera.cameraStream!, mirror: pinnedCamera.isSelf }]
+      : autoSources;
+  const newest = autoSources.find((source) => source.key === nextOrder[nextOrder.length - 1]);
+  const stage = sources.find((source) => source.key === pinnedKey) ?? newest ?? null;
+  const stageCameraKey = stage?.kind === 'camera' ? stage.key : null;
   const focusedCount = people.filter((person) => person.isAtDesk).length;
 
   if (lobbiesLoaded && !lobby) {
@@ -388,7 +474,7 @@ export default function FocusRoomPage() {
           </p>
         </div>
 
-        <div className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-surface px-4 py-3 md:w-auto md:justify-start">
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border border-border bg-surface px-4 py-3 md:w-auto md:justify-start">
           <div>
             <p className="font-mono text-4xl font-semibold tabular-nums leading-none text-textDark" aria-live="off">
               {formatDuration(remainingSeconds)}
@@ -424,6 +510,7 @@ export default function FocusRoomPage() {
       <div className="mb-4 space-y-2 empty:hidden">
         {error ? <Notice tone="danger" onDismiss={() => setError(null)}>{error}</Notice> : null}
         {call.error ? <Notice tone="danger" onDismiss={call.clearError}>{call.error}</Notice> : null}
+        {board.error ? <Notice tone="danger" onDismiss={board.clearError}>{board.error}</Notice> : null}
         {notice ? <Notice tone="info" onDismiss={() => setNotice(null)}>{notice}</Notice> : null}
         {activeDuel ? <Notice tone="accent">{activeDuel}</Notice> : null}
         {pendingDuel ? (
@@ -436,38 +523,108 @@ export default function FocusRoomPage() {
         ) : null}
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className={`grid flex-1 grid-cols-1 gap-5 ${chatHidden && stage ? '' : 'xl:grid-cols-[minmax(0,1fr)_360px]'}`}>
         {/* Masalar + sahne */}
-        <section aria-label="Masalar" className="flex min-w-0 flex-col gap-4">
+        <section aria-label="Masalar" className="flex min-w-0 flex-col gap-3">
           {stage ? (
-            <div className="flex flex-col gap-3">
-              <div className="relative overflow-hidden rounded-xl border border-border bg-black">
-                <div className="aspect-video">
-                  <VideoView stream={stage.stream} fit="contain" label={stage.name} />
+            <>
+              {/* Sahne: paylaşılan ekran ya da PDF tahtası büyük durur, kameralar alttaki şeride küçülür */}
+              <div
+                ref={stageRef}
+                className={`flex flex-col overflow-hidden bg-stage ${
+                  stageFullscreen ? 'h-dvh' : 'h-[calc(100dvh-25rem)] min-h-[360px] rounded-xl border border-border shadow-[var(--sl-shadow)]'
+                }`}
+              >
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Sahnede ne gösterilsin">
+                    {sources.map((source) => {
+                      const active = source.key === stage.key;
+                      const Icon = source.kind === 'board' ? (board.board?.kind === 'blank' ? Presentation : FileText) : source.kind === 'screen' ? MonitorUp : Camera;
+                      return (
+                        <button
+                          key={source.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          onClick={() => setPinnedKey(source.key)}
+                          className={`inline-flex max-w-64 shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition ${
+                            active ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{source.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setChatHidden((hidden) => !hidden)}
+                    aria-label={chatHidden ? 'Sohbeti göster' : 'Sohbeti gizle, sahneyi genişlet'}
+                    title={chatHidden ? 'Sohbeti göster' : 'Sohbeti gizle'}
+                    className="hidden h-8 w-8 shrink-0 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white xl:grid"
+                  >
+                    {chatHidden ? <PanelRightOpen className="h-[18px] w-[18px]" /> : <PanelRightClose className="h-[18px] w-[18px]" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleStageFullscreen}
+                    aria-label={stageFullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}
+                    title={stageFullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+                  >
+                    {stageFullscreen ? <Minimize2 className="h-[18px] w-[18px]" /> : <Maximize2 className="h-[18px] w-[18px]" />}
+                  </button>
                 </div>
-                <p className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-1 text-sm font-semibold text-white">{stage.name}</p>
+
+                <div className="relative min-h-0 flex-1">
+                  {stage.kind === 'board' && board.board && user ? (
+                    <div className="absolute inset-0">
+                      <Suspense fallback={<div className="grid h-full place-items-center"><Loader2 className="h-6 w-6 animate-spin text-white/70" aria-label="Tahta yükleniyor" /></div>}>
+                        <PdfBoard key={`${board.board.kind}:${board.board.fileUrl ?? board.board.openedBy}`} board={board.board} actions={board} selfId={user.id} />
+                      </Suspense>
+                    </div>
+                  ) : stage.stream ? (
+                    <div className="absolute inset-0 bg-black">
+                      <VideoView stream={stage.stream} fit="contain" mirror={stage.mirror} label={stage.label} />
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Tam ekranda da kameralar görünsün */}
+                {stageFullscreen ? (
+                  <div className="flex gap-2 overflow-x-auto px-2 pb-2">
+                    {people.map((person) => (
+                      <DeskTile
+                        key={person.userId}
+                        person={person}
+                        videoRoom={videoRoom}
+                        compact
+                        selected={stageCameraKey === `camera:${person.userId}`}
+                        onSelect={() => toggleCameraPin(person.userId)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              {sharers.length > 1 ? (
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Paylaşılan ekranlar">
-                  {sharers.map((sharer) => (
-                    <button
-                      key={sharer.userId}
-                      type="button"
-                      onClick={() => setPinnedSharer(sharer.userId)}
-                      aria-pressed={stage.userId === sharer.userId}
-                      className={`rounded-md border px-2.5 py-1 text-sm font-semibold ${stage.userId === sharer.userId ? 'border-accent text-textDark' : 'border-border text-textMuted'}`}
-                    >
-                      {sharer.name}
-                    </button>
+
+              {!stageFullscreen ? (
+                <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Masadakiler">
+                  {people.map((person) => (
+                    <DeskTile
+                      key={person.userId}
+                      person={person}
+                      videoRoom={videoRoom}
+                      compact
+                      selected={stageCameraKey === `camera:${person.userId}`}
+                      onSelect={() => toggleCameraPin(person.userId)}
+                      onNudge={() => nudgeUser(person.userId, person.name)}
+                      onDuel={() => challengeUser(person.userId, person.name)}
+                    />
                   ))}
                 </div>
               ) : null}
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                {people.map((person) => (
-                  <DeskTile key={person.userId} person={person} videoRoom compact />
-                ))}
-              </div>
-            </div>
+            </>
           ) : (
             <div className={`grid gap-3 ${videoRoom ? 'grid-cols-2 2xl:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 2xl:grid-cols-4'}`}>
               {people.map((person) => (
@@ -475,6 +632,7 @@ export default function FocusRoomPage() {
                   key={person.userId}
                   person={person}
                   videoRoom={videoRoom}
+                  onSelect={() => toggleCameraPin(person.userId)}
                   onNudge={() => nudgeUser(person.userId, person.name)}
                   onDuel={() => challengeUser(person.userId, person.name)}
                 />
@@ -492,21 +650,51 @@ export default function FocusRoomPage() {
             <AudioSink key={person.userId} stream={person.micOn ? person.cameraStream : null} />
           ))}
 
-          {/* Medya kontrolleri */}
-          {videoRoom ? (
-            <div className="sticky bottom-20 z-10 mt-auto flex flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur lg:bottom-4">
-              <MediaButton on={call.media.mic} onLabel="Mikrofonu kapat" offLabel="Mikrofonu aç" OnIcon={Mic} OffIcon={MicOff} onClick={call.toggleMic} disabled={!call.joined || call.busy} />
-              <MediaButton on={call.media.camera} onLabel="Kamerayı kapat" offLabel="Kamerayı aç" OnIcon={Camera} OffIcon={CameraOff} onClick={call.toggleCamera} disabled={!call.joined || call.busy} />
-              <MediaButton on={call.media.screen} onLabel="Paylaşımı durdur" offLabel="Ekranını paylaş" OnIcon={MonitorX} OffIcon={MonitorUp} onClick={call.toggleScreen} disabled={!call.joined || call.busy} invert />
+          {/* Kontroller: kamera/mikrofon/ekran yalnızca kameralı odalarda, PDF tahtası her odada */}
+          <div className="sticky bottom-20 z-10 mt-auto flex flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur lg:bottom-4">
+            {videoRoom ? (
+              <>
+                <MediaButton on={call.media.mic} onLabel="Mikrofonu kapat" offLabel="Mikrofonu aç" OnIcon={Mic} OffIcon={MicOff} onClick={call.toggleMic} disabled={!call.joined || call.busy} />
+                <MediaButton on={call.media.camera} onLabel="Kamerayı kapat" offLabel="Kamerayı aç" OnIcon={Camera} OffIcon={CameraOff} onClick={call.toggleCamera} disabled={!call.joined || call.busy} />
+                <MediaButton on={call.media.screen} onLabel="Paylaşımı durdur" offLabel="Ekranını paylaş" OnIcon={MonitorX} OffIcon={MonitorUp} onClick={call.toggleScreen} disabled={!call.joined || call.busy} invert />
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => pdfInputRef.current?.click()}
+              disabled={!joinedLobby || openingPdf}
+              title="PDF yükle, odadaki herkes görsün ve üstüne çizsin"
+              aria-label={board.board ? 'Başka PDF aç' : 'PDF aç ve çiz'}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-[15px] font-semibold text-textDark transition hover:bg-sunken disabled:opacity-50"
+            >
+              {openingPdf ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <FileText className="h-[18px] w-[18px]" />}
+              <span className="hidden sm:inline">{board.board ? 'Başka PDF aç' : 'PDF aç ve çiz'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                board.openBlank();
+                setPinnedKey('board');
+              }}
+              disabled={!joinedLobby}
+              title="PDF'siz boş bir tahta aç; herkes birlikte çizsin"
+              aria-label="Boş tahta aç"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-[15px] font-semibold text-textDark transition hover:bg-sunken disabled:opacity-50"
+            >
+              <Presentation className="h-[18px] w-[18px]" />
+              <span className="hidden sm:inline">Boş tahta</span>
+            </button>
+            <input ref={pdfInputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => event.target.files?.[0] && void openPdfFile(event.target.files[0])} />
+            {videoRoom ? (
               <p className="w-full text-center text-xs text-textMuted sm:ml-2 sm:w-auto sm:text-left">
                 {call.joined ? 'Kamera ve mikrofon sen açana kadar kapalı kalır.' : 'Görüntülü bağlantı hazırlanıyor…'}
               </p>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </section>
 
         {/* Yan panel */}
-        <aside className="sl-panel flex h-[560px] flex-col overflow-hidden xl:sticky xl:top-6 xl:h-[calc(100vh-3rem)]">
+        <aside className={`sl-panel flex h-[560px] flex-col overflow-hidden xl:sticky xl:top-6 xl:h-[calc(100vh-3rem)] ${chatHidden && stage ? 'xl:hidden' : ''}`}>
           <div className="flex border-b border-border" role="tablist" aria-label="Oda paneli">
             {(
               [
@@ -527,7 +715,7 @@ export default function FocusRoomPage() {
           </div>
 
           <div className={`flex min-h-0 flex-1 flex-col ${sideTab === 'chat' ? '' : 'hidden'}`}>
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.map((message, index) => {
                 const senderId = message.user?.id ?? message.userId;
                 const mine = senderId === user?.id;
@@ -548,6 +736,19 @@ export default function FocusRoomPage() {
                           {message.text}
                         </a>
                       ) : null}
+                      {message.fileUrl && isPdfUrl(message.fileUrl) && joinedLobby ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            board.open(message.fileUrl!, message.text);
+                            setPinnedKey('board');
+                          }}
+                          className={`mt-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-semibold ${mine ? 'bg-onPrimary/15 hover:bg-onPrimary/25' : 'bg-surface text-primary hover:bg-background'}`}
+                        >
+                          <PenLine className="h-3.5 w-3.5" />
+                          Tahtada aç
+                        </button>
+                      ) : null}
                       {!fileHref ? <p className="whitespace-pre-wrap break-words text-[15px] leading-6">{message.text}</p> : null}
                     </div>
                     <p className="mt-0.5 px-1 text-[11px] text-textMuted">{formatTime(message.createdAt ?? message.timestamp)}</p>
@@ -555,7 +756,6 @@ export default function FocusRoomPage() {
                 );
               })}
               {messages.length === 0 ? <p className="pt-8 text-center text-[15px] text-textMuted">Sohbet sessiz. Bir merhaba yaz ya da çalıştığın notu paylaş.</p> : null}
-              <div ref={messagesEndRef} />
             </div>
 
             <form
@@ -633,10 +833,10 @@ function MediaButton({
   invert?: boolean;
 }) {
   const Icon = on ? OnIcon : OffIcon;
-  // Kamera/mikrofon: açıkken dolu yeşil. Ekran paylaşımı: açıkken lamba rengiyle vurgulanır.
+  // Kamera/mikrofon: açıkken dolu turkuaz. Ekran paylaşımı: açıkken turkuaz çerçeveyle vurgulanır.
   const style = on
     ? invert
-      ? 'bg-accent text-background hover:brightness-110'
+      ? 'border border-primary bg-softIndigo text-primary hover:bg-sunken'
       : 'bg-primary text-onPrimary hover:bg-secondary'
     : invert
       ? 'border border-border bg-surface text-textDark hover:bg-sunken'
