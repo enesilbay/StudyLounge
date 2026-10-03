@@ -1,4 +1,4 @@
-import { Bell, MicOff, MonitorUp, Swords } from 'lucide-react';
+import { Bell, Mic, MicOff, MonitorUp, Swords } from 'lucide-react';
 import { Avatar } from '../ui';
 import type { FrameId } from '../../lib/types';
 import { VideoView } from './MediaViews';
@@ -28,6 +28,7 @@ export function DeskTile({
   videoRoom,
   compact = false,
   selected = false,
+  speaking = false,
   onSelect,
   onNudge,
   onDuel,
@@ -36,6 +37,8 @@ export function DeskTile({
   videoRoom: boolean;
   compact?: boolean;
   selected?: boolean;
+  /** Şu an konuşuyorsa kart turkuaz halkayla parlar (Discord gibi). */
+  speaking?: boolean;
   onSelect?: () => void;
   onNudge?: () => void;
   onDuel?: () => void;
@@ -45,10 +48,10 @@ export function DeskTile({
 
   return (
     <article
-      aria-label={`${person.name}${person.isSelf ? ' (sen)' : ''}: ${status}`}
-      className={`group relative overflow-hidden rounded-xl border bg-surface transition-colors ${
-        person.isAtDesk ? `sl-lamp-on ${showVideo ? 'ring-2 ring-accent/80' : ''}` : 'border-border'
-      } ${selected ? 'outline-2 outline-offset-2 outline-primary' : ''} ${compact ? 'aspect-video w-36 shrink-0 sm:w-44' : videoRoom ? 'aspect-[4/3]' : 'min-h-[148px]'}`}
+      aria-label={`${person.name}${person.isSelf ? ' (sen)' : ''}: ${status}${speaking ? ', konuşuyor' : ''}`}
+      className={`group relative overflow-hidden rounded-xl border bg-surface transition-[color,background-color,box-shadow] ${
+        person.isAtDesk ? 'sl-lamp-on' : 'border-border'
+      } ${speaking ? 'ring-[3px] ring-sea' : person.isAtDesk && showVideo ? 'ring-2 ring-accent/80' : ''} ${selected ? 'outline-2 outline-offset-2 outline-primary' : ''} ${compact ? 'aspect-video w-36 shrink-0 sm:w-44' : videoRoom ? 'aspect-[4/3]' : 'min-h-[148px]'}`}
     >
       {showVideo ? (
         <div className="absolute inset-0 bg-black">
@@ -88,6 +91,7 @@ export function DeskTile({
         </p>
         {person.sharing ? <MonitorUp className={`h-4 w-4 shrink-0 ${showVideo ? 'text-sea' : 'text-primary'}`} aria-label="Ekran paylaşıyor" /> : null}
         {videoRoom && person.inCall && !person.micOn ? <MicOff className="h-4 w-4 shrink-0 opacity-70" aria-label="Mikrofon kapalı" /> : null}
+        {speaking ? <Mic className={`h-4 w-4 shrink-0 ${showVideo ? 'text-sea' : 'text-primary'}`} aria-hidden="true" /> : null}
         {!compact ? <span className={`shrink-0 text-xs ${showVideo ? 'text-white/75' : 'text-textMuted'}`}>{status}</span> : null}
       </div>
 

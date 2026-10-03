@@ -24,6 +24,7 @@ import { Friendship } from './users/friendship.entity';
 import { User } from './users/user.entity';
 import { UsersModule } from './users/users.module';
 import { WhiteboardModule } from './whiteboard/whiteboard.module';
+import { RoomTimerModule } from './room-timer/room-timer.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { WhiteboardModule } from './whiteboard/whiteboard.module';
     PaymentsModule,
     RtcModule,
     WhiteboardModule,
+    RoomTimerModule,
   ],
   controllers: [AppController],
   providers: [AppService, SensorsGateway, NotificationsService],

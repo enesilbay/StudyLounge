@@ -18,6 +18,7 @@ import { LobbiesService } from './lobbies/lobbies.service';
 import { MessagesService } from './messages/messages.service';
 import { MediaState, RtcService } from './rtc/rtc.service';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
+import { RoomTimerService } from './room-timer/room-timer.service';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -74,6 +75,11 @@ interface BoardOpenDto {
   fileName?: string;
 }
 
+interface RoomTimerStartDto {
+  focusMinutes: number;
+  breakMinutes: number;
+}
+
 interface Duel {
   id: string;
   challengerId: number;
@@ -107,6 +113,7 @@ export class SensorsGateway
     private readonly messagesService: MessagesService,
     private readonly rtcService: RtcService,
     private readonly whiteboardService: WhiteboardService,
+    private readonly roomTimerService: RoomTimerService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -187,8 +194,10 @@ export class SensorsGateway
     );
     if (usersInRoom.length === 0) {
       this.whiteboardService.scheduleDrop(roomName);
+      this.roomTimerService.scheduleDrop(roomName);
     } else {
       this.whiteboardService.cancelDrop(roomName);
+      this.roomTimerService.cancelDrop(roomName);
     }
     const focusedCount = usersInRoom.filter((user) => user.isAtDesk).length;
     void this.lobbiesService.updateActiveUsers(roomName, focusedCount);
@@ -341,6 +350,11 @@ export class SensorsGateway
       const board = this.whiteboardService.getState(roomName);
       if (board) {
         client.emit('board_state', { board });
+      }
+      // Web: calisan ortak Pomodoro sayaci da gonderilir.
+      const timer = this.roomTimerService.snapshot(roomName);
+      if (timer) {
+        client.emit('room_timer', { timer, action: 'sync' });
       }
     } catch (error) {
       const message =
@@ -938,6 +952,78 @@ export class SensorsGateway
     );
     if (page !== null) {
       this.server.to(user.roomName).emit('board_cleared', { page });
+    }
+  }
+
+  // ── WEB: ORTAK POMODORO SAYACI ──
+  private broadcastRoomTimer(
+    roomName: string,
+    action: string,
+    byName: string | null,
+  ) {
+    this.server.to(roomName).emit('room_timer', {
+      timer: this.roomTimerService.snapshot(roomName),
+      action,
+      byName,
+    });
+  }
+
+  @SubscribeMessage('room_timer_sync')
+  handleRoomTimerSync(@ConnectedSocket() client: Socket) {
+    const user = this.connectedUsers.get(client.id);
+    if (!user) return;
+    client.emit('room_timer', {
+      timer: this.roomTimerService.snapshot(user.roomName),
+      action: 'sync',
+      byName: null,
+    });
+  }
+
+  @SubscribeMessage('room_timer_start')
+  handleRoomTimerStart(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: RoomTimerStartDto | string,
+  ) {
+    const user = this.connectedUsers.get(client.id);
+    if (!user) return;
+    const data = this.parsePayload(payload);
+    try {
+      this.roomTimerService.start(
+        user.roomName,
+        user.userId,
+        user.fullName,
+        data?.focusMinutes,
+        data?.breakMinutes,
+      );
+      this.broadcastRoomTimer(user.roomName, 'start', user.fullName);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Ortak sayac baslatilamadi.';
+      client.emit('room_timer_error', { message });
+    }
+  }
+
+  @SubscribeMessage('room_timer_pause')
+  handleRoomTimerPause(@ConnectedSocket() client: Socket) {
+    const user = this.connectedUsers.get(client.id);
+    if (user && this.roomTimerService.pause(user.roomName)) {
+      this.broadcastRoomTimer(user.roomName, 'pause', user.fullName);
+    }
+  }
+
+  @SubscribeMessage('room_timer_resume')
+  handleRoomTimerResume(@ConnectedSocket() client: Socket) {
+    const user = this.connectedUsers.get(client.id);
+    if (user && this.roomTimerService.resume(user.roomName)) {
+      this.broadcastRoomTimer(user.roomName, 'resume', user.fullName);
+    }
+  }
+
+  @SubscribeMessage('room_timer_stop')
+  handleRoomTimerStop(@ConnectedSocket() client: Socket) {
+    const user = this.connectedUsers.get(client.id);
+    if (user && this.roomTimerService.stop(user.roomName)) {
+      this.broadcastRoomTimer(user.roomName, 'stop', user.fullName);
     }
   }
 }

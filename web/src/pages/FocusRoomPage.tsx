@@ -6,6 +6,10 @@ import {
   CameraOff,
   Coffee,
   Crown,
+  Pause,
+  Play,
+  Square,
+  Users,
   FileText,
   Maximize2,
   Minimize2,
@@ -30,9 +34,11 @@ import { api, assetUrl } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import { getSocket } from '../lib/socket';
 import { useRoomCall } from '../lib/rtc/useRoomCall';
+import { useSpeaking } from '../lib/rtc/useSpeaking';
 import { hasLiveVideo } from '../lib/rtc/media';
 import { useRoomBoard } from '../lib/board/useRoomBoard';
 import { isPdfUrl, MAX_PDF_BYTES } from '../lib/board/types';
+import { playChime, useRoomTimer } from '../lib/roomTimer';
 import type { DuelRequest, DuelResult, Lobby, Message, RoomUser } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 import fireSound from '../assets/sounds/fire.mp3';
@@ -118,6 +124,20 @@ export default function FocusRoomPage() {
 
   const call = useRoomCall({ roomName, selfId: user?.id ?? null, enabled: videoRoom && joinedLobby });
   const board = useRoomBoard({ roomName, enabled: joinedLobby });
+  const roomTimer = useRoomTimer({ roomName, enabled: joinedLobby });
+  // Ortak sayaca katılan kişi odak aşamasında otomatik "odakta" sayılır.
+  const [followShared, setFollowShared] = useState(false);
+  // Katılım yalnızca sunucu sayacın bittiğini bildirince sona erer. Bağlantı kısa süre
+  // koparsa sayaç bir an yok görünür; bu, kullanıcıyı ortak sayaçtan çıkarmamalı.
+  const timerEnded = roomTimer.lastEvent && (roomTimer.lastEvent.action === 'stop' || !roomTimer.timer) ? roomTimer.lastEvent.at : null;
+  const [handledTimerEnd, setHandledTimerEnd] = useState<number | null>(null);
+  if (timerEnded !== handledTimerEnd) {
+    setHandledTimerEnd(timerEnded);
+    if (timerEnded) setFollowShared(false);
+  }
+  const sharedMode = followShared && Boolean(roomTimer.view);
+  const sharedFocus = sharedMode && roomTimer.view?.phase === 'focus' && !roomTimer.view.paused;
+  const focusing = sharedMode ? sharedFocus : running;
 
   useEffect(() => {
     const onChange = () => setStageFullscreen(document.fullscreenElement === stageRef.current && stageRef.current !== null);
@@ -225,13 +245,13 @@ export default function FocusRoomPage() {
     });
   }, [volumes]);
 
-  const playAmbient = () => {
+  const playAmbient = useCallback(() => {
     soundTracks.forEach((track) => {
       const audio = audioRefs.current[track.key];
       if (!audio || (volumes[track.key] ?? 0) <= 0) return;
       audio.play().catch(() => setError('Tarayıcı ortam sesini başlatamadı. Odaklanmayı durdurup tekrar başlat.'));
     });
-  };
+  }, [volumes]);
 
   const stopFocus = useCallback(
     (message?: string) => {
@@ -245,25 +265,81 @@ export default function FocusRoomPage() {
   );
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || sharedMode) return;
     const timer = window.setInterval(() => {
       setRemainingSeconds((current) => (current <= 1 ? 0 : current - 1));
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [running]);
+  }, [running, sharedMode]);
 
   useEffect(() => {
-    if (running && remainingSeconds === 0) stopFocus('Seans tamamlandı. Kısa bir mola ver.');
-  }, [remainingSeconds, running, stopFocus]);
+    if (running && !sharedMode && remainingSeconds === 0) stopFocus('Seans tamamlandı. Kısa bir mola ver.');
+  }, [remainingSeconds, running, sharedMode, stopFocus]);
+
+  /* ── Ortak sayaç: masada olma bilgisini ve ortam sesini aşamaya göre eşitle ── */
+  const sharedPresenceRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!roomName) return;
+    if (!sharedMode) {
+      // Sayaç başkası tarafından bitirildiyse ya da sayaçtan ayrıldıysan masadan kalkılır.
+      if (sharedPresenceRef.current === true) {
+        getSocket().emit('update_presence', { isAtDesk: false, roomName });
+        pauseAmbient();
+      }
+      sharedPresenceRef.current = null;
+      return;
+    }
+    if (sharedPresenceRef.current === sharedFocus) return;
+    sharedPresenceRef.current = sharedFocus;
+    getSocket().emit('update_presence', { isAtDesk: sharedFocus, roomName });
+    if (sharedFocus) playAmbient();
+    else pauseAmbient();
+  }, [sharedMode, sharedFocus, roomName, playAmbient, pauseAmbient]);
+
+  // Aşama değişince (odak ↔ mola) katılanlara kısa bir zil çalar.
+  const phaseKey = roomTimer.view && !roomTimer.view.paused ? `${roomTimer.view.round}:${roomTimer.view.phase}` : null;
+  const lastPhaseKey = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = lastPhaseKey.current;
+    lastPhaseKey.current = phaseKey;
+    if (!followShared || !previous || !phaseKey || previous === phaseKey) return;
+    playChime(phaseKey.endsWith('break') ? 'break' : 'focus');
+  }, [phaseKey, followShared]);
+
+  const joinShared = () => {
+    if (!roomName) return;
+    setError(null);
+    // Kişisel sayaç durur; bundan sonra odak/mola ortak sayaçtan gelir.
+    setRunning(false);
+    setFollowShared(true);
+  };
+
+  // Masadan kalkma ve ortam sesini durdurma yukarıdaki eşitleme effect'inde yapılır.
+  const leaveShared = () => setFollowShared(false);
+
+  const startShared = () => {
+    roomTimer.start(Math.round(selectedDuration / 60));
+    joinShared();
+  };
 
   // Sekme uzun süre gizli kalırsa odak duraklatılır (web için sensör yerine).
   useEffect(() => {
-    if (!running) return;
+    if (!focusing) return;
     let timeout: number | undefined;
     const onVisibility = () => {
       window.clearTimeout(timeout);
       if (document.hidden) {
-        timeout = window.setTimeout(() => stopFocus('Sekmeden bir dakikadan uzun ayrıldığın için odak duraklatıldı.'), HIDDEN_TAB_GRACE_MS);
+        timeout = window.setTimeout(() => {
+          const message = 'Sekmeden bir dakikadan uzun ayrıldığın için odak duraklatıldı.';
+          if (sharedMode) {
+            setFollowShared(false);
+            pauseAmbient();
+            if (roomName) getSocket().emit('update_presence', { isAtDesk: false, roomName });
+            setNotice(`${message} Ortak sayaca yeniden katılabilirsin.`);
+          } else {
+            stopFocus(message);
+          }
+        }, HIDDEN_TAB_GRACE_MS);
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
@@ -271,7 +347,7 @@ export default function FocusRoomPage() {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [running, stopFocus]);
+  }, [focusing, sharedMode, stopFocus, pauseAmbient, roomName]);
 
   const startFocus = () => {
     if (!roomName) return;
@@ -379,7 +455,7 @@ export default function FocusRoomPage() {
         avatarUrl: assetUrl(user.avatarUrl),
         frame: user.equippedProfileFrame,
         isPremium: user.isPremium,
-        isAtDesk: running,
+        isAtDesk: focusing,
         isSelf: true,
         inCall: call.joined,
         micOn: call.media.mic,
@@ -408,6 +484,9 @@ export default function FocusRoomPage() {
       });
     return list;
   })();
+
+  // Konuşanı vurgula: mikrofonu açık herkesin ses seviyesi ölçülür.
+  const speakingIds = useSpeaking(people.map((person) => ({ id: person.userId, stream: person.cameraStream, enabled: videoRoom && person.micOn })));
 
   /* ── Sahne: PDF tahtası, paylaşılan ekranlar ve büyütülen kamera ── */
   const autoSources: StageSource[] = [];
@@ -474,36 +553,106 @@ export default function FocusRoomPage() {
           </p>
         </div>
 
-        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border border-border bg-surface px-4 py-3 md:w-auto md:justify-start">
-          <div>
-            <p className="font-mono text-4xl font-semibold tabular-nums leading-none text-textDark" aria-live="off">
-              {formatDuration(remainingSeconds)}
-            </p>
-            <div className="mt-2 flex gap-1" role="group" aria-label="Seans süresi">
-              {durationOptions.map((item) => (
-                <button
-                  key={item.seconds}
-                  type="button"
-                  onClick={() => selectDuration(item.seconds)}
-                  aria-pressed={selectedDuration === item.seconds}
-                  className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold transition ${
-                    selectedDuration === item.seconds ? 'bg-lightAmber text-accentDark' : 'text-textMuted hover:text-textDark'
+        {roomTimer.view && roomTimer.timer ? (
+          /* Ortak Pomodoro: odadaki herkes aynı sayacı görür; katılanlar birlikte odaklanıp mola verir */
+          <div
+            className={`flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border bg-surface px-4 py-3 md:w-auto md:justify-start ${
+              followShared && roomTimer.view.phase === 'focus' && !roomTimer.view.paused ? 'sl-lamp-on' : 'border-border'
+            }`}
+          >
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-textMuted">
+                <Users className="h-3.5 w-3.5" />
+                Ortak sayaç, {roomTimer.view.round}. tur
+              </p>
+              <p className="mt-1 font-mono text-4xl font-semibold tabular-nums leading-none text-textDark" aria-live="off">
+                {formatDuration(roomTimer.view.remainingSeconds)}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span
+                  className={`rounded-md px-2 py-0.5 font-semibold ${
+                    roomTimer.view.paused ? 'bg-sunken text-textMuted' : roomTimer.view.phase === 'focus' ? 'bg-lightAmber text-accentDark' : 'bg-softIndigo text-primary'
                   }`}
                 >
-                  {item.label}
-                </button>
-              ))}
+                  {roomTimer.view.paused ? 'Duraklatıldı' : roomTimer.view.phase === 'focus' ? 'Odak' : 'Mola'}
+                </span>
+                <span className="text-textMuted">{describeTimerEvent(roomTimer.lastEvent, roomTimer.timer.startedByName)}</span>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={roomTimer.view.paused ? roomTimer.resume : roomTimer.pause}
+                aria-label={roomTimer.view.paused ? 'Ortak sayacı sürdür' : 'Ortak sayacı herkes için duraklat'}
+                title={roomTimer.view.paused ? 'Sürdür' : 'Herkes için duraklat'}
+                className="grid h-10 w-10 place-items-center rounded-lg text-textMuted transition hover:bg-sunken hover:text-textDark"
+              >
+                {roomTimer.view.paused ? <Play className="h-[18px] w-[18px]" /> : <Pause className="h-[18px] w-[18px]" />}
+              </button>
+              <button
+                type="button"
+                onClick={roomTimer.stop}
+                aria-label="Ortak sayacı herkes için bitir"
+                title="Herkes için bitir"
+                className="grid h-10 w-10 place-items-center rounded-lg text-textMuted transition hover:bg-softDanger hover:text-danger"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+              {followShared ? (
+                <Button variant="secondary" size="lg" onClick={leaveShared} className="ml-1 shrink-0">
+                  Ayrıl
+                </Button>
+              ) : (
+                <Button variant="lamp" size="lg" onClick={joinShared} className="ml-1 shrink-0">
+                  <LampMark className="h-5 w-5" />
+                  Katıl
+                </Button>
+              )}
             </div>
           </div>
-          <Button variant={running ? 'secondary' : 'lamp'} size="lg" icon={running ? Coffee : undefined} onClick={() => (running ? stopFocus() : startFocus())} disabled={!roomName} className="shrink-0">
-            {running ? 'Mola ver' : (
-              <>
-                <LampMark className="h-5 w-5" />
-                Odaklan
-              </>
-            )}
-          </Button>
-        </div>
+        ) : (
+          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border border-border bg-surface px-4 py-3 md:w-auto md:justify-start">
+            <div>
+              <p className="font-mono text-4xl font-semibold tabular-nums leading-none text-textDark" aria-live="off">
+                {formatDuration(remainingSeconds)}
+              </p>
+              <div className="mt-2 flex gap-1" role="group" aria-label="Seans süresi">
+                {durationOptions.map((item) => (
+                  <button
+                    key={item.seconds}
+                    type="button"
+                    onClick={() => selectDuration(item.seconds)}
+                    aria-pressed={selectedDuration === item.seconds}
+                    className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold transition ${
+                      selectedDuration === item.seconds ? 'bg-lightAmber text-accentDark' : 'text-textMuted hover:text-textDark'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                <span className="mx-0.5 w-px self-stretch bg-border" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={startShared}
+                  disabled={!joinedLobby}
+                  title="Bu süreyle odadaki herkes için ortak Pomodoro başlat"
+                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold text-primary transition hover:bg-softIndigo disabled:opacity-50"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Odayla başlat
+                </button>
+              </div>
+            </div>
+            <Button variant={running ? 'secondary' : 'lamp'} size="lg" icon={running ? Coffee : undefined} onClick={() => (running ? stopFocus() : startFocus())} disabled={!roomName} className="shrink-0">
+              {running ? 'Mola ver' : (
+                <>
+                  <LampMark className="h-5 w-5" />
+                  Odaklan
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </header>
 
       {/* Bildirimler */}
@@ -597,6 +746,7 @@ export default function FocusRoomPage() {
                     {people.map((person) => (
                       <DeskTile
                         key={person.userId}
+                        speaking={speakingIds.has(person.userId)}
                         person={person}
                         videoRoom={videoRoom}
                         compact
@@ -613,6 +763,7 @@ export default function FocusRoomPage() {
                   {people.map((person) => (
                     <DeskTile
                       key={person.userId}
+                      speaking={speakingIds.has(person.userId)}
                       person={person}
                       videoRoom={videoRoom}
                       compact
@@ -630,6 +781,7 @@ export default function FocusRoomPage() {
               {people.map((person) => (
                 <DeskTile
                   key={person.userId}
+                  speaking={speakingIds.has(person.userId)}
                   person={person}
                   videoRoom={videoRoom}
                   onSelect={() => toggleCameraPin(person.userId)}
@@ -854,6 +1006,12 @@ function MediaButton({
       <span className="hidden sm:inline">{on ? onLabel : offLabel}</span>
     </button>
   );
+}
+
+function describeTimerEvent(event: { action: string; byName: string | null } | null, startedByName: string) {
+  if (event?.byName && event.action === 'pause') return `${event.byName} duraklattı`;
+  if (event?.byName && event.action === 'resume') return `${event.byName} sürdürdü`;
+  return `${startedByName} başlattı`;
 }
 
 function normalizeSocketMessage(message: Message, roomName: string): Message {
