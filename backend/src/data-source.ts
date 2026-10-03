@@ -24,11 +24,21 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 };
 
-const dbHost = process.env.DB_HOST ?? 'localhost';
-const dbSsl = toBoolean(process.env.DB_SSL, false) || dbHost.includes('neon.tech');
+// Uygulamayla ayni kural: DATABASE_URL varsa o kullanilir (bkz. app.module.ts).
+const databaseUrl = process.env.DATABASE_URL?.trim() || undefined;
+const dbHost = databaseUrl
+  ? new URL(databaseUrl).hostname
+  : (process.env.DB_HOST ?? 'localhost');
+const dbSsl =
+  toBoolean(process.env.DB_SSL, false) ||
+  Boolean(databaseUrl?.includes('sslmode=require')) ||
+  dbHost.includes('neon.tech') ||
+  dbHost.includes('render.com') ||
+  dbHost.startsWith('dpg-');
 
 export default new DataSource({
   type: 'postgres',
+  url: databaseUrl,
   host: dbHost,
   port: toNumber(process.env.DB_PORT, 5432),
   username: process.env.DB_USER ?? 'enes_admin',

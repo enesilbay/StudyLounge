@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
@@ -32,9 +33,15 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const dbHost = getConfigString(configService, 'DB_HOST', 'localhost');
+        // Render/Neon gibi servisler baglantiyi tek URL olarak verir; varsa
+        // DB_HOST/DB_USER/... yerine o kullanilir.
+        const databaseUrl = getConfigString(configService, 'DATABASE_URL', '');
+        const dbHost = databaseUrl
+          ? new URL(databaseUrl).hostname
+          : getConfigString(configService, 'DB_HOST', 'localhost');
         const dbSsl =
           getConfigBoolean(configService, 'DB_SSL', false) ||
+          databaseUrl.includes('sslmode=require') ||
           dbHost.includes('neon.tech') ||
           dbHost.includes('render.com') ||
           dbHost.includes('render.internal') ||
@@ -44,6 +51,7 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
 
         return {
           type: 'postgres',
+          url: databaseUrl || undefined,
           host: dbHost,
           port: getConfigNumber(configService, 'DB_PORT', 5432),
           username: dbUser,
@@ -63,7 +71,18 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
             DirectMessage,
           ],
           autoLoadEntities: true,
-          synchronize: getConfigString(configService, 'NODE_ENV', 'development') !== 'production',
+          // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
+          // icin DB_RUN_MIGRATIONS=true verilir; bekleyen migration'lar acilista
+          // sirayla calisir. Varsayilan kapali: mevcut veritabanlarina dokunmaz.
+          migrations: [join(__dirname, 'migrations', '*.js')],
+          migrationsRun: getConfigBoolean(
+            configService,
+            'DB_RUN_MIGRATIONS',
+            false,
+          ),
+          synchronize:
+            getConfigString(configService, 'NODE_ENV', 'development') !==
+            'production',
         };
       },
     }),
@@ -80,5 +99,5 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
   controllers: [AppController],
   providers: [AppService, SensorsGateway, NotificationsService],
 })
-export class AppModule { }
+export class AppModule {}
 //test
