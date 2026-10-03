@@ -1,17 +1,19 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/Layout/AppLayout';
 import LandingPage from './pages/LandingPage';
-import LobbiesPage from './pages/LobbiesPage';
-import FocusRoomPage from './pages/FocusRoomPage';
-import ProfilePage from './pages/ProfilePage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import ShopPage from './pages/ShopPage';
 import AuthPage from './pages/AuthPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import DMPage from './pages/DMPage';
-import PremiumPage from './pages/PremiumPage';
-import SettingsPage from './pages/SettingsPage';
+
+// Uygulama içi sayfalar ilk ziyarette yüklenir; açılış ve giriş sayfası hemen gelir.
+const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({ Component: (await load()).default });
+
+/** Sayfa doğrudan bir uygulama içi adresle açıldığında, sayfa kodu yüklenirken gösterilir. */
+const PageLoading = () => (
+  <div className="grid min-h-screen place-items-center bg-background">
+    <Loader2 className="h-6 w-6 animate-spin text-primary" aria-label="Sayfa yükleniyor" />
+  </div>
+);
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -33,6 +35,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/app',
+    hydrateFallbackElement: <PageLoading />,
     element: (
       <ProtectedRoute>
         <AppLayout />
@@ -45,39 +48,39 @@ const router = createBrowserRouter([
       },
       {
         path: 'lobbies',
-        element: <LobbiesPage />,
+        lazy: page(() => import('./pages/LobbiesPage')),
       },
       {
         path: 'focus/:roomId',
-        element: <FocusRoomPage />,
+        lazy: page(() => import('./pages/FocusRoomPage')),
       },
       {
         path: 'profile',
-        element: <ProfilePage />,
+        lazy: page(() => import('./pages/ProfilePage')),
       },
       {
         path: 'leaderboard',
-        element: <LeaderboardPage />,
+        lazy: page(() => import('./pages/LeaderboardPage')),
       },
       {
         path: 'shop',
-        element: <ShopPage />,
+        lazy: page(() => import('./pages/ShopPage')),
       },
       {
         path: 'analytics',
-        element: <AnalyticsPage />,
+        lazy: page(() => import('./pages/AnalyticsPage')),
       },
       {
         path: 'dm',
-        element: <DMPage />,
+        lazy: page(() => import('./pages/DMPage')),
       },
       {
         path: 'premium',
-        element: <PremiumPage />,
+        lazy: page(() => import('./pages/PremiumPage')),
       },
       {
         path: 'settings',
-        element: <SettingsPage />,
+        lazy: page(() => import('./pages/SettingsPage')),
       }
     ],
   },
