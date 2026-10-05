@@ -3,6 +3,9 @@ import { BarChart3, Crown, DoorOpen, LogOut, MessageCircle, Settings, ShoppingBa
 import { Avatar, BrandLockup, ThemeToggle } from '../ui';
 import { useAuthStore } from '../../store/authStore';
 import { disconnectSocket } from '../../lib/socket';
+import { useInboxStore } from '../../store/inboxStore';
+import ToastStack from './ToastStack';
+import { useAppNotifications } from './useAppNotifications';
 
 const navItems = [
   { path: '/app/lobbies', icon: DoorOpen, label: 'Odalar' },
@@ -16,12 +19,17 @@ const navItems = [
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
   const location = useLocation();
+  useAppNotifications();
+  // Arkadaşlar sekmesindeki rozet: okunmamış sohbetler + bekleyen istekler.
+  const friendsBadge = useInboxStore((state) => state.unreadFrom.length + state.friendRequests.length);
+  const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : 0);
   const displayName = user?.fullName ?? 'StudyLounge';
   // Odak odası tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
   const wide = location.pathname.startsWith('/app/focus/');
 
   const handleLogout = () => {
     disconnectSocket();
+    useInboxStore.getState().reset();
     logout();
   };
 
@@ -47,6 +55,7 @@ export default function AppLayout() {
                 <>
                   <item.icon className={`h-[18px] w-[18px] ${isActive ? 'text-primary' : ''}`} />
                   {item.label}
+                  <NavBadge count={badgeFor(item.path)} className="ml-auto" />
                 </>
               )}
             </NavLink>
@@ -105,12 +114,25 @@ export default function AppLayout() {
               to={item.path}
               className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-[11px] font-semibold ${isActive ? 'text-primary' : 'text-textMuted'}`}
             >
-              <item.icon className="h-5 w-5" />
+              <span className="relative">
+                <item.icon className="h-5 w-5" />
+                <NavBadge count={badgeFor(item.path)} className="absolute -right-2.5 -top-1.5" />
+              </span>
               <span className="max-w-full truncate px-0.5">{item.label}</span>
             </NavLink>
           ))}
         </nav>
       </div>
+      <ToastStack />
     </div>
+  );
+}
+
+function NavBadge({ count, className = '' }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span aria-label={`${count} yeni`} className={`grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-onPrimary ${className}`}>
+      {count > 9 ? '9+' : count}
+    </span>
   );
 }

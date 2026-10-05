@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { PageHeader, Surface } from '../components/ui';
+import { PageHeader, Surface, Toggle } from '../components/ui';
+import { browserNotificationPermission, requestBrowserNotifications } from '../lib/browserNotify';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
@@ -151,6 +152,34 @@ export default function SettingsPage() {
           </div>
         </form>
       </Surface>
+
+      <BrowserNotificationsCard />
     </div>
+  );
+}
+
+/** Sekme arka plandayken DM, dürtme ve düello için tarayıcı bildirimi izni. */
+function BrowserNotificationsCard() {
+  const [permission, setPermission] = useState(browserNotificationPermission);
+
+  const description =
+    permission === 'unsupported'
+      ? 'Bu tarayıcı bildirimleri desteklemiyor.'
+      : permission === 'denied'
+        ? 'Bildirimler engellenmiş. Açmak için tarayıcının site ayarlarından izin ver.'
+        : permission === 'granted'
+          ? 'Açık. Kapatmak için tarayıcının site ayarlarını kullan.'
+          : 'Sekme arka plandayken yeni mesaj, dürtme ve düello davetlerinde bildirim gelir.';
+
+  return (
+    <Surface className="mt-5 p-5">
+      <Toggle
+        label="Tarayıcı bildirimleri"
+        description={description}
+        checked={permission === 'granted'}
+        disabled={permission === 'unsupported' || permission === 'denied' || permission === 'granted'}
+        onChange={() => void requestBrowserNotifications().then(setPermission)}
+      />
+    </Surface>
   );
 }

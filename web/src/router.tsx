@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 import AppLayout from './components/Layout/AppLayout';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
+import NotFoundPage, { RouteErrorPage } from './pages/NotFoundPage';
 
 // Uygulama içi sayfalar ilk ziyarette yüklenir; açılış ve giriş sayfası hemen gelir.
 const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({ Component: (await load()).default });
@@ -28,14 +29,17 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />,
+    errorElement: <RouteErrorPage />,
   },
   {
     path: '/auth',
     element: <AuthPage />,
+    errorElement: <RouteErrorPage />,
   },
   {
     path: '/app',
     hydrateFallbackElement: <PageLoading />,
+    errorElement: <RouteErrorPage />,
     element: (
       <ProtectedRoute>
         <AppLayout />
@@ -81,8 +85,16 @@ const router = createBrowserRouter([
       {
         path: 'settings',
         lazy: page(() => import('./pages/SettingsPage')),
-      }
+      },
+      {
+        path: '*',
+        element: <NotFoundPage inApp />,
+      },
     ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ]);
 

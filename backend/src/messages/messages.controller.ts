@@ -129,6 +129,16 @@ export class MessagesController {
     return await this.messagesService.getDirectMessages(user.id, Number(targetId));
   }
 
+  // Web: sohbet acikken gelen mesajlar okundu sayilir.
+  @Post('dm/:userId/read')
+  async markDirectMessagesRead(
+    @CurrentUser() user: User,
+    @Param('userId') senderId: string,
+  ) {
+    await this.messagesService.markAsRead(Number(senderId), user.id);
+    return { success: true };
+  }
+
   @Post('dm/:userId')
   async sendDirectMessage(
     @CurrentUser() user: User,

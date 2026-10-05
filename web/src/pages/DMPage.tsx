@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Search, Send, UserPlus } from 'lucide-react';
-import { Avatar, PageHeader, Pill, StateBlock, Surface, ModalShell } from '../components/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Check, Search, Send, UserPlus, X } from 'lucide-react';
+import { Avatar, Button, Notice, PageHeader, Pill, StateBlock, Surface, ModalShell } from '../components/ui';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Message, User } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
+import { useInboxStore } from '../store/inboxStore';
 
 export default function DMPage() {
   const user = useAuthStore((state) => state.user);
@@ -16,6 +17,11 @@ export default function DMPage() {
   const [messageText, setMessageText] = useState('');
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [tab, setTab] = useState<'chats' | 'requests'>('chats');
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [respondingId, setRespondingId] = useState<number | null>(null);
+  const unreadFrom = useInboxStore((state) => state.unreadFrom);
+  const friendRequests = useInboxStore((state) => state.friendRequests);
   
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [friendUsername, setFriendUsername] = useState('');
@@ -46,31 +52,51 @@ export default function DMPage() {
     }
   };
 
+  const loadFriends = useCallback(async (isCancelled: () => boolean = () => false) => {
+    if (!user?.id) return;
+    setIsLoadingFriends(true);
+    try {
+      const response = await api.get<User[]>(`/users/friends/${user.id}`);
+      const nextFriends = unwrapData<User[]>(response.data);
+      if (!isCancelled()) {
+        setFriends(nextFriends);
+        setActiveFriendId((current) => current ?? nextFriends[0]?.id ?? null);
+      }
+    } catch {
+      if (!isCancelled()) setFriends([]);
+    } finally {
+      if (!isCancelled()) setIsLoadingFriends(false);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     let ignore = false;
-
-    async function loadFriends() {
-      if (!user?.id) return;
-      setIsLoadingFriends(true);
-      try {
-        const response = await api.get<User[]>(`/users/friends/${user.id}`);
-        const nextFriends = unwrapData<User[]>(response.data);
-        if (!ignore) {
-          setFriends(nextFriends);
-          setActiveFriendId((current) => current ?? nextFriends[0]?.id ?? null);
-        }
-      } catch {
-        if (!ignore) setFriends([]);
-      } finally {
-        if (!ignore) setIsLoadingFriends(false);
-      }
-    }
-
-    void loadFriends();
+    void loadFriends(() => ignore);
     return () => {
       ignore = true;
     };
-  }, [user?.id]);
+  }, [loadFriends]);
+
+  // Açık sohbetin mesajları okunmuş sayılır; uygulama geneli bildirimler bu kişiyi atlar.
+  useEffect(() => {
+    const { setViewingDmWith, markRead, unreadFrom: unread } = useInboxStore.getState();
+    setViewingDmWith(activeFriend?.id ?? null);
+    if (activeFriend?.id && unread.includes(activeFriend.id)) markRead(activeFriend.id);
+    return () => setViewingDmWith(null);
+  }, [activeFriend?.id]);
+
+  const respond = async (requestId: number, status: 'accepted' | 'rejected') => {
+    setRespondingId(requestId);
+    setRequestError(null);
+    try {
+      await useInboxStore.getState().respondToRequest(requestId, status);
+      if (status === 'accepted') await loadFriends();
+    } catch (error) {
+      setRequestError(getApiErrorMessage(error));
+    } finally {
+      setRespondingId(null);
+    }
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -109,6 +135,8 @@ export default function DMPage() {
         (senderId === activeFriend?.id && receiverId === user.id)
       ) {
         setMessages((current) => (current.some((item) => item.id === message.id) ? current : [...current, message]));
+        // Sohbet açıkken gelen mesaj veritabanında da okundu işaretlenir.
+        if (senderId === activeFriend?.id && !document.hidden) useInboxStore.getState().markRead(senderId);
       }
     };
 
@@ -159,6 +187,49 @@ export default function DMPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-1 border-b border-border bg-sunken p-1" role="tablist" aria-label="Arkadaş listesi">
+            {(['chats', 'requests'] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                aria-selected={tab === item}
+                onClick={() => setTab(item)}
+                className={`flex min-h-10 items-center justify-center gap-2 rounded-md text-[15px] font-semibold transition ${tab === item ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
+              >
+                {item === 'chats' ? 'Sohbetler' : 'İstekler'}
+                {item === 'requests' && friendRequests.length > 0 ? (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-onPrimary">{friendRequests.length}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'requests' ? (
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              {requestError ? <Notice tone="danger" onDismiss={() => setRequestError(null)}>{requestError}</Notice> : null}
+              {friendRequests.length === 0 ? <StateBlock title="Bekleyen istek yok" description="Sana gönderilen arkadaşlık istekleri burada görünür." /> : null}
+              {friendRequests.map((request) => (
+                <div key={request.id} className="rounded-lg border border-border bg-surface p-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={request.sender.fullName} image={request.sender.avatarUrl} frame={request.sender.equippedProfileFrame} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-textDark">{request.sender.fullName}</p>
+                      <p className="truncate text-sm text-textMuted">@{request.sender.username ?? 'kullanici'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" icon={X} disabled={respondingId === request.id} onClick={() => void respond(request.id, 'rejected')}>
+                      Reddet
+                    </Button>
+                    <Button size="sm" icon={Check} loading={respondingId === request.id} onClick={() => void respond(request.id, 'accepted')}>
+                      Kabul et
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
           <div className="flex-1 overflow-y-auto">
             {isLoadingFriends ? <StateBlock loading title="Arkadaşlar yükleniyor" /> : null}
             {!isLoadingFriends && filteredFriends.map((friend) => (
@@ -171,7 +242,10 @@ export default function DMPage() {
               >
                 <Avatar name={friend.fullName} image={friend.avatarUrl} frame={friend.equippedProfileFrame} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-textDark">{friend.fullName}</p>
+                  <p className="flex items-center gap-2 font-semibold text-textDark">
+                    <span className="truncate">{friend.fullName}</span>
+                    {unreadFrom.includes(friend.id) ? <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" aria-label="Okunmamış mesaj" /> : null}
+                  </p>
                   <p className="mt-1 truncate text-base text-textMuted">
                     {friend.isOnline ? 'Çevrim içi ve çalışmaya hazır' : `${friend.totalFocusMinutes ?? 0} dk odak`}
                   </p>
@@ -180,6 +254,7 @@ export default function DMPage() {
             ))}
             {!isLoadingFriends && filteredFriends.length === 0 ? <StateBlock title="Arkadaş bulunamadı" description="Arkadaş ekledikçe konuşmalar burada görünecek." /> : null}
           </div>
+          )}
         </Surface>
 
         <Surface className="flex flex-col overflow-hidden">
@@ -190,7 +265,7 @@ export default function DMPage() {
                   <button className="grid h-10 w-10 place-items-center rounded-xl bg-background text-textMuted lg:hidden">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
-                  <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isOnline} />
+                  <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isPremium} />
                   <div>
                     <h2 className="font-semibold text-textDark">{activeFriend.fullName}</h2>
                     <p className="text-base text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>

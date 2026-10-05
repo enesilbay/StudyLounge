@@ -27,6 +27,13 @@ export interface User {
   currentRoom?: string | null;
 }
 
+/** Bana gelen, bekleyen arkadaşlık isteği (`GET /users/friend-requests/:id`). */
+export interface FriendRequest {
+  id: number;
+  status: 'pending';
+  sender: Pick<User, 'id' | 'username' | 'fullName' | 'avatarUrl' | 'equippedProfileFrame'>;
+}
+
 export interface Lobby {
   id: number;
   name: string;
