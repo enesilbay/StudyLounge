@@ -8,22 +8,10 @@ import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Lobby } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 import PlansSection from '../components/plans/PlansSection';
+import { ROOM_CATEGORIES, ROOM_FILTER_CATEGORIES } from '../lib/roomCategories';
 
-const categories = [
-  'Tümü',
-  'Bilgisayar Bilimi',
-  'Tıp & Sağlık',
-  'Hukuk',
-  'Sınav Hazırlık',
-  'Yabancı Dil',
-  'Tasarım & Sanat',
-  'Mühendislik',
-  'İşletme & Ekonomi',
-  'Fen Bilimleri',
-  'Genel',
-];
-
-const roomCategories = categories.filter((category) => category !== 'Tümü');
+const categories = ROOM_FILTER_CATEGORIES;
+const roomCategories = ROOM_CATEGORIES;
 
 // Backend ile aynı sınır (lobbies.service.ts → MAX_VIDEO_ROOM_USERS)
 const MAX_VIDEO_ROOM_USERS = 6;

@@ -1,5 +1,3 @@
-import type { LucideIcon } from 'lucide-react';
-
 export type FrameId = 'none' | 'gold' | 'emerald' | 'ruby' | 'cosmic' | string;
 
 export interface User {
@@ -25,6 +23,71 @@ export interface User {
   badges?: string[];
   isOnline?: boolean;
   currentRoom?: string | null;
+  /** 'user' | 'admin' */
+  role?: string;
+  mutedUntil?: string | null;
+  bannedAt?: string | null;
+}
+
+/** Başkalarının görebildiği profil (`GET /users/:id/public`). */
+export interface PublicProfile {
+  id: number;
+  username: string;
+  fullName: string;
+  avatarUrl?: string | null;
+  equippedProfileFrame?: FrameId;
+  equippedIcon?: string | null;
+  isPremium?: boolean;
+  isOnline?: boolean;
+  currentRoom?: string | null;
+  totalFocusMinutes: number;
+  weekMinutes: number;
+  currentStreak?: number;
+  bestStreak?: number;
+  badges: string[];
+  friendship: { status: 'self' | 'none' | 'friends' | 'outgoing' | 'incoming'; requestId: number | null };
+  blockedByMe: boolean;
+}
+
+export interface BadgeDefinition {
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export interface WeeklyEntry {
+  rank: number;
+  minutes: number;
+  user: Pick<User, 'id' | 'username' | 'fullName' | 'avatarUrl' | 'equippedProfileFrame' | 'isPremium'>;
+}
+
+export interface WeeklyLeague {
+  weekStart: string;
+  weekEnd: string;
+  rewards: number[];
+  entries: WeeklyEntry[];
+  me: { rank: number; minutes: number } | null;
+}
+
+export interface WeeklyChampions {
+  weekStart: string;
+  podium: { id: number; rank: number; minutes: number; reward: number; user: WeeklyEntry['user'] }[];
+}
+
+export type ReportReason = 'spam' | 'harassment' | 'inappropriate' | 'cheating' | 'other';
+
+export interface AdminReport {
+  id: number;
+  reason: ReportReason;
+  details: string | null;
+  messageText: string | null;
+  roomName: string | null;
+  status: 'open' | 'resolved' | 'dismissed';
+  createdAt: string;
+  resolvedAt: string | null;
+  reporter: Pick<User, 'id' | 'username' | 'fullName' | 'avatarUrl'>;
+  target: Pick<User, 'id' | 'username' | 'fullName' | 'avatarUrl' | 'mutedUntil' | 'bannedAt'>;
+  resolvedBy: { id: number; fullName: string } | null;
 }
 
 /** Bana gelen, bekleyen arkadaşlık isteği (`GET /users/friend-requests/:id`). */
@@ -48,6 +111,10 @@ export interface Lobby {
   /** Kamera ve ekran paylaşımına izin verilen oda (sadece web). */
   allowVideo?: boolean;
   createdAt?: string;
+  /** Odayı kuran kişi; oda ayarlarını yalnızca o değiştirebilir. */
+  ownerId?: number | null;
+  /** Oda sahibi yeni girişleri kapattı mı. */
+  isLocked?: boolean;
 }
 
 export interface Message {
@@ -122,8 +189,3 @@ export interface ShopItem {
   text?: string;
 }
 
-export interface ShopSection {
-  title: string;
-  icon: LucideIcon;
-  items: ShopItem[];
-}

@@ -1,4 +1,5 @@
-import { Bell, Mic, MicOff, MonitorUp, Swords } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bell, Mic, MicOff, MonitorUp, Swords, UserRound, UserX } from 'lucide-react';
 import { Avatar } from '../ui';
 import type { FrameId } from '../../lib/types';
 import { VideoView } from './MediaViews';
@@ -32,6 +33,7 @@ export function DeskTile({
   onSelect,
   onNudge,
   onDuel,
+  onKick,
 }: {
   person: DeskPerson;
   videoRoom: boolean;
@@ -42,6 +44,8 @@ export function DeskTile({
   onSelect?: () => void;
   onNudge?: () => void;
   onDuel?: () => void;
+  /** Yalnızca oda sahibine verilir: kişiyi odadan çıkarır. */
+  onKick?: () => void;
 }) {
   const showVideo = hasLiveVideo(person.cameraStream);
   const status = person.isAtDesk ? 'Odakta' : 'Molada';
@@ -95,8 +99,11 @@ export function DeskTile({
         {!compact ? <span className={`shrink-0 text-xs ${showVideo ? 'text-white/75' : 'text-textMuted'}`}>{status}</span> : null}
       </div>
 
-      {!person.isSelf && (onNudge || onDuel) ? (
+      {!person.isSelf && !compact ? (
         <div className="absolute right-2 top-2 z-[3] flex gap-1 opacity-100 transition md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+          <Link to={`/app/u/${person.userId}`} title="Profili gör" aria-label={`${person.name} profilini gör`} className="grid h-8 w-8 place-items-center rounded-lg bg-background/85 text-textDark backdrop-blur hover:bg-background">
+            <UserRound className="h-4 w-4" />
+          </Link>
           {onNudge ? (
             <button type="button" onClick={onNudge} title="Dürt" aria-label={`${person.name} kişisini dürt`} className="grid h-8 w-8 place-items-center rounded-lg bg-background/85 text-accentDark backdrop-blur hover:bg-background">
               <Bell className="h-4 w-4" />
@@ -105,6 +112,11 @@ export function DeskTile({
           {onDuel ? (
             <button type="button" onClick={onDuel} title="Düelloya davet et" aria-label={`${person.name} kişisini düelloya davet et`} className="grid h-8 w-8 place-items-center rounded-lg bg-background/85 text-danger backdrop-blur hover:bg-background">
               <Swords className="h-4 w-4" />
+            </button>
+          ) : null}
+          {onKick ? (
+            <button type="button" onClick={onKick} title="Odadan çıkar" aria-label={`${person.name} kişisini odadan çıkar`} className="grid h-8 w-8 place-items-center rounded-lg bg-background/85 text-textMuted backdrop-blur hover:bg-background hover:text-danger">
+              <UserX className="h-4 w-4" />
             </button>
           ) : null}
         </div>

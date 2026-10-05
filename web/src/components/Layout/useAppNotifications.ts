@@ -97,7 +97,14 @@ export function useAppNotifications() {
     socket.on('duel_received', onDuel);
     socket.on('score_updated', onScore);
     socket.on('goal_reached', onGoalReached);
+    const onBadge = (payload: { badge?: string }) => {
+      if (!payload.badge) return;
+      useInboxStore.getState().pushToast({ title: 'Yeni rozet kazandın', body: payload.badge, to: `/app/u/${userId}` });
+      void useAuthStore.getState().refreshUser();
+    };
+    socket.on('badge_earned', onBadge);
     return () => {
+      socket.off('badge_earned', onBadge);
       socket.off('receive_dm', onReceiveDm);
       socket.off('nudge_received', onNudge);
       socket.off('duel_received', onDuel);

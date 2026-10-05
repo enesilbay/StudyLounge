@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { Button, Notice, PageHeader, Surface, TextField, Toggle } from '../components/ui';
+import { Avatar, Button, Notice, PageHeader, Surface, TextField, Toggle } from '../components/ui';
+import { Link } from 'react-router-dom';
 import { useStudyStore } from '../store/studyStore';
 import { formatMinutes } from '../lib/study';
 import { browserNotificationPermission, requestBrowserNotifications } from '../lib/browserNotify';
@@ -157,6 +158,7 @@ export default function SettingsPage() {
 
       <GoalsCard />
       <BrowserNotificationsCard />
+      <BlockedUsersCard />
     </div>
   );
 }
@@ -221,6 +223,52 @@ function GoalsCard() {
       <Button onClick={() => void save()} loading={saving}>
         Hedefleri kaydet
       </Button>
+    </Surface>
+  );
+}
+
+type BlockedEntry = { id: number; blocked: Pick<User, 'id' | 'username' | 'fullName' | 'avatarUrl' | 'equippedProfileFrame'> };
+
+/** Engellediğin kişiler; engel kaldırılınca yeniden mesaj ve istek gönderebilirler. */
+function BlockedUsersCard() {
+  const [entries, setEntries] = useState<BlockedEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<BlockedEntry[]>('/moderation/blocks')
+      .then((response) => setEntries(response.data))
+      .catch(() => setEntries([]));
+  }, []);
+
+  const unblock = async (userId: number) => {
+    setError(null);
+    try {
+      await api.delete(`/moderation/blocks/${userId}`);
+      setEntries((current) => current?.filter((entry) => entry.blocked.id !== userId) ?? null);
+    } catch (unblockError) {
+      setError(getApiErrorMessage(unblockError));
+    }
+  };
+
+  return (
+    <Surface className="mt-5 p-5">
+      <h2 className="text-xl text-textDark">Engellediklerin</h2>
+      <p className="mt-1 text-sm text-textMuted">Engellediğin kişi sana mesaj, düello, dürtme ya da arkadaşlık isteği gönderemez.</p>
+      {error ? <div className="mt-3"><Notice tone="danger">{error}</Notice></div> : null}
+      {entries?.length === 0 ? <p className="mt-4 text-[15px] text-textMuted">Kimseyi engellemedin.</p> : null}
+      <ul className="mt-3 divide-y divide-border">
+        {entries?.map((entry) => (
+          <li key={entry.id} className="flex items-center gap-3 py-2.5">
+            <Avatar name={entry.blocked.fullName} image={entry.blocked.avatarUrl} frame={entry.blocked.equippedProfileFrame} size="sm" />
+            <Link to={`/app/u/${entry.blocked.id}`} className="min-w-0 flex-1 hover:underline">
+              <span className="block truncate font-semibold text-textDark">{entry.blocked.fullName}</span>
+              <span className="block truncate text-sm text-textMuted">@{entry.blocked.username}</span>
+            </Link>
+            <Button size="sm" variant="secondary" onClick={() => void unblock(entry.blocked.id)}>Engeli kaldır</Button>
+          </li>
+        ))}
+      </ul>
     </Surface>
   );
 }

@@ -233,6 +233,18 @@
     border-color: color-mix(in srgb, var(--sl-blush) 55%, var(--sl-border));
   }
 
+  /* Sıralamadaki masalar: lamba ışığı turkuaz (pembe yalnızca "odakta" için), sıraya göre parlaklık. */
+  .sl-desk-glow-1 {
+    background-image: radial-gradient(110% 75% at 50% -5%, color-mix(in srgb, var(--sl-sea) 34%, transparent), transparent 70%);
+    border-color: color-mix(in srgb, var(--sl-sea) 55%, var(--sl-border));
+  }
+  .sl-desk-glow-2 {
+    background-image: radial-gradient(110% 70% at 50% -5%, color-mix(in srgb, var(--sl-sea) 20%, transparent), transparent 70%);
+  }
+  .sl-desk-glow-3 {
+    background-image: radial-gradient(110% 65% at 50% -5%, color-mix(in srgb, var(--sl-sea) 12%, transparent), transparent 70%);
+  }
+
   .scrollbar-hide {
     scrollbar-width: none;
   }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, Search, Send, UserPlus, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Check, Flag, Search, Send, UserPlus, X } from 'lucide-react';
 import { Avatar, Button, Notice, PageHeader, Pill, StateBlock, Surface, ModalShell } from '../components/ui';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
@@ -7,6 +8,8 @@ import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Message, User } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 import { useInboxStore } from '../store/inboxStore';
+import ReportDialog from '../components/social/ReportDialog';
+import UserSearch from '../components/social/UserSearch';
 
 export default function DMPage() {
   const user = useAuthStore((state) => state.user);
@@ -24,33 +27,12 @@ export default function DMPage() {
   const friendRequests = useInboxStore((state) => state.friendRequests);
   
   const [addFriendOpen, setAddFriendOpen] = useState(false);
-  const [friendUsername, setFriendUsername] = useState('');
-  const [addingFriend, setAddingFriend] = useState(false);
-  const [addFriendError, setAddFriendError] = useState<string | null>(null);
-  const [addFriendSuccess, setAddFriendSuccess] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  // Profil sayfasındaki "Mesaj gönder" bu sohbeti açar (?with=kullanıcıId).
+  const [searchParams] = useSearchParams();
+  const requestedFriendId = Number(searchParams.get('with')) || null;
 
   const activeFriend = friends.find((friend) => friend.id === activeFriendId) ?? friends[0];
-
-  const handleAddFriend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!friendUsername.trim()) return;
-    setAddingFriend(true);
-    setAddFriendError(null);
-    setAddFriendSuccess(null);
-    try {
-      const res = await api.post('/users/friend-request', { receiverUsername: friendUsername.trim() });
-      setAddFriendSuccess(res.data?.message || 'Arkadaşlık isteği gönderildi.');
-      setFriendUsername('');
-      setTimeout(() => {
-        setAddFriendOpen(false);
-        setAddFriendSuccess(null);
-      }, 2000);
-    } catch (error) {
-      setAddFriendError(getApiErrorMessage(error));
-    } finally {
-      setAddingFriend(false);
-    }
-  };
 
   const loadFriends = useCallback(async (isCancelled: () => boolean = () => false) => {
     if (!user?.id) return;
@@ -60,14 +42,14 @@ export default function DMPage() {
       const nextFriends = unwrapData<User[]>(response.data);
       if (!isCancelled()) {
         setFriends(nextFriends);
-        setActiveFriendId((current) => current ?? nextFriends[0]?.id ?? null);
+        setActiveFriendId((current) => current ?? (nextFriends.some((friend) => friend.id === requestedFriendId) ? requestedFriendId : nextFriends[0]?.id ?? null));
       }
     } catch {
       if (!isCancelled()) setFriends([]);
     } finally {
       if (!isCancelled()) setIsLoadingFriends(false);
     }
-  }, [user?.id]);
+  }, [user?.id, requestedFriendId]);
 
   useEffect(() => {
     let ignore = false;
@@ -181,7 +163,7 @@ export default function DMPage() {
                   className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-semibold outline-none focus:border-primary"
                 />
               </div>
-              <button onClick={() => setAddFriendOpen(true)} className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-onPrimary hover:bg-secondary">
+              <button onClick={() => setAddFriendOpen(true)} aria-label="Arkadaş ekle" title="Arkadaş ekle" className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-onPrimary hover:bg-secondary">
                 <UserPlus className="h-5 w-5" />
               </button>
             </div>
@@ -266,12 +248,17 @@ export default function DMPage() {
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isPremium} />
-                  <div>
-                    <h2 className="font-semibold text-textDark">{activeFriend.fullName}</h2>
-                    <p className="text-base text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>
-                  </div>
+                  <Link to={`/app/u/${activeFriend.id}`} className="min-w-0 hover:underline">
+                    <h2 className="truncate font-semibold text-textDark">{activeFriend.fullName}</h2>
+                    <p className="truncate text-base text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>
+                  </Link>
                 </div>
-                <Pill tone={activeFriend.isOnline ? 'success' : 'neutral'}>{activeFriend.isOnline ? 'Çevrim içi' : 'Çevrim dışı'}</Pill>
+                <div className="flex items-center gap-1">
+                  <Pill tone={activeFriend.isOnline ? 'success' : 'neutral'}>{activeFriend.isOnline ? 'Çevrim içi' : 'Çevrim dışı'}</Pill>
+                  <button type="button" onClick={() => setReportOpen(true)} title="Şikayet et" aria-label={`${activeFriend.fullName} kişisini şikayet et`} className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-danger">
+                    <Flag className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 space-y-4 overflow-y-auto bg-background p-5">
@@ -323,31 +310,13 @@ export default function DMPage() {
         </Surface>
       </div>
       
-      <ModalShell open={addFriendOpen} title="Arkadaş Ekle" description="Kullanıcı adını girerek arkadaşlık isteği gönder." onClose={() => setAddFriendOpen(false)}>
-        <form onSubmit={handleAddFriend} className="space-y-4">
-          <label className="block">
-            <span className="mb-2 block text-base font-semibold text-textDark">Kullanıcı Adı</span>
-            <input
-              type="text"
-              value={friendUsername}
-              onChange={(e) => setFriendUsername(e.target.value)}
-              placeholder="Kullanıcı adı"
-              className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-base font-semibold outline-none"
-              required
-            />
-          </label>
-          
-          {addFriendError ? <p className="text-sm font-semibold text-red-500">{addFriendError}</p> : null}
-          {addFriendSuccess ? <p className="text-sm font-semibold text-green-500">{addFriendSuccess}</p> : null}
-
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button type="button" onClick={() => setAddFriendOpen(false)} className="min-h-12 rounded-xl border border-border bg-background text-base font-semibold text-textDark">İptal</button>
-            <button disabled={addingFriend || !friendUsername.trim()} className="min-h-12 rounded-xl bg-primary text-base font-semibold text-onPrimary disabled:opacity-60">
-              {addingFriend ? 'Gönderiliyor' : 'İstek Gönder'}
-            </button>
-          </div>
-        </form>
+      <ModalShell open={addFriendOpen} title="Arkadaş ekle" description="Adını ya da kullanıcı adını yaz, profiline gidip istek gönder." onClose={() => setAddFriendOpen(false)}>
+        <div className="min-h-64">
+          <UserSearch placeholder="Ad ya da kullanıcı adı" onPick={() => setAddFriendOpen(false)} />
+        </div>
       </ModalShell>
+
+      <ReportDialog target={reportOpen && activeFriend ? { id: activeFriend.id, fullName: activeFriend.fullName } : null} onClose={() => setReportOpen(false)} />
     </div>
   );
 }

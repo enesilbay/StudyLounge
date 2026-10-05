@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BarChart3, Crown, DoorOpen, LogOut, MessageCircle, Settings, ShoppingBag, Trophy, UserRound } from 'lucide-react';
+import { BarChart3, Crown, DoorOpen, LogOut, MessageCircle, Settings, ShieldCheck, ShoppingBag, Trophy, UserRound } from 'lucide-react';
 import { Avatar, BrandLockup, ThemeToggle } from '../ui';
 import { useAuthStore } from '../../store/authStore';
 import { disconnectSocket } from '../../lib/socket';
@@ -67,6 +67,18 @@ export default function AppLayout() {
               )}
             </NavLink>
           ))}
+
+          {user?.role === 'admin' ? (
+            <NavLink
+              to="/app/admin"
+              className={({ isActive }) =>
+                `mt-4 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-semibold transition ${isActive ? 'bg-softIndigo text-textDark' : 'text-textMuted hover:bg-sunken hover:text-textDark'}`
+              }
+            >
+              <ShieldCheck className="h-[18px] w-[18px]" />
+              Şikayetler
+            </NavLink>
+          ) : null}
 
           {!user?.isPremium ? (
             <NavLink to="/app/premium" className="mt-4 flex items-center gap-3 rounded-lg border border-accent/35 px-3 py-2.5 text-[15px] font-semibold text-accentDark transition hover:bg-lightAmber">
