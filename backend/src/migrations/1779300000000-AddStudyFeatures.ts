@@ -12,7 +12,7 @@ export class AddStudyFeatures1779300000000 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE IF NOT EXISTS "subjects" (
             "id" SERIAL PRIMARY KEY,
             "name" character varying(40) NOT NULL,
-            "color" character varying(16) NOT NULL DEFAULT 'teal',
+            "color" character varying(16) NOT NULL DEFAULT 'blue',
             "archived" boolean NOT NULL DEFAULT false,
             "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
             "userId" integer REFERENCES "users"("id") ON DELETE CASCADE

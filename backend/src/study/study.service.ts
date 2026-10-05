@@ -76,7 +76,7 @@ export class StudyService {
     }
 
     return this.subjects.save(
-      this.subjects.create({ user: { id: userId }, name: dto.name, color: dto.color ?? 'teal' }),
+      this.subjects.create({ user: { id: userId }, name: dto.name, color: dto.color ?? 'blue' }),
     );
   }
 

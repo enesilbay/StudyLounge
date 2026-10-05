@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { PageHeader, Surface, Toggle } from '../components/ui';
+import { Button, Notice, PageHeader, Surface, TextField, Toggle } from '../components/ui';
+import { useStudyStore } from '../store/studyStore';
+import { formatMinutes } from '../lib/study';
 import { browserNotificationPermission, requestBrowserNotifications } from '../lib/browserNotify';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
@@ -153,8 +155,73 @@ export default function SettingsPage() {
         </form>
       </Surface>
 
+      <GoalsCard />
       <BrowserNotificationsCard />
     </div>
+  );
+}
+
+/** Günlük ve haftalık odak hedefi (dakika). Günlük hedef ilk tutulduğunda bonus puan verilir. */
+function GoalsCard() {
+  const goals = useStudyStore((state) => state.goals);
+  const refreshGoals = useStudyStore((state) => state.refreshGoals);
+  const updateGoals = useStudyStore((state) => state.updateGoals);
+  const [daily, setDaily] = useState('');
+  const [weekly, setWeekly] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
+
+  useEffect(() => {
+    refreshGoals().catch(() => undefined);
+  }, [refreshGoals]);
+
+  // Sunucudan gelen değerler bir kez forma yazılır; kullanıcı düzenlerken üzerine yazılmaz.
+  const [initialized, setInitialized] = useState(false);
+  if (goals && !initialized) {
+    setInitialized(true);
+    setDaily(String(goals.dailyGoalMinutes));
+    setWeekly(String(goals.weeklyGoalMinutes));
+  }
+
+  const save = async () => {
+    const dailyGoalMinutes = Number(daily || 0);
+    const weeklyGoalMinutes = Number(weekly || 0);
+    if (!Number.isInteger(dailyGoalMinutes) || dailyGoalMinutes < 0 || dailyGoalMinutes > 720) {
+      return setMessage({ tone: 'danger', text: 'Günlük hedef 0 ile 720 dakika arasında olmalı.' });
+    }
+    if (!Number.isInteger(weeklyGoalMinutes) || weeklyGoalMinutes < 0 || weeklyGoalMinutes > 5040) {
+      return setMessage({ tone: 'danger', text: 'Haftalık hedef 0 ile 5040 dakika arasında olmalı.' });
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      await updateGoals({ dailyGoalMinutes, weeklyGoalMinutes });
+      setMessage({ tone: 'success', text: 'Hedeflerin kaydedildi.' });
+    } catch (error) {
+      setMessage({ tone: 'danger', text: getApiErrorMessage(error) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Surface className="mt-5 space-y-4 p-5">
+      <div>
+        <h2 className="text-xl text-textDark">Odak hedeflerin</h2>
+        <p className="mt-1 text-sm text-textMuted">
+          Günlük hedefi ilk tuttuğun gün {goals?.dailyGoalBonus ?? 25} Odak Puanı kazanırsın. 0 yazarsan hedef kapanır.
+          {goals ? ` Bugün ${formatMinutes(goals.todayMinutes)}, bu hafta ${formatMinutes(goals.weekMinutes)} odaklandın.` : ''}
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="Günlük hedef (dakika)" type="number" value={daily} onChange={setDaily} placeholder="ör. 120" />
+        <TextField label="Haftalık hedef (dakika)" type="number" value={weekly} onChange={setWeekly} placeholder="ör. 600" />
+      </div>
+      {message ? <Notice tone={message.tone} onDismiss={() => setMessage(null)}>{message.text}</Notice> : null}
+      <Button onClick={() => void save()} loading={saving}>
+        Hedefleri kaydet
+      </Button>
+    </Surface>
   );
 }
 

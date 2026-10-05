@@ -15,7 +15,7 @@ import {
 } from 'class-validator';
 
 /** Ders renkleri web'de tema token'larına çevrilen anahtarlardır (sabit hex yok). */
-export const SUBJECT_COLORS = ['teal', 'rose', 'amber', 'sky', 'violet', 'green', 'orange', 'slate'] as const;
+export const SUBJECT_COLORS = ['blue', 'orange', 'aqua', 'yellow', 'magenta', 'green', 'violet', 'red'] as const;
 export type SubjectColor = (typeof SUBJECT_COLORS)[number];
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);

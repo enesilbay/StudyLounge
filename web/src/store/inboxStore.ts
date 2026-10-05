@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { api } from '../lib/api';
 import { unwrapData } from '../lib/apiResponses';
 import type { FriendRequest, User } from '../lib/types';
+import type { ScheduledSession } from '../lib/study';
 
 export interface Toast {
   id: number;
@@ -15,6 +16,9 @@ interface InboxState {
   /** Okunmamış DM'i olan arkadaşların id'leri. */
   unreadFrom: number[];
   friendRequests: FriendRequest[];
+  /** Sahibi olduğum ya da davet edildiğim, bitmemiş planlı oturumlar. */
+  plans: ScheduledSession[];
+  plansLoaded: boolean;
   /** DM sayfasında şu an açık olan sohbet; o kişiden gelen mesaj okunmamış sayılmaz. */
   viewingDmWith: number | null;
   toasts: Toast[];
@@ -34,14 +38,17 @@ let nextToastId = 1;
 export const useInboxStore = create<InboxState>((set, get) => ({
   unreadFrom: [],
   friendRequests: [],
+  plans: [],
+  plansLoaded: false,
   viewingDmWith: null,
   toasts: [],
 
   refresh: async () => {
-    const [senders, requests] = await Promise.allSettled([
+    const [senders, requests, plans] = await Promise.allSettled([
       api.get<User[]>('/messages/unread/dm-senders'),
       // :userId backend'de yok sayılır, oturumdaki kullanıcı kullanılır.
       api.get<FriendRequest[]>('/users/friend-requests/me'),
+      api.get<ScheduledSession[]>('/scheduled-sessions'),
     ]);
     const viewing = get().viewingDmWith;
     set({
@@ -49,6 +56,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
         ? { unreadFrom: unwrapData<User[]>(senders.value.data).map((sender) => sender.id).filter((id) => id !== viewing) }
         : {}),
       ...(requests.status === 'fulfilled' ? { friendRequests: unwrapData<FriendRequest[]>(requests.value.data) } : {}),
+      ...(plans.status === 'fulfilled' ? { plans: plans.value.data, plansLoaded: true } : {}),
     });
   },
 
@@ -75,5 +83,5 @@ export const useInboxStore = create<InboxState>((set, get) => ({
 
   dismissToast: (id) => set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),
 
-  reset: () => set({ unreadFrom: [], friendRequests: [], viewingDmWith: null, toasts: [] }),
+  reset: () => set({ unreadFrom: [], friendRequests: [], plans: [], plansLoaded: false, viewingDmWith: null, toasts: [] }),
 }));

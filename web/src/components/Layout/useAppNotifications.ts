@@ -1,11 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getSocket } from '../../lib/socket';
 import { notifyInBackground } from '../../lib/browserNotify';
 import { useAuthStore } from '../../store/authStore';
 import { useInboxStore } from '../../store/inboxStore';
+import { useStudyStore } from '../../store/studyStore';
+import type { ScheduledSession } from '../../lib/study';
 
 const REFRESH_INTERVAL_MS = 60_000;
+/** Planlı oturum başlamadan bu kadar önce hatırlatılır (backend'deki mobil hatırlatmayla aynı). */
+const PLAN_REMINDER_LEAD_MS = 10 * 60_000;
+
+function isMine(plan: ScheduledSession, userId: number) {
+  return plan.owner.id === userId || plan.invites.some((invite) => invite.user.id === userId && invite.status === 'accepted');
+}
+
+function planLink(plan: ScheduledSession) {
+  return plan.lobby ? `/app/focus/${plan.lobby.id}` : '/app/lobbies';
+}
 
 interface IncomingDm {
   senderId?: number;
@@ -70,13 +82,77 @@ export function useAppNotifications() {
       notifyInBackground('Düello daveti', `${payload.challengerName ?? 'Biri'} seni ${payload.betAmount ?? ''} puanlık düelloya çağırıyor.`);
     };
 
+    // Odak süresi yazılınca hedef halkası güncellenir; hedef tutulduysa kutlanır.
+    const onScore = (payload: { userId?: number }) => {
+      if (payload.userId === userId) useStudyStore.getState().refreshGoals().catch(() => undefined);
+    };
+    const onGoalReached = (payload: { bonus?: number }) => {
+      useInboxStore.getState().pushToast({ title: 'Günlük hedefini tuttun!', body: `+${payload.bonus ?? 0} Odak Puanı hesabına eklendi.`, to: '/app/analytics' });
+      void useAuthStore.getState().refreshUser();
+      useStudyStore.getState().refreshGoals().catch(() => undefined);
+    };
+
     socket.on('receive_dm', onReceiveDm);
     socket.on('nudge_received', onNudge);
     socket.on('duel_received', onDuel);
+    socket.on('score_updated', onScore);
+    socket.on('goal_reached', onGoalReached);
     return () => {
       socket.off('receive_dm', onReceiveDm);
       socket.off('nudge_received', onNudge);
       socket.off('duel_received', onDuel);
+      socket.off('score_updated', onScore);
+      socket.off('goal_reached', onGoalReached);
     };
   }, [userId, inRoom, navigate]);
+
+  usePlanNotifications(userId, navigate);
+}
+
+/** Yeni plan davetleri ve yaklaşan oturumlar için bildirim (liste yukarıdaki dakikalık tazelemeyle gelir). */
+function usePlanNotifications(userId: number | undefined, navigate: ReturnType<typeof useNavigate>) {
+  const plans = useInboxStore((state) => state.plans);
+  const plansLoaded = useInboxStore((state) => state.plansLoaded);
+  const knownInvites = useRef<Set<number> | null>(null);
+
+  // Yeni davet: ilk yüklemede var olanlar için bildirim gösterilmez.
+  useEffect(() => {
+    if (!userId || !plansLoaded) return;
+    const pending = plans.filter((plan) => plan.invites.some((invite) => invite.user.id === userId && invite.status === 'pending'));
+    if (knownInvites.current) {
+      for (const plan of pending) {
+        if (knownInvites.current.has(plan.id)) continue;
+        const body = `${plan.owner.fullName} seni "${plan.title}" oturumuna çağırıyor.`;
+        useInboxStore.getState().pushToast({ title: 'Yeni çalışma daveti', body, to: '/app/lobbies' });
+        notifyInBackground('Yeni çalışma daveti', body, () => navigate('/app/lobbies'));
+      }
+    }
+    knownInvites.current = new Set(pending.map((plan) => plan.id));
+  }, [plans, plansLoaded, userId, navigate]);
+
+  // Yaklaşan oturum: her plan için bir kez hatırlatılır (sekme yenilense de).
+  useEffect(() => {
+    if (!userId) return;
+    const check = () => {
+      const now = Date.now();
+      for (const plan of useInboxStore.getState().plans) {
+        const startsIn = new Date(plan.startsAt).getTime() - now;
+        if (!isMine(plan, userId) || startsIn > PLAN_REMINDER_LEAD_MS || startsIn < -60_000) continue;
+        const key = `sl-plan-reminded-${plan.id}`;
+        try {
+          if (sessionStorage.getItem(key)) continue;
+          sessionStorage.setItem(key, '1');
+        } catch {
+          // Depolama kapalıysa hatırlatma bu sekmede tekrar edebilir; sorun değil.
+        }
+        const minutes = Math.max(0, Math.round(startsIn / 60_000));
+        const body = minutes ? `"${plan.title}" ${minutes} dakika sonra başlıyor.` : `"${plan.title}" başlıyor.`;
+        useInboxStore.getState().pushToast({ title: 'Oturum yaklaşıyor', body, to: planLink(plan) });
+        notifyInBackground('Oturum yaklaşıyor', body, () => navigate(planLink(plan)));
+      }
+    };
+    check();
+    const timer = setInterval(check, 30_000);
+    return () => clearInterval(timer);
+  }, [userId, plans, navigate]);
 }

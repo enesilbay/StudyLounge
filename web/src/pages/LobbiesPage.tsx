@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Lobby } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
+import PlansSection from '../components/plans/PlansSection';
 
 const categories = [
   'Tümü',
@@ -188,6 +189,8 @@ export default function LobbiesPage() {
           {user?.isPremium ? 'Oda kur' : 'Oda kurmak için Premium'}
         </Button>
       </header>
+
+      <PlansSection lobbies={lobbies} />
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
         <label className="flex min-h-11 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface px-3.5 focus-within:border-accent">

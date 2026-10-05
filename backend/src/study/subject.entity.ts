@@ -13,8 +13,8 @@ export class Subject {
   @Column({ length: 40 })
   name: string;
 
-  /** Tema paletindeki renk anahtarı (web'de token'a çevrilir), ör. 'teal', 'rose'. */
-  @Column({ length: 16, default: 'teal' })
+  /** Tema paletindeki renk anahtarı (web'de token'a çevrilir), ör. 'blue', 'orange'. */
+  @Column({ length: 16, default: 'blue' })
   color: string;
 
   /** Arşivlenen ders seçicide görünmez ama geçmiş oturumlarda kalır. */
