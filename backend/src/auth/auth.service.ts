@@ -35,6 +35,9 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Hatalı e-posta veya şifre girdiniz.');
     }
+    if (user.bannedAt) {
+      throw new UnauthorizedException('Hesabın askıya alındı. Destek için yöneticiyle iletişime geç.');
+    }
 
     if (!user.isEmailVerified) {
       let token = user.emailVerificationToken;

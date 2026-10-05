@@ -20,6 +20,8 @@ import { MediaState, RtcService } from './rtc/rtc.service';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 import { RoomTimerService } from './room-timer/room-timer.service';
 import { DAILY_GOAL_BONUS, StudyService } from './study/study.service';
+import { ModerationService } from './moderation/moderation.service';
+import { BADGE_NAMES } from './users/badges';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -133,6 +135,7 @@ export class SensorsGateway
     private readonly whiteboardService: WhiteboardService,
     private readonly roomTimerService: RoomTimerService,
     private readonly studyService: StudyService,
+    private readonly moderationService: ModerationService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -146,6 +149,11 @@ export class SensorsGateway
       const payload = this.jwtService.verify<JwtPayload>(token, {
         secret: getJwtSecret(this.configService),
       });
+
+      // Askıdaki hesap bağlanamaz.
+      if (await this.moderationService.isBanned(payload.sub)) {
+        throw new Error('Hesap askida');
+      }
 
       (client.data as Record<string, unknown>).user = payload;
 
@@ -263,6 +271,9 @@ export class SensorsGateway
           userId: user.userId,
           newTotal: updatedUser.totalFocusMinutes,
         });
+        for (const badge of updatedUser.newBadges) {
+          this.emitToUser(user.userId, 'badge_earned', { badge });
+        }
       }
 
       // Oturum gecmisi ve gunluk hedef; hata olursa odak puani yine de yazilmis olur.
@@ -278,10 +289,23 @@ export class SensorsGateway
         });
         if (await this.studyService.rewardDailyGoalIfReached(user.userId)) {
           this.emitToUser(user.userId, 'goal_reached', { bonus: DAILY_GOAL_BONUS });
+          if ((await this.studyService.countGoalDays(user.userId)) >= 7) {
+            await this.awardBadge(user.userId, BADGE_NAMES.goalHunter);
+          }
+        }
+        if (session.subjectId && (await this.studyService.subjectMinutes(user.userId, session.subjectId)) >= 600) {
+          await this.awardBadge(user.userId, BADGE_NAMES.subjectMaster);
         }
       } catch (error) {
         console.error('[Oturum kaydi] Hata:', error);
       }
+    }
+  }
+
+  /** Rozeti verir; yeni kazanıldıysa kullanıcıya bildirir (istege bagli event). */
+  private async awardBadge(userId: number, badge: string) {
+    if (await this.usersService.awardBadge(userId, badge)) {
+      this.emitToUser(userId, 'badge_earned', { badge });
     }
   }
 
@@ -298,6 +322,7 @@ export class SensorsGateway
         const winnerId = duel.challengerId === loserId ? duel.challengedId : duel.challengerId;
         
         await this.usersService.addCoins(winnerId, duel.betAmount * 2);
+        await this.awardBadge(winnerId, BADGE_NAMES.duelWinner);
 
         const winnerSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === winnerId)?.[0];
         const loserSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === loserId)?.[0];
@@ -447,6 +472,12 @@ export class SensorsGateway
       client.emit('error', { message: 'Mesaj gecersiz ya da cok uzun.' });
       return;
     }
+    try {
+      await this.moderationService.assertCanChat(socketUser.sub);
+    } catch (error) {
+      client.emit('error', { message: error instanceof Error ? error.message : 'Mesaj gonderilemedi.' });
+      return;
+    }
     const fullName = connectedUser.fullName;
 
     console.log(`[Chat - ${data.roomName}] ${fullName}: ${data.text}`);
@@ -488,6 +519,13 @@ export class SensorsGateway
       if (!socketUser) return;
 
       const data = this.parsePayload(payload) as { targetUserId: number; text: string; type?: string; fileUrl?: string };
+      try {
+        await this.moderationService.assertCanChat(socketUser.sub);
+        await this.moderationService.assertNotBlocked(socketUser.sub, data.targetUserId, 'Bu kullaniciya mesaj gonderemezsin.');
+      } catch (error) {
+        client.emit('error', { message: error instanceof Error ? error.message : 'Mesaj gonderilemedi.' });
+        return;
+      }
       const sender = await this.usersService.findById(socketUser.sub);
       const senderName = sender?.fullName ?? socketUser.username;
       const senderUsername = sender?.username ?? socketUser.username;
@@ -628,6 +666,10 @@ export class SensorsGateway
     }
 
     const data = this.parsePayload(payload);
+    if (await this.moderationService.isBlockedEitherWay(socketUser.sub, data.targetUserId)) {
+      client.emit('error', { message: 'Bu kullaniciyi durtemezsin.' });
+      return;
+    }
     const connectedUser = this.connectedUsers.get(client.id);
     const senderName = connectedUser?.fullName ?? socketUser.username;
 
@@ -728,6 +770,10 @@ export class SensorsGateway
       client.emit('error', { message: 'Rakip bu odada degil.' });
       return;
     }
+    if (await this.moderationService.isBlockedEitherWay(socketUser.sub, data.targetUserId)) {
+      client.emit('error', { message: 'Bu kullaniciyla duello yapamazsin.' });
+      return;
+    }
 
     const challenger = await this.usersService.findById(socketUser.sub);
     if (!challenger || challenger.coins < betAmount) {
@@ -820,6 +866,74 @@ export class SensorsGateway
       this.server.to(challengerSocket).emit('duel_started', { opponentName: challenged.fullName, betAmount: duel.betAmount });
     }
     client.emit('duel_started', { opponentName: 'Rakip', betAmount: duel.betAmount });
+  }
+
+  // ── ODA SAHIBI KONTROLLERI (istege bagli event'ler; mobil yok sayar) ──
+  private socketsInRoom(roomName: string) {
+    return Array.from(this.connectedUsers.entries()).filter(([, u]) => u.roomName === roomName);
+  }
+
+  /** Kisiyi odadan cikarir; 15 dakika ayni odaya giremez. */
+  @SubscribeMessage('kick_user')
+  async handleKickUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { targetUserId: number } | string,
+  ) {
+    const owner = this.connectedUsers.get(client.id);
+    if (!owner) return;
+    const data = this.parsePayload(payload) as { targetUserId: number };
+    try {
+      await this.lobbiesService.kick(owner.roomName, owner.userId, Number(data?.targetUserId));
+    } catch (error) {
+      client.emit('error', { message: error instanceof Error ? error.message : 'Kisi odadan cikarilamadi.' });
+      return;
+    }
+    for (const [socketId, roomUser] of this.socketsInRoom(owner.roomName)) {
+      if (roomUser.userId !== Number(data.targetUserId)) continue;
+      const targetSocket = this.server.sockets.sockets.get(socketId);
+      this.server.to(socketId).emit('kicked', { roomName: owner.roomName, message: `${owner.fullName} seni odadan cikardi.` });
+      if (targetSocket) await this.leaveLobby(targetSocket, roomUser);
+    }
+    client.emit('room_notice', { message: 'Kisi odadan cikarildi.' });
+  }
+
+  /** Odayi yeni girislere kilitler ya da acar; o an odada olanlar geri girebilir. */
+  @SubscribeMessage('lock_lobby')
+  async handleLockLobby(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { locked: boolean } | string,
+  ) {
+    const owner = this.connectedUsers.get(client.id);
+    if (!owner) return;
+    const locked = Boolean((this.parsePayload(payload) as { locked: boolean })?.locked);
+    try {
+      const members = this.socketsInRoom(owner.roomName).map(([, u]) => u.userId);
+      await this.lobbiesService.setLocked(owner.roomName, owner.userId, locked, members);
+    } catch (error) {
+      client.emit('error', { message: error instanceof Error ? error.message : 'Oda kilitlenemedi.' });
+      return;
+    }
+    this.server.to(owner.roomName).emit('lobby_updated', { roomName: owner.roomName, isLocked: locked });
+  }
+
+  /** Odayi kapatir: herkes cikarilir ve oda silinir. */
+  @SubscribeMessage('close_lobby')
+  async handleCloseLobby(@ConnectedSocket() client: Socket) {
+    const owner = this.connectedUsers.get(client.id);
+    if (!owner) return;
+    try {
+      await this.lobbiesService.findOwnedLobby({ name: owner.roomName }, owner.userId);
+    } catch (error) {
+      client.emit('error', { message: error instanceof Error ? error.message : 'Oda kapatilamadi.' });
+      return;
+    }
+    const roomName = owner.roomName;
+    this.server.to(roomName).emit('lobby_closed', { roomName, message: `${owner.fullName} odayi kapatti.` });
+    for (const [socketId, roomUser] of this.socketsInRoom(roomName)) {
+      const roomSocket = this.server.sockets.sockets.get(socketId);
+      if (roomSocket) await this.leaveLobby(roomSocket, roomUser);
+    }
+    await this.lobbiesService.close(roomName, owner.userId);
   }
 
   // ── WEB: P2P WEBRTC SINYALLESMESI (kamera + ekran paylasimi) ──

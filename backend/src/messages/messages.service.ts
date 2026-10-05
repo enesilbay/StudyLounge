@@ -3,6 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Message } from './message.entity';
 import { DirectMessage } from './direct-message.entity';
+import { User } from '../users/user.entity';
+
+/** Mesajlarda yazar için istemcinin kullandığı alanlar; e-posta, coin vb. dışarı çıkmaz. */
+function publicAuthor(user: User | null | undefined) {
+  if (!user) return null;
+  const { id, username, fullName, avatarUrl, equippedProfileFrame, equippedBubbleColor, equippedIcon, isPremium } = user;
+  return { id, username, fullName, avatarUrl, equippedProfileFrame, equippedBubbleColor, equippedIcon, isPremium } as User;
+}
 
 @Injectable()
 export class MessagesService {
@@ -45,17 +53,18 @@ export class MessagesService {
   // Odaya ait son 50 mesajı getir (İlişkili kullanıcı verisiyle beraber)
   async getRoomMessages(roomName: string) {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    return await this.messageRepository.find({
+    const messages = await this.messageRepository.find({
       where: { roomName, createdAt: MoreThan(oneHourAgo) },
       order: { createdAt: 'ASC' },
       take: 50,
       relations: ['user'],
     });
+    return messages.map((message) => ({ ...message, user: publicAuthor(message.user) }));
   }
 
   // ── DM METODLARI ──
   async getDirectMessages(userId1: number, userId2: number) {
-    return await this.dmRepository.find({
+    const messages = await this.dmRepository.find({
       where: [
         { sender: { id: userId1 }, receiver: { id: userId2 } },
         { sender: { id: userId2 }, receiver: { id: userId1 } },
@@ -63,6 +72,7 @@ export class MessagesService {
       order: { createdAt: 'ASC' },
       take: 100,
     });
+    return messages.map((message) => ({ ...message, sender: publicAuthor(message.sender), receiver: publicAuthor(message.receiver) }));
   }
 
   async createDirectMessage(senderId: number, receiverId: number, text: string, type: string = 'text', fileUrl?: string) {
@@ -85,7 +95,7 @@ export class MessagesService {
     const sendersMap = new Map<number, any>();
     for (const msg of unreadMessages) {
       if (!sendersMap.has(msg.sender.id)) {
-        sendersMap.set(msg.sender.id, msg.sender);
+        sendersMap.set(msg.sender.id, publicAuthor(msg.sender));
       }
     }
     return Array.from(sendersMap.values());

@@ -44,12 +44,13 @@ describe('StudyService', () => {
     service = module.get(StudyService);
   });
 
-  it('computes the Monday of the current week', () => {
+  it('computes days and weeks in Turkey time', () => {
     // 2026-10-08 bir persembe.
     expect(weekStartKey(new Date('2026-10-08T12:00:00Z'))).toBe('2026-10-05');
-    expect(weekStartKey(new Date('2026-10-05T00:30:00Z'))).toBe('2026-10-05');
-    expect(weekStartKey(new Date('2026-10-11T23:00:00Z'))).toBe('2026-10-05');
-    expect(dayKey(new Date('2026-10-08T23:59:00Z'))).toBe('2026-10-08');
+    expect(weekStartKey(new Date('2026-10-11T20:59:00Z'))).toBe('2026-10-05'); // Pazar 23:59 TR
+    expect(weekStartKey(new Date('2026-10-11T21:00:00Z'))).toBe('2026-10-12'); // Pazartesi 00:00 TR
+    expect(dayKey(new Date('2026-10-08T20:59:00Z'))).toBe('2026-10-08'); // 23:59 TR
+    expect(dayKey(new Date('2026-10-08T21:30:00Z'))).toBe('2026-10-09'); // 00:30 TR, ertesi gün
   });
 
   it('reuses a subject with the same name instead of creating a duplicate', async () => {

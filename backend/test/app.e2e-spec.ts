@@ -15,6 +15,7 @@ import { UsersController } from '../src/users/users.controller';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { User } from '../src/users/user.entity';
 import { UsersService } from '../src/users/users.service';
+import { ModerationService } from '../src/moderation/moderation.service';
 
 jest.mock('expo-server-sdk', () => ({
   Expo: class {
@@ -69,6 +70,10 @@ describe('StudyLounge API (e2e)', () => {
         {
           provide: NotificationsService,
           useValue: { sendNudgeNotification: jest.fn() },
+        },
+        {
+          provide: ModerationService,
+          useValue: { assertNotBlocked: jest.fn().mockResolvedValue(undefined) },
         },
         {
           provide: ConfigService,
@@ -296,6 +301,10 @@ class InMemoryUsersService {
   findById(id: number) {
     const user = this.users.find((candidate) => candidate.id === id);
     return user ? this.sanitize(user) : null;
+  }
+
+  findIdByUsername(username: string) {
+    return Promise.resolve(this.users.find((user) => user.username === username)?.id ?? null);
   }
 
   sendFriendRequest(senderId: number, receiverUsername: string) {

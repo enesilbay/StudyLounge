@@ -31,6 +31,11 @@ import { WhiteboardModule } from './whiteboard/whiteboard.module';
 import { RoomTimerModule } from './room-timer/room-timer.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StudyModule } from './study/study.module';
+import { ModerationModule } from './moderation/moderation.module';
+import { LeagueModule } from './league/league.module';
+import { WeeklyResult } from './league/weekly-result.entity';
+import { Block } from './moderation/block.entity';
+import { Report } from './moderation/report.entity';
 import { Subject } from './study/subject.entity';
 import { StudySession } from './study/study-session.entity';
 import { Task } from './study/task.entity';
@@ -84,6 +89,9 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
             Task,
             ScheduledSession,
             ScheduledSessionInvite,
+            Block,
+            Report,
+            WeeklyResult,
           ],
           autoLoadEntities: true,
           // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
@@ -112,6 +120,8 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     RoomTimerModule,
     ScheduleModule.forRoot(),
     StudyModule,
+    ModerationModule,
+    LeagueModule,
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
   ],
   controllers: [AppController],

@@ -201,7 +201,8 @@ describe('UsersService', () => {
       Promise.resolve(input),
     );
 
-    const expectedHour = new Date().getHours();
+    // 10:15 UTC = 13:15 Türkiye saati; saat dilimi makineden bağımsız olmalı.
+    const expectedHour = 13;
     const result = await service.addFocusTime(1, 25);
 
     expect(result?.totalFocusMinutes).toBe(45);
@@ -217,7 +218,41 @@ describe('UsersService', () => {
     >;
     const savedDaily = saveCalls[0][0];
     expect(savedDaily.hourlyDistribution[expectedHour]).toBe(25);
+    expect(result?.badges).toContain('İlk Adım');
     jest.useRealTimers();
+  });
+
+  describe('streaks', () => {
+    const run = async (lastFocusDate: string, now: string, currentStreak = 4) => {
+      jest.useFakeTimers().setSystemTime(new Date(now));
+      const user = { id: 1, fullName: 'Ada', totalFocusMinutes: 0, currentStreak, bestStreak: 4, lastFocusDate: new Date(lastFocusDate) } as User;
+      usersRepository.findOneBy.mockResolvedValue(user);
+      usersRepository.save.mockImplementation((input: User) => Promise.resolve(input));
+      dailyAnalyticsRepository.findOne.mockResolvedValue(null);
+      dailyAnalyticsRepository.create.mockImplementation((input: Partial<DailyAnalytics>) => ({ id: 1, ...input }));
+      dailyAnalyticsRepository.save.mockImplementation((input: DailyAnalytics) => Promise.resolve(input));
+      const result = await service.addFocusTime(1, 10);
+      jest.useRealTimers();
+      return result!;
+    };
+
+    it('continues the streak when the user studied yesterday (Turkey time)', async () => {
+      // Dün 23:30 TR (20:30Z), bugün 00:30 TR (21:30Z): takvimde ardışık günler.
+      const result = await run('2026-05-11T20:30:00Z', '2026-05-11T21:30:00Z');
+      expect(result.currentStreak).toBe(5);
+      expect(result.bestStreak).toBe(5);
+    });
+
+    it('does not count twice on the same day', async () => {
+      const result = await run('2026-05-12T06:00:00Z', '2026-05-12T15:00:00Z');
+      expect(result.currentStreak).toBe(4);
+    });
+
+    it('resets the streak after a skipped day', async () => {
+      const result = await run('2026-05-10T12:00:00Z', '2026-05-12T12:00:00Z');
+      expect(result.currentStreak).toBe(1);
+      expect(result.bestStreak).toBe(4);
+    });
   });
 
   it('updates account email and username while hiding password', async () => {
