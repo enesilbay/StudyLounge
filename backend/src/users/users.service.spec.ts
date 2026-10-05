@@ -265,4 +265,31 @@ describe('UsersService', () => {
     ).rejects.toThrow('Mevcut şifre hatalı.');
     expect(usersRepository.save).not.toHaveBeenCalled();
   });
+
+  describe('buyItem', () => {
+    const shopper = () =>
+      ({ id: 7, coins: 500, ownedColors: [], ownedIcons: [], ownedProfileFrames: ['none'], badges: [] }) as unknown as User;
+
+    it('charges the catalog price, not a client supplied one', async () => {
+      usersRepository.findOne.mockResolvedValue(shopper());
+      usersRepository.save.mockImplementation((user: User) => Promise.resolve(user));
+
+      const result = await service.buyItem(7, 'profileFrame', 'gold');
+
+      expect(result.coins).toBe(350);
+      expect(result.ownedProfileFrames).toContain('gold');
+    });
+
+    it('rejects items that are not in the catalog', async () => {
+      await expect(service.buyItem(7, 'color', '#000000')).rejects.toThrow('Mağazada böyle bir ürün yok');
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the user cannot afford the item', async () => {
+      usersRepository.findOne.mockResolvedValue({ ...shopper(), coins: 10 });
+
+      await expect(service.buyItem(7, 'icon', '🚀')).rejects.toThrow('Yetersiz Odak Puanı');
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+  });
 });

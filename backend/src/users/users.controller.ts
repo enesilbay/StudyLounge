@@ -20,6 +20,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RespondRequestDto } from './dto/respond-request.dto';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
+import { ShopItemDto } from './dto/shop-item.dto';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdatePushTokenDto } from './dto/update-push-token.dto';
@@ -211,20 +212,19 @@ export class UsersController {
   }
 
   // ── AŞAMA 3: MAĞAZA ENDPOINTLERİ ──
+  @Get('shop/catalog')
+  getShopCatalog() {
+    return this.usersService.getShopCatalog();
+  }
+
   @Post('buy')
-  async buyItem(
-    @CurrentUser() user: User,
-    @Body() body: { itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame'; itemId: string; price: number }
-  ) {
-    const updatedUser = await this.usersService.buyItem(user.id, body.itemType, body.itemId, body.price);
+  async buyItem(@CurrentUser() user: User, @Body() body: ShopItemDto) {
+    const updatedUser = await this.usersService.buyItem(user.id, body.itemType, body.itemId);
     return { success: true, user: updatedUser };
   }
 
   @Post('equip')
-  async equipItem(
-    @CurrentUser() user: User,
-    @Body() body: { itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame'; itemId: string }
-  ) {
+  async equipItem(@CurrentUser() user: User, @Body() body: ShopItemDto) {
     const updatedUser = await this.usersService.equipItem(user.id, body.itemType, body.itemId);
     return { success: true, user: updatedUser };
   }

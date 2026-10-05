@@ -49,10 +49,26 @@ export default function ShopPage() {
   const [busyItem, setBusyItem] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [serverPrices, setServerPrices] = useState<Map<string, number> | null>(null);
 
   useEffect(() => {
     refreshUser().finally(() => setLoading(false));
   }, [refreshUser]);
+
+  // Fiyatın tek doğru kaynağı backend kataloğu; alınamazsa sayfadaki fiyatlar gösterilir.
+  useEffect(() => {
+    api
+      .get<{ type: ShopItem['type']; id: string; price: number }[]>('/users/shop/catalog')
+      .then((response) => setServerPrices(new Map(response.data.map((entry) => [`${entry.type}:${entry.id}`, entry.price]))))
+      .catch(() => setServerPrices(null));
+  }, []);
+
+  const shopSections = serverPrices
+    ? sections.map((section) => ({
+        ...section,
+        items: section.items.map((item) => ({ ...item, price: serverPrices.get(`${item.type}:${item.id}`) ?? item.price })),
+      }))
+    : sections;
 
   const handleItemAction = async (item: ShopItem) => {
     if (!user) return;
@@ -72,7 +88,7 @@ export default function ShopPage() {
         const response = await api.post('/users/equip', { itemType: item.type, itemId: item.id });
         setUser(unwrapUser<User>(response.data));
       } else {
-        const buyResponse = await api.post('/users/buy', { itemType: item.type, itemId: item.id, price: item.price });
+        const buyResponse = await api.post('/users/buy', { itemType: item.type, itemId: item.id });
         const boughtUser = unwrapUser<User>(buyResponse.data);
         setUser(boughtUser);
         setMessage('Öğe başarıyla satın alındı.');
@@ -105,7 +121,7 @@ export default function ShopPage() {
       {message ? <Surface className={`mb-5 p-4 text-base font-semibold ${message.startsWith('Öğe') ? 'text-primary' : 'text-danger'}`}>{message}</Surface> : null}
 
       <div className="space-y-7">
-        {sections.map((section) => (
+        {shopSections.map((section) => (
           <section key={section.title}>
             <div className="mb-3 flex items-center gap-3">
               <IconTile icon={section.icon} tone="primary" />

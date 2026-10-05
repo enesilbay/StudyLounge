@@ -11,6 +11,8 @@ import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
+import { SHOP_CATALOG, findShopItem } from './shop-catalog';
+import type { ShopItemType } from './shop-catalog';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -590,7 +592,11 @@ export class UsersService implements OnModuleInit {
   }
 
   // ── AŞAMA 3: MAĞAZA İŞLEMLERİ ──
-  async buyItem(userId: number, itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame', itemId: string, price: number) {
+  async buyItem(userId: number, itemType: ShopItemType, itemId: string) {
+    const item = findShopItem(itemType, itemId);
+    if (!item) throw new BadRequestException('Mağazada böyle bir ürün yok');
+    const price = item.price;
+
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
@@ -618,7 +624,11 @@ export class UsersService implements OnModuleInit {
     return await this.usersRepository.save(user);
   }
 
-  async equipItem(userId: number, itemType: 'color' | 'icon' | 'soundPack' | 'profileFrame', itemId: string) {
+  getShopCatalog() {
+    return SHOP_CATALOG;
+  }
+
+  async equipItem(userId: number, itemType: ShopItemType, itemId: string) {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
