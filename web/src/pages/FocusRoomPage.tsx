@@ -41,6 +41,9 @@ import { isPdfUrl, MAX_PDF_BYTES } from '../lib/board/types';
 import { playChime, useRoomTimer } from '../lib/roomTimer';
 import type { DuelRequest, DuelResult, Lobby, Message, RoomUser } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
+import { useStudyStore } from '../store/studyStore';
+import SubjectPicker from '../components/room/SubjectPicker';
+import TasksPanel from '../components/room/TasksPanel';
 import fireSound from '../assets/sounds/fire.mp3';
 import librarySound from '../assets/sounds/library.mp3';
 import natureSound from '../assets/sounds/nature.mp3';
@@ -63,7 +66,7 @@ const soundTracks = [
 const HIDDEN_TAB_GRACE_MS = 60_000;
 
 type VolumeMap = Record<string, number>;
-type SideTab = 'chat' | 'sound';
+type SideTab = 'chat' | 'tasks' | 'sound';
 
 interface StageSource {
   key: string;
@@ -138,6 +141,13 @@ export default function FocusRoomPage() {
   const sharedMode = followShared && Boolean(roomTimer.view);
   const sharedFocus = sharedMode && roomTimer.view?.phase === 'focus' && !roomTimer.view.paused;
   const focusing = sharedMode ? sharedFocus : running;
+
+  // Odak oturumu seçili derse yazılır (oturum geçmişi ve analitik).
+  const selectedSubjectId = useStudyStore((state) => state.selectedSubjectId);
+  const deskPayload = useCallback(
+    (isAtDesk: boolean) => (isAtDesk ? { isAtDesk, roomName, subjectId: selectedSubjectId, source: 'web' as const } : { isAtDesk, roomName }),
+    [roomName, selectedSubjectId],
+  );
 
   useEffect(() => {
     const onChange = () => setStageFullscreen(document.fullscreenElement === stageRef.current && stageRef.current !== null);
@@ -297,10 +307,20 @@ export default function FocusRoomPage() {
     }
     if (sharedPresenceRef.current === sharedFocus) return;
     sharedPresenceRef.current = sharedFocus;
-    getSocket().emit('update_presence', { isAtDesk: sharedFocus, roomName });
+    getSocket().emit('update_presence', deskPayload(sharedFocus));
     if (sharedFocus) playAmbient();
     else pauseAmbient();
+    // deskPayload bilerek bağımlılık değil: ders değişimi aşağıdaki effect'te ayrıca gönderilir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedMode, sharedFocus, roomName, playAmbient, pauseAmbient]);
+
+  // Odaklanırken ders değişirse sunucu önceki oturumu kapatıp yenisini bu dersle başlatır.
+  const lastSubjectRef = useRef(selectedSubjectId);
+  useEffect(() => {
+    if (lastSubjectRef.current === selectedSubjectId) return;
+    lastSubjectRef.current = selectedSubjectId;
+    if (focusing && roomName) getSocket().emit('update_presence', deskPayload(true));
+  }, [selectedSubjectId, focusing, roomName, deskPayload]);
 
   // Aşama değişince (odak ↔ mola) katılanlara kısa bir zil çalar.
   const phaseKey = roomTimer.view && !roomTimer.view.paused ? `${roomTimer.view.round}:${roomTimer.view.phase}` : null;
@@ -361,13 +381,20 @@ export default function FocusRoomPage() {
     if (remainingSeconds <= 0) setRemainingSeconds(selectedDuration);
     playAmbient();
     setRunning(true);
-    getSocket().emit('update_presence', { isAtDesk: true, roomName });
+    getSocket().emit('update_presence', deskPayload(true));
   };
 
   const selectDuration = (seconds: number) => {
     setSelectedDuration(seconds);
     setRemainingSeconds(seconds);
     if (running) stopFocus();
+  };
+
+  // Görev paneli: görevi odaya sohbet mesajı olarak paylaşır.
+  const shareToRoom = (text: string) => {
+    if (!roomName || !joinedLobby) return;
+    getSocket().emit('send_message', { roomName, text, type: 'text' });
+    setSideTab('chat');
   };
 
   const handleSend = () => {
@@ -563,6 +590,7 @@ export default function FocusRoomPage() {
           <p className="mt-1 text-[15px] text-textMuted">
             {people.length} kişi masada, {focusedCount === 0 ? 'şu an kimse odaklanmıyor' : `${focusedCount} kişinin lambası yanıyor`}
           </p>
+          <SubjectPicker onError={setError} />
         </div>
 
         {roomTimer.view && roomTimer.timer ? (
@@ -866,6 +894,7 @@ export default function FocusRoomPage() {
             {(
               [
                 ['chat', `Sohbet${messages.length ? ` (${messages.length})` : ''}`],
+                ['tasks', 'Görevler'],
                 ['sound', 'Ortam sesi'],
               ] as Array<[SideTab, string]>
             ).map(([key, label]) => (
@@ -952,6 +981,8 @@ export default function FocusRoomPage() {
               </button>
             </form>
           </div>
+
+          {sideTab === 'tasks' ? <TasksPanel onShare={shareToRoom} onError={setError} /> : null}
 
           <div className={`flex-1 space-y-5 overflow-y-auto p-5 ${sideTab === 'sound' ? '' : 'hidden'}`}>
             <p className="text-[15px] text-textMuted">Sesler odaklanmaya başladığında çalar, molada susar.</p>

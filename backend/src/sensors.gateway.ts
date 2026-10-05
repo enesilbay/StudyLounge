@@ -19,6 +19,7 @@ import { MessagesService } from './messages/messages.service';
 import { MediaState, RtcService } from './rtc/rtc.service';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 import { RoomTimerService } from './room-timer/room-timer.service';
+import { DAILY_GOAL_BONUS, StudyService } from './study/study.service';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -38,6 +39,16 @@ interface SendMessageDto {
 interface UpdatePresenceDto {
   isAtDesk: boolean;
   roomName: string;
+  /** Web: oturumun dersi (istege bagli; mobil gondermez). */
+  subjectId?: number | null;
+  /** Web istemcisi 'web' gonderir; gonderilmezse mobil sayilir. */
+  source?: 'web' | 'mobile';
+}
+
+interface ActiveFocusSession {
+  startedAt: number;
+  subjectId: number | null;
+  source: 'web' | 'mobile';
 }
 
 interface NudgeFriendDto {
@@ -106,7 +117,7 @@ export class SensorsGateway
 {
   @WebSocketServer() server!: Server;
 
-  private activeSessions = new Map<number, number>();
+  private activeSessions = new Map<number, ActiveFocusSession>();
   private connectedUsers = new Map<string, ConnectedRoomUser>();
   private duels = new Map<string, Duel>();
   private userSockets = new Map<number, Set<string>>();
@@ -121,6 +132,7 @@ export class SensorsGateway
     private readonly rtcService: RtcService,
     private readonly whiteboardService: WhiteboardService,
     private readonly roomTimerService: RoomTimerService,
+    private readonly studyService: StudyService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -227,12 +239,15 @@ export class SensorsGateway
   }
 
   private async finishFocusSession(user: ConnectedRoomUser) {
-    const startTime = this.activeSessions.get(user.userId);
-    if (!startTime) {
+    const session = this.activeSessions.get(user.userId);
+    if (!session) {
       return;
     }
+    // Ayni oturum iki kez kapatilmasin (ornegin ayrilma ve kopma ust uste gelirse).
+    this.activeSessions.delete(user.userId);
+    const endedAt = Date.now();
 
-    let durationMinutes = Math.round((Date.now() - startTime) / 60000);
+    let durationMinutes = Math.round((endedAt - session.startedAt) / 60000);
     if (user.isEliteRoom) {
       durationMinutes *= 2;
     }
@@ -249,9 +264,31 @@ export class SensorsGateway
           newTotal: updatedUser.totalFocusMinutes,
         });
       }
-    }
 
-    this.activeSessions.delete(user.userId);
+      // Oturum gecmisi ve gunluk hedef; hata olursa odak puani yine de yazilmis olur.
+      try {
+        await this.studyService.recordSession({
+          userId: user.userId,
+          subjectId: session.subjectId,
+          roomName: user.roomName,
+          startedAt: new Date(session.startedAt),
+          endedAt: new Date(endedAt),
+          creditedMinutes: durationMinutes,
+          source: session.source,
+        });
+        if (await this.studyService.rewardDailyGoalIfReached(user.userId)) {
+          this.emitToUser(user.userId, 'goal_reached', { bonus: DAILY_GOAL_BONUS });
+        }
+      } catch (error) {
+        console.error('[Oturum kaydi] Hata:', error);
+      }
+    }
+  }
+
+  private emitToUser(userId: number, event: string, payload: unknown) {
+    for (const socketId of this.userSockets.get(userId) ?? []) {
+      this.server.to(socketId).emit(event, payload);
+    }
   }
 
   // ── AŞAMA 4: DÜELLO ÇÖZÜMLEME ──
@@ -533,7 +570,22 @@ export class SensorsGateway
     this.broadcastRoomUsers(user.roomName);
 
     if (data.isAtDesk) {
-      this.activeSessions.set(socketUser.sub, Date.now());
+      const subjectId = typeof data.subjectId === 'number' ? data.subjectId : null;
+      const active = this.activeSessions.get(socketUser.sub);
+      if (active && active.subjectId === subjectId) {
+        // Zaten odakta: baslangic sifirlanmaz (aksi halde birikmis sure kaybolurdu).
+        this.server.to(user.roomName).emit('presence_changed', { ...data, userId: socketUser.sub, isEliteRoom: user.isEliteRoom });
+        return;
+      }
+      if (active) {
+        // Ders degisti: onceki oturum kapanir, yenisi yeni dersle baslar.
+        await this.finishFocusSession(user);
+      }
+      this.activeSessions.set(socketUser.sub, {
+        startedAt: Date.now(),
+        subjectId,
+        source: data.source === 'web' ? 'web' : 'mobile',
+      });
       console.log(
         `[Odaklanma Basladi - ${user.roomName}] Kullanici: ${socketUser.sub} (Elite: ${user.isEliteRoom})`,
       );

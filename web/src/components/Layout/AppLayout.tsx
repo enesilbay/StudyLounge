@@ -5,6 +5,8 @@ import { useAuthStore } from '../../store/authStore';
 import { disconnectSocket } from '../../lib/socket';
 import { useInboxStore } from '../../store/inboxStore';
 import ToastStack from './ToastStack';
+import GoalProgress from './GoalProgress';
+import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
 
 const navItems = [
@@ -22,7 +24,11 @@ export default function AppLayout() {
   useAppNotifications();
   // Arkadaşlar sekmesindeki rozet: okunmamış sohbetler + bekleyen istekler.
   const friendsBadge = useInboxStore((state) => state.unreadFrom.length + state.friendRequests.length);
-  const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : 0);
+  // Odalar sekmesindeki rozet: yanıt bekleyen planlı oturum davetleri.
+  const planInvites = useInboxStore((state) =>
+    state.plans.filter((plan) => plan.invites.some((invite) => invite.user.id === user?.id && invite.status === 'pending')).length,
+  );
+  const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : path === '/app/lobbies' ? planInvites : 0);
   const displayName = user?.fullName ?? 'StudyLounge';
   // Odak odası tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
   const wide = location.pathname.startsWith('/app/focus/');
@@ -30,6 +36,7 @@ export default function AppLayout() {
   const handleLogout = () => {
     disconnectSocket();
     useInboxStore.getState().reset();
+    useStudyStore.getState().reset();
     logout();
   };
 
@@ -68,6 +75,8 @@ export default function AppLayout() {
             </NavLink>
           ) : null}
         </nav>
+
+        <GoalProgress />
 
         <div className="border-t border-border pt-4">
           <div className="flex items-center gap-3 px-2">

@@ -46,7 +46,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Orta | 404 ve hata sınırı | Bilinmeyen adreslerde 404 sayfası, çöken sayfada ErrorBoundary. `DMPage`'deki `premium={isOnline}` hatası düzeltilir. |
 | Orta | Mobil: arka plan düzeltmesi | `sensor.tsx`, `AppState` ile uygulama arka plana geçince odağı durdurur; böylece süre yanlış sayılmaz. Mobilde yeni özellik eklenmez. |
 
-### Faz 2: Çalışma özellikleri
+### Faz 2: Çalışma özellikleri ✅ (tamamlandı, `faz-2` dalı)
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |

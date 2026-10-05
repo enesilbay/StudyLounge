@@ -29,6 +29,12 @@ import { User } from './users/user.entity';
 import { UsersModule } from './users/users.module';
 import { WhiteboardModule } from './whiteboard/whiteboard.module';
 import { RoomTimerModule } from './room-timer/room-timer.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { StudyModule } from './study/study.module';
+import { Subject } from './study/subject.entity';
+import { StudySession } from './study/study-session.entity';
+import { Task } from './study/task.entity';
+import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-session.entity';
 
 @Module({
   imports: [
@@ -73,6 +79,11 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
             DailyAnalytics,
             Message,
             DirectMessage,
+            Subject,
+            StudySession,
+            Task,
+            ScheduledSession,
+            ScheduledSessionInvite,
           ],
           autoLoadEntities: true,
           // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
@@ -99,6 +110,8 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
     RtcModule,
     WhiteboardModule,
     RoomTimerModule,
+    ScheduleModule.forRoot(),
+    StudyModule,
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
   ],
   controllers: [AppController],

@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { unwrapData } from '../lib/apiResponses';
 import type { DailyAnalytics } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
+import StudyInsights from '../components/analytics/StudyInsights';
 
 const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -124,6 +125,8 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </Surface>
+
+      <StudyInsights />
     </div>
   );
 }
