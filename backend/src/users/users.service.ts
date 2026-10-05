@@ -14,6 +14,9 @@ import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { SHOP_CATALOG, findShopItem } from './shop-catalog';
 import type { ShopItemType } from './shop-catalog';
 
+/** Dogrulama / sifirlama kodu bu kadar yanlis denemeden sonra gecersiz olur. */
+export const MAX_CODE_ATTEMPTS = 5;
+
 @Injectable()
 export class UsersService implements OnModuleInit {
   constructor(
@@ -104,13 +107,34 @@ export class UsersService implements OnModuleInit {
     await this.usersRepository.update(userId, {
       isEmailVerified: true,
       emailVerificationToken: null,
+      codeAttempts: 0,
     });
   }
 
   async updateVerificationToken(userId: number, token: string) {
     await this.usersRepository.update(userId, {
       emailVerificationToken: token,
+      codeAttempts: 0,
     });
+  }
+
+  /**
+   * Yanlis kod denemesini sayar. Sinira ulasilinca bekleyen kodlar gecersiz olur
+   * ve kullanici yeni kod istemek zorunda kalir. Kod gecersizlestiyse true doner.
+   */
+  async registerFailedCodeAttempt(userId: number, previousAttempts: number): Promise<boolean> {
+    const attempts = previousAttempts + 1;
+    if (attempts >= MAX_CODE_ATTEMPTS) {
+      await this.usersRepository.update(userId, {
+        emailVerificationToken: null,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+        codeAttempts: 0,
+      });
+      return true;
+    }
+    await this.usersRepository.update(userId, { codeAttempts: attempts });
+    return false;
   }
 
   // ── KULLANICI BUL (JWT İÇİN) ──
@@ -159,6 +183,7 @@ export class UsersService implements OnModuleInit {
         'user.emailVerificationToken',
         'user.resetPasswordToken',
         'user.resetPasswordExpires',
+        'user.codeAttempts',
       ])
       .where('user.email = :email', { email })
       .getOne();
@@ -169,6 +194,7 @@ export class UsersService implements OnModuleInit {
     await this.usersRepository.update(userId, {
       resetPasswordToken: token,
       resetPasswordExpires: expiry,
+      codeAttempts: 0,
     });
   }
 
@@ -178,6 +204,7 @@ export class UsersService implements OnModuleInit {
       password: hashedPass,
       resetPasswordToken: null,
       resetPasswordExpires: null,
+      codeAttempts: 0,
     });
   }
 

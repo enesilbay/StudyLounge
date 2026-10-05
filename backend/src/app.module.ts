@@ -11,6 +11,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { Lobby } from './lobbies/lobby.entity';
 import { LobbyAccess } from './lobbies/lobby-access.entity';
 import { MailModule } from './mail/mail.module';
@@ -97,9 +99,16 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
     RtcModule,
     WhiteboardModule,
     RoomTimerModule,
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
   ],
   controllers: [AppController],
-  providers: [AppService, SensorsGateway, NotificationsService],
+  providers: [
+    AppService,
+    SensorsGateway,
+    NotificationsService,
+    // Tum HTTP uclari icin IP basina genel sinir; auth uclari kendi siki sinirlarini kullanir.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}
 //test

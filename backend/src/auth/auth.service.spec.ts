@@ -18,6 +18,7 @@ describe('AuthService', () => {
     updatePassword: jest.Mock;
     updateVerificationToken: jest.Mock;
     markEmailAsVerified: jest.Mock;
+    registerFailedCodeAttempt: jest.Mock;
   };
   let mailService: {
     sendVerificationEmail: jest.Mock;
@@ -52,6 +53,7 @@ describe('AuthService', () => {
       updatePassword: jest.fn(),
       updateVerificationToken: jest.fn(),
       markEmailAsVerified: jest.fn(),
+      registerFailedCodeAttempt: jest.fn().mockResolvedValue(false),
     };
     mailService = {
       sendVerificationEmail: jest.fn().mockResolvedValue(true),
@@ -131,6 +133,23 @@ describe('AuthService', () => {
       'secret123',
     );
     expect(result.access_token).toBe('signed.jwt');
+  });
+
+  it('counts a wrong verification code and does not verify', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({ ...user, emailVerificationToken: '123456', codeAttempts: 2 });
+
+    await expect(service.verifyEmail('ada@example.com', '000000')).rejects.toThrow(
+      'Geçersiz veya hatalı doğrulama kodu.',
+    );
+    expect(usersService.registerFailedCodeAttempt).toHaveBeenCalledWith(7, 2);
+    expect(usersService.markEmailAsVerified).not.toHaveBeenCalled();
+  });
+
+  it('asks for a new code once the attempt limit is reached', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({ ...user, emailVerificationToken: '123456', codeAttempts: 4 });
+    usersService.registerFailedCodeAttempt.mockResolvedValue(true);
+
+    await expect(service.verifyEmail('ada@example.com', '000000')).rejects.toThrow('yeni bir kod iste');
   });
 
   it('rejects invalid login credentials', async () => {

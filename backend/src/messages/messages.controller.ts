@@ -17,6 +17,7 @@ import { diskStorage } from 'multer';
 import { unlink } from 'fs/promises';
 import { extname } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { CHAT_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LobbiesService } from '../lobbies/lobbies.service';
 import { User } from '../users/user.entity';
@@ -75,6 +76,7 @@ export class MessagesController {
       limits: {
         fileSize: MAX_PDF_BYTES,
       },
+      fileFilter: createUploadFileFilter(CHAT_UPLOAD_TYPES),
     }),
   )
   async uploadFile(

@@ -50,6 +50,10 @@ export class User {
   @Column({ type: 'timestamp', nullable: true, select: false })
   resetPasswordExpires: Date | null;
 
+  // Dogrulama / sifre sifirlama kodu icin ust uste yanlis deneme sayisi.
+  @Column({ default: 0, select: false })
+  codeAttempts: number;
+
   // ── AŞAMA 3: OYUNLAŞTIRMA VE EKONOMİ ──
   @Column({ default: 0 })
   coins: number;

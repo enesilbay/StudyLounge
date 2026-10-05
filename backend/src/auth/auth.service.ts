@@ -3,8 +3,14 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { JwtPayload } from './jwt-payload.interface';
 import { RegisterDto } from './dto/register.dto';
+
+/** 6 haneli, kriptografik olarak rastgele dogrulama kodu. */
+function generateCode(): string {
+  return randomInt(100000, 1000000).toString();
+}
 
 @Injectable()
 export class AuthService {
@@ -13,6 +19,13 @@ export class AuthService {
     private jwtService: JwtService,
     private mailService: MailService,
   ) {}
+
+  private async rejectWrongCode(userId: number, attempts: number | undefined, message: string): Promise<never> {
+    const locked = await this.usersService.registerFailedCodeAttempt(userId, attempts ?? 0);
+    throw new UnauthorizedException(
+      locked ? 'Çok fazla hatalı deneme yaptın. Lütfen yeni bir kod iste.' : message,
+    );
+  }
 
   async login(email: string, pass: string) {
     const user = await this.usersService.login(email, pass);
@@ -23,7 +36,7 @@ export class AuthService {
     if (!user.isEmailVerified) {
       let token = user.emailVerificationToken;
       if (!token) {
-        token = Math.floor(100000 + Math.random() * 900000).toString();
+        token = generateCode();
         await this.usersService.updateVerificationToken(user.id, token);
       }
       await this.mailService.sendVerificationEmail(user.email, token);
@@ -54,7 +67,7 @@ export class AuthService {
     const user = await this.usersService.create(body);
     const token =
       user.emailVerificationToken ||
-      Math.floor(100000 + Math.random() * 900000).toString();
+      generateCode();
 
     if (!user.emailVerificationToken) {
       await this.usersService.updateVerificationToken(user.id, token);
@@ -73,12 +86,11 @@ export class AuthService {
 
   async verifyEmail(email: string, token: string) {
     const user = await this.usersService.findByEmailWithSecrets(email);
-    if (
-      !user ||
-      !user.emailVerificationToken ||
-      user.emailVerificationToken !== token
-    ) {
+    if (!user || !user.emailVerificationToken) {
       throw new UnauthorizedException('Geçersiz veya hatalı doğrulama kodu.');
+    }
+    if (user.emailVerificationToken !== token) {
+      await this.rejectWrongCode(user.id, user.codeAttempts, 'Geçersiz veya hatalı doğrulama kodu.');
     }
 
     await this.usersService.markEmailAsVerified(user.id);
@@ -110,7 +122,7 @@ export class AuthService {
     }
 
     // 6 haneli rastgele kod üret
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = generateCode();
     const expiry = new Date();
     expiry.setHours(expiry.getHours() + 1); // 1 saat geçerli
 
@@ -129,12 +141,11 @@ export class AuthService {
   // ── 4. ŞİFREYİ SIFIRLA ──
   async resetPassword(email: string, token: string, newPass: string) {
     const user = await this.usersService.findByEmailWithSecrets(email);
-    if (
-      !user ||
-      !user.resetPasswordToken ||
-      user.resetPasswordToken !== token
-    ) {
+    if (!user || !user.resetPasswordToken) {
       throw new UnauthorizedException('Geçersiz veya hatalı kod.');
+    }
+    if (user.resetPasswordToken !== token) {
+      await this.rejectWrongCode(user.id, user.codeAttempts, 'Geçersiz veya hatalı kod.');
     }
 
     if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {

@@ -17,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { AVATAR_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RespondRequestDto } from './dto/respond-request.dto';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
@@ -117,6 +118,7 @@ export class UsersController {
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
+      fileFilter: createUploadFileFilter(AVATAR_UPLOAD_TYPES),
     }),
   )
   async uploadAvatar(

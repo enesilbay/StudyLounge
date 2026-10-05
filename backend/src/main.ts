@@ -8,10 +8,17 @@ import * as os from 'os';
 import { ConfigService } from '@nestjs/config';
 import { getConfigNumber, getConfigString } from './config/env';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // Render gibi bir proxy arkasinda istek sinirlayici gercek istemci IP'sini gorsun.
+  app.set('trust proxy', 1);
+  // Guvenlik basliklari. /uploads dosyalari web istemcisinde (baska origin) acildigi icin
+  // kaynaklar cross-origin okunabilir kalir.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   app.useGlobalPipes(
     new ValidationPipe({
