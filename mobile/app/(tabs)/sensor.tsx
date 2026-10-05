@@ -2,8 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, Animated,
-  Dimensions, ScrollView, Modal, StatusBar, Alert, Image
+  Dimensions, ScrollView, Modal, StatusBar, Alert, Image, AppState
 } from 'react-native';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { io } from 'socket.io-client'; 
@@ -101,6 +102,13 @@ export default function SensorScreen() {
   const safeFullName = typeof fullName === 'string' && fullName.trim() !== '' ? fullName : 'Öğrenci';
 
   const isFocused = useIsFocused();
+  // Uygulama arka plana gecince (baska uygulama, ekrani kilitleme) odak durur; sensor yalnizca on plandayken okunur.
+  const [appActive, setAppActive] = useState(AppState.currentState === 'active');
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => setAppActive(state === 'active'));
+    return () => subscription.remove();
+  }, []);
 
   const [totalScore, setTotalScore] = useState(Number(score) || 0);
   const [storedUserId, setStoredUserId] = useState<number | null>(Number.isFinite(routeUserId) ? routeUserId : null);
@@ -521,7 +529,7 @@ export default function SensorScreen() {
 
   useEffect(() => {
     let sub: any = null;
-    if (isFocused) {
+    if (isFocused && appActive) {
       if (Platform.OS === 'web') {
         sub = { remove: () => {} };
       } else {
@@ -570,7 +578,18 @@ export default function SensorScreen() {
       if (sub && typeof sub.remove === 'function') sub.remove();
       setIsPhoneFaceDownOnDesk(false);
     };
-  }, [isFocused, focusRequested, roomName]);
+  }, [isFocused, appActive, focusRequested, roomName]);
+
+  // Odak modu acikken ekran kendiliginden kilitlenmesin (parlaklik zaten kisiliyor);
+  // aksi halde telefon masada dururken uygulama arka plana duser ve odak kesilir.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !isFocused || !focusRequested) return;
+    const tag = 'studylounge-focus';
+    activateKeepAwakeAsync(tag).catch(() => undefined);
+    return () => {
+      deactivateKeepAwake(tag).catch(() => undefined);
+    };
+  }, [isFocused, focusRequested]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
