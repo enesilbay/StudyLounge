@@ -1,26 +1,56 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
+const SMTP_TIMEOUT_MS = 10_000;
+
 @Injectable()
-export class MailService {
-  private transporter: nodemailer.Transporter;
+export class MailService implements OnModuleInit {
+  private readonly logger = new Logger(MailService.name);
+  private transporter: nodemailer.Transporter | null = null;
+  private readonly smtpLabel: string;
 
   constructor(private configService: ConfigService) {
-    const host = this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com');
-    const port = Number(this.configService.get<number>('SMTP_PORT', 465));
+    const rawHost = this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com');
+    const host = rawHost.includes('gmail') ? 'smtp.gmail.com' : rawHost;
+    // 465 dogrudan TLS, 587 (ve digerleri) STARTTLS ile baglanir.
+    const port = Number(this.configService.get<string>('SMTP_PORT', '465'));
     const user = this.configService.get<string>('SMTP_USER');
     const pass = this.configService.get<string>('SMTP_PASS');
+    this.smtpLabel = `${host}:${port}`;
 
-    this.transporter = nodemailer.createTransport({
-      host: host.includes('gmail') ? 'smtp.gmail.com' : host,
-      port: 465,
-      secure: true,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false },
-    });
+    if (user && pass) {
+      this.transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+        connectionTimeout: SMTP_TIMEOUT_MS,
+      });
+    }
   }
 
+  /** Acilista SMTP ayarlarini dener; yanlissa e-postalar gitmeden once logda gorunur. */
+  onModuleInit() {
+    const hasResend = Boolean(this.configService.get<string>('RESEND_API_KEY'));
+    if (!this.transporter) {
+      if (!hasResend) {
+        this.logger.warn('SMTP_USER/SMTP_PASS ve RESEND_API_KEY tanimli degil: e-posta gonderilemez.');
+      }
+      return;
+    }
+    // Acilisi bekletmemek icin sonucu arka planda loglar.
+    this.transporter
+      .verify()
+      .then(() => this.logger.log(`SMTP baglantisi hazir (${this.smtpLabel}).`))
+      .catch((error: unknown) =>
+        this.logger.error(
+          `SMTP baglantisi kurulamadi (${this.smtpLabel}): ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+  }
+
+  /** E-postayi Resend ya da SMTP ile gonderir. Hicbiri basaramazsa false doner. */
   private async sendMailWithFallback(
     to: string,
     subject: string,
@@ -29,7 +59,7 @@ export class MailService {
   ): Promise<boolean> {
     const resendKey = this.configService.get<string>('RESEND_API_KEY');
 
-    // 1. Resend HTTPS API (Port 443 - Cloud friendly)
+    // 1. Resend HTTPS API (443 portu; SMTP'yi engelleyen bulut ortamlari icin)
     if (resendKey) {
       try {
         const response = await fetch('https://api.resend.com/emails', {
@@ -39,51 +69,45 @@ export class MailService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'StudyLounge <onboarding@resend.dev>',
+            // onboarding@resend.dev yalnizca Resend hesap sahibine gonderebilir;
+            // herkese gondermek icin dogrulanmis bir domain ile RESEND_FROM verilmeli.
+            from: this.configService.get<string>('RESEND_FROM') || 'StudyLounge <onboarding@resend.dev>',
             to: [to],
             subject,
             html,
           }),
         });
         if (response.ok) {
-          console.log(`[MailService] Resend HTTPS API ile e-posta gönderildi: ${to}`);
+          this.logger.log(`Resend ile e-posta gonderildi: ${to}`);
           return true;
         }
+        this.logger.error(`Resend e-postayi reddetti (${response.status}): ${await response.text()}`);
       } catch (err) {
-        console.error('[MailService] Resend HTTPS API hatası:', err);
+        this.logger.error(`Resend hatasi: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 
-    // 2. Nodemailer SMTP (5 saniye zamanaşımı korumalı)
-    const from =
-      this.configService.get<string>('SMTP_FROM') ||
-      '"StudyLounge" <iamenesilbay@gmail.com>';
-
-    const mailOptions = { from, to, subject, html };
-
-    try {
-      const sendPromise = this.transporter.sendMail(mailOptions);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP_TIMEOUT')), 5000),
-      );
-
-      const info = (await Promise.race([sendPromise, timeoutPromise])) as Record<
-        string,
-        any
-      >;
-      console.log(
-        `[MailService] SMTP E-posta gönderildi: ${String(info.messageId)} (${to})`,
-      );
-      return true;
-    } catch (error: any) {
-      console.error(
-        `[MailService] E-posta gönderilemedi (${to}):`,
-        error.message || error,
-      );
-      console.log(`[MailService] KOD (FALLBACK LOG): ${token} -> ${to}`);
-      // Bulut SMTP blokajında kullanıcının akışının kesilmemesi için true dönüyoruz
-      return true;
+    // 2. SMTP
+    if (this.transporter) {
+      const from =
+        this.configService.get<string>('SMTP_FROM') ||
+        `"StudyLounge" <${this.configService.get<string>('SMTP_USER')}>`;
+      try {
+        const info = (await this.transporter.sendMail({ from, to, subject, html })) as { messageId?: string };
+        this.logger.log(`SMTP ile e-posta gonderildi: ${String(info.messageId)} (${to})`);
+        return true;
+      } catch (error) {
+        this.logger.error(
+          `SMTP ile e-posta gonderilemedi (${to}): ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
+
+    // Gelistirmede e-posta ayari olmadan da test edilebilsin diye kod loga yazilir.
+    if (this.configService.get<string>('NODE_ENV') !== 'production') {
+      this.logger.warn(`[GELISTIRME] Gonderilemeyen kod: ${token} -> ${to}`);
+    }
+    return false;
   }
 
   async sendVerificationEmail(email: string, token: string) {

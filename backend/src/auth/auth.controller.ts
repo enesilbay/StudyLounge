@@ -32,6 +32,12 @@ export class AuthController {
   }
 
   @Throttle({ default: { limit: 3, ttl: MINUTE } })
+  @Post('resend-verification')
+  async resendVerification(@Body() body: ForgotPasswordDto) {
+    return this.authService.resendVerification(body.email);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: MINUTE } })
   @Post('forgot-password')
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.forgotPassword(body.email);

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from '../mail/mail.service';
@@ -6,6 +6,9 @@ import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { JwtPayload } from './jwt-payload.interface';
 import { RegisterDto } from './dto/register.dto';
+
+const MAIL_FAILED_MESSAGE =
+  'Doğrulama e-postası şu an gönderilemedi. Birkaç dakika sonra "Kodu tekrar gönder" ile yeniden dene.';
 
 /** 6 haneli, kriptografik olarak rastgele dogrulama kodu. */
 function generateCode(): string {
@@ -39,13 +42,15 @@ export class AuthService {
         token = generateCode();
         await this.usersService.updateVerificationToken(user.id, token);
       }
-      await this.mailService.sendVerificationEmail(user.email, token);
+      const mailSent = await this.mailService.sendVerificationEmail(user.email, token);
       return {
         success: false,
         requiresVerification: true,
         email: user.email,
-        message:
-          'Hesabınız henüz doğrulanmamış. Yeni doğrulama kodu e-postanıza gönderildi.',
+        mailSent,
+        message: mailSent
+          ? 'Hesabınız henüz doğrulanmamış. Yeni doğrulama kodu e-postanıza gönderildi.'
+          : `Hesabınız henüz doğrulanmamış. ${MAIL_FAILED_MESSAGE}`,
       };
     }
 
@@ -73,15 +78,40 @@ export class AuthService {
       await this.usersService.updateVerificationToken(user.id, token);
     }
 
-    await this.mailService.sendVerificationEmail(user.email, token);
+    const mailSent = await this.mailService.sendVerificationEmail(user.email, token);
 
     return {
       success: true,
       requiresVerification: true,
       email: user.email,
-      message:
-        'Kayıt başarılı! Lütfen e-postanıza gönderilen 6 haneli doğrulama kodunu girin.',
+      mailSent,
+      message: mailSent
+        ? 'Kayıt başarılı! Lütfen e-postanıza gönderilen 6 haneli doğrulama kodunu girin.'
+        : `Hesabın oluşturuldu. ${MAIL_FAILED_MESSAGE}`,
     };
+  }
+
+  /** Dogrulanmamis hesaba kodu yeniden gonderir. Hesabin varligini disari sizdirmaz. */
+  async resendVerification(email: string) {
+    const genericResponse = {
+      success: true,
+      message: 'Hesap doğrulama bekliyorsa yeni kod e-postana gönderildi.',
+    };
+    const user = await this.usersService.findByEmailWithSecrets(email);
+    if (!user || user.isEmailVerified) {
+      return genericResponse;
+    }
+
+    let token = user.emailVerificationToken;
+    if (!token) {
+      token = generateCode();
+      await this.usersService.updateVerificationToken(user.id, token);
+    }
+    const mailSent = await this.mailService.sendVerificationEmail(user.email, token);
+    if (!mailSent) {
+      throw new ServiceUnavailableException(MAIL_FAILED_MESSAGE);
+    }
+    return genericResponse;
   }
 
   async verifyEmail(email: string, token: string) {
@@ -129,7 +159,7 @@ export class AuthService {
     await this.usersService.updateResetToken(user.id, token, expiry);
     const sent = await this.mailService.sendResetPasswordEmail(email, token);
     if (!sent) {
-      throw new UnauthorizedException('E-posta gönderilemedi, lütfen SMTP ayarlarınızı kontrol edin veya tekrar deneyin.');
+      throw new ServiceUnavailableException('Sıfırlama e-postası şu an gönderilemedi. Birkaç dakika sonra tekrar dene.');
     }
 
     return {

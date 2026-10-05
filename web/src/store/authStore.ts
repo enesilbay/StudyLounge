@@ -14,6 +14,13 @@ interface RegisterPayload {
 export interface LoginResult {
   requiresVerification: boolean;
   message?: string;
+  /** Doğrulama e-postası gönderilebildi mi (yalnız `requiresVerification` iken anlamlı). */
+  mailSent?: boolean;
+}
+
+export interface RegisterResult {
+  message?: string;
+  mailSent: boolean;
 }
 
 interface AuthState {
@@ -27,7 +34,7 @@ interface AuthState {
   /** Hesap e-posta doğrulaması bekliyorsa token kaydedilmez, `requiresVerification` döner. */
   loginWithCredentials: (email: string, password: string) => Promise<LoginResult>;
   verifyEmail: (email: string, code: string) => Promise<void>;
-  registerWithCredentials: (payload: RegisterPayload) => Promise<void>;
+  registerWithCredentials: (payload: RegisterPayload) => Promise<RegisterResult>;
   setUser: (user: User) => void;
   refreshUser: () => Promise<User | null>;
   clearError: () => void;
@@ -58,11 +65,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithCredentials: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post<AuthEnvelope<User> & { requiresVerification?: boolean; message?: string }>('/auth/login', { email, password });
-      const { user, access_token: token, requiresVerification, message } = response.data;
+      const response = await api.post<AuthEnvelope<User> & { requiresVerification?: boolean; message?: string; mailSent?: boolean }>('/auth/login', { email, password });
+      const { user, access_token: token, requiresVerification, message, mailSent } = response.data;
       if (requiresVerification || !token) {
         set({ isLoading: false, error: null });
-        return { requiresVerification: true, message };
+        return { requiresVerification: true, message, mailSent: mailSent !== false };
       }
       localStorage.setItem('access_token', token);
       localStorage.setItem('user_data', JSON.stringify(user));
@@ -89,8 +96,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   registerWithCredentials: async (payload) => {
     set({ isLoading: true, error: null });
     try {
-      await api.post<AuthEnvelope<User>>('/auth/register', payload);
+      const response = await api.post<{ message?: string; mailSent?: boolean }>('/auth/register', payload);
       set({ isLoading: false, error: null });
+      // Eski backend mailSent döndürmez; o durumda gönderildi sayılır.
+      return { message: response.data?.message, mailSent: response.data?.mailSent !== false };
     } catch (error) {
       set({ isLoading: false, error: getApiErrorMessage(error) });
       throw error;

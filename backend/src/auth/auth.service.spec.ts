@@ -98,6 +98,7 @@ describe('AuthService', () => {
       success: true,
       requiresVerification: true,
       email: 'ada@example.com',
+      mailSent: true,
       message:
         'Kayıt başarılı! Lütfen e-postanıza gönderilen 6 haneli doğrulama kodunu girin.',
     });
@@ -150,6 +151,39 @@ describe('AuthService', () => {
     usersService.registerFailedCodeAttempt.mockResolvedValue(true);
 
     await expect(service.verifyEmail('ada@example.com', '000000')).rejects.toThrow('yeni bir kod iste');
+  });
+
+  it('tells the user when the verification email could not be sent', async () => {
+    usersService.create.mockResolvedValue({ ...user, emailVerificationToken: '123456' });
+    mailService.sendVerificationEmail.mockResolvedValue(false);
+
+    const result = await service.register({
+      username: 'ada',
+      fullName: 'Ada Lovelace',
+      email: 'ada@example.com',
+      password: 'secret123',
+    });
+
+    expect(result.mailSent).toBe(false);
+    expect(result.message).toContain('Kodu tekrar gönder');
+  });
+
+  it('does not resend a code to an already verified account', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({ ...user, isEmailVerified: true });
+
+    await expect(service.resendVerification('ada@example.com')).resolves.toMatchObject({ success: true });
+    expect(mailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('resends the pending code to an unverified account', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      isEmailVerified: false,
+      emailVerificationToken: '654321',
+    });
+
+    await service.resendVerification('ada@example.com');
+    expect(mailService.sendVerificationEmail).toHaveBeenCalledWith('ada@example.com', '654321');
   });
 
   it('rejects invalid login credentials', async () => {

@@ -10,6 +10,9 @@ import { useAuthStore } from '../store/authStore';
 
 type AuthMode = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
 
+/** Aynı adrese art arda kod istenmesin diye "Kodu tekrar gönder" bu kadar bekletilir. */
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export default function AuthPage() {
   const navigate = useNavigate();
   const { loginWithCredentials, registerWithCredentials, verifyEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
@@ -23,7 +26,22 @@ export default function AuthPage() {
   const [newPassword, setNewPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<'success' | 'danger'>('success');
   const [localLoading, setLocalLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  // E-posta gittiyse yeşil bilgi ve bekleme süresi; gitmediyse kırmızı uyarı (hemen tekrar denenebilir).
+  const showMailStatus = (message: string, mailSent: boolean) => {
+    setStatus(message);
+    setStatusTone(mailSent ? 'success' : 'danger');
+    setCooldown(mailSent ? RESEND_COOLDOWN_SECONDS : 0);
+  };
 
   useEffect(() => {
     if (isAuthenticated) navigate('/app/lobbies', { replace: true });
@@ -50,14 +68,17 @@ export default function AuthPage() {
         const result = await loginWithCredentials(email.trim(), password);
         if (result.requiresVerification) {
           setMode('verify');
-          setStatus(result.message ?? 'Hesabın henüz doğrulanmadı. E-postana yeni bir kod gönderdik.');
+          showMailStatus(result.message ?? 'Hesabın henüz doğrulanmadı. E-postana yeni bir kod gönderdik.', result.mailSent !== false);
           return;
         }
         navigate('/app/lobbies');
       } else if (mode === 'register') {
-        await registerWithCredentials({ fullName: fullName.trim(), username: username.trim(), email: email.trim(), password });
+        const result = await registerWithCredentials({ fullName: fullName.trim(), username: username.trim(), email: email.trim(), password });
         setMode('verify');
-        setStatus(`${email.trim()} adresine 6 haneli bir doğrulama kodu gönderdik.`);
+        showMailStatus(
+          result.mailSent ? `${email.trim()} adresine 6 haneli bir doğrulama kodu gönderdik.` : result.message ?? 'Doğrulama e-postası gönderilemedi.',
+          result.mailSent,
+        );
       } else if (mode === 'verify') {
         if (!/^\d{6}$/.test(verifyCode.trim())) return setLocalError('Kod 6 rakamdan oluşur.');
         await verifyEmail(email.trim(), verifyCode.trim());
@@ -66,13 +87,14 @@ export default function AuthPage() {
         if (!email.trim()) return setLocalError('E-posta adresini gir.');
         setLocalLoading(true);
         const response = await api.post('/auth/forgot-password', { email: email.trim() });
-        setStatus(response.data?.message ?? 'Sıfırlama kodu gönderildi.');
+        showMailStatus(response.data?.message ?? 'Sıfırlama kodu gönderildi.', true);
         setMode('reset');
       } else {
         if (!email.trim() || !resetToken.trim() || !newPassword) return setLocalError('E-posta, kod ve yeni şifre alanlarını doldur.');
         setLocalLoading(true);
         const response = await api.post('/auth/reset-password', { email: email.trim(), token: resetToken.trim(), newPass: newPassword });
         setStatus(response.data?.message ?? 'Şifren güncellendi. Giriş yapabilirsin.');
+        setStatusTone('success');
         setMode('login');
         setPassword('');
         setResetToken('');
@@ -80,6 +102,23 @@ export default function AuthPage() {
       }
     } catch (submitError) {
       setLocalError(getApiErrorMessage(submitError));
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  // Doğrulama ekranında doğrulama kodunu, şifre sıfırlamada sıfırlama kodunu yeniden ister.
+  const resendCode = async () => {
+    if (cooldown > 0 || !email.trim()) return;
+    setLocalError(null);
+    setStatus(null);
+    setLocalLoading(true);
+    try {
+      const endpoint = mode === 'reset' ? '/auth/forgot-password' : '/auth/resend-verification';
+      const response = await api.post(endpoint, { email: email.trim() });
+      showMailStatus(response.data?.message ?? 'Yeni kod gönderildi.', true);
+    } catch (resendError) {
+      setLocalError(getApiErrorMessage(resendError));
     } finally {
       setLocalLoading(false);
     }
@@ -188,11 +227,21 @@ export default function AuthPage() {
               </button>
             ) : null}
             {visibleError ? <Notice tone="danger">{visibleError}</Notice> : null}
-            {status ? <Notice tone="success">{status}</Notice> : null}
+            {status ? <Notice tone={statusTone}>{status}</Notice> : null}
             <Button type="submit" size="lg" loading={busy} className="w-full">
               {ctaForMode(mode)}
             </Button>
           </form>
+          {mode === 'verify' || mode === 'reset' ? (
+            <button
+              type="button"
+              onClick={() => void resendCode()}
+              disabled={busy || cooldown > 0}
+              className="mt-4 w-full text-center text-sm font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-textMuted disabled:no-underline"
+            >
+              {cooldown > 0 ? `Kodu tekrar gönder (${cooldown} sn)` : 'Kodu tekrar gönder'}
+            </button>
+          ) : null}
           {mode === 'forgot' || mode === 'reset' || mode === 'verify' ? (
             <button onClick={() => switchMode('login')} className="mt-4 w-full text-center text-sm font-semibold text-textMuted hover:text-textDark">
               Girişe dön
