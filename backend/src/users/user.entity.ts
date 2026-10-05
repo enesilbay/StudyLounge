@@ -93,4 +93,11 @@ export class User {
 
   @Column({ default: 'none' })
   equippedProfileFrame: string;
+
+  // ── HEDEFLER (0 = kapalı) ──
+  @Column({ default: 0 })
+  dailyGoalMinutes: number;
+
+  @Column({ default: 0 })
+  weeklyGoalMinutes: number;
 }

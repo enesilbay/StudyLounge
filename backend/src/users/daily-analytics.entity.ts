@@ -15,6 +15,10 @@ export class DailyAnalytics {
   @Column({ type: 'jsonb', nullable: true })
   hourlyDistribution: number[];
 
+  /** Günlük hedef bonusu bu gün için verildi mi (günde bir kez). */
+  @Column({ default: false })
+  goalRewarded: boolean;
+
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: User;
 }
