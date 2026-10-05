@@ -12,6 +12,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
 import { Lobby } from './lobbies/lobby.entity';
+import { LobbyAccess } from './lobbies/lobby-access.entity';
 import { MailModule } from './mail/mail.module';
 import { MessagesModule } from './messages/messages.module';
 import { Message } from './messages/message.entity';
@@ -65,6 +66,7 @@ import { RoomTimerModule } from './room-timer/room-timer.module';
           entities: [
             User,
             Lobby,
+            LobbyAccess,
             Friendship,
             DailyAnalytics,
             Message,

@@ -9,6 +9,7 @@ import { Repository, LessThan } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { CreateLobbyDto } from './dto/create-lobby.dto';
 import { Lobby } from './lobby.entity';
+import { LobbyAccess } from './lobby-access.entity';
 import * as bcrypt from 'bcrypt';
 
 // P2P mesh WebRTC'de her katilimci digerlerine ayri baglanti actigi icin
@@ -20,6 +21,8 @@ export class LobbiesService {
   constructor(
     @InjectRepository(Lobby)
     private lobbiesRepository: Repository<Lobby>,
+    @InjectRepository(LobbyAccess)
+    private lobbyAccessRepository: Repository<LobbyAccess>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -114,7 +117,32 @@ export class LobbiesService {
       throw new UnauthorizedException('Sifre hatali.');
     }
 
+    // Sifreyi bilen kullanici odaya (ve sohbet gecmisine) girebilir.
+    await this.lobbyAccessRepository
+      .createQueryBuilder()
+      .insert()
+      .values({ lobby: { id: lobby.id }, user: { id: userId } })
+      .orIgnore()
+      .execute();
+
     return { success: true };
+  }
+
+  /**
+   * Sifreli odalara yalnizca oda sahibi ve sifreyi dogru girmis kullanicilar erisir.
+   * Kaydi olmayan oda adlari (eski/silinmis odalar) icin erisim engellenmez.
+   */
+  async canAccessRoom(lobbyName: string, userId: number): Promise<boolean> {
+    const lobby = await this.lobbiesRepository.findOne({
+      where: { name: lobbyName },
+      relations: { owner: true },
+    });
+    if (!lobby || !lobby.isPrivate) return true;
+    if (lobby.owner?.id === userId) return true;
+
+    return this.lobbyAccessRepository.exists({
+      where: { lobby: { id: lobby.id }, user: { id: userId } },
+    });
   }
 
   async assertUserCanEnter(lobbyName: string, userId: number): Promise<Lobby> {
@@ -128,6 +156,10 @@ export class LobbiesService {
       if (!user?.isPremium) {
         throw new UnauthorizedException('Bu lobi premium kullanicilara ozel.');
       }
+    }
+
+    if (lobby.isPrivate && !(await this.canAccessRoom(lobbyName, userId))) {
+      throw new UnauthorizedException('Bu oda sifreli. Once sifreyi gir.');
     }
 
     return lobby;

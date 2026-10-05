@@ -8,6 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { Lobby } from './lobby.entity';
+import { LobbyAccess } from './lobby-access.entity';
 import { LobbiesService, MAX_VIDEO_ROOM_USERS } from './lobbies.service';
 
 describe('LobbiesService', () => {
@@ -20,6 +21,8 @@ describe('LobbiesService', () => {
     save: jest.Mock;
   };
   let usersService: { findById: jest.Mock };
+  let lobbyAccessRepository: { createQueryBuilder: jest.Mock; exists: jest.Mock };
+  let accessInsert: { execute: jest.Mock };
 
   beforeEach(async () => {
     lobbiesRepository = {
@@ -30,11 +33,22 @@ describe('LobbiesService', () => {
       save: jest.fn(),
     };
     usersService = { findById: jest.fn() };
+    accessInsert = { execute: jest.fn().mockResolvedValue(undefined) };
+    const insertChain = {
+      insert: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      orIgnore: jest.fn().mockReturnValue(accessInsert),
+    };
+    lobbyAccessRepository = {
+      createQueryBuilder: jest.fn().mockReturnValue(insertChain),
+      exists: jest.fn().mockResolvedValue(false),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LobbiesService,
         { provide: getRepositoryToken(Lobby), useValue: lobbiesRepository },
+        { provide: getRepositoryToken(LobbyAccess), useValue: lobbyAccessRepository },
         { provide: UsersService, useValue: usersService },
       ],
     }).compile();
@@ -85,6 +99,42 @@ describe('LobbiesService', () => {
 
     await expect(service.verifyPassword(1, 'room-secret', 3)).resolves.toEqual({
       success: true,
+    });
+    // Dogru sifre, odaya kalici giris izni yazar.
+    expect(accessInsert.execute).toHaveBeenCalled();
+  });
+
+  it('does not grant access with a wrong password', async () => {
+    const passwordHash = await bcrypt.hash('room-secret', 10);
+    mockLobbyQuery({ id: 1, isPrivate: true, isPremiumOnly: false, passwordHash } as Lobby);
+
+    await expect(service.verifyPassword(1, 'wrong', 3)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(accessInsert.execute).not.toHaveBeenCalled();
+  });
+
+  describe('private room access', () => {
+    const privateLobby = { id: 5, name: 'Gizli', isPrivate: true, isPremiumOnly: false, owner: { id: 1 } } as Lobby;
+
+    it('refuses to enter a private room without a granted password', async () => {
+      lobbiesRepository.findOne.mockResolvedValue(privateLobby);
+
+      await expect(service.assertUserCanEnter('Gizli', 3)).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('lets users with a grant and the owner in', async () => {
+      lobbiesRepository.findOne.mockResolvedValue(privateLobby);
+      await expect(service.canAccessRoom('Gizli', 1)).resolves.toBe(true);
+
+      lobbyAccessRepository.exists.mockResolvedValue(true);
+      await expect(service.assertUserCanEnter('Gizli', 3)).resolves.toBe(privateLobby);
+    });
+
+    it('allows public and unknown rooms', async () => {
+      lobbiesRepository.findOne.mockResolvedValue({ ...privateLobby, isPrivate: false });
+      await expect(service.canAccessRoom('Acik', 3)).resolves.toBe(true);
+
+      lobbiesRepository.findOne.mockResolvedValue(null);
+      await expect(service.canAccessRoom('Yok', 3)).resolves.toBe(true);
     });
   });
 

@@ -3,6 +3,7 @@ import './config/pg-utc';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Lobby } from './lobbies/lobby.entity';
+import { LobbyAccess } from './lobbies/lobby-access.entity';
 import { Message } from './messages/message.entity';
 import { DirectMessage } from './messages/direct-message.entity';
 import { DailyAnalytics } from './users/daily-analytics.entity';
@@ -45,7 +46,7 @@ export default new DataSource({
   password: process.env.DB_PASSWORD ?? 'studylounge_secret',
   database: process.env.DB_NAME ?? 'studylounge',
   ssl: dbSsl ? { rejectUnauthorized: false } : false,
-  entities: [User, Lobby, Friendship, DailyAnalytics, Message, DirectMessage],
+  entities: [User, Lobby, LobbyAccess, Friendship, DailyAnalytics, Message, DirectMessage],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 });

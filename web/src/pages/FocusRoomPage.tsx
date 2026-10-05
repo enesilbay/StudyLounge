@@ -196,6 +196,8 @@ export default function FocusRoomPage() {
       setNotice(payload.winner ? `Düelloyu kazandın, ${payload.betAmount * 2} puan hesabına eklendi.` : `Düelloyu ${payload.opponentName ?? 'rakibin'} kazandı.`);
       void refreshUser();
     };
+    const handleDuelDeclined = () => setNotice('Düello davetin reddedildi.');
+    const handleDuelExpired = () => setNotice('Düello davetin yanıtlanmadığı için düştü.');
     const handleSocketError = (payload: { message?: string }) => setError(payload.message ?? 'İşlem tamamlanamadı.');
     const handleJoinError = (payload: { message?: string }) => setError(payload.message ?? 'Odaya katılamadın.');
 
@@ -215,6 +217,8 @@ export default function FocusRoomPage() {
     socket.on('duel_received', handleDuelReceived);
     socket.on('duel_started', handleDuelStarted);
     socket.on('duel_ended', handleDuelEnded);
+    socket.on('duel_declined', handleDuelDeclined);
+    socket.on('duel_expired', handleDuelExpired);
     socket.on('error', handleSocketError);
     socket.on('join_lobby_error', handleJoinError);
     socket.emit('join_lobby', { roomName, maxUsers: lobby?.maxUsers });
@@ -230,6 +234,8 @@ export default function FocusRoomPage() {
       socket.off('duel_received', handleDuelReceived);
       socket.off('duel_started', handleDuelStarted);
       socket.off('duel_ended', handleDuelEnded);
+      socket.off('duel_declined', handleDuelDeclined);
+      socket.off('duel_expired', handleDuelExpired);
       socket.off('error', handleSocketError);
       socket.off('join_lobby_error', handleJoinError);
       pauseAmbient();
@@ -442,6 +448,12 @@ export default function FocusRoomPage() {
   const acceptDuel = () => {
     if (!pendingDuel) return;
     getSocket().emit('accept_duel', { duelId: pendingDuel.duelId });
+  };
+
+  const declineDuel = () => {
+    if (!pendingDuel) return;
+    getSocket().emit('decline_duel', { duelId: pendingDuel.duelId });
+    setPendingDuel(null);
   };
 
   /* ── Masa listesi: önce sen, sonra odaklananlar ── */
@@ -663,10 +675,13 @@ export default function FocusRoomPage() {
         {notice ? <Notice tone="info" onDismiss={() => setNotice(null)}>{notice}</Notice> : null}
         {activeDuel ? <Notice tone="accent">{activeDuel}</Notice> : null}
         {pendingDuel ? (
-          <Notice tone="accent" onDismiss={() => setPendingDuel(null)}>
+          <Notice tone="accent" onDismiss={declineDuel}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>{pendingDuel.challengerName} seni {pendingDuel.betAmount} puanlık düelloya çağırıyor.</span>
-              <Button size="sm" variant="lamp" onClick={acceptDuel}>Kabul et</Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={declineDuel}>Reddet</Button>
+                <Button size="sm" variant="lamp" onClick={acceptDuel}>Kabul et</Button>
+              </div>
             </div>
           </Notice>
         ) : null}

@@ -87,7 +87,14 @@ interface Duel {
   betAmount: number;
   status: 'pending' | 'active';
   roomName: string;
+  expiresTimer?: ReturnType<typeof setTimeout>;
 }
+
+const MAX_CHAT_MESSAGE_LENGTH = 2000;
+const MIN_DUEL_BET = 1;
+const MAX_DUEL_BET = 100;
+/** Kabul edilmeyen duello daveti bu sureden sonra duser. */
+const DUEL_INVITE_TTL_MS = 60_000;
 
 @WebSocketGateway({
   cors: { origin: process.env.CORS_ORIGIN?.split(',') ?? '*' },
@@ -394,7 +401,16 @@ export class SensorsGateway
 
     const data = this.parsePayload(payload);
     const connectedUser = this.connectedUsers.get(client.id);
-    const fullName = connectedUser?.fullName ?? socketUser.username;
+    // Yalnizca bu sokette join_lobby ile girilmis odaya mesaj yazilabilir.
+    if (!connectedUser || connectedUser.roomName !== data?.roomName) {
+      client.emit('error', { message: 'Mesaj gondermek icin once odaya katilmalisin.' });
+      return;
+    }
+    if (typeof data.text !== 'string' || data.text.length > MAX_CHAT_MESSAGE_LENGTH) {
+      client.emit('error', { message: 'Mesaj gecersiz ya da cok uzun.' });
+      return;
+    }
+    const fullName = connectedUser.fullName;
 
     console.log(`[Chat - ${data.roomName}] ${fullName}: ${data.text}`);
 
@@ -645,33 +661,69 @@ export class SensorsGateway
     if (!socketUser) return;
 
     const data = this.parsePayload(payload) as { targetUserId: number; betAmount: number; roomName: string };
-    
+    const betAmount = Number(data?.betAmount);
+    if (!Number.isInteger(betAmount) || betAmount < MIN_DUEL_BET || betAmount > MAX_DUEL_BET) {
+      client.emit('error', { message: `Bahis ${MIN_DUEL_BET} ile ${MAX_DUEL_BET} puan arasinda olmali.` });
+      return;
+    }
+
+    // Duello yalnizca ayni odadaki baska bir kullaniciya acilabilir.
+    const challengerInRoom = this.connectedUsers.get(client.id);
+    const targetSocketId = Array.from(this.connectedUsers.entries()).find(
+      ([, u]) => u.userId === data.targetUserId && u.roomName === challengerInRoom?.roomName,
+    )?.[0];
+    if (!challengerInRoom || data.targetUserId === socketUser.sub || !targetSocketId) {
+      client.emit('error', { message: 'Rakip bu odada degil.' });
+      return;
+    }
+
     const challenger = await this.usersService.findById(socketUser.sub);
-    if (!challenger || challenger.coins < data.betAmount) {
+    if (!challenger || challenger.coins < betAmount) {
       client.emit('error', { message: 'Yetersiz bakiye!' });
       return;
     }
 
     const duelId = `duel_${Date.now()}_${Math.random()}`;
-    this.duels.set(duelId, {
+    const duel: Duel = {
       id: duelId,
       challengerId: socketUser.sub,
       challengedId: data.targetUserId,
-      betAmount: data.betAmount,
+      betAmount,
       status: 'pending',
-      roomName: data.roomName,
-    });
+      roomName: challengerInRoom.roomName,
+    };
+    duel.expiresTimer = setTimeout(() => this.dropPendingDuel(duelId, 'duel_expired'), DUEL_INVITE_TTL_MS);
+    this.duels.set(duelId, duel);
 
-    for (const [socketId, user] of this.connectedUsers.entries()) {
-      if (user.userId === data.targetUserId) {
-        this.server.to(socketId).emit('duel_received', {
-          duelId,
-          challengerName: challenger.fullName,
-          betAmount: data.betAmount,
-        });
-        break;
-      }
+    this.server.to(targetSocketId).emit('duel_received', {
+      duelId,
+      challengerName: challenger.fullName,
+      betAmount,
+    });
+  }
+
+  /** Bekleyen daveti kaldirir ve meydan okuyana bildirir (istege bagli event; eski istemciler yok sayar). */
+  private dropPendingDuel(duelId: string, event: 'duel_expired' | 'duel_declined') {
+    const duel = this.duels.get(duelId);
+    if (!duel || duel.status !== 'pending') return;
+    clearTimeout(duel.expiresTimer);
+    this.duels.delete(duelId);
+    for (const socketId of this.userSockets.get(duel.challengerId) ?? []) {
+      this.server.to(socketId).emit(event, { duelId });
     }
+  }
+
+  @SubscribeMessage('decline_duel')
+  handleDeclineDuel(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { duelId: string } | string,
+  ) {
+    const socketUser = this.getSocketUser(client);
+    if (!socketUser) return;
+    const data = this.parsePayload(payload) as { duelId: string };
+    const duel = this.duels.get(data?.duelId);
+    if (duel?.challengedId !== socketUser.sub) return;
+    this.dropPendingDuel(duel.id, 'duel_declined');
   }
 
   @SubscribeMessage('accept_duel')
@@ -689,9 +741,12 @@ export class SensorsGateway
       client.emit('error', { message: 'Geçersiz düello isteği!' });
       return;
     }
+    // Kabul sureci baslarken zaman asimi durdurulur; bakiye kontrolu basarisiz olursa davet duser.
+    clearTimeout(duel.expiresTimer);
 
     const challenged = await this.usersService.findById(socketUser.sub);
     if (!challenged || challenged.coins < duel.betAmount) {
+      this.duels.delete(duel.id);
       client.emit('error', { message: 'Yetersiz bakiye!' });
       return;
     }

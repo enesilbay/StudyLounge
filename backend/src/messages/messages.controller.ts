@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   MaxFileSizeValidator,
   Param,
@@ -17,6 +18,7 @@ import { unlink } from 'fs/promises';
 import { extname } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LobbiesService } from '../lobbies/lobbies.service';
 import { User } from '../users/user.entity';
 import { CreateDirectMessageDto } from './dto/create-direct-message.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -38,10 +40,20 @@ function isPdf(file: Express.Multer.File) {
 @UseGuards(JwtAuthGuard)
 @Controller('messages')
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(
+    private readonly messagesService: MessagesService,
+    private readonly lobbiesService: LobbiesService,
+  ) {}
+
+  private async assertRoomAccess(roomName: string, userId: number) {
+    if (!(await this.lobbiesService.canAccessRoom(roomName, userId))) {
+      throw new ForbiddenException('Bu odanin sohbetine erisimin yok.');
+    }
+  }
 
   @Post()
   async send(@CurrentUser() user: User, @Body() body: CreateMessageDto) {
+    await this.assertRoomAccess(body.roomName, user.id);
     return await this.messagesService.createMessage(
       body.text,
       body.roomName,
@@ -77,6 +89,11 @@ export class MessagesController {
     file: Express.Multer.File,
     @Body() body: UploadMessageFileDto,
   ) {
+    if (!(await this.lobbiesService.canAccessRoom(body.roomName, user.id))) {
+      await unlink(file.path).catch(() => undefined);
+      throw new ForbiddenException('Bu odanin sohbetine erisimin yok.');
+    }
+
     if (!isPdf(file) && file.size > MAX_FILE_BYTES) {
       await unlink(file.path).catch(() => undefined);
       throw new BadRequestException(
@@ -124,7 +141,8 @@ export class MessagesController {
   }
 
   @Get(':roomName')
-  async getMessages(@Param('roomName') roomName: string) {
+  async getMessages(@CurrentUser() user: User, @Param('roomName') roomName: string) {
+    await this.assertRoomAccess(roomName, user.id);
     return await this.messagesService.getRoomMessages(roomName);
   }
 }
