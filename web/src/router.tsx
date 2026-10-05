@@ -87,6 +87,14 @@ const router = createBrowserRouter([
         lazy: page(() => import('./pages/SettingsPage')),
       },
       {
+        path: 'u/:userId',
+        lazy: page(() => import('./pages/UserProfilePage')),
+      },
+      {
+        path: 'admin',
+        lazy: page(() => import('./pages/AdminPage')),
+      },
+      {
         path: '*',
         element: <NotFoundPage inApp />,
       },

@@ -100,4 +100,17 @@ export class User {
 
   @Column({ default: 0 })
   weeklyGoalMinutes: number;
+
+  // ── MODERASYON ──
+  /** 'user' | 'admin'. Admin şikayetleri inceler, susturur ve yasaklar. */
+  @Column({ length: 10, default: 'user' })
+  role: string;
+
+  /** Bu zamana kadar oda sohbetine ve DM'e yazamaz. */
+  @Column({ type: 'timestamptz', nullable: true })
+  mutedUntil: Date | null;
+
+  /** Doluysa hesap askıda: giriş yapamaz, socket bağlantısı reddedilir. */
+  @Column({ type: 'timestamptz', nullable: true })
+  bannedAt: Date | null;
 }

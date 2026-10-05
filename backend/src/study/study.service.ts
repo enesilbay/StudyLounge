@@ -5,6 +5,7 @@ import { DailyAnalytics } from '../users/daily-analytics.entity';
 import { User } from '../users/user.entity';
 import { CreateSubjectDto, UpdateGoalsDto, UpdateSubjectDto } from './dto/study.dto';
 import { StudySession } from './study-session.entity';
+import { localDayKey, localWeekStartKey } from '../config/time';
 import { Subject } from './subject.entity';
 
 const MAX_SUBJECTS = 30;
@@ -12,16 +13,11 @@ const MAX_SUBJECTS = 30;
 export const DAILY_GOAL_BONUS = 25;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** `daily_analytics.date` ile aynı gün anahtarı (UTC, YYYY-AA-GG). */
-export function dayKey(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
+/** `daily_analytics.date` ile aynı gün anahtarı (Türkiye saati, YYYY-AA-GG). */
+export const dayKey = localDayKey;
 
-/** İçinde bulunulan haftanın pazartesisi (UTC gün anahtarı). */
-export function weekStartKey(date: Date): string {
-  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
-  return dayKey(new Date(date.getTime() - daysSinceMonday * DAY_MS));
-}
+/** İçinde bulunulan haftanın pazartesisi (Türkiye saati). */
+export const weekStartKey = localWeekStartKey;
 
 export interface RecordSessionInput {
   userId: number;
@@ -183,6 +179,21 @@ export class StudyService {
       })),
       daily: dailyRows.map((row) => ({ date: row.date, minutes: row.focusMinutes })),
     };
+  }
+
+  /** Bir derste toplam odak dakikası (Ders Ustası rozeti için). */
+  async subjectMinutes(userId: number, subjectId: number): Promise<number> {
+    const row = await this.sessions
+      .createQueryBuilder('session')
+      .select('COALESCE(SUM(session.minutes), 0)', 'minutes')
+      .where('session.userId = :userId AND session.subjectId = :subjectId', { userId, subjectId })
+      .getRawOne<{ minutes: string }>();
+    return Number(row?.minutes ?? 0);
+  }
+
+  /** Günlük hedefin tutulduğu gün sayısı (Hedef Avcısı rozeti için). */
+  countGoalDays(userId: number): Promise<number> {
+    return this.dailyAnalytics.count({ where: { user: { id: userId }, goalRewarded: true } });
   }
 
   // ── HEDEFLER ──

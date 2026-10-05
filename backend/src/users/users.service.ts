@@ -12,6 +12,8 @@ import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { SHOP_CATALOG, findShopItem } from './shop-catalog';
+import { BADGES, focusBadges } from './badges';
+import { addDaysToKey, daysBetweenKeys, localDayKey, localHour, localWeekStartKey } from '../config/time';
 import type { ShopItemType } from './shop-catalog';
 
 /** Dogrulama / sifirlama kodu bu kadar yanlis denemeden sonra gecersiz olur. */
@@ -168,6 +170,11 @@ export class UsersService implements OnModuleInit {
   }
 
   // ── KULLANICI BUL (E-POSTA İLE) ──
+  async findIdByUsername(username: string): Promise<number | null> {
+    const user = await this.usersRepository.findOne({ where: { username }, select: { id: true } });
+    return user?.id ?? null;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
   }
@@ -230,22 +237,16 @@ export class UsersService implements OnModuleInit {
     if (user) {
       user.totalFocusMinutes = (user.totalFocusMinutes || 0) + minutes;
 
-      // STREAK HESAPLAMASI
+      // SERİ: günler Türkiye saatine göre sayılır; dün çalıştıysa seri sürer, bir gün atlanırsa sıfırlanır.
       const now = new Date();
-      const todayString = now.toISOString().split('T')[0];
-      const currentHour = now.getHours();
+      const todayString = localDayKey(now);
+      const currentHour = localHour(now);
 
       let streakMultiplier = 0;
       if (user.lastFocusDate) {
-        const lastFocusString = user.lastFocusDate.toISOString().split('T')[0];
-        if (lastFocusString !== todayString) {
-          const diffTime = Math.abs(now.getTime() - user.lastFocusDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-          if (diffDays <= 2) { // Sonraki gün
-            user.currentStreak += 1;
-          } else { // Seri bozuldu
-            user.currentStreak = 1;
-          }
+        const gap = daysBetweenKeys(localDayKey(user.lastFocusDate), todayString);
+        if (gap >= 1) {
+          user.currentStreak = gap === 1 ? (user.currentStreak || 0) + 1 : 1;
           user.lastFocusDate = now;
         }
       } else {
@@ -259,13 +260,19 @@ export class UsersService implements OnModuleInit {
       const earnedCoins = Math.floor(minutes * (1 + streakMultiplier));
       user.coins = (user.coins || 0) + earnedCoins;
 
-      // BAŞARIMLAR (BADGES)
+      // ROZETLER (kurallar badges.ts'de)
       user.badges = this.normalizeBadges(user.badges);
-      if (user.totalFocusMinutes >= 120 && !user.badges.includes('Maratoncu')) {
-        user.badges.push('Maratoncu');
-      }
-      if ((currentHour >= 0 && currentHour <= 5) && minutes >= 60 && !user.badges.includes('Gece Kuşu')) {
-        user.badges.push('Gece Kuşu');
+      const newBadges: string[] = [];
+      for (const badge of focusBadges({
+        totalFocusMinutes: user.totalFocusMinutes,
+        currentStreak: user.currentStreak,
+        sessionMinutes: minutes,
+        endHour: currentHour,
+      })) {
+        if (!user.badges.includes(badge)) {
+          user.badges.push(badge);
+          newBadges.push(badge);
+        }
       }
 
       await this.usersRepository.save(user);
@@ -300,7 +307,8 @@ export class UsersService implements OnModuleInit {
       console.log(
         `${user.fullName} için ${minutes} dakika eklendi. Yeni Toplam: ${user.totalFocusMinutes}`,
       );
-      return user;
+      // Bu oturumda yeni kazanılan rozetler (kaydedilmez; çağıran bildirmek için kullanır).
+      return Object.assign(user, { newBadges });
     }
     return null;
   }
@@ -312,7 +320,7 @@ export class UsersService implements OnModuleInit {
     const pastWeek = new Date(today);
     pastWeek.setDate(pastWeek.getDate() - 6); // Son 7 gün (bugün dahil)
 
-    const dateString = pastWeek.toISOString().split('T')[0];
+    const dateString = localDayKey(pastWeek);
 
     const records = await this.dailyAnalyticsRepository
       .createQueryBuilder('analytics')
@@ -322,6 +330,87 @@ export class UsersService implements OnModuleInit {
       .getMany();
 
     return records;
+  }
+
+  /** Odak dışı olaylarla kazanılan rozeti (düello, hedef, lig) ekler. Yeni kazanıldıysa true. */
+  async awardBadge(userId: number, badge: string): Promise<boolean> {
+    const user = await this.usersRepository.findOne({ where: { id: userId }, select: { id: true, badges: true } });
+    if (!user) return false;
+    const badges = this.normalizeBadges(user.badges);
+    if (badges.includes(badge)) return false;
+    badges.push(badge);
+    await this.usersRepository.update(userId, { badges });
+    return true;
+  }
+
+  getBadgeCatalog() {
+    return BADGES;
+  }
+
+  /** Kullanıcı adı ya da ad soyadla arama (en az 2 karakter). Askıdakiler ve `excludeIds` hariç. */
+  async searchUsers(query: string, excludeIds: number[]) {
+    // LIKE joker karakterleri (% _ \) aramada düz metin sayılsın diye atılır.
+    const term = query.trim().replace(/[%_\\]/g, '');
+    if (term.length < 2) return [];
+    const builder = this.usersRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.username', 'user.fullName', 'user.avatarUrl', 'user.equippedProfileFrame', 'user.isPremium', 'user.isOnline', 'user.totalFocusMinutes'])
+      .where('(user.username ILIKE :prefix OR user.fullName ILIKE :anywhere)', { prefix: `${term}%`, anywhere: `%${term}%` })
+      .andWhere('user.bannedAt IS NULL')
+      .orderBy('user.username', 'ASC')
+      .take(20);
+    if (excludeIds.length) builder.andWhere('user.id NOT IN (:...excludeIds)', { excludeIds });
+    return builder.getMany();
+  }
+
+  /** Başkalarının görebileceği profil (e-posta yok). Bu haftanın dakikası da eklenir. */
+  async getPublicProfile(id: number) {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        avatarUrl: true,
+        equippedProfileFrame: true,
+        equippedIcon: true,
+        isPremium: true,
+        isOnline: true,
+        currentRoom: true,
+        totalFocusMinutes: true,
+        currentStreak: true,
+        bestStreak: true,
+        badges: true,
+        bannedAt: true,
+      },
+    });
+    if (!user || user.bannedAt) return null;
+    const weekStart = localWeekStartKey(new Date());
+    const week = await this.dailyAnalyticsRepository
+      .createQueryBuilder('day')
+      .select('COALESCE(SUM(day.focusMinutes), 0)', 'minutes')
+      .where('day.userId = :id', { id })
+      .andWhere('day.date BETWEEN :start AND :end', { start: weekStart, end: addDaysToKey(weekStart, 6) })
+      .getRawOne<{ minutes: string }>();
+    const { bannedAt: _bannedAt, ...publicUser } = user;
+    return { ...publicUser, badges: this.getVisibleBadges(user), weekMinutes: Number(week?.minutes ?? 0) };
+  }
+
+  /** İki kişi arasındaki arkadaşlık durumu (profil sayfasındaki düğme için). */
+  async friendshipStatus(me: number, other: number) {
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { sender: { id: me }, receiver: { id: other } },
+        { sender: { id: other }, receiver: { id: me } },
+      ],
+      relations: { sender: true },
+      select: { id: true, status: true, sender: { id: true } },
+    });
+    if (!friendship || friendship.status === 'rejected') return { status: 'none' as const, requestId: null };
+    if (friendship.status === 'accepted') return { status: 'friends' as const, requestId: null };
+    return friendship.sender.id === me
+      ? { status: 'outgoing' as const, requestId: null }
+      : { status: 'incoming' as const, requestId: friendship.id };
   }
 
   // ── 4. TÜM KULLANICILAR ──

@@ -10,7 +10,10 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  NotFoundException,
   Param,
+  ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -29,6 +32,7 @@ import { User } from './user.entity';
 import { UsersService } from './users.service';
 import type { Express } from 'express';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModerationService } from '../moderation/moderation.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -37,6 +41,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
+    private readonly moderationService: ModerationService,
   ) {}
 
   @Get('leaderboard')
@@ -60,6 +65,10 @@ export class UsersController {
     @CurrentUser() user: User,
     @Body() body: SendFriendRequestDto,
   ) {
+    const receiverId = await this.usersService.findIdByUsername(body.receiverUsername);
+    if (receiverId) {
+      await this.moderationService.assertNotBlocked(user.id, receiverId, 'Bu kullanıcıya istek gönderemezsin.');
+    }
     const request = await this.usersService.sendFriendRequest(
       user.id,
       body.receiverUsername,
@@ -201,6 +210,7 @@ export class UsersController {
 
   @Post('nudge/:id')
   async nudgeFriend(@CurrentUser() user: User, @Param('id') targetId: string) {
+    await this.moderationService.assertNotBlocked(user.id, Number(targetId));
     const sender = await this.usersService.findById(user.id);
     const tokens = await this.usersService.getUserPushTokens([Number(targetId)]);
     tokens.forEach((token) => {
@@ -211,6 +221,17 @@ export class UsersController {
       );
     });
     return { success: true, message: 'Dürtme gönderildi!' };
+  }
+
+  @Get('search')
+  async search(@CurrentUser() user: User, @Query('q') query = '') {
+    const blocked = await this.moderationService.blockedIdsFor(user.id);
+    return this.usersService.searchUsers(query, [user.id, ...blocked]);
+  }
+
+  @Get('badges/catalog')
+  getBadgeCatalog() {
+    return this.usersService.getBadgeCatalog();
   }
 
   // ── AŞAMA 3: MAĞAZA ENDPOINTLERİ ──
@@ -229,5 +250,23 @@ export class UsersController {
   async equipItem(@CurrentUser() user: User, @Body() body: ShopItemDto) {
     const updatedUser = await this.usersService.equipItem(user.id, body.itemType, body.itemId);
     return { success: true, user: updatedUser };
+  }
+
+  /**
+   * Herkese açık profil. Beni engellemiş birinin profili görünmez; benim engellediğimde
+   * engeli kaldırabileyim diye görünür. Bulunduğu oda yalnızca arkadaşlara gösterilir.
+   */
+  @Get(':id/public')
+  async getPublicProfile(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    const profile = await this.usersService.getPublicProfile(id);
+    // isBlockedBy(engellenen, engelleyen)
+    const theyBlockedMe = await this.moderationService.isBlockedBy(user.id, id);
+    if (!profile || theyBlockedMe) {
+      throw new NotFoundException('Kullanıcı bulunamadı.');
+    }
+    const blockedByMe = await this.moderationService.isBlockedBy(id, user.id);
+    const friendship = id === user.id ? { status: 'self' as const, requestId: null } : await this.usersService.friendshipStatus(user.id, id);
+    const canSeeRoom = friendship.status === 'friends' || friendship.status === 'self';
+    return { ...profile, currentRoom: canSeeRoom ? profile.currentRoom : null, friendship, blockedByMe };
   }
 }

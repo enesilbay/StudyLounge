@@ -8,6 +8,9 @@ import { Subject } from './study/subject.entity';
 import { StudySession } from './study/study-session.entity';
 import { Task } from './study/task.entity';
 import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-session.entity';
+import { Block } from './moderation/block.entity';
+import { Report } from './moderation/report.entity';
+import { WeeklyResult } from './league/weekly-result.entity';
 import { Message } from './messages/message.entity';
 import { DirectMessage } from './messages/direct-message.entity';
 import { DailyAnalytics } from './users/daily-analytics.entity';
@@ -63,6 +66,9 @@ export default new DataSource({
     Task,
     ScheduledSession,
     ScheduledSessionInvite,
+    Block,
+    Report,
+    WeeklyResult,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

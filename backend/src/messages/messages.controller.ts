@@ -20,6 +20,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { CHAT_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LobbiesService } from '../lobbies/lobbies.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { User } from '../users/user.entity';
 import { CreateDirectMessageDto } from './dto/create-direct-message.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -44,6 +45,7 @@ export class MessagesController {
   constructor(
     private readonly messagesService: MessagesService,
     private readonly lobbiesService: LobbiesService,
+    private readonly moderationService: ModerationService,
   ) {}
 
   private async assertRoomAccess(roomName: string, userId: number) {
@@ -55,6 +57,7 @@ export class MessagesController {
   @Post()
   async send(@CurrentUser() user: User, @Body() body: CreateMessageDto) {
     await this.assertRoomAccess(body.roomName, user.id);
+    await this.moderationService.assertCanChat(user.id);
     return await this.messagesService.createMessage(
       body.text,
       body.roomName,
@@ -94,6 +97,12 @@ export class MessagesController {
     if (!(await this.lobbiesService.canAccessRoom(body.roomName, user.id))) {
       await unlink(file.path).catch(() => undefined);
       throw new ForbiddenException('Bu odanin sohbetine erisimin yok.');
+    }
+    try {
+      await this.moderationService.assertCanChat(user.id);
+    } catch (error) {
+      await unlink(file.path).catch(() => undefined);
+      throw error;
     }
 
     if (!isPdf(file) && file.size > MAX_FILE_BYTES) {
@@ -145,6 +154,8 @@ export class MessagesController {
     @Param('userId') targetId: string,
     @Body() body: CreateDirectMessageDto,
   ) {
+    await this.moderationService.assertCanChat(user.id);
+    await this.moderationService.assertNotBlocked(user.id, Number(targetId), 'Bu kullanıcıya mesaj gönderemezsin.');
     return await this.messagesService.createDirectMessage(
       user.id,
       Number(targetId),

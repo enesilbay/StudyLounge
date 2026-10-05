@@ -1,30 +1,33 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Camera,
   CameraOff,
   Coffee,
   Crown,
-  Pause,
-  Play,
-  Square,
-  Users,
   FileText,
-  Maximize2,
-  Minimize2,
-  PanelRightClose,
-  PanelRightOpen,
-  Presentation,
-  Mic,
-  MicOff,
-  MonitorUp,
-  MonitorX,
-  Paperclip,
-  PenLine,
+  Flag,
   ImagePlus,
   Loader2,
+  Lock,
+  Maximize2,
+  Mic,
+  MicOff,
+  Minimize2,
+  MonitorUp,
+  MonitorX,
+  PanelRightClose,
+  PanelRightOpen,
+  Paperclip,
+  Pause,
+  PenLine,
+  Play,
+  Presentation,
   Send,
+  Settings2,
+  Square,
+  Users,
   Video,
 } from 'lucide-react';
 import { Button, LampMark, Notice } from '../components/ui';
@@ -44,6 +47,10 @@ import { useAuthStore } from '../store/authStore';
 import { useStudyStore } from '../store/studyStore';
 import SubjectPicker from '../components/room/SubjectPicker';
 import TasksPanel from '../components/room/TasksPanel';
+import RoomSettingsModal from '../components/room/RoomSettingsModal';
+import ReportDialog from '../components/social/ReportDialog';
+import { ROOM_CATEGORIES } from '../lib/roomCategories';
+import { useInboxStore } from '../store/inboxStore';
 import fireSound from '../assets/sounds/fire.mp3';
 import librarySound from '../assets/sounds/library.mp3';
 import natureSound from '../assets/sounds/nature.mp3';
@@ -78,6 +85,9 @@ interface StageSource {
 
 export default function FocusRoomPage() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ id: number; fullName: string; messageId?: number; preview?: string } | null>(null);
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -123,6 +133,9 @@ export default function FocusRoomPage() {
   const lobby = useMemo(() => lobbies.find((item) => String(item.id) === String(roomId)), [lobbies, roomId]);
   const roomName = lobby?.name ?? null;
   const videoRoom = Boolean(lobby?.allowVideo);
+  const isOwner = Boolean(lobby && user && lobby.ownerId === user.id);
+  const updateLobby = (changes: Partial<Lobby>) =>
+    setLobbies((current) => current.map((item) => (item.id === lobby?.id ? { ...item, ...changes } : item)));
   const joinedLobby = Boolean(user && roomUsers.some((roomUser) => roomUser.userId === user.id));
 
   const call = useRoomCall({ roomName, selfId: user?.id ?? null, enabled: videoRoom && joinedLobby });
@@ -210,6 +223,16 @@ export default function FocusRoomPage() {
     const handleDuelExpired = () => setNotice('Düello davetin yanıtlanmadığı için düştü.');
     const handleSocketError = (payload: { message?: string }) => setError(payload.message ?? 'İşlem tamamlanamadı.');
     const handleJoinError = (payload: { message?: string }) => setError(payload.message ?? 'Odaya katılamadın.');
+    // Oda sahibi çıkardıysa ya da odayı kapattıysa odalar sayfasına dönülür.
+    const handleRemoved = (payload: { message?: string }) => {
+      useInboxStore.getState().pushToast({ title: 'Odadan ayrıldın', body: payload.message ?? 'Oda kapandı.' });
+      navigate('/app/lobbies', { replace: true });
+    };
+    const handleLobbyUpdated = (payload: { roomName?: string; isLocked?: boolean }) => {
+      if (payload.roomName !== roomName) return;
+      setLobbies((current) => current.map((item) => (item.name === roomName ? { ...item, isLocked: payload.isLocked } : item)));
+    };
+    const handleRoomNotice = (payload: { message?: string }) => payload.message && setNotice(payload.message);
 
     // Bağlantı koparsa masa listesi boşaltılır (arama da kapanır); geri gelince odaya yeniden katılınır.
     const handleDisconnect = () => {
@@ -231,6 +254,10 @@ export default function FocusRoomPage() {
     socket.on('duel_expired', handleDuelExpired);
     socket.on('error', handleSocketError);
     socket.on('join_lobby_error', handleJoinError);
+    socket.on('kicked', handleRemoved);
+    socket.on('lobby_closed', handleRemoved);
+    socket.on('lobby_updated', handleLobbyUpdated);
+    socket.on('room_notice', handleRoomNotice);
     socket.emit('join_lobby', { roomName, maxUsers: lobby?.maxUsers });
 
     return () => {
@@ -248,9 +275,13 @@ export default function FocusRoomPage() {
       socket.off('duel_expired', handleDuelExpired);
       socket.off('error', handleSocketError);
       socket.off('join_lobby_error', handleJoinError);
+      socket.off('kicked', handleRemoved);
+      socket.off('lobby_closed', handleRemoved);
+      socket.off('lobby_updated', handleLobbyUpdated);
+      socket.off('room_notice', handleRoomNotice);
       pauseAmbient();
     };
-  }, [lobby?.maxUsers, roomName, userId, refreshUser, pauseAmbient]);
+  }, [lobby?.maxUsers, roomName, userId, refreshUser, pauseAmbient, navigate]);
 
   useEffect(() => {
     soundTracks.forEach((track) => {
@@ -391,6 +422,8 @@ export default function FocusRoomPage() {
   };
 
   // Görev paneli: görevi odaya sohbet mesajı olarak paylaşır.
+  const kickUser = (targetUserId: number) => getSocket().emit('kick_user', { targetUserId });
+
   const shareToRoom = (text: string) => {
     if (!roomName || !joinedLobby) return;
     getSocket().emit('send_message', { roomName, text, type: 'text' });
@@ -585,6 +618,20 @@ export default function FocusRoomPage() {
               <span className="inline-flex items-center gap-1 rounded-md bg-softIndigo px-2 py-0.5 text-sm font-semibold text-primary">
                 <Video className="h-3.5 w-3.5" /> Kameralı oda
               </span>
+            ) : null}
+            {lobby?.isLocked ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-sunken px-2 py-0.5 text-sm font-semibold text-textMuted">
+                <Lock className="h-3.5 w-3.5" /> Yeni girişlere kapalı
+              </span>
+            ) : null}
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm font-semibold text-textDark transition hover:bg-sunken"
+              >
+                <Settings2 className="h-4 w-4" /> Oda ayarları
+              </button>
             ) : null}
           </div>
           <p className="mt-1 text-[15px] text-textMuted">
@@ -814,6 +861,7 @@ export default function FocusRoomPage() {
                       onSelect={() => toggleCameraPin(person.userId)}
                       onNudge={() => nudgeUser(person.userId, person.name)}
                       onDuel={() => challengeUser(person.userId, person.name)}
+                      onKick={isOwner && !person.isSelf ? () => kickUser(person.userId) : undefined}
                     />
                   ))}
                 </div>
@@ -830,6 +878,7 @@ export default function FocusRoomPage() {
                   onSelect={() => toggleCameraPin(person.userId)}
                   onNudge={() => nudgeUser(person.userId, person.name)}
                   onDuel={() => challengeUser(person.userId, person.name)}
+                      onKick={isOwner && !person.isSelf ? () => kickUser(person.userId) : undefined}
                 />
               ))}
               {people.length <= 1 ? (
@@ -918,8 +967,23 @@ export default function FocusRoomPage() {
                 const fileHref = assetUrl(message.fileUrl);
                 const imageMessage = isImageMessage(message);
                 return (
-                  <div key={message.id ?? `${message.text}-${index}`} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                    {!mine ? <p className="mb-0.5 px-1 text-xs font-semibold text-accentDark">{message.user?.fullName ?? message.fullName ?? 'Öğrenci'}</p> : null}
+                  <div key={message.id ?? `${message.text}-${index}`} className={`group/msg flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
+                    {!mine ? (
+                      <p className="mb-0.5 flex items-center gap-1 px-1 text-xs font-semibold text-accentDark">
+                        {message.user?.fullName ?? message.fullName ?? 'Öğrenci'}
+                        {senderId && message.id ? (
+                          <button
+                            type="button"
+                            onClick={() => setReportTarget({ id: senderId, fullName: message.user?.fullName ?? message.fullName ?? 'Öğrenci', messageId: message.id, preview: message.text })}
+                            title="Mesajı şikayet et"
+                            aria-label="Mesajı şikayet et"
+                            className="grid h-5 w-5 place-items-center rounded text-textMuted opacity-0 transition hover:text-danger focus:opacity-100 group-hover/msg:opacity-100"
+                          >
+                            <Flag className="h-3 w-3" />
+                          </button>
+                        ) : null}
+                      </p>
+                    ) : null}
                     <div className={`max-w-[88%] rounded-xl px-3 py-2 ${mine ? 'rounded-br-sm bg-primary text-onPrimary' : 'rounded-bl-sm bg-sunken text-textDark'}`}>
                       {fileHref && imageMessage ? (
                         <a href={fileHref} target="_blank" rel="noreferrer" className="block">
@@ -1007,6 +1071,24 @@ export default function FocusRoomPage() {
           </div>
         </aside>
       </div>
+
+      {isOwner && lobby ? (
+        <RoomSettingsModal
+          open={settingsOpen}
+          lobby={lobby}
+          categories={ROOM_CATEGORIES}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={(saved) => updateLobby(saved)}
+          onToggleLock={(locked) => getSocket().emit('lock_lobby', { locked })}
+          onCloseRoom={() => getSocket().emit('close_lobby')}
+        />
+      ) : null}
+      <ReportDialog
+        target={reportTarget ? { id: reportTarget.id, fullName: reportTarget.fullName } : null}
+        messageId={reportTarget?.messageId}
+        messagePreview={reportTarget?.preview}
+        onClose={() => setReportTarget(null)}
+      />
     </div>
   );
 }

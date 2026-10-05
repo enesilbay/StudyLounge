@@ -55,7 +55,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Orta | Odada görev listesi | Kişisel yapılacaklar listesi (`Task`). Odada yan panelde "bu turda ne yapacağım" yazılır; istenirse odada sohbet mesajı olarak paylaşılır. |
 | Orta | Planlı çalışma oturumları | Arkadaşlarla ileri tarihli oturum planlama ve davet (`ScheduledSession`). Başlamadan 10 dk önce hatırlatma gider (`@nestjs/schedule`); mobil için mevcut push altyapısı kullanılır. |
 
-### Faz 3: Sosyal özellikler ve görsel yenileme
+### Faz 3: Sosyal özellikler ve görsel yenileme ✅ (tamamlandı, `faz-3` dalı)
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
