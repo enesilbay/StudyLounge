@@ -24,7 +24,7 @@ describe('StudyService', () => {
       })),
       count: jest.fn().mockResolvedValue(0),
       create: jest.fn((input: Partial<Subject>) => input),
-      save: jest.fn((input: Subject) => Promise.resolve({ id: 1, ...input })),
+      save: jest.fn((input: Subject) => Promise.resolve({ ...input, id: input.id ?? 1 })),
       exists: jest.fn().mockResolvedValue(true),
     };
     sessions = { create: jest.fn((input: Partial<StudySession>) => input), save: jest.fn((input: StudySession) => Promise.resolve(input)) };
