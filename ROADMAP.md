@@ -32,7 +32,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 - Yeni özellikler web'e gelir. Mobilde yalnızca Faz 1'deki kritik düzeltmeler yapılır.
 - Her şema değişikliği bir migration ile gelir.
 
-### Faz 1: Güvenlik, e-posta ve web eksikleri
+### Faz 1: Güvenlik, e-posta ve web eksikleri ✅ (tamamlandı, `faz-1` dalı)
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
