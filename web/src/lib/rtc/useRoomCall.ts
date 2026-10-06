@@ -3,6 +3,7 @@ import { api } from '../api';
 import { getSocket } from '../socket';
 import type { MediaState } from '../types';
 import { PeerManager, type RemoteMedia, type SignalData } from './PeerManager';
+import { constraintsFor, loadDevicePrefs, saveDevicePref, type DeviceKind, type DevicePrefs } from './devices';
 
 const FALLBACK_ICE: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -26,6 +27,12 @@ export interface RoomCall {
   toggleMic: () => Promise<void>;
   toggleScreen: () => Promise<void>;
   busy: boolean;
+  /** Seçili kamera/mikrofon (null = tarayıcının varsayılanı). */
+  devices: DevicePrefs;
+  /** Cihazı seçer; o cihaz açıksa görüşme kesilmeden yenisine geçilir. */
+  setDevice: (kind: DeviceKind, deviceId: string | null) => Promise<void>;
+  /** Ekran paylaşımı sesli mi (tarayıcı ve kullanıcı izin verdiyse). */
+  screenHasAudio: boolean;
 }
 
 const OFF: MediaState = { camera: false, mic: false, screen: false };
@@ -42,6 +49,9 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
   const [, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [devices, setDevices] = useState<DevicePrefs>(loadDevicePrefs);
+  const devicesRef = useRef(devices);
+  devicesRef.current = devices;
 
   const publish = useCallback(() => {
     const camera = cameraRef.current;
@@ -147,21 +157,42 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
 
       setBusy(true);
       try {
-        const constraints: MediaStreamConstraints =
-          kind === 'video'
-            ? { video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } } }
-            : { audio: { echoCancellation: true, noiseSuppression: true } };
-        const captured = await navigator.mediaDevices.getUserMedia(constraints);
-        captured.getTracks().forEach((track) => {
-          track.onended = () => {
-            stream.removeTrack(track);
-            publish();
-          };
-          stream.addTrack(track);
-        });
+        const captured = await captureTrack(kind === 'video' ? 'camera' : 'mic', devicesRef.current);
+        attachTrack(stream, captured, publish);
         publish();
       } catch (err) {
         setError(describeMediaError(err, kind === 'video' ? 'kamera' : 'mikrofon'));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [publish],
+  );
+
+  const setDevice = useCallback(
+    async (kind: DeviceKind, deviceId: string | null) => {
+      saveDevicePref(kind, deviceId);
+      const next = { ...devicesRef.current, [kind]: deviceId };
+      devicesRef.current = next;
+      setDevices(next);
+
+      // Cihaz şu an açıksa yenisiyle değiştir; bağlantılar yeni track'i kendiliğinden gönderir.
+      const stream = cameraRef.current;
+      const current = kind === 'camera' ? stream?.getVideoTracks() : stream?.getAudioTracks();
+      if (!stream || !current?.length) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const captured = await captureTrack(kind, next);
+        current.forEach((track) => {
+          track.onended = null;
+          track.stop();
+          stream.removeTrack(track);
+        });
+        attachTrack(stream, captured, publish);
+        publish();
+      } catch (err) {
+        setError(describeMediaError(err, kind === 'camera' ? 'kamera' : 'mikrofon'));
       } finally {
         setBusy(false);
       }
@@ -184,7 +215,9 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
 
     setBusy(true);
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15 } }, audio: false });
+      // Ses isteğe bağlı: Chrome/Edge seçim penceresinde "sekme/sistem sesini paylaş" seçeneği çıkar.
+      const options = { video: { frameRate: { ideal: 15 } }, audio: true, systemAudio: 'include' } as DisplayMediaStreamOptions;
+      const stream = await navigator.mediaDevices.getDisplayMedia(options);
       // Tarayıcının kendi "Paylaşımı durdur" düğmesi
       stream.getVideoTracks()[0]?.addEventListener('ended', () => {
         if (screenRef.current === stream) {
@@ -216,7 +249,33 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
     toggleMic: () => toggleTrack('audio'),
     toggleScreen,
     busy,
+    devices,
+    setDevice,
+    screenHasAudio: Boolean(screenStream?.getAudioTracks().some((track) => track.readyState === 'live')),
   };
+}
+
+/** Seçili cihazdan tek track alır; cihaz artık bağlı değilse varsayılana düşer. */
+async function captureTrack(kind: DeviceKind, prefs: DevicePrefs): Promise<MediaStreamTrack> {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraintsFor(kind, prefs[kind]));
+    return kind === 'camera' ? stream.getVideoTracks()[0] : stream.getAudioTracks()[0];
+  } catch (err) {
+    if (prefs[kind] && err instanceof DOMException && (err.name === 'OverconstrainedError' || err.name === 'NotFoundError')) {
+      const stream = await navigator.mediaDevices.getUserMedia(constraintsFor(kind, null));
+      return kind === 'camera' ? stream.getVideoTracks()[0] : stream.getAudioTracks()[0];
+    }
+    throw err;
+  }
+}
+
+/** Track'i yerel stream'e ekler; cihaz çıkarılırsa (ended) stream'den düşer. */
+function attachTrack(stream: MediaStream, track: MediaStreamTrack, publish: () => void) {
+  track.onended = () => {
+    stream.removeTrack(track);
+    publish();
+  };
+  stream.addTrack(track);
 }
 
 function describeMediaError(err: unknown, device: string): string {

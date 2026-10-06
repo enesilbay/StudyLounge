@@ -65,7 +65,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Orta | Kullanıcı arama + profil sayfası | Kullanıcı adıyla arama yapılabilir. Başkasının herkese açık profili (`/app/u/:id`) rozetleri, çerçeveyi ve istatistikleri gösterir; buradan arkadaş eklenebilir, DM gönderilebilir veya engellenebilir. |
 | Orta | Mağaza, Analitik, Sıralama görsel yenilemesi | Yalnızca görünüm değişir, yeni işlev eklenmez. Mağazada kategori sekmeleri ve ürün önizleme kartları; Analitik'te özet kutuları ve okunur grafikler; Sıralama'da podyum ve kendi sıranı gösteren sabit satır. Tema token'ları ve `ui.tsx` bileşenleri kullanılır. |
 
-### Faz 4: Test, altyapı ve görüntülü oda
+### Faz 4: Test, altyapı ve görüntülü oda ✅ (tamamlandı, `faz-4` dalı)
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |

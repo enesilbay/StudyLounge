@@ -103,6 +103,38 @@ test.describe('birden fazla kişi', () => {
     }
   })
 
+  test('kameralı odada kamera görüntüsü karşı tarafa ulaşır ve cihaz önizlemesi açılır', async ({ browser }) => {
+    const elif = await signedIn(browser, 'demo_elif')
+    const zeynep = await signedIn(browser, 'demo_zeynep')
+    const videoRoom = 'Demo: Yazılım Final Haftası'
+    try {
+      for (const { page } of [elif, zeynep]) {
+        await page.goto('/app/lobbies')
+        await page.getByRole('listitem').filter({ hasText: videoRoom }).getByRole('button', { name: 'Katıl' }).click()
+        await expect(page.getByRole('heading', { name: videoRoom })).toBeVisible()
+        // Görüntülü bağlantı hazır olunca kamera düğmesi etkinleşir.
+        await expect(page.getByRole('button', { name: 'Kamerayı aç' })).toBeEnabled({ timeout: 15_000 })
+      }
+
+      // Cihaz ayarları: sahte kameradan önizleme gelir, kamera listesi dolar.
+      await elif.page.getByRole('button', { name: 'Kamera ve mikrofon ayarları' }).click()
+      const preview = elif.page.getByLabel('Kamera önizlemesi')
+      await expect(preview).toBeVisible()
+      await expect.poll(() => preview.evaluate((video: HTMLVideoElement) => video.videoWidth)).toBeGreaterThan(0)
+      await expect(elif.page.getByLabel('Kamera').locator('option')).not.toHaveCount(1)
+      await elif.page.getByRole('button', { name: 'Tamam' }).click()
+
+      // Elif kamerasını açar; Zeynep'in ekranında Elif'in kamerası oynar.
+      await elif.page.getByRole('button', { name: 'Kamerayı aç' }).click()
+      const remoteVideo = zeynep.page.getByLabel('Elif Kaya kamerası', { exact: true })
+      await expect(remoteVideo).toBeVisible({ timeout: 20_000 })
+      await expect.poll(() => remoteVideo.evaluate((video: HTMLVideoElement) => video.videoWidth), { timeout: 20_000 }).toBeGreaterThan(0)
+    } finally {
+      await elif.context.close()
+      await zeynep.context.close()
+    }
+  })
+
   test('yönetici şikayetler sayfasını açar, normal kullanıcı açamaz', async ({ browser }) => {
     const admin = await signedIn(browser, 'demo_admin')
     const ali = await signedIn(browser, 'demo_ali')

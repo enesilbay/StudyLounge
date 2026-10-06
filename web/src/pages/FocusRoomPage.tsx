@@ -26,6 +26,7 @@ import {
   Presentation,
   Send,
   Settings2,
+  SlidersHorizontal,
   Square,
   Users,
   Video,
@@ -48,6 +49,7 @@ import { useStudyStore } from '../store/studyStore';
 import SubjectPicker from '../components/room/SubjectPicker';
 import TasksPanel from '../components/room/TasksPanel';
 import RoomSettingsModal from '../components/room/RoomSettingsModal';
+import DeviceSettingsModal from '../components/room/DeviceSettingsModal';
 import ReportDialog from '../components/social/ReportDialog';
 import { ROOM_CATEGORIES } from '../lib/roomCategories';
 import { useInboxStore } from '../store/inboxStore';
@@ -87,6 +89,7 @@ export default function FocusRoomPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ id: number; fullName: string; messageId?: number; preview?: string } | null>(null);
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
@@ -552,6 +555,7 @@ export default function FocusRoomPage() {
           micOn: Boolean(roomUser.isMicOn),
           sharing: Boolean(roomUser.isScreenSharing),
           cameraStream: roomUser.isCameraOn || roomUser.isMicOn ? remote?.camera ?? null : null,
+          quality: roomUser.isInCall ? remote?.quality ?? null : null,
         });
       });
     return list;
@@ -893,6 +897,13 @@ export default function FocusRoomPage() {
           {people.filter((person) => !person.isSelf).map((person) => (
             <AudioSink key={person.userId} stream={person.micOn ? person.cameraStream : null} />
           ))}
+          {/* Ekran paylaşımının sesi (paylaşan izin verdiyse); kendi ekran sesimiz çalınmaz. */}
+          {roomUsers
+            .filter((roomUser) => roomUser.userId !== user?.id && roomUser.isScreenSharing)
+            .map((roomUser) => {
+              const screen = call.remote(roomUser.userId)?.screen ?? null;
+              return screen?.getAudioTracks().length ? <AudioSink key={`screen-${roomUser.userId}`} stream={screen} /> : null;
+            })}
 
           {/* Kontroller: kamera/mikrofon/ekran yalnızca kameralı odalarda, PDF tahtası her odada */}
           <div className="sticky bottom-20 z-10 mt-auto flex flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-surface/95 p-2 backdrop-blur lg:bottom-4">
@@ -901,6 +912,15 @@ export default function FocusRoomPage() {
                 <MediaButton on={call.media.mic} onLabel="Mikrofonu kapat" offLabel="Mikrofonu aç" OnIcon={Mic} OffIcon={MicOff} onClick={call.toggleMic} disabled={!call.joined || call.busy} />
                 <MediaButton on={call.media.camera} onLabel="Kamerayı kapat" offLabel="Kamerayı aç" OnIcon={Camera} OffIcon={CameraOff} onClick={call.toggleCamera} disabled={!call.joined || call.busy} />
                 <MediaButton on={call.media.screen} onLabel="Paylaşımı durdur" offLabel="Ekranını paylaş" OnIcon={MonitorX} OffIcon={MonitorUp} onClick={call.toggleScreen} disabled={!call.joined || call.busy} invert />
+                <button
+                  type="button"
+                  onClick={() => setDevicesOpen(true)}
+                  title="Kamera ve mikrofon seç, önizle"
+                  aria-label="Kamera ve mikrofon ayarları"
+                  className="grid h-11 w-11 place-items-center rounded-lg border border-border bg-surface text-textDark transition hover:bg-sunken"
+                >
+                  <SlidersHorizontal className="h-[18px] w-[18px]" />
+                </button>
               </>
             ) : null}
             <button
@@ -931,7 +951,13 @@ export default function FocusRoomPage() {
             <input ref={pdfInputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => event.target.files?.[0] && void openPdfFile(event.target.files[0])} />
             {videoRoom ? (
               <p className="w-full text-center text-xs text-textMuted sm:ml-2 sm:w-auto sm:text-left">
-                {call.joined ? 'Kamera ve mikrofon sen açana kadar kapalı kalır.' : 'Görüntülü bağlantı hazırlanıyor…'}
+                {!call.joined
+                  ? 'Görüntülü bağlantı hazırlanıyor…'
+                  : call.media.screen
+                    ? call.screenHasAudio
+                      ? 'Ekranın sesiyle birlikte paylaşılıyor.'
+                      : 'Ekranın sessiz paylaşılıyor. Sesi de paylaşmak için seçim penceresinde ses seçeneğini işaretle.'
+                    : 'Kamera ve mikrofon sen açana kadar kapalı kalır.'}
               </p>
             ) : null}
           </div>
@@ -1082,6 +1108,9 @@ export default function FocusRoomPage() {
           onToggleLock={(locked) => getSocket().emit('lock_lobby', { locked })}
           onCloseRoom={() => getSocket().emit('close_lobby')}
         />
+      ) : null}
+      {videoRoom ? (
+        <DeviceSettingsModal open={devicesOpen} devices={call.devices} onChange={(kind, deviceId) => void call.setDevice(kind, deviceId)} onClose={() => setDevicesOpen(false)} />
       ) : null}
       <ReportDialog
         target={reportTarget ? { id: reportTarget.id, fullName: reportTarget.fullName } : null}
