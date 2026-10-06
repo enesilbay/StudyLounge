@@ -184,14 +184,16 @@ sequenceDiagram
 ### 💻 Web (`/web`)
 - **Framework:** React 19 + Vite, TypeScript
 - **Stil:** Tailwind CSS v4 (`@theme` token'ları, açık/koyu tema)
-- **Durum Yönetimi:** Zustand (oturum), React hook'ları
+- **Durum Yönetimi:** Zustand (oturum, bildirimler, dersler), React hook'ları
+- **PWA:** `vite-plugin-pwa` (ana ekrana eklenebilir, service worker)
+- **Test:** Vitest + Testing Library (birim), Playwright (uçtan uca)
 - **Gerçek Zamanlı:** Socket.IO Client
 - **Görüntülü İletişim:** Tarayıcı WebRTC API'leri (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`), harici kütüphane yok
 - **Barındırma:** Netlify (`web/netlify.toml`)
 
 ### 🐳 DevOps, CI/CD & Cloud Infrastructure
 - **Containerization:** Multi-stage Dockerfile & Docker Compose Orchestration
-- **CI/CD Pipeline:** GitHub Actions (Automated Jest Tests, E2E Tests, Typecheck, Lint)
+- **CI/CD Pipeline:** GitHub Actions (Jest birim/E2E, socket.io gateway testleri, web Vitest + Playwright, typecheck, lint)
 - **Cloud Hosting:** Render Web Service (Automated Docker Deployment)
 - **Versiyon Kontrol:** Git & GitHub
 
@@ -223,6 +225,26 @@ sequenceDiagram
    - Premium kullanıcılar en fazla 6 kişilik kameralı oda kurabilir.
    - Katılımcılar kamera, mikrofon ve ekran paylaşımını istedikleri an açıp kapatabilir.
    - Paylaşılan ekran büyük sahnede gösterilir; birden fazla paylaşım varsa aralarında geçiş yapılır.
+
+7. 📝 **Ortak PDF Tahtası ve Pomodoro (Web):**
+   - Odadakiler aynı PDF ya da boş tahta üzerinde birlikte çizer; ortak Pomodoro sayacı herkesi aynı tura sokar.
+
+8. 📚 **Ders, Hedef ve Görevler:**
+   - Her odak oturumu ders, oda ve süreyle kaydedilir; analitikte ders dağılımı, 30 günlük takvim ve oturum geçmişi görünür.
+   - Günlük/haftalık hedef; günlük hedef ilk tutulduğunda bonus Odak Puanı.
+   - Odada kişisel görev listesi ("bu turda" işaretleme, odada paylaşma) ve arkadaşlarla planlı oturumlar (10 dk kala hatırlatma).
+
+9. 🏆 **Haftalık Lig ve Rozetler:**
+   - Sıralama her pazartesi 00:00'da (Türkiye saati) sıfırlanır; ilk üç 100, 60 ve 30 puan alır.
+   - 12 rozet (seri, gece kuşu, düello galibi, ders ustası, haftanın şampiyonu…).
+
+10. 🛡️ **Güvenlik ve Topluluk:**
+    - Kullanıcı arama ve herkese açık profil; engelleme, mesaj/kullanıcı şikayeti ve yönetici paneli (susturma, yasaklama).
+    - Oda sahibi kontrolleri: odayı düzenleme, kilitleme, kişiyi çıkarma, odayı kapatma.
+    - İstek sınırı (rate limit), şifreli odaya sunucu tarafı erişim kontrolü, mağaza fiyatlarının sunucuda belirlenmesi.
+
+11. 🔔 **Bildirimler (Web):**
+    - Her sayfada DM, dürtme, davet ve rozet bildirimleri; sekme arka plandayken tarayıcı bildirimi.
 
 ---
 
@@ -293,14 +315,16 @@ services:
 ### 3. ⚙️ GitHub Actions CI/CD Pipeline (`.github/workflows/ci.yml`)
 Her `push` ve `pull_request` adımlarında otomatik test ve doğrulama süreçleri tetiklenir:
 
-- **Backend Job:** `npm ci` ➔ `npm run build` ➔ Jest Unit Testleri ➔ E2E Entegrasyon Testleri (`npm run test:e2e`).
+- **Backend Job:** `npm ci` ➔ `npm run build` ➔ Jest birim testleri ➔ E2E testleri (`npm run test:e2e`; REST uçları ve gerçek socket.io bağlantılarıyla gateway testleri).
+- **Web Job:** `npm ci` ➔ ESLint ➔ `npm run build` (tip kontrolü + Vite) ➔ Vitest birim testleri.
+- **Web E2E Job:** Postgres servisi ➔ backend derlenip başlatılır ➔ `npm run seed` ➔ Playwright (Chromium) uçtan uca testleri. Hata olursa rapor artifact olarak saklanır.
 - **Mobile Job:** `npm ci` ➔ TypeScript Tip Kontrolü (`tsc --noEmit`) ➔ ESLint Statik Kod Analizi.
 
 ### 4. 🌐 Cloud Deployment (Render Web Service)
 Projenin canlı sunucu dağıtımı **Render** platformu üzerinde Docker runtime kullanılarak gerçekleştirilmiştir:
 - **Binding:** Backend `0.0.0.0` IP adresi ve dinlenebilir port (`PORT`) üzerinden dış dünyaya açılmıştır.
 - **CORS Yönetimi:** Production ortamında dinamik `CORS_ORIGIN` değişkeni ile güvenli origin yapılandırması sağlanır.
-- **Environment Variables:** `JWT_SECRET`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` ortam değişkenleri cloud secrets üzerinden beslenmektedir.
+- **Environment Variables:** `JWT_SECRET`, `DATABASE_URL` (ya da `DB_*`), `DB_RUN_MIGRATIONS`, `CORS_ORIGIN`, SMTP/Resend ve `TURN_*` değişkenleri cloud secrets üzerinden beslenir. Tam liste: `backend/.env.example`.
 
 ---
 
@@ -315,66 +339,98 @@ Projenin canlı sunucu dağıtımı **Render** platformu üzerinde Docker runtim
 
 ### 1️⃣ Repository'i Klonlayın
 ```bash
-git clone https://github.com/kullanici-adi/studylounge.git
-cd studylounge
+git clone https://github.com/enesilbay/StudyLounge.git
+cd StudyLounge
 ```
 
 ---
 
-### 2️⃣ Docker ile Veritabanı ve Backend'i Çalıştırın (Tavsiye Edilen)
-Tek bir komutla hem PostgreSQL veritabanını hem de NestJS backend servisini konteynerize olarak kaldırabilirsiniz:
+### 2️⃣ Veritabanını Docker ile Başlatın
+Yerel geliştirmede yalnızca PostgreSQL Docker'da çalışır; backend'i bir sonraki adımda kendiniz başlatırsınız:
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
-Backend ayağa kalktığında `http://localhost:3000/health` (veya sunucu IP adresiniz) üzerinden durum kontrolü yapabilirsiniz.
+
+> Backend'i de Docker'da çalıştırmak isterseniz: `docker compose --profile docker-backend up --build -d` (bu durumda 3. adımdaki `npm run start:dev`'i çalıştırmayın).
 
 ---
 
-### 3️⃣ Alternatif: Backend'i Lokal Olarak Çalıştırma
+### 3️⃣ Backend'i Çalıştırın
 
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# .env dosyasını veritabanı bilgilerinize göre düzenleyin
+cp .env.example .env      # Windows: copy .env.example .env
+# .env dosyasında JWT_SECRET'ı değiştirin; e-posta için SMTP ya da Resend bilgilerini girin
 npm run start:dev
 ```
+Backend hazır olunca `http://localhost:3000/health` 200 döner. İlk açılışta geliştirme modu tabloları kendisi kurar.
 
----
-
-### 4️⃣ Mobil Uygulamayı Çalıştırma (Expo)
-
-Mobil cihazınızın bilgisayarınızdaki backend'e erişebilmesi için yerel ağ (Wi-Fi) IP adresinizi belirtmeniz gerekmektedir:
-
+**Demo verisi (sunum ve testler için):**
 ```bash
-cd mobile
-npm install
-
-# Windows PowerShell için:
-$env:EXPO_PUBLIC_BACKEND_URL="http://192.168.x.x:3000"; npx expo start
-
-# Linux/macOS için:
-EXPO_PUBLIC_BACKEND_URL=http://192.168.x.x:3000 npx expo start
+npm run seed
 ```
-*Not: `192.168.x.x` yerine bilgisayarınızın yerel IP adresini yazınız.*
+Dört doğrulanmış hesap (`demo_admin`, `demo_elif`, `demo_ali`, `demo_zeynep` @demo.studylounge, şifre `Demo12345!`), odalar, son 14 günün odak geçmişi, dersler, görevler ve bir planlı oturum oluşturur. Yalnızca kendi demo kayıtlarını yeniler; tekrar çalıştırmak güvenlidir.
+
+> **Port çakışması:** 3000 ya da 5432 başka bir projede kullanılıyorsa `backend/.env`'de `PORT=3100` ve `DB_PORT=5433`, proje kökündeki `.env`'de `DB_PORT=5433`, `web/.env`'de `VITE_BACKEND_URL=http://127.0.0.1:3100` yazın.
 
 ---
 
-### 5️⃣ Web Uygulamasını Çalıştırma
+### 4️⃣ Web Uygulamasını Çalıştırın
 
 ```bash
 cd web
 npm install
-
-# Windows PowerShell için:
-$env:VITE_BACKEND_URL="http://localhost:3000"; npm run dev
-
-# Linux/macOS için:
-VITE_BACKEND_URL=http://localhost:3000 npm run dev
+cp .env.example .env      # VITE_BACKEND_URL backend adresini gösterir
+npm run dev
 ```
+Tarayıcıda `http://localhost:5173` adresini açın.
+
+---
+
+### 5️⃣ Mobil Uygulamayı Çalıştırın (Expo)
+
+Telefonun bilgisayardaki backend'e erişebilmesi için yerel ağ IP adresinizi yazın:
+
+```bash
+cd mobile
+npm install
+cp .env.example .env      # EXPO_PUBLIC_BACKEND_URL=http://192.168.x.x:3000
+npx expo start
+```
+*Not: `192.168.x.x` yerine bilgisayarınızın yerel IP adresini yazın; telefon ve bilgisayar aynı ağda olmalı.*
+
+---
 
 > ⚠️ Kamera ve ekran paylaşımı tarayıcı güvenliği gereği yalnızca **`localhost` veya HTTPS** üzerinde çalışır. Aynı ağdaki başka bir cihazdan `http://192.168.x.x` ile bağlanırsanız tarayıcı kameraya erişim vermez.
+
+---
+
+## 🧪 Testler
+
+```bash
+# Backend: birim testleri ve E2E (REST + socket.io gateway)
+cd backend && npm test && npm run test:e2e
+
+# Web: birim testleri
+cd web && npm test
+
+# Web: uçtan uca (çalışan backend + "npm run seed" gerekir)
+cd web && npx playwright install chromium && npm run test:e2e
+```
+Uçtan uca testler kısa sürede çok giriş yapar. Arka arkaya çalıştırırken giriş sınırına takılırsanız backend'i `THROTTLE_DISABLED=true` ile başlatın (yalnızca üretim dışında etkilidir).
+
+---
+
+## 👮 Yönetici Hesabı
+
+Şikayetleri inceleyen yönetici paneli (`/app/admin`) yalnızca `admin` rolündeki hesaplara açılır. Bir hesabı yönetici yapmak için:
+
+```sql
+UPDATE users SET role = 'admin' WHERE username = 'kullanici_adi';
+```
+Demo verisindeki `demo_admin` hesabı zaten yöneticidir.
 
 ---
 
@@ -392,7 +448,7 @@ VITE_BACKEND_URL=http://localhost:3000 npm run dev
 - 👤 **Geliştirici:** Enes İlbay
 - 📧 **E-Posta:** enesilbayy@gmail.com
 - 🔗 **LinkedIn:** [https://www.linkedin.com/in/enes-ilbay/]
-- 🐙 **GitHub:** [@enesilbay](https://github.com)
+- 🐙 **GitHub:** [@enesilbay](https://github.com/enesilbay)
 
 ---
 
