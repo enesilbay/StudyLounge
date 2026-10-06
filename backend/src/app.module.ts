@@ -122,7 +122,12 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     StudyModule,
     ModerationModule,
     LeagueModule,
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
+      errorMessage: 'Çok fazla deneme yaptın. Bir dakika bekleyip tekrar dene.',
+      // Uçtan uca testler kısa sürede çok giriş yapar; yalnızca üretim dışında kapatılabilir.
+      skipIf: () => process.env.THROTTLE_DISABLED === 'true' && process.env.NODE_ENV !== 'production',
+    }),
   ],
   controllers: [AppController],
   providers: [
