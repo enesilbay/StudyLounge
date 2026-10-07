@@ -90,3 +90,6 @@ web/README.md
 
 # Playwright MCP test ciktilari
 .playwright-mcp/
+
+# graphify bilgi grafigi ciktilari (yeniden uretilebilir)
+graphify-out/
