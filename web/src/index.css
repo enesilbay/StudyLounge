@@ -50,6 +50,29 @@
   --font-montserrat: var(--font-sans);
 }
 
+/*
+ * Açılış sayfası: uygulamanın açık/koyu temasından bağımsız, sabit bir dünya.
+ * Gece turkuazı bir çalışma odası, masalarda pembe lamba ışığı; açıklama
+ * bölümleri soğuk beyaz kâğıt üzerinde. Yalnızca LandingPage ve
+ * components/landing kullanır.
+ */
+@theme {
+  --color-lp-night: #0e2b2c;
+  --color-lp-night-2: #143738;
+  --color-lp-desk: #1d4547;
+  --color-lp-sea: #4fc3b4;
+  --color-lp-lamp: #ff9dbb;
+  --color-lp-lamp-ink: #a3285a;
+  --color-lp-paper: #f6f8f7;
+  --color-lp-paper-2: #e8efed;
+  --color-lp-ink: #122221;
+  --color-lp-graphite: #556563;
+  --color-lp-line: #d3dedb;
+  --color-lp-on-night: #e8f1ef;
+  --color-lp-on-night-muted: #9db9b5;
+  --font-lp-display: "Familjen Grotesk", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+}
+
 /* Açık tema: krem kağıt (varsayılan) */
 :root,
 :root[data-theme="light"] {
@@ -254,6 +277,34 @@
   }
 }
 
+/* Açılış sayfası: lamba yanışı ve tahtaya çizilen kalem (tek açılış sırası). */
+@keyframes lp-lamp-on {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lp-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.lp-pool {
+  animation: lp-lamp-on 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.lp-stroke {
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: lp-draw 1.2s ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -262,5 +313,12 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-pool,
+  .lp-stroke {
+    animation-delay: 0s !important;
   }
 }

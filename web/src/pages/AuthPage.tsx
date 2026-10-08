@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { KeyRound, LockKeyhole, Mail, MailCheck, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
@@ -16,7 +16,9 @@ const RESEND_COOLDOWN_SECONDS = 60;
 export default function AuthPage() {
   const navigate = useNavigate();
   const { loginWithCredentials, registerWithCredentials, verifyEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
-  const [mode, setMode] = useState<AuthMode>('login');
+  // Açılış sayfasındaki "Ücretsiz hesap aç" doğrudan kayıt formunu açar (/auth?mod=kayit).
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<AuthMode>(() => (searchParams.get('mod') === 'kayit' ? 'register' : 'login'));
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
