@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AppRouter from './router';
 import { useAuthStore } from './store/authStore';
 import { LampMark } from './components/ui';
+import { EnvBadge } from './components/Layout/EnvBadge';
 
 function App() {
   const { initAuth, isInitializing } = useAuthStore();
@@ -19,7 +20,10 @@ function App() {
   }
 
   return (
-    <AppRouter />
+    <>
+      <AppRouter />
+      <EnvBadge />
+    </>
   );
 }
 

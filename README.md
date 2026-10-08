@@ -326,6 +326,42 @@ Projenin canlı sunucu dağıtımı **Render** platformu üzerinde Docker runtim
 - **CORS Yönetimi:** Production ortamında dinamik `CORS_ORIGIN` değişkeni ile güvenli origin yapılandırması sağlanır.
 - **Environment Variables:** `JWT_SECRET`, `DATABASE_URL` (ya da `DB_*`), `DB_RUN_MIGRATIONS`, `CORS_ORIGIN`, SMTP/Resend ve `TURN_*` değişkenleri cloud secrets üzerinden beslenir. Tam liste: `backend/.env.example`.
 
+### 5. 🧭 Ortamlar: geliştirme, test ve canlı
+Aynı kod üç ayrı ortamda, üç ayrı ayarla çalışır. Ortamlar **hiçbir şeyi paylaşmaz**: her birinin kendi veritabanı, kendi adresi ve kendi `JWT_SECRET`'ı vardır.
+
+| | Geliştirme (dev) | Test (staging) | Canlı (prod) |
+| :--- | :--- | :--- | :--- |
+| **Git dalı** | Üzerinde çalışılan dal | `staging` | `main` |
+| **Backend** | `npm run start:dev` | Render: `studylounge-backend-staging` | Render: `studylounge-backend` |
+| **Web** | `npm run dev` (localhost:5173) | Netlify dal deploy'u: `staging--<site>.netlify.app` | Netlify ana site |
+| **Veritabanı** | Docker Postgres (`docker compose up -d postgres`) | Neon `staging` dalı | Neon `production` dalı |
+| **Veri** | Demo verisi (`npm run seed`) | Deneme verisi | Gerçek kullanıcılar |
+
+**Kod akışı:** her değişiklik önce test ortamından geçer.
+```
+özellik dalı ──PR──► staging ──(test sitesinde denenir)──PR──► main ──► canlı
+```
+`staging` ya da `main` dalına gönderilen her commit, o ortamın backend'ini (Render) ve web sitesini (Netlify) otomatik olarak yeniden deploy eder.
+
+**Ortama göre değişen ayarlar**
+
+| Değişken | Geliştirme | Test | Canlı |
+| :--- | :--- | :--- | :--- |
+| `NODE_ENV` | `development` | `production` | `production` |
+| `DATABASE_URL` | yerel Docker | Neon `staging` | Neon `production` |
+| `JWT_SECRET` | basit bir değer | **kendine özel** uzun değer | **kendine özel** uzun değer |
+| `CORS_ORIGIN` | `*` | test web adresi | canlı web adresi |
+| `VITE_BACKEND_URL` (web) | `http://127.0.0.1:3000` | test backend adresi | canlı backend adresi |
+| `DB_RUN_MIGRATIONS` | gerekmez | `true` | `true` |
+| `THROTTLE_DISABLED` | olabilir | **olmaz** | **olmaz** |
+
+Test ortamı da `NODE_ENV=production` ile çalışır; böylece "test'te çalıştı, canlıda bozuldu" durumu yaşanmaz. Aradaki tek fark adresler, veritabanı ve gizli anahtarlardır. `JWT_SECRET` ortamlar arasında paylaşılmaz; paylaşılırsa test ortamında alınan oturum canlıda da geçerli olur.
+
+**Kurallar**
+- Canlı veritabanının verisi test ortamına kopyalanmaz. Test veritabanı gerektiğinde boşaltılıp `npm run seed` ile doldurulur.
+- Yeni bir migration önce test ortamında çalışır (`DB_RUN_MIGRATIONS=true`), sorun yoksa canlıya gider.
+- Gizli değerler (veritabanı adresleri, `JWT_SECRET`, SMTP şifreleri) yalnızca Render ve Netlify panellerinde tutulur, depoya yazılmaz.
+
 ---
 
 ## 🚀 Kurulum ve Lokal Çalıştırma
