@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -19,6 +19,11 @@ export class User {
   // yazari) kendiliginden yuklenmez; gereken akislar acikca addSelect eder.
   @Column({ nullable: true, select: false })
   password?: string;
+
+  // Google ile giris yapan hesabin Google kimligi (sub). Indeks adi migration ile aynidir.
+  @Index('UQ_users_googleId', { unique: true })
+  @Column({ type: 'varchar', nullable: true, select: false })
+  googleId?: string | null;
 
   @Column({ default: false })
   isPremium: boolean;

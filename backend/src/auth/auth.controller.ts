@@ -2,6 +2,7 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -22,7 +23,14 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: MINUTE } })
   @Post('login')
   async login(@Body() body: LoginDto) {
+    // body.email: e-posta ya da kullanici adi.
     return this.authService.login(body.email, body.password);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: MINUTE } })
+  @Post('google')
+  async google(@Body() body: GoogleLoginDto) {
+    return this.authService.loginWithGoogle(body.credential);
   }
 
   @Throttle({ default: { limit: 10, ttl: MINUTE } })

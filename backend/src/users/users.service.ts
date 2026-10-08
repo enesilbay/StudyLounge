@@ -10,10 +10,17 @@ import { User } from './user.entity';
 import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { SHOP_CATALOG, findShopItem } from './shop-catalog';
 import { BADGES, focusBadges } from './badges';
-import { addDaysToKey, daysBetweenKeys, localDayKey, localHour, localWeekStartKey } from '../config/time';
+import {
+  addDaysToKey,
+  daysBetweenKeys,
+  localDayKey,
+  localHour,
+  localWeekStartKey,
+} from '../config/time';
 import type { ShopItemType } from './shop-catalog';
 
 /** Dogrulama / sifirlama kodu bu kadar yanlis denemeden sonra gecersiz olur. */
@@ -71,7 +78,9 @@ export class UsersService implements OnModuleInit {
     }
 
     if (!userData.password || userData.password.length < 8) {
-      throw new BadRequestException('Şifre alanı zorunludur ve en az 8 karakter olmalıdır.');
+      throw new BadRequestException(
+        'Şifre alanı zorunludur ve en az 8 karakter olmalıdır.',
+      );
     }
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     const emailToken = Math.floor(100000 + Math.random() * 900000).toString();
@@ -90,12 +99,15 @@ export class UsersService implements OnModuleInit {
   }
 
   // ── 2. GİRİŞ YAP ──
-  async login(email: string, pass: string): Promise<User | null> {
+  /** identifier: e-posta ("@" iceriyorsa) ya da kullanici adi. */
+  async login(identifier: string, pass: string): Promise<User | null> {
+    const value = identifier.trim();
+    const column = value.includes('@') ? 'email' : 'username';
     // Sifre ve dogrulama kodu select: false; giris icin acikca istenir.
     const user = await this.usersRepository
       .createQueryBuilder('user')
       .addSelect(['user.password', 'user.emailVerificationToken'])
-      .where('user.email = :email', { email })
+      .where(`user.${column} = :value`, { value })
       .getOne();
 
     if (user && user.password && (await bcrypt.compare(pass, user.password))) {
@@ -103,6 +115,78 @@ export class UsersService implements OnModuleInit {
       return user;
     }
     return null;
+  }
+
+  /**
+   * Google ile girişte hesabı bulur ya da açar.
+   * - googleId eşleşirse o hesap.
+   * - Aynı e-postalı hesap varsa Google'a bağlanır ve doğrulanmış sayılır. Hesap daha önce
+   *   doğrulanmamışsa (e-postanın sahibi olmayan biri açmış olabilir) şifresi silinir.
+   * - Yoksa e-postadan türetilen benzersiz kullanıcı adıyla yeni hesap açılır.
+   */
+  async findOrCreateGoogleUser(profile: {
+    googleId: string;
+    email: string;
+    fullName: string;
+  }): Promise<User> {
+    const linked = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.googleId = :googleId', { googleId: profile.googleId })
+      .getOne();
+    if (linked) return linked;
+
+    const existing = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: profile.email })
+      .getOne();
+    if (existing) {
+      await this.usersRepository.update(existing.id, {
+        googleId: profile.googleId,
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        codeAttempts: 0,
+        ...(existing.isEmailVerified
+          ? {}
+          : {
+              password: null as unknown as string,
+              resetPasswordToken: null,
+              resetPasswordExpires: null,
+            }),
+      });
+      return (await this.findById(existing.id))!;
+    }
+
+    const newUser = this.usersRepository.create({
+      username: await this.uniqueUsernameFrom(profile.email),
+      fullName: profile.fullName.slice(0, 80),
+      email: profile.email,
+      googleId: profile.googleId,
+      isEmailVerified: true,
+      emailVerificationToken: null,
+    });
+    const saved = await this.usersRepository.save(newUser);
+    return (await this.findById(saved.id))!;
+  }
+
+  /** E-postanın @ öncesinden kurallara uyan (harf, rakam, _) ve boşta olan bir kullanıcı adı üretir. */
+  private async uniqueUsernameFrom(email: string): Promise<string> {
+    const base =
+      email
+        .split('@')[0]
+        .replace(/[^a-zA-Z0-9_]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 24) || 'kullanici';
+    let candidate = base;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const taken = await this.usersRepository.findOne({
+        where: { username: candidate },
+        select: { id: true },
+      });
+      if (!taken) return candidate;
+      candidate = `${base}_${randomInt(1000, 10000)}`;
+    }
+    return `${base}_${Date.now().toString(36)}`;
   }
 
   async markEmailAsVerified(userId: number) {
@@ -124,7 +208,10 @@ export class UsersService implements OnModuleInit {
    * Yanlis kod denemesini sayar. Sinira ulasilinca bekleyen kodlar gecersiz olur
    * ve kullanici yeni kod istemek zorunda kalir. Kod gecersizlestiyse true doner.
    */
-  async registerFailedCodeAttempt(userId: number, previousAttempts: number): Promise<boolean> {
+  async registerFailedCodeAttempt(
+    userId: number,
+    previousAttempts: number,
+  ): Promise<boolean> {
     const attempts = previousAttempts + 1;
     if (attempts >= MAX_CODE_ATTEMPTS) {
       await this.usersRepository.update(userId, {
@@ -171,7 +258,10 @@ export class UsersService implements OnModuleInit {
 
   // ── KULLANICI BUL (E-POSTA İLE) ──
   async findIdByUsername(username: string): Promise<number | null> {
-    const user = await this.usersRepository.findOne({ where: { username }, select: { id: true } });
+    const user = await this.usersRepository.findOne({
+      where: { username },
+      select: { id: true },
+    });
     return user?.id ?? null;
   }
 
@@ -244,7 +334,10 @@ export class UsersService implements OnModuleInit {
 
       let streakMultiplier = 0;
       if (user.lastFocusDate) {
-        const gap = daysBetweenKeys(localDayKey(user.lastFocusDate), todayString);
+        const gap = daysBetweenKeys(
+          localDayKey(user.lastFocusDate),
+          todayString,
+        );
         if (gap >= 1) {
           user.currentStreak = gap === 1 ? (user.currentStreak || 0) + 1 : 1;
           user.lastFocusDate = now;
@@ -253,7 +346,8 @@ export class UsersService implements OnModuleInit {
         user.currentStreak = 1;
         user.lastFocusDate = now;
       }
-      if (user.currentStreak > user.bestStreak) user.bestStreak = user.currentStreak;
+      if (user.currentStreak > user.bestStreak)
+        user.bestStreak = user.currentStreak;
 
       // COIN HESAPLAMASI (Örn: Streak başına %10 bonus, max %50)
       streakMultiplier = Math.min(user.currentStreak, 5) * 0.1;
@@ -334,7 +428,10 @@ export class UsersService implements OnModuleInit {
 
   /** Odak dışı olaylarla kazanılan rozeti (düello, hedef, lig) ekler. Yeni kazanıldıysa true. */
   async awardBadge(userId: number, badge: string): Promise<boolean> {
-    const user = await this.usersRepository.findOne({ where: { id: userId }, select: { id: true, badges: true } });
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: { id: true, badges: true },
+    });
     if (!user) return false;
     const badges = this.normalizeBadges(user.badges);
     if (badges.includes(badge)) return false;
@@ -354,12 +451,25 @@ export class UsersService implements OnModuleInit {
     if (term.length < 2) return [];
     const builder = this.usersRepository
       .createQueryBuilder('user')
-      .select(['user.id', 'user.username', 'user.fullName', 'user.avatarUrl', 'user.equippedProfileFrame', 'user.isPremium', 'user.isOnline', 'user.totalFocusMinutes'])
-      .where('(user.username ILIKE :prefix OR user.fullName ILIKE :anywhere)', { prefix: `${term}%`, anywhere: `%${term}%` })
+      .select([
+        'user.id',
+        'user.username',
+        'user.fullName',
+        'user.avatarUrl',
+        'user.equippedProfileFrame',
+        'user.isPremium',
+        'user.isOnline',
+        'user.totalFocusMinutes',
+      ])
+      .where('(user.username ILIKE :prefix OR user.fullName ILIKE :anywhere)', {
+        prefix: `${term}%`,
+        anywhere: `%${term}%`,
+      })
       .andWhere('user.bannedAt IS NULL')
       .orderBy('user.username', 'ASC')
       .take(20);
-    if (excludeIds.length) builder.andWhere('user.id NOT IN (:...excludeIds)', { excludeIds });
+    if (excludeIds.length)
+      builder.andWhere('user.id NOT IN (:...excludeIds)', { excludeIds });
     return builder.getMany();
   }
 
@@ -390,10 +500,17 @@ export class UsersService implements OnModuleInit {
       .createQueryBuilder('day')
       .select('COALESCE(SUM(day.focusMinutes), 0)', 'minutes')
       .where('day.userId = :id', { id })
-      .andWhere('day.date BETWEEN :start AND :end', { start: weekStart, end: addDaysToKey(weekStart, 6) })
+      .andWhere('day.date BETWEEN :start AND :end', {
+        start: weekStart,
+        end: addDaysToKey(weekStart, 6),
+      })
       .getRawOne<{ minutes: string }>();
     const { bannedAt: _bannedAt, ...publicUser } = user;
-    return { ...publicUser, badges: this.getVisibleBadges(user), weekMinutes: Number(week?.minutes ?? 0) };
+    return {
+      ...publicUser,
+      badges: this.getVisibleBadges(user),
+      weekMinutes: Number(week?.minutes ?? 0),
+    };
   }
 
   /** İki kişi arasındaki arkadaşlık durumu (profil sayfasındaki düğme için). */
@@ -406,8 +523,10 @@ export class UsersService implements OnModuleInit {
       relations: { sender: true },
       select: { id: true, status: true, sender: { id: true } },
     });
-    if (!friendship || friendship.status === 'rejected') return { status: 'none' as const, requestId: null };
-    if (friendship.status === 'accepted') return { status: 'friends' as const, requestId: null };
+    if (!friendship || friendship.status === 'rejected')
+      return { status: 'none' as const, requestId: null };
+    if (friendship.status === 'accepted')
+      return { status: 'friends' as const, requestId: null };
     return friendship.sender.id === me
       ? { status: 'outgoing' as const, requestId: null }
       : { status: 'incoming' as const, requestId: friendship.id };
@@ -441,7 +560,7 @@ export class UsersService implements OnModuleInit {
   async getFriendsLeaderboard(userId: number) {
     const friends = await this.getFriends(userId);
     const currentUser = await this.findById(userId);
-    
+
     if (currentUser) {
       friends.push({
         id: currentUser.id,
@@ -455,7 +574,9 @@ export class UsersService implements OnModuleInit {
       } as any);
     }
 
-    return friends.sort((a, b) => (b.totalFocusMinutes || 0) - (a.totalFocusMinutes || 0));
+    return friends.sort(
+      (a, b) => (b.totalFocusMinutes || 0) - (a.totalFocusMinutes || 0),
+    );
   }
 
   // ── 6. ARKADAŞLIK İSTEĞİ GÖNDERME ──
@@ -515,7 +636,13 @@ export class UsersService implements OnModuleInit {
       select: {
         id: true,
         status: true,
-        sender: { id: true, username: true, fullName: true, avatarUrl: true, equippedProfileFrame: true },
+        sender: {
+          id: true,
+          username: true,
+          fullName: true,
+          avatarUrl: true,
+          equippedProfileFrame: true,
+        },
       },
     });
   }
@@ -686,8 +813,15 @@ export class UsersService implements OnModuleInit {
   }
 
   // ── 15. KULLANICI ONLINE DURUMU VE ODASI ──
-  async setOnlineStatus(userId: number, isOnline: boolean, roomName?: string | null) {
-    await this.usersRepository.update(userId, { isOnline, currentRoom: roomName || null });
+  async setOnlineStatus(
+    userId: number,
+    isOnline: boolean,
+    roomName?: string | null,
+  ) {
+    await this.usersRepository.update(userId, {
+      isOnline,
+      currentRoom: roomName || null,
+    });
   }
 
   async getRoomMemberCounts(roomNames: string[]): Promise<Map<string, number>> {
@@ -721,18 +855,22 @@ export class UsersService implements OnModuleInit {
     }
 
     if (itemType === 'color') {
-      if (user.ownedColors.includes(itemId)) throw new BadRequestException('Bu renge zaten sahipsiniz');
+      if (user.ownedColors.includes(itemId))
+        throw new BadRequestException('Bu renge zaten sahipsiniz');
       user.ownedColors.push(itemId);
     } else if (itemType === 'icon') {
-      if (user.ownedIcons.includes(itemId)) throw new BadRequestException('Bu ikona zaten sahipsiniz');
+      if (user.ownedIcons.includes(itemId))
+        throw new BadRequestException('Bu ikona zaten sahipsiniz');
       user.ownedIcons.push(itemId);
     } else if (itemType === 'soundPack') {
       user.ownedSoundPacks = user.ownedSoundPacks || ['classic'];
-      if (user.ownedSoundPacks.includes(itemId)) throw new BadRequestException('Bu ses paketine zaten sahipsiniz');
+      if (user.ownedSoundPacks.includes(itemId))
+        throw new BadRequestException('Bu ses paketine zaten sahipsiniz');
       user.ownedSoundPacks.push(itemId);
     } else {
       user.ownedProfileFrames = user.ownedProfileFrames || ['none'];
-      if (user.ownedProfileFrames.includes(itemId)) throw new BadRequestException('Bu profil çerçevesine zaten sahipsiniz');
+      if (user.ownedProfileFrames.includes(itemId))
+        throw new BadRequestException('Bu profil çerçevesine zaten sahipsiniz');
       user.ownedProfileFrames.push(itemId);
     }
 
