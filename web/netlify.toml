@@ -7,11 +7,18 @@
   to = "/index.html"
   status = 200
 
+# Google ile giris: istemci kimligi gizli degildir (sayfa kaynaginda gorunur).
+# Yalnizca canli ve test sitesinde tanimli; PR on izleme adresleri Google'da izinli
+# olamadigi (adres her PR'da degisir) icin orada dugme gosterilmez.
+[context.production.environment]
+  VITE_GOOGLE_CLIENT_ID = "278825121829-df7j29ma998b0nrrrouk8buk5b3g2n8h.apps.googleusercontent.com"
+
 # Test ortami: "staging" dalinin dal deploy'u test backend'ine baglanir.
 # Canli site (main) VITE_BACKEND_URL degerini Netlify panelinden alir.
 [context.staging.environment]
   VITE_BACKEND_URL = "https://studylounge-backend-staging.onrender.com"
   VITE_APP_ENV = "staging"
+  VITE_GOOGLE_CLIENT_ID = "278825121829-df7j29ma998b0nrrrouk8buk5b3g2n8h.apps.googleusercontent.com"
 
 # PR on izlemeleri de test backend'ine baglanir; canli veriye hic dokunmaz.
 # Test backend'inin CORS_ORIGIN_PATTERN degiskeni deploy-preview-<N>-- adreslerine izin verir.
