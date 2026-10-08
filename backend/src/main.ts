@@ -7,6 +7,7 @@ import { join } from 'path';
 import * as os from 'os';
 import { ConfigService } from '@nestjs/config';
 import { getConfigNumber, getConfigString } from './config/env';
+import { parseCorsOrigins } from './config/cors';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 
@@ -30,19 +31,16 @@ async function bootstrap() {
 
   // 1. CORS Ayari: Production ortaminda * yerine acikca belirtilmis bir origin beklenir.
   const isProduction = configService.get('NODE_ENV') === 'production';
-  const corsOrigin = configService.get('CORS_ORIGIN');
+  const origins = parseCorsOrigins(
+    configService.get('CORS_ORIGIN'),
+    configService.get('CORS_ORIGIN_PATTERN'),
+  );
 
-  let originValue: string | string[] | boolean = '*';
+  let originValue: (string | RegExp)[] | string | boolean = origins ?? '*';
 
-  if (isProduction) {
-    if (!corsOrigin || corsOrigin === '*') {
-      console.warn('WARNING: CORS_ORIGIN is not set properly for production. Disabling CORS origins.');
-      originValue = false; // Production'da guvenlik geregi acikca belirtilmezse kapat
-    } else {
-      originValue = corsOrigin.split(',');
-    }
-  } else {
-    originValue = corsOrigin && corsOrigin !== '*' ? corsOrigin.split(',') : '*';
+  if (isProduction && !origins) {
+    console.warn('WARNING: CORS_ORIGIN is not set properly for production. Disabling CORS origins.');
+    originValue = false; // Production'da guvenlik geregi acikca belirtilmezse kapat
   }
 
   app.enableCors({

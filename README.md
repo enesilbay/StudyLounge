@@ -341,7 +341,12 @@ Aynı kod üç ayrı ortamda, üç ayrı ayarla çalışır. Ortamlar **hiçbir 
 ```
 özellik dalı ──PR──► staging ──(test sitesinde denenir)──PR──► main ──► canlı
 ```
-`staging` ya da `main` dalına gönderilen her commit, o ortamın backend'ini (Render) ve web sitesini (Netlify) otomatik olarak yeniden deploy eder.
+`staging` ya da `main` dalına gönderilen her commit, o ortamın backend'ini (Render) ve web sitesini (Netlify) otomatik olarak yeniden deploy eder. CI hem `staging`'e hem `main`'e açılan PR'larda çalışır.
+
+**PR ön izlemeleri:** Netlify her PR için `deploy-preview-<N>--<site>.netlify.app` adresinde bir ön izleme açar. Bu ön izlemeler **test backend'ine** bağlanır (`web/netlify.toml` → `[context.deploy-preview.environment]`), yani canlı veriye dokunmaz. Test backend'i bu adreslere `CORS_ORIGIN_PATTERN` düzenli ifadesiyle izin verir. İfade tüm adrese uyacak şekilde otomatik `^…$` ile sarılır:
+```
+https://deploy-preview-\d+--cozy-melba-59db2a\.netlify\.app
+```
 
 **Ortama göre değişen ayarlar**
 
@@ -351,6 +356,7 @@ Aynı kod üç ayrı ortamda, üç ayrı ayarla çalışır. Ortamlar **hiçbir 
 | `DATABASE_URL` | yerel Docker | Neon `staging` | Neon `production` |
 | `JWT_SECRET` | basit bir değer | **kendine özel** uzun değer | **kendine özel** uzun değer |
 | `CORS_ORIGIN` | `*` | test web adresi | canlı web adresi |
+| `CORS_ORIGIN_PATTERN` | gerekmez | PR ön izleme adresleri (aşağıda) | **ayarlanmaz** |
 | `VITE_BACKEND_URL` (web) | `http://127.0.0.1:3000` | test backend adresi | canlı backend adresi |
 | `DB_RUN_MIGRATIONS` | gerekmez | `true` | `true` |
 | `THROTTLE_DISABLED` | olabilir | **olmaz** | **olmaz** |
