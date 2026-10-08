@@ -1,4 +1,8 @@
-import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from '../mail/mail.service';
@@ -6,6 +10,8 @@ import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { JwtPayload } from './jwt-payload.interface';
 import { RegisterDto } from './dto/register.dto';
+import { GoogleTokenService } from './google-token.service';
+import { User } from '../users/user.entity';
 
 const MAIL_FAILED_MESSAGE =
   'Doğrulama e-postası şu an gönderilemedi. Birkaç dakika sonra "Kodu tekrar gönder" ile yeniden dene.';
@@ -21,22 +27,37 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private googleTokenService: GoogleTokenService,
   ) {}
 
-  private async rejectWrongCode(userId: number, attempts: number | undefined, message: string): Promise<never> {
-    const locked = await this.usersService.registerFailedCodeAttempt(userId, attempts ?? 0);
+  private async rejectWrongCode(
+    userId: number,
+    attempts: number | undefined,
+    message: string,
+  ): Promise<never> {
+    const locked = await this.usersService.registerFailedCodeAttempt(
+      userId,
+      attempts ?? 0,
+    );
     throw new UnauthorizedException(
-      locked ? 'Çok fazla hatalı deneme yaptın. Lütfen yeni bir kod iste.' : message,
+      locked
+        ? 'Çok fazla hatalı deneme yaptın. Lütfen yeni bir kod iste.'
+        : message,
     );
   }
 
-  async login(email: string, pass: string) {
-    const user = await this.usersService.login(email, pass);
+  /** identifier: e-posta ya da kullanici adi. */
+  async login(identifier: string, pass: string) {
+    const user = await this.usersService.login(identifier, pass);
     if (!user) {
-      throw new UnauthorizedException('Hatalı e-posta veya şifre girdiniz.');
+      throw new UnauthorizedException(
+        'E-posta, kullanıcı adı ya da şifre hatalı.',
+      );
     }
     if (user.bannedAt) {
-      throw new UnauthorizedException('Hesabın askıya alındı. Destek için yöneticiyle iletişime geç.');
+      throw new UnauthorizedException(
+        'Hesabın askıya alındı. Destek için yöneticiyle iletişime geç.',
+      );
     }
 
     if (!user.isEmailVerified) {
@@ -45,7 +66,10 @@ export class AuthService {
         token = generateCode();
         await this.usersService.updateVerificationToken(user.id, token);
       }
-      const mailSent = await this.mailService.sendVerificationEmail(user.email, token);
+      const mailSent = await this.mailService.sendVerificationEmail(
+        user.email,
+        token,
+      );
       return {
         success: false,
         requiresVerification: true,
@@ -57,13 +81,29 @@ export class AuthService {
       };
     }
 
+    // Dogrulama kodu yalnizca yukaridaki kontrol icin yuklendi; yanita girmesin.
+    user.emailVerificationToken = null;
+    return this.issueSession(user);
+  }
+
+  /** Google ID token'i ile giris; hesap yoksa acilir, ayni e-postali hesap varsa baglanir. */
+  async loginWithGoogle(credential: string) {
+    const profile = await this.googleTokenService.verify(credential);
+    const user = await this.usersService.findOrCreateGoogleUser(profile);
+    if (user.bannedAt) {
+      throw new UnauthorizedException(
+        'Hesabın askıya alındı. Destek için yöneticiyle iletişime geç.',
+      );
+    }
+    return this.issueSession(user);
+  }
+
+  private issueSession(user: User) {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       username: user.username,
     };
-    // Dogrulama kodu yalnizca yukaridaki kontrol icin yuklendi; yanita girmesin.
-    user.emailVerificationToken = null;
     return {
       success: true,
       user,
@@ -73,15 +113,16 @@ export class AuthService {
 
   async register(body: RegisterDto) {
     const user = await this.usersService.create(body);
-    const token =
-      user.emailVerificationToken ||
-      generateCode();
+    const token = user.emailVerificationToken || generateCode();
 
     if (!user.emailVerificationToken) {
       await this.usersService.updateVerificationToken(user.id, token);
     }
 
-    const mailSent = await this.mailService.sendVerificationEmail(user.email, token);
+    const mailSent = await this.mailService.sendVerificationEmail(
+      user.email,
+      token,
+    );
 
     return {
       success: true,
@@ -110,7 +151,10 @@ export class AuthService {
       token = generateCode();
       await this.usersService.updateVerificationToken(user.id, token);
     }
-    const mailSent = await this.mailService.sendVerificationEmail(user.email, token);
+    const mailSent = await this.mailService.sendVerificationEmail(
+      user.email,
+      token,
+    );
     if (!mailSent) {
       throw new ServiceUnavailableException(MAIL_FAILED_MESSAGE);
     }
@@ -123,7 +167,11 @@ export class AuthService {
       throw new UnauthorizedException('Geçersiz veya hatalı doğrulama kodu.');
     }
     if (user.emailVerificationToken !== token) {
-      await this.rejectWrongCode(user.id, user.codeAttempts, 'Geçersiz veya hatalı doğrulama kodu.');
+      await this.rejectWrongCode(
+        user.id,
+        user.codeAttempts,
+        'Geçersiz veya hatalı doğrulama kodu.',
+      );
     }
 
     await this.usersService.markEmailAsVerified(user.id);
@@ -162,7 +210,9 @@ export class AuthService {
     await this.usersService.updateResetToken(user.id, token, expiry);
     const sent = await this.mailService.sendResetPasswordEmail(email, token);
     if (!sent) {
-      throw new ServiceUnavailableException('Sıfırlama e-postası şu an gönderilemedi. Birkaç dakika sonra tekrar dene.');
+      throw new ServiceUnavailableException(
+        'Sıfırlama e-postası şu an gönderilemedi. Birkaç dakika sonra tekrar dene.',
+      );
     }
 
     return {
@@ -178,7 +228,11 @@ export class AuthService {
       throw new UnauthorizedException('Geçersiz veya hatalı kod.');
     }
     if (user.resetPasswordToken !== token) {
-      await this.rejectWrongCode(user.id, user.codeAttempts, 'Geçersiz veya hatalı kod.');
+      await this.rejectWrongCode(
+        user.id,
+        user.codeAttempts,
+        'Geçersiz veya hatalı kod.',
+      );
     }
 
     if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {

@@ -13,6 +13,8 @@ interface RegisterPayload {
 
 export interface LoginResult {
   requiresVerification: boolean;
+  /** Doğrulama bekleyen hesabın e-postası (kullanıcı adıyla girişte doğrulama ekranı bunu kullanır). */
+  email?: string;
   message?: string;
   /** Doğrulama e-postası gönderilebildi mi (yalnız `requiresVerification` iken anlamlı). */
   mailSent?: boolean;
@@ -32,7 +34,10 @@ interface AuthState {
   error: string | null;
   login: (user: User, token: string) => void;
   /** Hesap e-posta doğrulaması bekliyorsa token kaydedilmez, `requiresVerification` döner. */
-  loginWithCredentials: (email: string, password: string) => Promise<LoginResult>;
+  /** identifier: e-posta ya da kullanıcı adı. */
+  loginWithCredentials: (identifier: string, password: string) => Promise<LoginResult>;
+  /** Google Identity Services'in verdiği ID token ile giriş. */
+  loginWithGoogle: (credential: string) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   registerWithCredentials: (payload: RegisterPayload) => Promise<RegisterResult>;
   setUser: (user: User) => void;
@@ -62,19 +67,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.setItem('user_data', JSON.stringify(user));
     set({ user, token, isAuthenticated: true, error: null });
   },
-  loginWithCredentials: async (email, password) => {
+  loginWithCredentials: async (identifier, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post<AuthEnvelope<User> & { requiresVerification?: boolean; message?: string; mailSent?: boolean }>('/auth/login', { email, password });
-      const { user, access_token: token, requiresVerification, message, mailSent } = response.data;
+      // Alan adı eski backend sürümleriyle uyum için "email"; kullanıcı adı da kabul edilir.
+      const response = await api.post<AuthEnvelope<User> & { requiresVerification?: boolean; email?: string; message?: string; mailSent?: boolean }>('/auth/login', {
+        email: identifier,
+        password,
+      });
+      const { user, access_token: token, requiresVerification, email, message, mailSent } = response.data;
       if (requiresVerification || !token) {
         set({ isLoading: false, error: null });
-        return { requiresVerification: true, message, mailSent: mailSent !== false };
+        return { requiresVerification: true, email, message, mailSent: mailSent !== false };
       }
       localStorage.setItem('access_token', token);
       localStorage.setItem('user_data', JSON.stringify(user));
       set({ user, token, isAuthenticated: true, isLoading: false, error: null });
       return { requiresVerification: false };
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+  loginWithGoogle: async (credential) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post<AuthEnvelope<User>>('/auth/google', { credential });
+      const { user, access_token: token } = response.data;
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+      set({ user, token, isAuthenticated: true, isLoading: false, error: null });
     } catch (error) {
       set({ isLoading: false, error: getApiErrorMessage(error) });
       throw error;
