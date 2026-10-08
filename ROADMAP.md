@@ -25,6 +25,14 @@
 
 ## 🔜 Sıradaki adımlar
 
+### 🚩 Öncelikli açık işler (en önce bunlar)
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Kritik | E-posta gönderimi çalışmıyor | Kayıt doğrulama kodu e-postayla gitmiyor; şifre sıfırlama da aynı servisi kullanıyor. Yeni kullanıcı kayıt olamaz. Render'daki SMTP/Resend ortam değişkenleri ve `backend/src/mail/mail.service.ts` incelenmeli; canlı ve test ortamında ayrı ayrı denenmeli. |
+| Yüksek | Ortam ayrımı: son kontrol | E-posta düzelince test sitesinde (`staging--cozy-melba-59db2a.netlify.app`) yeni hesap açılır ve hesabın yalnızca Neon `staging` dalında oluştuğu, `production`'da olmadığı doğrulanır. Diğer kontroller tamam: test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
+| Orta | Ortam ayrımı: temizlik | Canlı Neon'da birkaç gün sorunsuz çalıştıktan sonra Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek). Yereldeki `backend/.env.migration` dosyası (veritabanı adresleri ve şifreler içerir) silinir. |
+
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
 
 **Ortak kurallar**
@@ -87,7 +95,7 @@ Uygulama hâlâ geliştirme aşamasında. Bu fazın amacı, arkadaş çevresinde
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Kritik | Demo Premium bayrağa bağlanır | `POST /users/demo/upgrade` şu an giriş yapmış herkese tek istekle Premium veriyor. Geliştirmede işe yaradığı için silinmez; `ALLOW_DEMO_PREMIUM=true` env'ine bağlanır, yayında kendiliğinden kapalı olur. |
-| Kritik | Kalıcı veritabanı ve yedek | Render'ın ücretsiz PostgreSQL'i 30 günde sona eriyor (mevcut veritabanı ~2 Kasım 2026'da silinecek). Beta verisi için süresiz bir veritabanına geçilir (Neon ücretsiz planı ya da Render ücretli planı) ve otomatik yedek açılır. |
+| ✅ | Kalıcı veritabanı | Tamamlandı: veriler Render'dan Neon'a taşındı (Neon `production` dalı, PostgreSQL 17); canlı backend Neon'a bağlı. Neon'un ücretsiz plandaki geri yükleme süresi kontrol edilmeli. |
 | Yüksek | Dosya depolama | Avatarlar ve sohbet/PDF yüklemeleri `./uploads` diskine yazılıyor (`users.controller.ts`, `messages.controller.ts`). Render'da disk kalıcı olmadığı için her deploy'da siliniyor. Cloudflare R2 ya da S3'e taşınır. |
 | Yüksek | Hesap silme | Kodda yok. Kullanıcı ayarlardan hesabını ve verilerini silebilir; ilişkili kayıtlar (mesajlar, oturumlar, arkadaşlıklar) için silme/anonimleştirme kuralları belirlenir. |
 | Yüksek | TURN sunucusu bağlanır | Okul ve yurt ağlarında kameralı odalar TURN olmadan bağlanmıyor; hedef kitle de öğrenciler. Metered ya da Cloudflare TURN ile env değerleri girilir. |
@@ -110,7 +118,7 @@ Gerçek para alınmadan bütün akış test ortamında kurulur; şirket kurulunc
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. |
-| Orta | Staging ortamı | Ayrı veritabanı ve deploy. Beta kullanıcıları geliştirilen ortamda tutulmaz. |
+| ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | Orta | Geri bildirim / hata bildir | Uygulama içinde kısa bir form; beta aşamasının en değerli verisi. |
 | Orta | Google ile giriş | Şu an yalnızca e-posta/şifre var. Kayıt olmayı kolaylaştırır. |
 | Orta | Onboarding | İlk girişte "ders ekle → odaya katıl" yönlendirmesi. |
