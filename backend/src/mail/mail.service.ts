@@ -3,6 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 const SMTP_TIMEOUT_MS = 10_000;
+const HTTP_TIMEOUT_MS = 10_000;
+
+/** "Ad <adres@ornek.com>" ya da yalin "adres@ornek.com" bicimini ayristirir. */
+export function parseSender(value: string): { name?: string; email: string } {
+  const match = value.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  if (match) {
+    const name = match[1].trim();
+    return name ? { name, email: match[2].trim() } : { email: match[2].trim() };
+  }
+  return { email: value.trim() };
+}
 
 @Injectable()
 export class MailService implements OnModuleInit {
@@ -32,10 +43,14 @@ export class MailService implements OnModuleInit {
 
   /** Acilista SMTP ayarlarini dener; yanlissa e-postalar gitmeden once logda gorunur. */
   onModuleInit() {
+    const hasBrevo = Boolean(this.configService.get<string>('BREVO_API_KEY'));
     const hasResend = Boolean(this.configService.get<string>('RESEND_API_KEY'));
+    if (hasBrevo && !this.configService.get<string>('BREVO_FROM')) {
+      this.logger.warn('BREVO_API_KEY var ama BREVO_FROM tanimli degil: Brevo ile e-posta gonderilemez.');
+    }
     if (!this.transporter) {
-      if (!hasResend) {
-        this.logger.warn('SMTP_USER/SMTP_PASS ve RESEND_API_KEY tanimli degil: e-posta gonderilemez.');
+      if (!hasBrevo && !hasResend) {
+        this.logger.warn('BREVO_API_KEY, RESEND_API_KEY ve SMTP_USER/SMTP_PASS tanimli degil: e-posta gonderilemez.');
       }
       return;
     }
@@ -50,16 +65,55 @@ export class MailService implements OnModuleInit {
       );
   }
 
-  /** E-postayi Resend ya da SMTP ile gonderir. Hicbiri basaramazsa false doner. */
+  /** Brevo HTTPS API ile gonderir. Gonderici (BREVO_FROM) Brevo panelinde dogrulanmis olmali. */
+  private async sendWithBrevo(apiKey: string, to: string, subject: string, html: string): Promise<boolean> {
+    const from = this.configService.get<string>('BREVO_FROM');
+    if (!from) {
+      return false;
+    }
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender: parseSender(from),
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        }),
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
+      if (response.ok) {
+        this.logger.log(`Brevo ile e-posta gonderildi: ${to}`);
+        return true;
+      }
+      this.logger.error(`Brevo e-postayi reddetti (${response.status}): ${await response.text()}`);
+    } catch (err) {
+      this.logger.error(`Brevo hatasi: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return false;
+  }
+
+  /** E-postayi Brevo, Resend ya da SMTP ile (bu sirayla) gonderir. Hicbiri basaramazsa false doner. */
   private async sendMailWithFallback(
     to: string,
     subject: string,
     html: string,
     token: string,
   ): Promise<boolean> {
+    // 1. Brevo HTTPS API (443 portu; Render ucretsiz plani SMTP portlarini engeller)
+    const brevoKey = this.configService.get<string>('BREVO_API_KEY');
+    if (brevoKey && (await this.sendWithBrevo(brevoKey, to, subject, html))) {
+      return true;
+    }
+
     const resendKey = this.configService.get<string>('RESEND_API_KEY');
 
-    // 1. Resend HTTPS API (443 portu; SMTP'yi engelleyen bulut ortamlari icin)
+    // 2. Resend HTTPS API (dogrulanmis domain olmadan yalnizca hesap sahibine gonderebilir)
     if (resendKey) {
       try {
         const response = await fetch('https://api.resend.com/emails', {
@@ -87,7 +141,7 @@ export class MailService implements OnModuleInit {
       }
     }
 
-    // 2. SMTP
+    // 3. SMTP
     if (this.transporter) {
       const from =
         this.configService.get<string>('SMTP_FROM') ||
