@@ -324,7 +324,7 @@ Her `push` ve `pull_request` adımlarında otomatik test ve doğrulama süreçle
 Projenin canlı sunucu dağıtımı **Render** platformu üzerinde Docker runtime kullanılarak gerçekleştirilmiştir:
 - **Binding:** Backend `0.0.0.0` IP adresi ve dinlenebilir port (`PORT`) üzerinden dış dünyaya açılmıştır.
 - **CORS Yönetimi:** Production ortamında dinamik `CORS_ORIGIN` değişkeni ile güvenli origin yapılandırması sağlanır.
-- **Environment Variables:** `JWT_SECRET`, `DATABASE_URL` (ya da `DB_*`), `DB_RUN_MIGRATIONS`, `CORS_ORIGIN`, SMTP/Resend ve `TURN_*` değişkenleri cloud secrets üzerinden beslenir. Tam liste: `backend/.env.example`.
+- **Environment Variables:** `JWT_SECRET`, `DATABASE_URL` (ya da `DB_*`), `DB_RUN_MIGRATIONS`, `CORS_ORIGIN`, e-posta (Brevo, Resend ya da SMTP; Render ücretsiz planı SMTP portlarını engellediği için canlıda Brevo) ve `TURN_*` değişkenleri cloud secrets üzerinden beslenir. Tam liste: `backend/.env.example`.
 
 ### 5. 🧭 Ortamlar: geliştirme, test ve canlı
 Aynı kod üç ayrı ortamda, üç ayrı ayarla çalışır. Ortamlar **hiçbir şeyi paylaşmaz**: her birinin kendi veritabanı, kendi adresi ve kendi `JWT_SECRET`'ı vardır.
@@ -404,7 +404,7 @@ docker compose up -d
 cd backend
 npm install
 cp .env.example .env      # Windows: copy .env.example .env
-# .env dosyasında JWT_SECRET'ı değiştirin; e-posta için SMTP ya da Resend bilgilerini girin
+# .env dosyasında JWT_SECRET'ı değiştirin; e-posta için Brevo, Resend ya da SMTP bilgilerini girin
 npm run start:dev
 ```
 Backend hazır olunca `http://localhost:3000/health` 200 döner. İlk açılışta geliştirme modu tabloları kendisi kurar.
