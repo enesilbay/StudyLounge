@@ -29,7 +29,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 
 **Ortak kurallar**
 - Backend'de yeni kolonlar varsayılan değerli olur, yeni socket event'leri isteğe bağlıdır. Böylece mobil istemci bozulmaz.
-- Yeni özellikler web'e gelir. Mobilde yalnızca Faz 1'deki kritik düzeltmeler yapılır.
+- Yeni özellikler web'e gelir. Mobilde yalnızca Faz 1'deki kritik düzeltmeler yapılır. Mobil için tek istisna Faz 6'daki ödeme ve mağaza yayını.
 - Her şema değişikliği bir migration ile gelir.
 
 ### Faz 1: Güvenlik, e-posta ve web eksikleri ✅ (tamamlandı, `faz-1` dalı)
@@ -72,15 +72,70 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Yüksek | CI'a web job'u | Web şu an CI'da hiç derlenmiyor. Lint, build ve test adımları eklenir. |
 | Yüksek | Web testleri | Vitest + Testing Library ile birim testleri; Playwright ile uçtan uca testler (kayıt/giriş, oda kur/katıl, sohbet, PDF tahtası). |
 | Yüksek | Gateway testleri | `sensors.gateway.ts` için socket.io-client ile entegrasyon testleri: join/leave, oda doluluğu, şifreli oda mesaj yetkisi, rtc sinyal yetkisi, düello bahis doğrulaması. |
-| Yüksek | TURN sunucusu | Okul ve kurumsal ağlarda P2P bağlantı kurulamayabilir. `TURN_URL` env'i hazır, bir sağlayıcı (ör. Metered, coturn) bağlanmalı. |
+| Yüksek | TURN sunucusu | Kod hazır: `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` env'leri ve `.env.example`'da Metered örneği var. Sağlayıcının bağlanması Faz 5'e taşındı. |
 | Orta | README + örnek veri | Doğru `docker compose` komutları ve port ayarları (`PORT`, `DB_PORT`, `VITE_BACKEND_URL`). `.env.example` dosyaları tamamlanır. `npm run seed` ile demo kullanıcılar, odalar ve oturum geçmişi oluşturulur. |
 | Orta | Cihaz seçimi | Birden fazla kamera ve mikrofon arasında seçim, odaya girmeden önizleme ekranı. |
 | Orta | Bağlantı kalitesi göstergesi | `RTCPeerConnection.getStats()` ile karo üzerinde zayıf bağlantı uyarısı. |
 | Düşük | Ekran paylaşımında sistem sesi | `getDisplayMedia({ audio: true })` desteklenen tarayıcılarda. |
 
+### Faz 5: Kapalı betaya hazırlık ⏳ (sıradaki)
+
+Uygulama hâlâ geliştirme aşamasında. Bu fazın amacı, arkadaş çevresinden ilk gerçek kullanıcıların (kapalı beta) güvenle kullanabileceği hale gelmek. Şirket kurma, KVKK metinleri, gerçek tahsilat ve mağaza başvurusu bu fazda yapılmaz; Faz 6'ya kalır.
+
+**Güvenlik ve veri kaybı**
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Kritik | Demo Premium bayrağa bağlanır | `POST /users/demo/upgrade` şu an giriş yapmış herkese tek istekle Premium veriyor. Geliştirmede işe yaradığı için silinmez; `ALLOW_DEMO_PREMIUM=true` env'ine bağlanır, yayında kendiliğinden kapalı olur. |
+| Kritik | Kalıcı veritabanı ve yedek | Render'ın ücretsiz PostgreSQL'i 30 günde sona eriyor (mevcut veritabanı ~2 Kasım 2026'da silinecek). Beta verisi için süresiz bir veritabanına geçilir (Neon ücretsiz planı ya da Render ücretli planı) ve otomatik yedek açılır. |
+| Yüksek | Dosya depolama | Avatarlar ve sohbet/PDF yüklemeleri `./uploads` diskine yazılıyor (`users.controller.ts`, `messages.controller.ts`). Render'da disk kalıcı olmadığı için her deploy'da siliniyor. Cloudflare R2 ya da S3'e taşınır. |
+| Yüksek | Hesap silme | Kodda yok. Kullanıcı ayarlardan hesabını ve verilerini silebilir; ilişkili kayıtlar (mesajlar, oturumlar, arkadaşlıklar) için silme/anonimleştirme kuralları belirlenir. |
+| Yüksek | TURN sunucusu bağlanır | Okul ve yurt ağlarında kameralı odalar TURN olmadan bağlanmıyor; hedef kitle de öğrenciler. Metered ya da Cloudflare TURN ile env değerleri girilir. |
+
+**Ödeme akışı (yalnızca sandbox / test modu)**
+
+Gerçek para alınmadan bütün akış test ortamında kurulur; şirket kurulunca yalnızca API anahtarları değişir.
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Yüksek | Sağlayıcı: iyzico sandbox | Sandbox hesabı ücretsiz ve şirket istemiyor; test kartlarıyla denenebiliyor. Türk kartları, TL ve abonelik desteği var. Stripe Türkiye'de kurulu şirketlere hizmet vermediği için mevcut Stripe kodu gerçek tahsilata geçemez. |
+| Yüksek | Fiyat sunucuda | `payments.controller.ts` tutarı istemciden okuyor (`body.amount`). Aylık/yıllık planlar ve fiyatları sunucuda tanımlanır (`Plan`); istemci yalnızca `planId` gönderir. |
+| Yüksek | Sahte başarı yanıtı kaldırılır | `payments.service.ts` sağlayıcı hata verince `pi_test_...` biçiminde sahte bir başarılı yanıt dönüyor. Hata kullanıcıya iletilir. |
+| Yüksek | Premium süresi | `User.isPremium` yalnızca boolean. `premiumUntil` alanı eklenir (migration); süresi dolan Premium'u `@nestjs/schedule` (zaten kurulu) ile çalışan bir görev kapatır. `isPremium` mobil uyumluluk için korunur. |
+| Yüksek | Ödeme onayı yalnızca sunucudan | Ödeme sonucu callback/webhook ucuna gelir; imza doğrulanır ve aynı ödeme iki kez işlenmez (idempotency). Premium yalnızca bu onayla verilir, istemcinin "ödedim" demesine güvenilmez. `Payment` tablosu her işlemi kaydeder. |
+| Orta | Web ödeme ekranları | Premium sayfasında plan seçimi, ödeme formu, başarılı ve başarısız ödeme sayfaları, fatura geçmişi ve aboneliği iptal. |
+
+**Beta deneyimi ve takip**
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. |
+| Orta | Staging ortamı | Ayrı veritabanı ve deploy. Beta kullanıcıları geliştirilen ortamda tutulmaz. |
+| Orta | Geri bildirim / hata bildir | Uygulama içinde kısa bir form; beta aşamasının en değerli verisi. |
+| Orta | Google ile giriş | Şu an yalnızca e-posta/şifre var. Kayıt olmayı kolaylaştırır. |
+| Orta | Onboarding | İlk girişte "ders ekle → odaya katıl" yönlendirmesi. |
+
+Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → arkadaş çevresiyle kapalı beta.
+
+### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
+
+Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan önce yapılacaklar.
+
+| Alan | Başlık | Not |
+| :--- | :--- | :--- |
+| Hukuk | Şirket ve fatura | Şahıs şirketi yeterli; fatura için e-Arşiv. |
+| Hukuk | KVKK ve sözleşmeler | KVKK aydınlatma metni ve açık rıza (kamera, mesajlar ve çalışma verisi kişisel veri). Gizlilik politikası (görüntülü odalarda kayıt yok politikası dahil) ve kullanım koşulları. Web'de `/legal/...` sayfaları ve kayıt ekranında onay kutusu. |
+| Hukuk | Satış metinleri | Mesafeli satış sözleşmesi, ön bilgilendirme formu ve iptal/iade politikası (dijital içerikte cayma hakkı istisnası açıkça bildirilir); ödeme sayfasında onay kutusuyla gösterilir. |
+| Hukuk | Yaş sınırı | Öğrenci kitlesi nedeniyle 18 yaş altı kullanıcılar için veli onayı konusu netleştirilir. |
+| Ödeme | Canlı tahsilat | iyzico canlı anahtarlarına geçilir; `ALLOW_DEMO_PREMIUM` kapalıdır. İsteğe bağlı: coin paketi satışı (mağaza zaten coin ile çalışıyor). |
+| Ödeme | Mobil ödeme | Uygulama içinde Premium satarken Apple ve Google kendi ödeme sistemlerini zorunlu tutuyor (%15–30 komisyon). RevenueCat, mağaza ve web aboneliklerini aynı `premiumUntil` alanında birleştirir. |
+| Altyapı | Ücretli sunucu ve izleme | Render'ın ücretsiz planı uyku moduna geçiyor ve socket bağlantıları kopuyor; ücretli plana geçilir. Uptime izleme ve log toplama (ör. Better Stack). |
+| Büyüme | Ölçüm ve bildirimler | PostHog ya da Plausible ile kullanım analitiği. Seri bozulmak üzereyken ve haftalık özet için e-posta bildirimleri (mail servisi hazır). |
+| Büyüme | Görünürlük ve destek | Meta etiketleri ve Open Graph görselleri, destek e-postası ya da iletişim formu (ödeme sağlayıcıları başvuruda istiyor). |
+| Mobil | Mağaza yayını | EAS ile build; App Store ve Play Store başvurusu (`eas.json` hazır). |
+
 ## 🔭 Uzun vadede
-- **Ödeme entegrasyonu:** Stripe PaymentIntent altyapısı backend'de var. Premium satın alma akışı (webhook ile Premium verme) tamamlanmalı. Sunum için demo Premium (`POST /users/demo/upgrade`) şimdilik kalıyor.
 - **SFU'ya geçiş (LiveKit / mediasoup):** Mesh topolojisi 6 kişide sınırlanıyor. Daha kalabalık kameralı odalar için medya sunucusu gerekir.
 - **Mobilde kameralı odalara katılım:** Şu an mobil kullanıcılar kameralı odalarda kamerasız masa olarak görünür. `react-native-webrtc` ile izleme veya katılım eklenebilir.
-- **Ölçeklenebilir durum:** Gateway'deki oturum, düello ve arama durumu bellekte tutuluyor; birden fazla sunucu için Redis adapter gerekir.
-- **Kayıt yok politikası:** Görüntülü odalarda kayıt özelliği bilinçli olarak eklenmeyecek; bu karar gizlilik metninde belgelenmeli.
+- **Ölçeklenebilir durum:** Gateway'deki oturum, düello, arama, ortak tahta ve ortak sayaç durumu bellekte tutuluyor. Tek sunucuda sorun değil; ikinci bir sunucu açılmadan önce Redis adapter gerekir.
+- **Kayıt yok politikası:** Görüntülü odalarda kayıt özelliği bilinçli olarak eklenmeyecek; bu karar Faz 6'daki gizlilik politikasında belgelenir.
