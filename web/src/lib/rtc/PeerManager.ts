@@ -15,10 +15,32 @@ export interface SignalData {
   meta?: { screenStreamId: string | null };
 }
 
+/** Bağlantı kalitesi; `getStats()` ile birkaç saniyede bir ölçülür. */
+export interface PeerQuality {
+  level: 'good' | 'fair' | 'poor';
+  /** Gidiş-dönüş gecikmesi (ms); ölçülemediyse null. */
+  rttMs: number | null;
+  /** Son ölçüm aralığındaki paket kaybı (%). */
+  lossPct: number;
+  /** Medya TURN sunucusu üzerinden aktarılıyor mu (doğrudan bağlanılamadı). */
+  relayed: boolean;
+}
+
 export interface RemoteMedia {
   camera: MediaStream | null;
   screen: MediaStream | null;
   connectionState: RTCPeerConnectionState;
+  quality: PeerQuality | null;
+}
+
+const STATS_INTERVAL_MS = 5000;
+
+/** Gecikme ve kayıptan kalite düzeyi; eşikler görüntülü görüşme için. */
+export function qualityLevel(rttMs: number | null, lossPct: number, state: RTCPeerConnectionState): PeerQuality['level'] {
+  if (state === 'failed' || state === 'disconnected') return 'poor';
+  if ((rttMs ?? 0) > 400 || lossPct > 8) return 'poor';
+  if ((rttMs ?? 0) > 250 || lossPct > 3) return 'fair';
+  return 'good';
 }
 
 interface Peer {
@@ -28,6 +50,9 @@ interface Peer {
   ignoreOffer: boolean;
   streams: Map<string, MediaStream>;
   remoteScreenStreamId: string | null;
+  quality: PeerQuality | null;
+  /** Kayıp oranını aralık bazında hesaplamak için önceki sayaçlar. */
+  lastPackets: { received: number; lost: number } | null;
 }
 
 interface PeerManagerOptions {
@@ -43,9 +68,11 @@ export class PeerManager {
   private screenStream: MediaStream | null = null;
   private readonly opts: PeerManagerOptions;
   private closed = false;
+  private statsTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(opts: PeerManagerOptions) {
     this.opts = opts;
+    this.statsTimer = setInterval(() => void this.collectStats(), STATS_INTERVAL_MS);
   }
 
   /** Uzak kullanıcı için bağlantı oluşturur (zaten varsa dokunmaz). */
@@ -62,6 +89,8 @@ export class PeerManager {
       ignoreOffer: false,
       streams: new Map(),
       remoteScreenStreamId: null,
+      quality: null,
+      lastPackets: null,
     };
     this.peers.set(userId, peer);
 
@@ -175,7 +204,7 @@ export class PeerManager {
       if (stream.id === peer.remoteScreenStreamId) screen = stream;
       else camera = stream;
     }
-    return { camera, screen, connectionState: peer.pc.connectionState };
+    return { camera, screen, connectionState: peer.pc.connectionState, quality: peer.quality };
   }
 
   peerIds(): number[] {
@@ -184,8 +213,64 @@ export class PeerManager {
 
   close() {
     this.closed = true;
+    if (this.statsTimer) clearInterval(this.statsTimer);
     for (const peer of this.peers.values()) peer.pc.close();
     this.peers.clear();
+  }
+
+  /** Her bağlantının seçili aday çiftinden gecikmeyi, gelen RTP'den kaybı okur. */
+  private async collectStats() {
+    let changed = false;
+    for (const peer of this.peers.values()) {
+      if (peer.pc.connectionState === 'new' || peer.pc.connectionState === 'closed') continue;
+      try {
+        const report = await peer.pc.getStats();
+        let pair: RTCIceCandidatePairStats | undefined;
+        let received = 0;
+        let lost = 0;
+        report.forEach((stat) => {
+          if (stat.type === 'transport' && (stat as RTCTransportStats).selectedCandidatePairId) {
+            pair = report.get((stat as RTCTransportStats).selectedCandidatePairId!) as RTCIceCandidatePairStats;
+          }
+          if (stat.type === 'inbound-rtp') {
+            received += (stat as RTCInboundRtpStreamStats).packetsReceived ?? 0;
+            lost += (stat as RTCInboundRtpStreamStats).packetsLost ?? 0;
+          }
+        });
+        // Firefox "transport" vermez; seçili çift "nominated + succeeded" olandır.
+        if (!pair) {
+          report.forEach((stat) => {
+            const candidate = stat as RTCIceCandidatePairStats;
+            if (stat.type === 'candidate-pair' && candidate.nominated && candidate.state === 'succeeded') pair = candidate;
+          });
+        }
+
+        const rttMs = pair?.currentRoundTripTime != null ? Math.round(pair.currentRoundTripTime * 1000) : null;
+        const local = pair ? (report.get(pair.localCandidateId) as { candidateType?: string } | undefined) : undefined;
+        const remote = pair ? (report.get(pair.remoteCandidateId) as { candidateType?: string } | undefined) : undefined;
+        const relayed = local?.candidateType === 'relay' || remote?.candidateType === 'relay';
+
+        const previous = peer.lastPackets;
+        const deltaReceived = previous ? received - previous.received : 0;
+        const deltaLost = previous ? Math.max(0, lost - previous.lost) : 0;
+        const lossPct = deltaReceived + deltaLost > 0 ? Math.round((deltaLost / (deltaReceived + deltaLost)) * 1000) / 10 : 0;
+        peer.lastPackets = { received, lost };
+
+        const quality: PeerQuality = { level: qualityLevel(rttMs, lossPct, peer.pc.connectionState), rttMs, lossPct, relayed };
+        if (
+          !peer.quality ||
+          peer.quality.level !== quality.level ||
+          peer.quality.relayed !== quality.relayed ||
+          Math.abs((peer.quality.rttMs ?? 0) - (quality.rttMs ?? 0)) > 50
+        ) {
+          changed = true;
+        }
+        peer.quality = quality;
+      } catch {
+        // Bağlantı kapanırken getStats hata verebilir; bir sonraki ölçümde yeniden denenir.
+      }
+    }
+    if (changed && !this.closed) this.opts.onChange();
   }
 
   private syncSenders(peer: Peer) {

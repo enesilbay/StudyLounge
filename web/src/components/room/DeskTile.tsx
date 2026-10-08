@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { Bell, Mic, MicOff, MonitorUp, Swords, UserRound, UserX } from 'lucide-react';
+import { Bell, Mic, MicOff, MonitorUp, Swords, UserRound, UserX, WifiLow, WifiOff } from 'lucide-react';
 import { Avatar } from '../ui';
 import type { FrameId } from '../../lib/types';
 import { VideoView } from './MediaViews';
 import { hasLiveVideo } from '../../lib/rtc/media';
+import type { PeerQuality } from '../../lib/rtc/PeerManager';
 
 export interface DeskPerson {
   userId: number;
@@ -17,6 +18,8 @@ export interface DeskPerson {
   micOn: boolean;
   sharing: boolean;
   cameraStream: MediaStream | null;
+  /** Uzak katılımcıyla görüntülü bağlantının kalitesi (yalnızca aramadayken). */
+  quality?: PeerQuality | null;
 }
 
 /**
@@ -93,6 +96,7 @@ export function DeskTile({
           {person.name}
           {person.isSelf ? <span className={showVideo ? 'text-white/70' : 'text-textMuted'}> (sen)</span> : null}
         </p>
+        <QualityBadge quality={person.quality} onVideo={showVideo} />
         {person.sharing ? <MonitorUp className={`h-4 w-4 shrink-0 ${showVideo ? 'text-sea' : 'text-primary'}`} aria-label="Ekran paylaşıyor" /> : null}
         {videoRoom && person.inCall && !person.micOn ? <MicOff className="h-4 w-4 shrink-0 opacity-70" aria-label="Mikrofon kapalı" /> : null}
         {speaking ? <Mic className={`h-4 w-4 shrink-0 ${showVideo ? 'text-sea' : 'text-primary'}`} aria-hidden="true" /> : null}
@@ -123,4 +127,17 @@ export function DeskTile({
       ) : null}
     </article>
   );
+}
+
+/** Bağlantı iyiyse görünmez; orta/zayıfta simge ve açıklama gösterir. */
+function QualityBadge({ quality, onVideo }: { quality?: PeerQuality | null; onVideo: boolean }) {
+  if (!quality || quality.level === 'good') return null;
+  const poor = quality.level === 'poor';
+  const parts = [poor ? 'Zayıf bağlantı' : 'Bağlantı dalgalı'];
+  if (quality.rttMs != null) parts.push(`gecikme ${quality.rttMs} ms`);
+  if (quality.lossPct > 0) parts.push(`kayıp %${quality.lossPct}`);
+  if (quality.relayed) parts.push('TURN sunucusu üzerinden');
+  const label = parts.join(', ');
+  const Icon = poor ? WifiOff : WifiLow;
+  return <Icon className={`h-4 w-4 shrink-0 ${poor ? 'text-danger' : onVideo ? 'text-white/80' : 'text-textMuted'}`} aria-label={label}><title>{label}</title></Icon>;
 }
