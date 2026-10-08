@@ -6,3 +6,9 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Test ortami: "staging" dalinin dal deploy'u test backend'ine baglanir.
+# Canli site (main) VITE_BACKEND_URL degerini Netlify panelinden alir.
+[context.staging.environment]
+  VITE_BACKEND_URL = "https://studylounge-backend-staging.onrender.com"
+  VITE_APP_ENV = "staging"
