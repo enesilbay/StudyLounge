@@ -10,7 +10,7 @@
     },
     "shadcn": {
       "command": "cmd",
-      "args": ["/c", "cd", "web", "&&", "npx", "-y", "shadcn@latest", "mcp"]
+      "args": ["/c", "cd", "web", "&&", "npx", "-y", "shadcn@4.21.4", "mcp"]
     }
   }
 }
