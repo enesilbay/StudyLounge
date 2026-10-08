@@ -13,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { NotificationsService } from './notifications/notifications.service';
 import { ConfigService } from '@nestjs/config';
 import { getJwtSecret } from './config/env';
+import { parseCorsOrigins } from './config/cors';
 import { JwtPayload } from './auth/jwt-payload.interface';
 import { LobbiesService } from './lobbies/lobbies.service';
 import { MessagesService } from './messages/messages.service';
@@ -110,7 +111,13 @@ const MAX_DUEL_BET = 100;
 const DUEL_INVITE_TTL_MS = 60_000;
 
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN?.split(',') ?? '*' },
+  cors: {
+    origin:
+      parseCorsOrigins(
+        process.env.CORS_ORIGIN,
+        process.env.CORS_ORIGIN_PATTERN,
+      ) ?? '*',
+  },
   pingInterval: 10000,
   pingTimeout: 5000,
 })

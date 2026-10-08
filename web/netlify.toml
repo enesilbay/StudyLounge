@@ -12,3 +12,9 @@
 [context.staging.environment]
   VITE_BACKEND_URL = "https://studylounge-backend-staging.onrender.com"
   VITE_APP_ENV = "staging"
+
+# PR on izlemeleri de test backend'ine baglanir; canli veriye hic dokunmaz.
+# Test backend'inin CORS_ORIGIN_PATTERN degiskeni deploy-preview-<N>-- adreslerine izin verir.
+[context.deploy-preview.environment]
+  VITE_BACKEND_URL = "https://studylounge-backend-staging.onrender.com"
+  VITE_APP_ENV = "staging"
