@@ -11,6 +11,8 @@ import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { SHOP_CATALOG, findShopItem } from './shop-catalog';
 import { BADGES, focusBadges } from './badges';
@@ -187,6 +189,54 @@ export class UsersService implements OnModuleInit {
       candidate = `${base}_${randomInt(1000, 10000)}`;
     }
     return `${base}_${Date.now().toString(36)}`;
+  }
+
+  /**
+   * Hesabı ve kişisel verilerini kalıcı olarak siler.
+   * Onay: kullanıcı adının aynısı + (şifresi olan hesapta) mevcut şifre.
+   * Bağlı kayıtlar veritabanı kurallarıyla temizlenir: oturumlar, dersler, görevler,
+   * arkadaşlıklar, engeller, şikayetler, lig sonuçları ve özel mesajlar silinir;
+   * oda sohbetindeki mesajlar kalır ama yazarı boşalır, sahibi olduğu odaların sahibi boşalır.
+   */
+  async deleteAccount(
+    userId: number,
+    confirmation: string,
+    password?: string,
+  ): Promise<void> {
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id: userId })
+      .getOne();
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+    if (confirmation.trim() !== user.username) {
+      throw new BadRequestException(
+        'Onay için kullanıcı adını aynen yazmalısın.',
+      );
+    }
+    if (user.password) {
+      if (!password || !(await bcrypt.compare(password, user.password))) {
+        throw new BadRequestException('Şifre hatalı.');
+      }
+    }
+
+    await this.usersRepository.manager.transaction(async (manager) => {
+      // Eski veritabanlarında DM kısıtlaması CASCADE değilse silme takılmasın diye önce açıkça silinir.
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from('direct_messages')
+        .where('"senderId" = :id OR "receiverId" = :id', { id: userId })
+        .execute();
+      await manager.delete(User, { id: userId });
+    });
+
+    // Avatar dosyası yerel diskteyse temizlenir (dosya yoksa önemsenmez).
+    if (user.avatarUrl?.startsWith('/uploads/')) {
+      await unlink(join(process.cwd(), user.avatarUrl)).catch(() => undefined);
+    }
   }
 
   async markEmailAsVerified(userId: number) {

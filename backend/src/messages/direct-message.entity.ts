@@ -6,10 +6,11 @@ export class DirectMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, { eager: true })
+  // Hesap silinince o hesabin ozel mesajlari da silinir.
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   sender: User;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   receiver: User;
 
   @Column({ type: 'text' })
