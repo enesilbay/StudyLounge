@@ -25,21 +25,42 @@ async function signedIn(browser: Browser, username: string) {
 test.describe('giriş', () => {
   test('yanlış şifrede hata gösterir', async ({ page }) => {
     await page.goto('/auth')
-    await page.getByRole('textbox', { name: 'E-posta' }).fill(email('demo_elif'))
+    await page.getByRole('textbox', { name: 'E-posta veya kullanıcı adı' }).fill(email('demo_elif'))
     await page.getByRole('textbox', { name: 'Şifre' }).fill('yanlis-sifre')
     await page.getByRole('button', { name: 'Giriş yap' }).click()
-    await expect(page.getByRole('alert')).toContainText('Hatalı e-posta veya şifre')
+    await expect(page.getByRole('alert')).toContainText('E-posta, kullanıcı adı ya da şifre hatalı')
     await expect(page).toHaveURL(/\/auth/)
   })
 
   test('demo hesapla giriş yapıp odaları görür', async ({ page }) => {
     await page.goto('/auth')
-    await page.getByRole('textbox', { name: 'E-posta' }).fill(email('demo_elif'))
+    await page.getByRole('textbox', { name: 'E-posta veya kullanıcı adı' }).fill(email('demo_elif'))
     await page.getByRole('textbox', { name: 'Şifre' }).fill(PASSWORD)
     await page.getByRole('button', { name: 'Giriş yap' }).click()
     await expect(page).toHaveURL(/\/app\/lobbies/)
     await expect(page.getByText(ROOM)).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Planlı oturumlar' })).toBeVisible()
+  })
+
+  test('kullanıcı adıyla da giriş yapılır', async ({ page }) => {
+    await page.goto('/auth')
+    await page.getByRole('textbox', { name: 'E-posta veya kullanıcı adı' }).fill('demo_elif')
+    await page.getByRole('textbox', { name: 'Şifre' }).fill(PASSWORD)
+    await page.getByRole('button', { name: 'Giriş yap' }).click()
+    await expect(page).toHaveURL(/\/app\/lobbies/)
+  })
+
+  test('kayıtta şifre kurallarını yazarken gösterir', async ({ page }) => {
+    await page.goto('/auth?mod=kayit')
+    const password = page.getByRole('textbox', { name: 'Şifre' })
+    const rules = page.getByRole('list')
+    await password.fill('kisa')
+    await expect(rules.getByText('En az 8 karakter (eksik)')).toBeVisible()
+    await expect(rules.getByText('En az bir büyük harf (eksik)')).toBeVisible()
+    await password.fill('UzunSifre')
+    await expect(rules.getByText('En az 8 karakter (tamam)')).toBeVisible()
+    await expect(rules.getByText('En az bir büyük harf (tamam)')).toBeVisible()
+    await expect(rules.getByText('En az bir küçük harf (tamam)')).toBeVisible()
   })
 })
 

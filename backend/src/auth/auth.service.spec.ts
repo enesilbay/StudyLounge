@@ -5,6 +5,7 @@ import { MailService } from '../mail/mail.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
+import { GoogleTokenService } from './google-token.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -19,7 +20,9 @@ describe('AuthService', () => {
     updateVerificationToken: jest.Mock;
     markEmailAsVerified: jest.Mock;
     registerFailedCodeAttempt: jest.Mock;
+    findOrCreateGoogleUser: jest.Mock;
   };
+  let googleTokenService: { verify: jest.Mock };
   let mailService: {
     sendVerificationEmail: jest.Mock;
     sendResetPasswordEmail: jest.Mock;
@@ -54,7 +57,9 @@ describe('AuthService', () => {
       updateVerificationToken: jest.fn(),
       markEmailAsVerified: jest.fn(),
       registerFailedCodeAttempt: jest.fn().mockResolvedValue(false),
+      findOrCreateGoogleUser: jest.fn(),
     };
+    googleTokenService = { verify: jest.fn() };
     mailService = {
       sendVerificationEmail: jest.fn().mockResolvedValue(true),
       sendResetPasswordEmail: jest.fn().mockResolvedValue(true),
@@ -68,6 +73,7 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
         { provide: MailService, useValue: mailService },
+        { provide: GoogleTokenService, useValue: googleTokenService },
       ],
     }).compile();
 
@@ -133,28 +139,49 @@ describe('AuthService', () => {
       'ada@example.com',
       'secret123',
     );
-    expect(result.access_token).toBe('signed.jwt');
+    expect(result).toMatchObject({ access_token: 'signed.jwt' });
+  });
+
+  it('logs in with a username as well', async () => {
+    usersService.login.mockResolvedValue(user);
+
+    await service.login('ada', 'secret123');
+
+    expect(usersService.login).toHaveBeenCalledWith('ada', 'secret123');
   });
 
   it('counts a wrong verification code and does not verify', async () => {
-    usersService.findByEmailWithSecrets.mockResolvedValue({ ...user, emailVerificationToken: '123456', codeAttempts: 2 });
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      emailVerificationToken: '123456',
+      codeAttempts: 2,
+    });
 
-    await expect(service.verifyEmail('ada@example.com', '000000')).rejects.toThrow(
-      'Geçersiz veya hatalı doğrulama kodu.',
-    );
+    await expect(
+      service.verifyEmail('ada@example.com', '000000'),
+    ).rejects.toThrow('Geçersiz veya hatalı doğrulama kodu.');
     expect(usersService.registerFailedCodeAttempt).toHaveBeenCalledWith(7, 2);
     expect(usersService.markEmailAsVerified).not.toHaveBeenCalled();
   });
 
   it('asks for a new code once the attempt limit is reached', async () => {
-    usersService.findByEmailWithSecrets.mockResolvedValue({ ...user, emailVerificationToken: '123456', codeAttempts: 4 });
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      emailVerificationToken: '123456',
+      codeAttempts: 4,
+    });
     usersService.registerFailedCodeAttempt.mockResolvedValue(true);
 
-    await expect(service.verifyEmail('ada@example.com', '000000')).rejects.toThrow('yeni bir kod iste');
+    await expect(
+      service.verifyEmail('ada@example.com', '000000'),
+    ).rejects.toThrow('yeni bir kod iste');
   });
 
   it('tells the user when the verification email could not be sent', async () => {
-    usersService.create.mockResolvedValue({ ...user, emailVerificationToken: '123456' });
+    usersService.create.mockResolvedValue({
+      ...user,
+      emailVerificationToken: '123456',
+    });
     mailService.sendVerificationEmail.mockResolvedValue(false);
 
     const result = await service.register({
@@ -169,9 +196,14 @@ describe('AuthService', () => {
   });
 
   it('does not resend a code to an already verified account', async () => {
-    usersService.findByEmailWithSecrets.mockResolvedValue({ ...user, isEmailVerified: true });
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      isEmailVerified: true,
+    });
 
-    await expect(service.resendVerification('ada@example.com')).resolves.toMatchObject({ success: true });
+    await expect(
+      service.resendVerification('ada@example.com'),
+    ).resolves.toMatchObject({ success: true });
     expect(mailService.sendVerificationEmail).not.toHaveBeenCalled();
   });
 
@@ -183,7 +215,46 @@ describe('AuthService', () => {
     });
 
     await service.resendVerification('ada@example.com');
-    expect(mailService.sendVerificationEmail).toHaveBeenCalledWith('ada@example.com', '654321');
+    expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
+      'ada@example.com',
+      '654321',
+    );
+  });
+
+  it('signs in with a verified Google account', async () => {
+    const profile = {
+      googleId: 'g-1',
+      email: 'ada@example.com',
+      fullName: 'Ada Lovelace',
+    };
+    googleTokenService.verify.mockResolvedValue(profile);
+    usersService.findOrCreateGoogleUser.mockResolvedValue(user);
+
+    const result = await service.loginWithGoogle('google.id.token');
+
+    expect(googleTokenService.verify).toHaveBeenCalledWith('google.id.token');
+    expect(usersService.findOrCreateGoogleUser).toHaveBeenCalledWith(profile);
+    expect(result).toEqual({
+      success: true,
+      user,
+      access_token: 'signed.jwt',
+    });
+  });
+
+  it('does not let a banned account in through Google', async () => {
+    googleTokenService.verify.mockResolvedValue({
+      googleId: 'g-1',
+      email: 'ada@example.com',
+      fullName: 'Ada',
+    });
+    usersService.findOrCreateGoogleUser.mockResolvedValue({
+      ...user,
+      bannedAt: new Date(),
+    });
+
+    await expect(service.loginWithGoogle('token')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('rejects invalid login credentials', async () => {

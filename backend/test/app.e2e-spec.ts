@@ -14,6 +14,7 @@ import { MailService } from '../src/mail/mail.service';
 import { UsersController } from '../src/users/users.controller';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { User } from '../src/users/user.entity';
+import { GoogleTokenService } from '../src/auth/google-token.service';
 import { UsersService } from '../src/users/users.service';
 import { ModerationService } from '../src/moderation/moderation.service';
 
@@ -56,6 +57,7 @@ describe('StudyLounge API (e2e)', () => {
       controllers: [AuthController, LobbiesController, UsersController],
       providers: [
         AuthService,
+        GoogleTokenService,
         JwtStrategy,
         { provide: UsersService, useValue: usersService },
         { provide: LobbiesService, useClass: InMemoryLobbiesService },
@@ -73,7 +75,9 @@ describe('StudyLounge API (e2e)', () => {
         },
         {
           provide: ModerationService,
-          useValue: { assertNotBlocked: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            assertNotBlocked: jest.fn().mockResolvedValue(undefined),
+          },
         },
         {
           provide: ConfigService,
@@ -113,6 +117,28 @@ describe('StudyLounge API (e2e)', () => {
     expect(loginBody.success).toBe(true);
     expect(typeof loginBody.access_token).toBe('string');
     expect(loginBody.access_token.length).toBeGreaterThan(0);
+  });
+
+  it('logs in with the username instead of the email', async () => {
+    await registerUser('ada', 'ada@example.com');
+
+    const response = await request(getServer(app))
+      .post('/auth/login')
+      .send({ email: 'ada', password: 'secret123' })
+      .expect(201);
+    expect((response.body as AuthResponse).success).toBe(true);
+
+    await request(getServer(app))
+      .post('/auth/login')
+      .send({ password: 'secret123' })
+      .expect(400);
+  });
+
+  it('keeps Google sign-in closed without GOOGLE_CLIENT_ID', async () => {
+    await request(getServer(app))
+      .post('/auth/google')
+      .send({ credential: 'not-a-real-token' })
+      .expect(503);
   });
 
   it('logs in and creates a lobby', async () => {
@@ -290,10 +316,11 @@ class InMemoryUsersService {
     }
   }
 
-  login(email: string, password: string) {
+  login(identifier: string, password: string) {
     const user = this.users.find(
       (candidate) =>
-        candidate.email === email && candidate.password === password,
+        (candidate.email === identifier || candidate.username === identifier) &&
+        candidate.password === password,
     );
     return user ? this.sanitize(user) : null;
   }
@@ -304,7 +331,9 @@ class InMemoryUsersService {
   }
 
   findIdByUsername(username: string) {
-    return Promise.resolve(this.users.find((user) => user.username === username)?.id ?? null);
+    return Promise.resolve(
+      this.users.find((user) => user.username === username)?.id ?? null,
+    );
   }
 
   sendFriendRequest(senderId: number, receiverUsername: string) {

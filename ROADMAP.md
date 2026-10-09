@@ -29,8 +29,8 @@
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Kritik | E-posta gönderimi çalışmıyor | Kayıt doğrulama kodu e-postayla gitmiyor; şifre sıfırlama da aynı servisi kullanıyor. Yeni kullanıcı kayıt olamaz. Render'daki SMTP/Resend ortam değişkenleri ve `backend/src/mail/mail.service.ts` incelenmeli; canlı ve test ortamında ayrı ayrı denenmeli. |
-| Yüksek | Ortam ayrımı: son kontrol | E-posta düzelince test sitesinde (`staging--cozy-melba-59db2a.netlify.app`) yeni hesap açılır ve hesabın yalnızca Neon `staging` dalında oluştuğu, `production`'da olmadığı doğrulanır. Diğer kontroller tamam: test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
+| ✅ | E-posta gönderimi | Çözüldü: Render'ın ücretsiz planı SMTP portlarını engelliyordu (`Connection timeout`). E-posta artık Brevo HTTPS API ile gidiyor (`BREVO_API_KEY`, `BREVO_FROM`); test ve canlıda denendi, gelen kutusuna düşüyor. |
+| Yüksek | Ortam ayrımı: son kontrol | Test sitesinde (`staging--cozy-melba-59db2a.netlify.app`) yeni hesap açılır ve hesabın yalnızca Neon `staging` dalında oluştuğu, `production`'da olmadığı doğrulanır. E-posta artık çalıştığı için yapılabilir. Diğer kontroller tamam: test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
 | Orta | Ortam ayrımı: temizlik | Canlı Neon'da birkaç gün sorunsuz çalıştıktan sonra Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek). Yereldeki `backend/.env.migration` dosyası (veritabanı adresleri ve şifreler içerir) silinir. |
 
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
@@ -120,7 +120,7 @@ Gerçek para alınmadan bütün akış test ortamında kurulur; şirket kurulunc
 | Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | Orta | Geri bildirim / hata bildir | Uygulama içinde kısa bir form; beta aşamasının en değerli verisi. |
-| Orta | Google ile giriş | Şu an yalnızca e-posta/şifre var. Kayıt olmayı kolaylaştırır. |
+| ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
 | Orta | Onboarding | İlk girişte "ders ekle → odaya katıl" yönlendirmesi. |
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → arkadaş çevresiyle kapalı beta.
@@ -139,6 +139,8 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 | Ödeme | Mobil ödeme | Uygulama içinde Premium satarken Apple ve Google kendi ödeme sistemlerini zorunlu tutuyor (%15–30 komisyon). RevenueCat, mağaza ve web aboneliklerini aynı `premiumUntil` alanında birleştirir. |
 | Altyapı | Ücretli sunucu ve izleme | Render'ın ücretsiz planı uyku moduna geçiyor ve socket bağlantıları kopuyor; ücretli plana geçilir. Uptime izleme ve log toplama (ör. Better Stack). |
 | Büyüme | Ölçüm ve bildirimler | PostHog ya da Plausible ile kullanım analitiği. Seri bozulmak üzereyken ve haftalık özet için e-posta bildirimleri (mail servisi hazır). |
+| Hesap | Google girişini herkese aç | Google Cloud → Google Auth Platform → Audience → **Publish app**. Uygulama yalnızca e-posta ve ad istediği için Google incelemesi gerekmez; ama yayına çıkarken onay ekranında uygulama adı, logo, destek e-postası, gizlilik politikası ve kullanım koşulları bağlantıları (KVKK maddesindeki `/legal/...` sayfaları) istenir. Kendi alan adına geçilirse yeni adres "Authorized JavaScript origins" listesine eklenir. |
+| Hesap | Alan adı ve e-posta | Kendi alan adı (ör. `studylounge.app`) alınır; site bu adrese taşınır. E-posta göndericisi Gmail yerine bu alan adına geçirilir (Brevo'da SPF/DKIM doğrulaması). Böylece e-postaların spam'e düşme riski azalır. |
 | Büyüme | Görünürlük ve destek | Meta etiketleri ve Open Graph görselleri, destek e-postası ya da iletişim formu (ödeme sağlayıcıları başvuruda istiyor). |
 | Mobil | Mağaza yayını | EAS ile build; App Store ve Play Store başvurusu (`eas.json` hazır). |
 

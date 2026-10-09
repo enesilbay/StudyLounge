@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { KeyRound, LockKeyhole, Mail, MailCheck, UserRound } from 'lucide-react';
+import { AtSign, KeyRound, Mail, MailCheck, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage } from '../lib/apiResponses';
+import { isPasswordValid } from '../lib/passwordRules';
 import { BrandLockup, Button, LampMark, Notice, ThemeToggle } from '../components/ui';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
+import { PasswordField } from '../components/auth/PasswordField';
 import { useAuthStore } from '../store/authStore';
 
 type AuthMode = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
@@ -15,13 +18,15 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const { loginWithCredentials, registerWithCredentials, verifyEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
+  const { loginWithCredentials, loginWithGoogle, registerWithCredentials, verifyEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   // Açılış sayfasındaki "Ücretsiz hesap aç" doğrudan kayıt formunu açar (/auth?mod=kayit).
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<AuthMode>(() => (searchParams.get('mod') === 'kayit' ? 'register' : 'login'));
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  /** Giriş formunda e-posta ya da kullanıcı adı. */
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -50,6 +55,8 @@ export default function AuthPage() {
   }, [isAuthenticated, navigate]);
 
   const switchMode = (nextMode: AuthMode) => {
+    // Girişte yazılan e-posta, kayıt ve şifre sıfırlama formuna taşınır.
+    if (nextMode !== 'login' && !email && identifier.includes('@')) setEmail(identifier.trim());
     setMode(nextMode);
     setLocalError(null);
     setStatus(null);
@@ -61,14 +68,17 @@ export default function AuthPage() {
     setLocalError(null);
     setStatus(null);
 
+    if (mode === 'login' && (!identifier.trim() || !password)) return setLocalError('E-posta ya da kullanıcı adınla şifreni gir.');
     if (mode === 'register' && (!fullName.trim() || !username.trim() || !email.trim() || !password)) return setLocalError('Tüm alanları doldur.');
     if (mode === 'register' && !/^[a-zA-Z0-9_]+$/.test(username.trim())) return setLocalError('Kullanıcı adında sadece harf, rakam ve alt çizgi kullanabilirsin.');
-    if ((mode === 'login' || mode === 'register') && (!email.trim() || !password)) return setLocalError('E-posta ve şifreni gir.');
+    if (mode === 'register' && !isPasswordValid(password)) return setLocalError('Şifren aşağıdaki kuralların hepsine uymalı.');
 
     try {
       if (mode === 'login') {
-        const result = await loginWithCredentials(email.trim(), password);
+        const result = await loginWithCredentials(identifier.trim(), password);
         if (result.requiresVerification) {
+          // Kullanıcı adıyla girildiyse doğrulama için hesabın e-postası backend'den gelir.
+          setEmail(result.email ?? (identifier.includes('@') ? identifier.trim() : ''));
           setMode('verify');
           showMailStatus(result.message ?? 'Hesabın henüz doğrulanmadı. E-postana yeni bir kod gönderdik.', result.mailSent !== false);
           return;
@@ -93,6 +103,7 @@ export default function AuthPage() {
         setMode('reset');
       } else {
         if (!email.trim() || !resetToken.trim() || !newPassword) return setLocalError('E-posta, kod ve yeni şifre alanlarını doldur.');
+        if (!isPasswordValid(newPassword)) return setLocalError('Yeni şifren aşağıdaki kuralların hepsine uymalı.');
         setLocalLoading(true);
         const response = await api.post('/auth/reset-password', { email: email.trim(), token: resetToken.trim(), newPass: newPassword });
         setStatus(response.data?.message ?? 'Şifren güncellendi. Giriş yapabilirsin.');
@@ -123,6 +134,17 @@ export default function AuthPage() {
       setLocalError(getApiErrorMessage(resendError));
     } finally {
       setLocalLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    setLocalError(null);
+    setStatus(null);
+    try {
+      await loginWithGoogle(credential);
+      navigate('/app/lobbies');
+    } catch {
+      // Hata mesajı store'daki `error` ile gösterilir.
     }
   };
 
@@ -170,35 +192,74 @@ export default function AuthPage() {
             </div>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            {mode === 'register' ? (
-              <>
-                <Field label="Ad soyad" icon={UserRound}>
-                  <input value={fullName} onChange={(event) => setFullName(event.target.value)} className={inputCls} placeholder="Adın ve soyadın" autoComplete="name" required />
-                </Field>
-                <Field label="Kullanıcı adı" icon={UserRound}>
-                  <input value={username} onChange={(event) => setUsername(event.target.value)} className={inputCls} placeholder="harf, rakam ve _" pattern="[A-Za-z0-9_]+" maxLength={32} autoComplete="username" required />
-                </Field>
-              </>
-            ) : null}
-            {mode !== 'verify' ? (
-              <Field label="E-posta" icon={Mail}>
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className={inputCls} placeholder="ogrenci@universite.edu.tr" autoComplete="email" required />
-              </Field>
-            ) : null}
-            {mode === 'login' || mode === 'register' ? (
-              <Field label="Şifre" icon={LockKeyhole}>
+          {/* Her alanın sabit bir name/autocomplete çifti var: Chrome kayıtta kullanıcı adını
+              "username" olarak saklar, girişte de aynı alana doldurur. Giriş alanı hem e-postayı
+              hem kullanıcı adını kabul ettiği için hangisi doldurulursa doldurulsun giriş çalışır. */}
+          <form key={mode} onSubmit={handleSubmit} className="mt-6 space-y-4">
+            {mode === 'login' ? (
+              <Field label="E-posta veya kullanıcı adı" icon={AtSign}>
                 <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  name="username"
+                  value={identifier}
+                  onChange={(event) => setIdentifier(event.target.value)}
                   className={inputCls}
-                  placeholder={mode === 'register' ? 'En az 6 karakter' : 'Şifren'}
-                  minLength={mode === 'register' ? 6 : 1}
-                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  placeholder="ornek@gmail.com"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={120}
                   required
                 />
               </Field>
+            ) : null}
+            {mode === 'register' ? (
+              <>
+                <Field label="Ad soyad" icon={UserRound}>
+                  <input name="name" value={fullName} onChange={(event) => setFullName(event.target.value)} className={inputCls} placeholder="Adın ve soyadın" autoComplete="name" required />
+                </Field>
+                <Field label="Kullanıcı adı" icon={UserRound}>
+                  <input
+                    name="username"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    className={inputCls}
+                    placeholder="harf, rakam ve _"
+                    pattern="[A-Za-z0-9_]+"
+                    maxLength={32}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                  />
+                </Field>
+              </>
+            ) : null}
+            {mode === 'register' || mode === 'forgot' || mode === 'reset' ? (
+              <Field label="E-posta" icon={Mail}>
+                <input
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className={inputCls}
+                  placeholder="ornek@gmail.com"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  required
+                />
+              </Field>
+            ) : null}
+            {mode === 'login' || mode === 'register' ? (
+              <PasswordField
+                label="Şifre"
+                name={mode === 'register' ? 'new-password' : 'password'}
+                value={password}
+                onChange={setPassword}
+                placeholder={mode === 'register' ? 'Yeni bir şifre belirle' : 'Şifren'}
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                showRules={mode === 'register'}
+              />
             ) : null}
             {mode === 'verify' ? (
               <Field label="Doğrulama kodu" icon={KeyRound}>
@@ -216,11 +277,9 @@ export default function AuthPage() {
             {mode === 'reset' ? (
               <>
                 <Field label="E-postana gelen 6 haneli kod" icon={KeyRound}>
-                  <input value={resetToken} onChange={(event) => setResetToken(event.target.value)} className={inputCls} inputMode="numeric" placeholder="123456" required />
+                  <input name="one-time-code" value={resetToken} onChange={(event) => setResetToken(event.target.value)} className={inputCls} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" required />
                 </Field>
-                <Field label="Yeni şifre" icon={LockKeyhole}>
-                  <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className={inputCls} placeholder="En az 6 karakter" minLength={6} autoComplete="new-password" required />
-                </Field>
+                <PasswordField label="Yeni şifre" name="new-password" value={newPassword} onChange={setNewPassword} placeholder="Yeni bir şifre belirle" autoComplete="new-password" showRules />
               </>
             ) : null}
             {mode === 'login' ? (
@@ -234,6 +293,9 @@ export default function AuthPage() {
               {ctaForMode(mode)}
             </Button>
           </form>
+          {mode === 'login' || mode === 'register' ? (
+            <GoogleSignInButton onCredential={(credential) => void handleGoogleCredential(credential)} onError={setLocalError} />
+          ) : null}
           {mode === 'verify' || mode === 'reset' ? (
             <button
               type="button"
