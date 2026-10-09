@@ -30,8 +30,8 @@
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | ✅ | E-posta gönderimi | Çözüldü: Render'ın ücretsiz planı SMTP portlarını engelliyordu (`Connection timeout`). E-posta artık Brevo HTTPS API ile gidiyor (`BREVO_API_KEY`, `BREVO_FROM`); test ve canlıda denendi, gelen kutusuna düşüyor. |
-| Yüksek | Ortam ayrımı: son kontrol | Test sitesinde (`staging--cozy-melba-59db2a.netlify.app`) yeni hesap açılır ve hesabın yalnızca Neon `staging` dalında oluştuğu, `production`'da olmadığı doğrulanır. E-posta artık çalıştığı için yapılabilir. Diğer kontroller tamam: test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
-| Orta | Ortam ayrımı: temizlik | Canlı Neon'da birkaç gün sorunsuz çalıştıktan sonra Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek). Yereldeki `backend/.env.migration` dosyası (veritabanı adresleri ve şifreler içerir) silinir. |
+| ✅ | Ortam ayrımı: son kontrol | Doğrulandı: test sitesinden açılan hesaplar yalnızca Neon `staging` dalında, `production`'da yok. Test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
+| Yüksek | Ortam ayrımı: temizlik | Yapıldı: taşıma yedeği, `backend/.env.migration` ve test veritabanındaki deneme hesapları silindi. Kalan (panelden): `.env.migration` OneDrive'a da yüklendiği için Neon `neondb_owner` şifresi yenilenir ve iki Render servisindeki `DATABASE_URL` güncellenir; OneDrive geri dönüşüm kutusundaki kopya silinir; Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek); Neon'un geri yükleme süresi kontrol edilir. |
 
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
 
@@ -94,10 +94,10 @@ Uygulama hâlâ geliştirme aşamasında. Bu fazın amacı, arkadaş çevresinde
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Kritik | Demo Premium bayrağa bağlanır | `POST /users/demo/upgrade` şu an giriş yapmış herkese tek istekle Premium veriyor. Geliştirmede işe yaradığı için silinmez; `ALLOW_DEMO_PREMIUM=true` env'ine bağlanır, yayında kendiliğinden kapalı olur. |
+| ✅ | Demo Premium bayrağa bağlanır | Tamamlandı: `POST /users/demo/upgrade` yalnızca `ALLOW_DEMO_PREMIUM=true` olan ortamda çalışır, yoksa 403 döner. Canlıda tanımlı olmadığı için kapalı; mobildeki demo yükseltme düğmesi canlıda hata mesajı gösterir. |
 | ✅ | Kalıcı veritabanı | Tamamlandı: veriler Render'dan Neon'a taşındı (Neon `production` dalı, PostgreSQL 17); canlı backend Neon'a bağlı. Neon'un ücretsiz plandaki geri yükleme süresi kontrol edilmeli. |
-| Yüksek | Dosya depolama | Avatarlar ve sohbet/PDF yüklemeleri `./uploads` diskine yazılıyor (`users.controller.ts`, `messages.controller.ts`). Render'da disk kalıcı olmadığı için her deploy'da siliniyor. Cloudflare R2 ya da S3'e taşınır. |
-| Yüksek | Hesap silme | Kodda yok. Kullanıcı ayarlardan hesabını ve verilerini silebilir; ilişkili kayıtlar (mesajlar, oturumlar, arkadaşlıklar) için silme/anonimleştirme kuralları belirlenir. |
+| Yüksek | Dosya depolama | Kod hazır: `StorageService` (`backend/src/storage/`) dosyaları S3 uyumlu depoya yazar, `GET /uploads/:key` sunar; adresler (`/uploads/...`) değişmediği için mobil ve web etkilenmez. Sağlayıcı: Backblaze B2 (10 GB ücretsiz, kart yok, gizli depo). Kalan: B2 hesabı ve `S3_*` ortam değişkenlerinin Render'a girilmesi (test ve canlı için ayrı depo). |
+| ✅ | Hesap silme | Tamamlandı: Ayarlar → "Hesabı sil" (`DELETE /users/me`, kullanıcı adı + varsa şifre ile onay). Oturumlar, dersler, görevler, arkadaşlıklar, engeller, şikayetler, lig sonuçları ve özel mesajlar silinir; oda sohbetindeki mesajlar kalır ama yazarı boşalır; sahibi olduğu odaların sahibi boşalır. Yüklediği dosyalar (avatar dışında) dosya depolama taşınınca ele alınacak. Mobilde henüz yok. |
 | Yüksek | TURN sunucusu bağlanır | Okul ve yurt ağlarında kameralı odalar TURN olmadan bağlanmıyor; hedef kitle de öğrenciler. Metered ya da Cloudflare TURN ile env değerleri girilir. |
 
 **Ödeme akışı (yalnızca sandbox / test modu)**

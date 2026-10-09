@@ -3,7 +3,6 @@ import './config/pg-utc';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 import * as os from 'os';
 import { ConfigService } from '@nestjs/config';
 import { getConfigNumber, getConfigString } from './config/env';
@@ -47,10 +46,8 @@ async function bootstrap() {
     origin: originValue,
   });
 
-  // 2. Statik Dosyalar: PDF ve diger yuklemelerin URL uzerinden acilmasi icin.
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-  });
+  // 2. Yuklenen dosyalar (/uploads/<anahtar>) StorageController tarafindan sunulur
+  // (S3 uyumlu depo ya da gelistirmede yerel ./uploads).
 
   const port = getConfigNumber(configService, 'PORT', 3000);
   const host = getConfigString(configService, 'HOST', '0.0.0.0');

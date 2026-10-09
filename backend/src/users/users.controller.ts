@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   FileTypeValidator,
+  ForbiddenException,
   Get,
   MaxFileSizeValidator,
   ParseFilePipe,
@@ -15,13 +17,17 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { getConfigBoolean } from '../config/env';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
+import { StorageService } from '../storage/storage.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AVATAR_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Throttle } from '@nestjs/throttler';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { RespondRequestDto } from './dto/respond-request.dto';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
 import { ShopItemDto } from './dto/shop-item.dto';
@@ -42,6 +48,8 @@ export class UsersController {
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
     private readonly moderationService: ModerationService,
+    private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
 
   @Get('leaderboard')
@@ -58,6 +66,19 @@ export class UsersController {
   async getMe(@CurrentUser() user: User) {
     const currentUser = await this.usersService.findById(user.id);
     return { success: true, user: currentUser };
+  }
+
+  /** Hesabi kalici olarak siler (kullanici adi + varsa sifre ile onaylanir). */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Delete('me')
+  async deleteMe(@CurrentUser() user: User, @Body() body: DeleteAccountDto) {
+    await this.usersService.deleteAccount(
+      user.id,
+      body.confirmation,
+      body.password,
+    );
+    await this.storageService.removeByUrl(user.avatarUrl);
+    return { success: true, message: 'Hesabın ve verilerin silindi.' };
   }
 
   @Post('friend-request')
@@ -112,18 +133,8 @@ export class UsersController {
   @Post('avatar/:id')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const userId = (req.user as User | undefined)?.id ?? 'unknown';
-          cb(
-            null,
-            `avatar-${userId}-${uniqueSuffix}${extname(file.originalname)}`,
-          );
-        },
-      }),
+      // Dosya once bellekte tutulur, dogrulamadan sonra depoya yazilir.
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
@@ -141,16 +152,30 @@ export class UsersController {
     )
     file: Express.Multer.File,
   ) {
-    const avatarUrl = `/uploads/${file.filename}`;
+    const avatarUrl = await this.storageService.put(
+      this.storageService.createKey(`avatar-${user.id}`, file.originalname),
+      file.buffer,
+    );
     const updatedUser = await this.usersService.updateAvatar(
       user.id,
       avatarUrl,
     );
+    // Eski avatar artik kullanilmiyor.
+    if (user.avatarUrl && user.avatarUrl !== avatarUrl) {
+      await this.storageService.removeByUrl(user.avatarUrl);
+    }
     return { success: true, user: updatedUser };
   }
 
+  // Odeme akisi yokken gelistirme icin Premium verir. Yalnizca ALLOW_DEMO_PREMIUM=true
+  // olan ortamlarda acik; canli ortamda tanimli olmadigi icin kendiliginden kapalidir.
   @Post('demo/upgrade')
   async demoUpgradeToPremium(@CurrentUser() user: User) {
+    if (!getConfigBoolean(this.configService, 'ALLOW_DEMO_PREMIUM', false)) {
+      throw new ForbiddenException(
+        'Demo Premium bu ortamda kapalı. Premium, ödeme sistemi açıldığında satın alınabilecek.',
+      );
+    }
     const updatedUser = await this.usersService.upgradeToPremium(user.id);
     return {
       success: true,

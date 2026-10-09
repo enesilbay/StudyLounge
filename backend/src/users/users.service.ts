@@ -189,6 +189,50 @@ export class UsersService implements OnModuleInit {
     return `${base}_${Date.now().toString(36)}`;
   }
 
+  /**
+   * Hesabı ve kişisel verilerini kalıcı olarak siler.
+   * Onay: kullanıcı adının aynısı + (şifresi olan hesapta) mevcut şifre.
+   * Bağlı kayıtlar veritabanı kurallarıyla temizlenir: oturumlar, dersler, görevler,
+   * arkadaşlıklar, engeller, şikayetler, lig sonuçları ve özel mesajlar silinir;
+   * oda sohbetindeki mesajlar kalır ama yazarı boşalır, sahibi olduğu odaların sahibi boşalır.
+   */
+  async deleteAccount(
+    userId: number,
+    confirmation: string,
+    password?: string,
+  ): Promise<void> {
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id: userId })
+      .getOne();
+    if (!user) {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+    if (confirmation.trim() !== user.username) {
+      throw new BadRequestException(
+        'Onay için kullanıcı adını aynen yazmalısın.',
+      );
+    }
+    if (user.password) {
+      if (!password || !(await bcrypt.compare(password, user.password))) {
+        throw new BadRequestException('Şifre hatalı.');
+      }
+    }
+
+    await this.usersRepository.manager.transaction(async (manager) => {
+      // Eski veritabanlarında DM kısıtlaması CASCADE değilse silme takılmasın diye önce açıkça silinir.
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from('direct_messages')
+        .where('"senderId" = :id OR "receiverId" = :id', { id: userId })
+        .execute();
+      await manager.delete(User, { id: userId });
+    });
+    // Avatar dosyası depodan UsersController'da silinir (StorageService).
+  }
+
   async markEmailAsVerified(userId: number) {
     await this.usersRepository.update(userId, {
       isEmailVerified: true,
