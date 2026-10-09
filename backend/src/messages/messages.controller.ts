@@ -13,11 +13,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { unlink } from 'fs/promises';
+import { memoryStorage } from 'multer';
 import { extname } from 'path';
+import { StorageService } from '../storage/storage.service';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { CHAT_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
+import {
+  CHAT_UPLOAD_TYPES,
+  createUploadFileFilter,
+} from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LobbiesService } from '../lobbies/lobbies.service';
 import { ModerationService } from '../moderation/moderation.service';
@@ -46,6 +49,7 @@ export class MessagesController {
     private readonly messagesService: MessagesService,
     private readonly lobbiesService: LobbiesService,
     private readonly moderationService: ModerationService,
+    private readonly storageService: StorageService,
   ) {}
 
   private async assertRoomAccess(roomName: string, userId: number) {
@@ -68,14 +72,8 @@ export class MessagesController {
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (_req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
+      // Dosya once bellekte tutulur; kontrollerden gecerse depoya yazilir.
+      storage: memoryStorage(),
       limits: {
         fileSize: MAX_PDF_BYTES,
       },
@@ -86,33 +84,25 @@ export class MessagesController {
     @CurrentUser() user: User,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_PDF_BYTES }),
-        ],
+        validators: [new MaxFileSizeValidator({ maxSize: MAX_PDF_BYTES })],
       }),
     )
     file: Express.Multer.File,
     @Body() body: UploadMessageFileDto,
   ) {
-    if (!(await this.lobbiesService.canAccessRoom(body.roomName, user.id))) {
-      await unlink(file.path).catch(() => undefined);
-      throw new ForbiddenException('Bu odanin sohbetine erisimin yok.');
-    }
-    try {
-      await this.moderationService.assertCanChat(user.id);
-    } catch (error) {
-      await unlink(file.path).catch(() => undefined);
-      throw error;
-    }
+    await this.assertRoomAccess(body.roomName, user.id);
+    await this.moderationService.assertCanChat(user.id);
 
     if (!isPdf(file) && file.size > MAX_FILE_BYTES) {
-      await unlink(file.path).catch(() => undefined);
       throw new BadRequestException(
         "Dosya en fazla 5 MB olabilir. PDF'ler 20 MB'a kadar yüklenebilir.",
       );
     }
 
-    const fileUrl = `/uploads/${file.filename}`;
+    const fileUrl = await this.storageService.put(
+      this.storageService.createKey('file', file.originalname),
+      file.buffer,
+    );
     const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
 
     return await this.messagesService.createFileMessage(
@@ -135,7 +125,10 @@ export class MessagesController {
     @Param('userId') targetId: string,
   ) {
     await this.messagesService.markAsRead(Number(targetId), user.id);
-    return await this.messagesService.getDirectMessages(user.id, Number(targetId));
+    return await this.messagesService.getDirectMessages(
+      user.id,
+      Number(targetId),
+    );
   }
 
   // Web: sohbet acikken gelen mesajlar okundu sayilir.
@@ -155,7 +148,11 @@ export class MessagesController {
     @Body() body: CreateDirectMessageDto,
   ) {
     await this.moderationService.assertCanChat(user.id);
-    await this.moderationService.assertNotBlocked(user.id, Number(targetId), 'Bu kullanıcıya mesaj gönderemezsin.');
+    await this.moderationService.assertNotBlocked(
+      user.id,
+      Number(targetId),
+      'Bu kullanıcıya mesaj gönderemezsin.',
+    );
     return await this.messagesService.createDirectMessage(
       user.id,
       Number(targetId),
@@ -164,7 +161,10 @@ export class MessagesController {
   }
 
   @Get(':roomName')
-  async getMessages(@CurrentUser() user: User, @Param('roomName') roomName: string) {
+  async getMessages(
+    @CurrentUser() user: User,
+    @Param('roomName') roomName: string,
+  ) {
     await this.assertRoomAccess(roomName, user.id);
     return await this.messagesService.getRoomMessages(roomName);
   }

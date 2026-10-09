@@ -20,6 +20,7 @@ import { UsersController } from '../src/users/users.controller';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { User } from '../src/users/user.entity';
 import { GoogleTokenService } from '../src/auth/google-token.service';
+import { StorageService } from '../src/storage/storage.service';
 import { UsersService } from '../src/users/users.service';
 import { ModerationService } from '../src/moderation/moderation.service';
 
@@ -66,6 +67,10 @@ describe('StudyLounge API (e2e)', () => {
       providers: [
         AuthService,
         GoogleTokenService,
+        {
+          provide: StorageService,
+          useValue: { put: jest.fn(), removeByUrl: jest.fn() },
+        },
         JwtStrategy,
         { provide: UsersService, useValue: usersService },
         { provide: LobbiesService, useClass: InMemoryLobbiesService },
