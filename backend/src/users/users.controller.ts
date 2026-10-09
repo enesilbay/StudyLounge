@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   FileTypeValidator,
+  ForbiddenException,
   Get,
   MaxFileSizeValidator,
   ParseFilePipe,
@@ -15,7 +16,9 @@ import {
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { getConfigBoolean } from '../config/env';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -42,6 +45,7 @@ export class UsersController {
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
     private readonly moderationService: ModerationService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get('leaderboard')
@@ -149,8 +153,15 @@ export class UsersController {
     return { success: true, user: updatedUser };
   }
 
+  // Odeme akisi yokken gelistirme icin Premium verir. Yalnizca ALLOW_DEMO_PREMIUM=true
+  // olan ortamlarda acik; canli ortamda tanimli olmadigi icin kendiliginden kapalidir.
   @Post('demo/upgrade')
   async demoUpgradeToPremium(@CurrentUser() user: User) {
+    if (!getConfigBoolean(this.configService, 'ALLOW_DEMO_PREMIUM', false)) {
+      throw new ForbiddenException(
+        'Demo Premium bu ortamda kapalı. Premium, ödeme sistemi açıldığında satın alınabilecek.',
+      );
+    }
     const updatedUser = await this.usersService.upgradeToPremium(user.id);
     return {
       success: true,
