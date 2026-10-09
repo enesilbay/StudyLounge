@@ -97,7 +97,7 @@ Uygulama hâlâ geliştirme aşamasında. Bu fazın amacı, arkadaş çevresinde
 | ✅ | Demo Premium bayrağa bağlanır | Tamamlandı: `POST /users/demo/upgrade` yalnızca `ALLOW_DEMO_PREMIUM=true` olan ortamda çalışır, yoksa 403 döner. Canlıda tanımlı olmadığı için kapalı; mobildeki demo yükseltme düğmesi canlıda hata mesajı gösterir. |
 | ✅ | Kalıcı veritabanı | Tamamlandı: veriler Render'dan Neon'a taşındı (Neon `production` dalı, PostgreSQL 17); canlı backend Neon'a bağlı. Neon'un ücretsiz plandaki geri yükleme süresi kontrol edilmeli. |
 | Yüksek | Dosya depolama | Avatarlar ve sohbet/PDF yüklemeleri `./uploads` diskine yazılıyor (`users.controller.ts`, `messages.controller.ts`). Render'da disk kalıcı olmadığı için her deploy'da siliniyor. Cloudflare R2 ya da S3'e taşınır. |
-| Yüksek | Hesap silme | Kodda yok. Kullanıcı ayarlardan hesabını ve verilerini silebilir; ilişkili kayıtlar (mesajlar, oturumlar, arkadaşlıklar) için silme/anonimleştirme kuralları belirlenir. |
+| ✅ | Hesap silme | Tamamlandı: Ayarlar → "Hesabı sil" (`DELETE /users/me`, kullanıcı adı + varsa şifre ile onay). Oturumlar, dersler, görevler, arkadaşlıklar, engeller, şikayetler, lig sonuçları ve özel mesajlar silinir; oda sohbetindeki mesajlar kalır ama yazarı boşalır; sahibi olduğu odaların sahibi boşalır. Yüklediği dosyalar (avatar dışında) dosya depolama taşınınca ele alınacak. Mobilde henüz yok. |
 | Yüksek | TURN sunucusu bağlanır | Okul ve yurt ağlarında kameralı odalar TURN olmadan bağlanmıyor; hedef kitle de öğrenciler. Metered ya da Cloudflare TURN ile env değerleri girilir. |
 
 **Ödeme akışı (yalnızca sandbox / test modu)**

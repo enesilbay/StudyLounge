@@ -1,4 +1,9 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  INestApplication,
+  NotFoundException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -142,6 +147,31 @@ describe('StudyLounge API (e2e)', () => {
       .post('/auth/google')
       .send({ credential: 'not-a-real-token' })
       .expect(503);
+  });
+
+  it('deletes the account only with the right confirmation and password', async () => {
+    const token = await registerUser('ada', 'ada@example.com');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(getServer(app))
+      .delete('/users/me')
+      .set(auth)
+      .send({ confirmation: 'yanlis', password: 'secret123' })
+      .expect(400);
+    await request(getServer(app))
+      .delete('/users/me')
+      .set(auth)
+      .send({ confirmation: 'ada', password: 'wrong-password' })
+      .expect(400);
+
+    await request(getServer(app))
+      .delete('/users/me')
+      .set(auth)
+      .send({ confirmation: 'ada', password: 'secret123' })
+      .expect(200);
+
+    // Silinen hesabın oturumu artık geçersiz.
+    await request(getServer(app)).get('/users/me').set(auth).expect(401);
   });
 
   it('keeps demo Premium closed unless ALLOW_DEMO_PREMIUM is set', async () => {
@@ -334,6 +364,15 @@ class InMemoryUsersService {
       user.isEmailVerified = true;
       user.emailVerificationToken = null;
     }
+  }
+
+  deleteAccount(userId: number, confirmation: string, password?: string) {
+    const user = this.users.find((candidate) => candidate.id === userId);
+    if (!user) throw new NotFoundException();
+    if (confirmation !== user.username || password !== user.password) {
+      throw new BadRequestException('Onay ya da şifre hatalı.');
+    }
+    this.users = this.users.filter((candidate) => candidate.id !== userId);
   }
 
   upgradeToPremium(userId: number) {

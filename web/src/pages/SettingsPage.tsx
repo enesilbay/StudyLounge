@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { Avatar, Button, Notice, PageHeader, Surface, TextField, Toggle } from '../components/ui';
+import { Avatar, Button, ModalShell, Notice, PageHeader, Surface, TextField, Toggle } from '../components/ui';
 import { Link } from 'react-router-dom';
 import { useStudyStore } from '../store/studyStore';
 import { formatMinutes } from '../lib/study';
@@ -159,7 +159,76 @@ export default function SettingsPage() {
       <GoalsCard />
       <BrowserNotificationsCard />
       <BlockedUsersCard />
+      {user.username ? <DeleteAccountCard username={user.username} /> : null}
     </div>
+  );
+}
+
+/** Hesabı kalıcı olarak silme. Onay için kullanıcı adı ve (varsa) şifre istenir. */
+function DeleteAccountCard({ username }: { username: string }) {
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
+  const [open, setOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [password, setPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const close = useCallback(() => {
+    if (deleting) return;
+    setOpen(false);
+    setConfirmation('');
+    setPassword('');
+    setError(null);
+  }, [deleting]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (confirmation.trim() !== username) return setError(`Onay için kullanıcı adını aynen yaz: ${username}`);
+    setDeleting(true);
+    setError(null);
+    try {
+      await api.delete('/users/me', { data: { confirmation: confirmation.trim(), ...(password ? { password } : {}) } });
+      logout();
+      navigate('/', { replace: true });
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError));
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Surface className="mt-5 p-5">
+      <h2 className="text-xl text-textDark">Hesabı sil</h2>
+      <p className="mt-1 text-sm text-textMuted">
+        Hesabın, çalışma geçmişin, derslerin, görevlerin, arkadaşlıkların ve özel mesajların kalıcı olarak silinir. Odalarda yazdığın mesajlar kalır ama adın görünmez. Bu işlem geri alınamaz.
+      </p>
+      <Button variant="danger" className="mt-4" onClick={() => setOpen(true)}>
+        Hesabımı sil
+      </Button>
+
+      <ModalShell open={open} title="Hesabını silmek istediğine emin misin?" description="Bu işlem geri alınamaz." onClose={close}>
+        <form onSubmit={submit} className="space-y-4">
+          <TextField label={`Onaylamak için kullanıcı adını yaz: ${username}`} value={confirmation} onChange={setConfirmation} required />
+          <TextField
+            label="Şifren"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            helper="Hesabı yalnızca Google ile açtıysan ve şifre belirlemediysen boş bırak."
+          />
+          {error ? <Notice tone="danger">{error}</Notice> : null}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={close} disabled={deleting}>
+              Vazgeç
+            </Button>
+            <Button type="submit" variant="danger" loading={deleting} disabled={confirmation.trim() !== username}>
+              Hesabımı kalıcı olarak sil
+            </Button>
+          </div>
+        </form>
+      </ModalShell>
+    </Surface>
   );
 }
 

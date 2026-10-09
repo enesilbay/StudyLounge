@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   FileTypeValidator,
   ForbiddenException,
   Get,
@@ -25,6 +26,8 @@ import { extname } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AVATAR_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Throttle } from '@nestjs/throttler';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { RespondRequestDto } from './dto/respond-request.dto';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
 import { ShopItemDto } from './dto/shop-item.dto';
@@ -62,6 +65,18 @@ export class UsersController {
   async getMe(@CurrentUser() user: User) {
     const currentUser = await this.usersService.findById(user.id);
     return { success: true, user: currentUser };
+  }
+
+  /** Hesabi kalici olarak siler (kullanici adi + varsa sifre ile onaylanir). */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Delete('me')
+  async deleteMe(@CurrentUser() user: User, @Body() body: DeleteAccountDto) {
+    await this.usersService.deleteAccount(
+      user.id,
+      body.confirmation,
+      body.password,
+    );
+    return { success: true, message: 'Hesabın ve verilerin silindi.' };
   }
 
   @Post('friend-request')
