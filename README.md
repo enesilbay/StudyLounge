@@ -361,6 +361,7 @@ https://deploy-preview-\d+--cozy-melba-59db2a\.netlify\.app
 | `DB_RUN_MIGRATIONS` | gerekmez | `true` | `true` |
 | `THROTTLE_DISABLED` | olabilir | **olmaz** | **olmaz** |
 | `ALLOW_DEMO_PREMIUM` | `true` | isteğe bağlı (`true`: Premium özellikleri denemek için) | **tanımlanmaz** |
+| `S3_BUCKET` ve diğer `S3_*` | boş (yerel `./uploads`) | Backblaze B2 **test** deposu | Backblaze B2 **canlı** deposu |
 
 Test ortamı da `NODE_ENV=production` ile çalışır; böylece "test'te çalıştı, canlıda bozuldu" durumu yaşanmaz. Aradaki tek fark adresler, veritabanı ve gizli anahtarlardır. `JWT_SECRET` ortamlar arasında paylaşılmaz; paylaşılırsa test ortamında alınan oturum canlıda da geçerli olur.
 

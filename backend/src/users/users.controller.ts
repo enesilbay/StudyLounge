@@ -21,8 +21,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getConfigBoolean } from '../config/env';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
+import { StorageService } from '../storage/storage.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AVATAR_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -49,6 +49,7 @@ export class UsersController {
     private readonly notificationsService: NotificationsService,
     private readonly moderationService: ModerationService,
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
 
   @Get('leaderboard')
@@ -76,6 +77,7 @@ export class UsersController {
       body.confirmation,
       body.password,
     );
+    await this.storageService.removeByUrl(user.avatarUrl);
     return { success: true, message: 'Hesabın ve verilerin silindi.' };
   }
 
@@ -131,18 +133,8 @@ export class UsersController {
   @Post('avatar/:id')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const userId = (req.user as User | undefined)?.id ?? 'unknown';
-          cb(
-            null,
-            `avatar-${userId}-${uniqueSuffix}${extname(file.originalname)}`,
-          );
-        },
-      }),
+      // Dosya once bellekte tutulur, dogrulamadan sonra depoya yazilir.
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
@@ -160,11 +152,18 @@ export class UsersController {
     )
     file: Express.Multer.File,
   ) {
-    const avatarUrl = `/uploads/${file.filename}`;
+    const avatarUrl = await this.storageService.put(
+      this.storageService.createKey(`avatar-${user.id}`, file.originalname),
+      file.buffer,
+    );
     const updatedUser = await this.usersService.updateAvatar(
       user.id,
       avatarUrl,
     );
+    // Eski avatar artik kullanilmiyor.
+    if (user.avatarUrl && user.avatarUrl !== avatarUrl) {
+      await this.storageService.removeByUrl(user.avatarUrl);
+    }
     return { success: true, user: updatedUser };
   }
 

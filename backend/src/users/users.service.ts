@@ -11,8 +11,6 @@ import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { SHOP_CATALOG, findShopItem } from './shop-catalog';
 import { BADGES, focusBadges } from './badges';
@@ -232,11 +230,7 @@ export class UsersService implements OnModuleInit {
         .execute();
       await manager.delete(User, { id: userId });
     });
-
-    // Avatar dosyası yerel diskteyse temizlenir (dosya yoksa önemsenmez).
-    if (user.avatarUrl?.startsWith('/uploads/')) {
-      await unlink(join(process.cwd(), user.avatarUrl)).catch(() => undefined);
-    }
+    // Avatar dosyası depodan UsersController'da silinir (StorageService).
   }
 
   async markEmailAsVerified(userId: number) {

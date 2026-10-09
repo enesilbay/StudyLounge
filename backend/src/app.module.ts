@@ -28,6 +28,7 @@ import { Friendship } from './users/friendship.entity';
 import { User } from './users/user.entity';
 import { UsersModule } from './users/users.module';
 import { WhiteboardModule } from './whiteboard/whiteboard.module';
+import { StorageModule } from './storage/storage.module';
 import { RoomTimerModule } from './room-timer/room-timer.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StudyModule } from './study/study.module';
@@ -117,6 +118,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     PaymentsModule,
     RtcModule,
     WhiteboardModule,
+    StorageModule,
     RoomTimerModule,
     ScheduleModule.forRoot(),
     StudyModule,
