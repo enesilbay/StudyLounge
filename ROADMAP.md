@@ -30,8 +30,8 @@
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | ✅ | E-posta gönderimi | Çözüldü: Render'ın ücretsiz planı SMTP portlarını engelliyordu (`Connection timeout`). E-posta artık Brevo HTTPS API ile gidiyor (`BREVO_API_KEY`, `BREVO_FROM`); test ve canlıda denendi, gelen kutusuna düşüyor. |
-| Yüksek | Ortam ayrımı: son kontrol | Test sitesinde (`staging--cozy-melba-59db2a.netlify.app`) yeni hesap açılır ve hesabın yalnızca Neon `staging` dalında oluştuğu, `production`'da olmadığı doğrulanır. E-posta artık çalıştığı için yapılabilir. Diğer kontroller tamam: test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
-| Orta | Ortam ayrımı: temizlik | Canlı Neon'da birkaç gün sorunsuz çalıştıktan sonra Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek). Yereldeki `backend/.env.migration` dosyası (veritabanı adresleri ve şifreler içerir) silinir. |
+| ✅ | Ortam ayrımı: son kontrol | Doğrulandı: test sitesinden açılan hesaplar yalnızca Neon `staging` dalında, `production`'da yok. Test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
+| Yüksek | Ortam ayrımı: temizlik | Yapıldı: taşıma yedeği, `backend/.env.migration` ve test veritabanındaki deneme hesapları silindi. Kalan (panelden): `.env.migration` OneDrive'a da yüklendiği için Neon `neondb_owner` şifresi yenilenir ve iki Render servisindeki `DATABASE_URL` güncellenir; OneDrive geri dönüşüm kutusundaki kopya silinir; Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek); Neon'un geri yükleme süresi kontrol edilir. |
 
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
 
