@@ -47,9 +47,12 @@ type ProfileResponse = { user: User };
 describe('StudyLounge API (e2e)', () => {
   let app: INestApplication;
   let usersService: InMemoryUsersService;
+  /** Testlerin ayarlayabildigi ortam degiskenleri (ConfigService taklidi okur). */
+  let testEnv: Record<string, string | undefined>;
 
   beforeEach(async () => {
     usersService = new InMemoryUsersService();
+    testEnv = {};
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -88,7 +91,7 @@ describe('StudyLounge API (e2e)', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) =>
-              key === 'JWT_SECRET' ? 'test-secret' : undefined,
+              key === 'JWT_SECRET' ? 'test-secret' : testEnv[key],
             ),
           },
         },
@@ -169,6 +172,23 @@ describe('StudyLounge API (e2e)', () => {
 
     // Silinen hesabın oturumu artık geçersiz.
     await request(getServer(app)).get('/users/me').set(auth).expect(401);
+  });
+
+  it('keeps demo Premium closed unless ALLOW_DEMO_PREMIUM is set', async () => {
+    const token = await registerUser('ada', 'ada@example.com');
+
+    await request(getServer(app))
+      .post('/users/demo/upgrade')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    expect(usersService.findById(1)?.isPremium).toBe(false);
+
+    testEnv.ALLOW_DEMO_PREMIUM = 'true';
+    const response = await request(getServer(app))
+      .post('/users/demo/upgrade')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(201);
+    expect((response.body as ProfileResponse).user.isPremium).toBe(true);
   });
 
   it('logs in and creates a lobby', async () => {
@@ -353,6 +373,14 @@ class InMemoryUsersService {
       throw new BadRequestException('Onay ya da şifre hatalı.');
     }
     this.users = this.users.filter((candidate) => candidate.id !== userId);
+  }
+
+  upgradeToPremium(userId: number) {
+    const user = this.users.find((candidate) => candidate.id === userId);
+    if (user) {
+      user.isPremium = true;
+    }
+    return this.findById(userId);
   }
 
   login(identifier: string, password: string) {
