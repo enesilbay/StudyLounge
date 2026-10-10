@@ -29,6 +29,10 @@ export class User {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
+  // Son API istegi ya da socket baglantisi (en fazla 5 dk gecikmeli). Yalnizca yonetim panelinde kullanilir.
+  @Column({ type: 'timestamptz', nullable: true, select: false })
+  lastSeenAt?: Date | null;
+
   @Column({ default: false })
   isPremium: boolean;
 

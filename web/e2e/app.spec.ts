@@ -160,12 +160,21 @@ test.describe('birden fazla kişi', () => {
     const admin = await signedIn(browser, 'demo_admin')
     const ali = await signedIn(browser, 'demo_ali')
     try {
+      // Eski adres yeni panele yönlenir; genel bakış açılır.
       await admin.page.goto('/app/admin')
-      await expect(admin.page.getByRole('heading', { name: 'Yönetim', exact: true })).toBeVisible()
-      await expect(admin.page.getByRole('tab', { name: 'Şikayetler' })).toHaveAttribute('aria-selected', 'true')
-      await admin.page.getByRole('tab', { name: 'Geri bildirimler' }).click()
+      await expect(admin.page).toHaveURL(/\/admin$/)
+      await expect(admin.page.getByRole('heading', { name: 'Genel bakış', exact: true })).toBeVisible()
+      await expect(admin.page.getByRole('heading', { name: 'Günlük eğilim' })).toBeVisible()
+      await admin.page.getByRole('radio', { name: '7 gün' }).click()
+      await expect(admin.page).toHaveURL(/period=7/)
+
+      await admin.page.getByRole('navigation', { name: 'Yönetim menüsü' }).first().getByRole('link', { name: /Moderasyon/ }).click()
+      await expect(admin.page.getByRole('heading', { name: 'Moderasyon', exact: true })).toBeVisible()
+      await expect(admin.page.getByRole('tab', { name: /Şikayetler/ })).toHaveAttribute('aria-selected', 'true')
+      await admin.page.getByRole('tab', { name: /Geri bildirimler/ }).click()
       await expect(admin.page.getByText('Açık geri bildirim yok')).toBeVisible()
-      await ali.page.goto('/app/admin')
+
+      await ali.page.goto('/admin')
       await expect(ali.page.getByText('Bu sayfa yöneticilere açık')).toBeVisible()
     } finally {
       await admin.context.close()

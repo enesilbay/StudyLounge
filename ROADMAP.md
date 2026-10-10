@@ -145,7 +145,7 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Genel bakış | Toplam ve yeni kullanıcı (gün/hafta), günlük aktif kullanıcı, toplam odak süresi, şu an açık odalar ve odadaki kişi sayısı, açık şikayet ve geri bildirim sayısı; son 30 gün için basit grafikler. |
+| ✅ | Genel bakış | Tamamlandı: panel uygulamadan ayrı `/admin` düzenine taşındı (sol menü: Genel bakış, Moderasyon; diğer bölümler kendi aşamalarında eklenir). Dönem seçimi (7/30/90 gün, Türkiye takvim günleri), önceki döneme göre değişim, bekleyenler şeridi, aktif kullanıcı (`users.lastSeenAt`), günlük eğilim grafiği, onboarding hunisi, elde tutma (1/7/30. gün) ve yoğun saatler ısı haritası. Kayıt tarihi (`users.createdAt`) bu sürümle tutulmaya başladı; eski hesaplar migration gününde kaydolmuş görünür. |
 | Yüksek | Kullanıcı yönetimi | Kullanıcı arama (ad, kullanıcı adı, e-posta); kullanıcı ayrıntısı (kayıt tarihi, son görülme, odak süresi, Premium, rol, şikayet geçmişi); susturma/yasaklama (mevcut uçlar), rol verme, destek amacıyla Premium verme/geri alma, e-posta doğrulamayı elle onaylama, hesap silme. |
 | Orta | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
 | Orta | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |

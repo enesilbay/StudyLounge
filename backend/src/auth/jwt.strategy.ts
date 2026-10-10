@@ -27,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (user.bannedAt) {
       throw new UnauthorizedException('Hesabın askıya alındı.');
     }
+    void this.usersService.touchLastSeen(user.id);
     return user;
   }
 }

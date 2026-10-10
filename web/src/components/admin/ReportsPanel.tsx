@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Ban, Check, MicOff, Undo2, X } from 'lucide-react';
-import { api } from '../lib/api';
-import { getApiErrorMessage } from '../lib/apiResponses';
-import type { AdminReport } from '../lib/types';
-import { Avatar, Button, Notice, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
-import { REPORT_REASON_LABELS } from '../lib/moderation';
-import { useAuthStore } from '../store/authStore';
-import { FeedbackPanel } from '../components/admin/FeedbackPanel';
-import { OverviewPanel } from '../components/admin/OverviewPanel';
+import { api } from '../../lib/api';
+import { getApiErrorMessage } from '../../lib/apiResponses';
+import type { AdminReport } from '../../lib/types';
+import { REPORT_REASON_LABELS } from '../../lib/moderation';
+import { useAdminPending } from '../../lib/admin';
+import { Avatar, Button, Notice, Pill, StateBlock, Surface } from '../ui';
 
 type Filter = 'open' | 'resolved' | 'dismissed' | 'all';
 const FILTERS: [Filter, string][] = [
@@ -20,55 +18,13 @@ const FILTERS: [Filter, string][] = [
 
 const dateFormatter = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
 
-type Section = 'overview' | 'reports' | 'feedback';
-
-const SECTION_DESCRIPTIONS: Record<Section, string> = {
-  overview: 'Kullanıcı, odak ve oda sayıları ile son 30 günün özeti.',
-  reports: "Bildirilen kullanıcıları incele. Susturulan kişi oda sohbetine ve DM'e yazamaz; yasaklanan kişi giriş yapamaz.",
-  feedback: 'Kullanıcıların uygulama içinden gönderdiği hata bildirimleri ve öneriler.',
-};
-
-/** Yönetici paneli: genel bakış, şikayetler ve kullanıcı geri bildirimleri. */
-export default function AdminPage() {
-  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
-  const [section, setSection] = useState<Section>('overview');
-
-  if (!isAdmin) {
-    return <StateBlock title="Bu sayfa yöneticilere açık" description="Hesabının yönetici yetkisi yok." />;
-  }
-
-  return (
-    <div>
-      <PageHeader
-        title="Yönetim"
-        description={SECTION_DESCRIPTIONS[section]}
-      />
-      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Yönetim bölümü">
-        {(
-          [
-            ['overview', 'Genel bakış'],
-            ['reports', 'Şikayetler'],
-            ['feedback', 'Geri bildirimler'],
-          ] as const
-        ).map(([key, label]) => (
-          <Button key={key} role="tab" aria-selected={section === key} variant={section === key ? 'primary' : 'secondary'} size="sm" onClick={() => setSection(key)}>
-            {label}
-          </Button>
-        ))}
-      </div>
-      {section === 'overview' ? <OverviewPanel /> : null}
-      {section === 'reports' ? <ReportsPanel /> : null}
-      {section === 'feedback' ? <FeedbackPanel /> : null}
-    </div>
-  );
-}
-
 /** Şikayetleri inceler, kullanıcıyı susturur ya da yasaklar. */
-function ReportsPanel() {
+export function ReportsPanel() {
   const [filter, setFilter] = useState<Filter>('open');
   const [reports, setReports] = useState<AdminReport[] | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
+  const refreshPending = useAdminPending((state) => state.refresh);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +47,7 @@ function ReportsPanel() {
       await action();
       setMessage({ tone: 'success', text: success });
       await load();
+      void refreshPending();
     } catch (error) {
       setMessage({ tone: 'danger', text: getApiErrorMessage(error) });
     } finally {
