@@ -96,9 +96,9 @@ Uygulama hâlâ geliştirme aşamasında. Bu fazın amacı, arkadaş çevresinde
 | :--- | :--- | :--- |
 | ✅ | Demo Premium bayrağa bağlanır | Tamamlandı: `POST /users/demo/upgrade` yalnızca `ALLOW_DEMO_PREMIUM=true` olan ortamda çalışır, yoksa 403 döner. Canlıda tanımlı olmadığı için kapalı; mobildeki demo yükseltme düğmesi canlıda hata mesajı gösterir. |
 | ✅ | Kalıcı veritabanı | Tamamlandı: veriler Render'dan Neon'a taşındı (Neon `production` dalı, PostgreSQL 17); canlı backend Neon'a bağlı. Neon'un ücretsiz plandaki geri yükleme süresi kontrol edilmeli. |
-| Yüksek | Dosya depolama | Kod hazır: `StorageService` (`backend/src/storage/`) dosyaları S3 uyumlu depoya yazar, `GET /uploads/:key` sunar; adresler (`/uploads/...`) değişmediği için mobil ve web etkilenmez. Sağlayıcı: Backblaze B2 (10 GB ücretsiz, kart yok, gizli depo). Kalan: B2 hesabı ve `S3_*` ortam değişkenlerinin Render'a girilmesi (test ve canlı için ayrı depo). |
+| ✅ | Dosya depolama | Tamamlandı: `StorageService` (`backend/src/storage/`) dosyaları Backblaze B2'ye (S3 uyumlu, gizli depo) yazar, `GET /uploads/:key` sunar; adresler (`/uploads/...`) değişmediği için mobil ve web etkilenmez. Test ve canlı için ayrı depo ve anahtar; test sitesinde yeniden deploy sonrası kalıcılık doğrulandı. |
 | ✅ | Hesap silme | Tamamlandı: Ayarlar → "Hesabı sil" (`DELETE /users/me`, kullanıcı adı + varsa şifre ile onay). Oturumlar, dersler, görevler, arkadaşlıklar, engeller, şikayetler, lig sonuçları ve özel mesajlar silinir; oda sohbetindeki mesajlar kalır ama yazarı boşalır; sahibi olduğu odaların sahibi boşalır. Yüklediği dosyalar (avatar dışında) dosya depolama taşınınca ele alınacak. Mobilde henüz yok. |
-| Yüksek | TURN sunucusu bağlanır | Okul ve yurt ağlarında kameralı odalar TURN olmadan bağlanmıyor; hedef kitle de öğrenciler. Metered ya da Cloudflare TURN ile env değerleri girilir. |
+| ✅ | TURN sunucusu bağlanır | Tamamlandı: Metered TURN (`TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL`); test sitesinde Wi-Fi ile mobil veri arasında kameralı oda bağlantısı doğrulandı. Kimlik bilgileri şimdilik sabit; süreli kimlik bilgisine geçiş Faz 6'da. |
 
 **Ödeme akışı (yalnızca sandbox / test modu)**
 
@@ -137,6 +137,7 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 | Hukuk | Yaş sınırı | Öğrenci kitlesi nedeniyle 18 yaş altı kullanıcılar için veli onayı konusu netleştirilir. |
 | Ödeme | Canlı tahsilat | iyzico canlı anahtarlarına geçilir; `ALLOW_DEMO_PREMIUM` kapalıdır. İsteğe bağlı: coin paketi satışı (mağaza zaten coin ile çalışıyor). |
 | Ödeme | Mobil ödeme | Uygulama içinde Premium satarken Apple ve Google kendi ödeme sistemlerini zorunlu tutuyor (%15–30 komisyon). RevenueCat, mağaza ve web aboneliklerini aynı `premiumUntil` alanında birleştirir. |
+| Altyapı | Süreli TURN kimlik bilgileri | Şu an Metered kullanıcı adı/şifresi sabit ve giriş yapmış her kullanıcıya `GET /rtc/ice-servers` ile veriliyor; kötüye kullanılırsa TURN kotası harcanabilir. Backend her istekte Metered API'sinden kısa ömürlü kimlik bilgisi üretir (`METERED_API_KEY`). |
 | Altyapı | Ücretli sunucu ve izleme | Render'ın ücretsiz planı uyku moduna geçiyor ve socket bağlantıları kopuyor; ücretli plana geçilir. Uptime izleme ve log toplama (ör. Better Stack). |
 | Büyüme | Ölçüm ve bildirimler | PostHog ya da Plausible ile kullanım analitiği. Seri bozulmak üzereyken ve haftalık özet için e-posta bildirimleri (mail servisi hazır). |
 | Hesap | Google girişini herkese aç | Google Cloud → Google Auth Platform → Audience → **Publish app**. Uygulama yalnızca e-posta ve ad istediği için Google incelemesi gerekmez; ama yayına çıkarken onay ekranında uygulama adı, logo, destek e-postası, gizlilik politikası ve kullanım koşulları bağlantıları (KVKK maddesindeki `/legal/...` sayfaları) istenir. Kendi alan adına geçilirse yeni adres "Authorized JavaScript origins" listesine eklenir. |
