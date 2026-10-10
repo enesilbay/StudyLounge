@@ -30,6 +30,7 @@ import { UsersModule } from './users/users.module';
 import { WhiteboardModule } from './whiteboard/whiteboard.module';
 import { StorageModule } from './storage/storage.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { AdminModule } from './admin/admin.module';
 import { RoomTimerModule } from './room-timer/room-timer.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StudyModule } from './study/study.module';
@@ -125,6 +126,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     WhiteboardModule,
     StorageModule,
     FeedbackModule,
+    AdminModule,
     RoomTimerModule,
     ScheduleModule.forRoot(),
     StudyModule,

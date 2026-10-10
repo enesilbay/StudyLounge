@@ -172,6 +172,7 @@ export class SensorsGateway
 
       // Global olarak çevrimiçi işaretle
       await this.usersService.setOnlineStatus(userId, true);
+      void this.usersService.touchLastSeen(userId);
     } catch {
       console.log('[Socket] Yetkisiz baglanti denemesi reddedildi.');
       client.disconnect();

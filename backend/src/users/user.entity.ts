@@ -1,4 +1,4 @@
-import { Entity, Column, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, CreateDateColumn, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -24,6 +24,14 @@ export class User {
   @Index('UQ_users_googleId', { unique: true })
   @Column({ type: 'varchar', nullable: true, select: false })
   googleId?: string | null;
+
+  // Kayit tarihi. Bu kolon eklenmeden onceki hesaplar migration aninin tarihini alir.
+  @CreateDateColumn({ type: 'timestamptz' })
+  createdAt: Date;
+
+  // Son API istegi ya da socket baglantisi (en fazla 5 dk gecikmeli). Yalnizca yonetim panelinde kullanilir.
+  @Column({ type: 'timestamptz', nullable: true, select: false })
+  lastSeenAt?: Date | null;
 
   @Column({ default: false })
   isPremium: boolean;

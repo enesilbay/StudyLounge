@@ -112,6 +112,7 @@ const users = new Map([
 const fakeUsers = {
   findById: (id: number) => Promise.resolve(users.get(id) ?? null),
   setOnlineStatus: () => Promise.resolve(),
+  touchLastSeen: () => Promise.resolve(),
   addFocusTime: jest.fn(() => Promise.resolve({ totalFocusMinutes: 10, newBadges: [] })),
   addCoins: jest.fn(() => Promise.resolve()),
   removeCoins: jest.fn(() => Promise.resolve(true)),

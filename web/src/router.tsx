@@ -91,8 +91,39 @@ const router = createBrowserRouter([
         lazy: page(() => import('./pages/UserProfilePage')),
       },
       {
+        // Eski adres: yönetim paneli artık uygulamadan ayrı (/admin).
         path: 'admin',
-        lazy: page(() => import('./pages/AdminPage')),
+        element: <Navigate to="/admin" replace />,
+      },
+      {
+        path: '*',
+        element: <NotFoundPage inApp />,
+      },
+    ],
+  },
+  {
+    path: '/admin',
+    hydrateFallbackElement: <PageLoading />,
+    errorElement: <RouteErrorPage />,
+    // Yönetim paneli kodu yalnızca yöneticiler açtığında yüklenir.
+    lazy: async () => {
+      const { default: AdminLayout } = await import('./components/admin/AdminLayout');
+      return {
+        Component: () => (
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        ),
+      };
+    },
+    children: [
+      {
+        index: true,
+        lazy: page(() => import('./pages/admin/AdminOverviewPage')),
+      },
+      {
+        path: 'moderation',
+        lazy: page(() => import('./pages/admin/AdminModerationPage')),
       },
       {
         path: '*',
