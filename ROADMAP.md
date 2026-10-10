@@ -110,7 +110,7 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| ✅ | Sağlayıcı: iyzico (ödeme formu) | Kod hazır: IYZWSv2 imzalı istemci (`payments/iyzico.client.ts`), iyzico'nun güvenli ödeme sayfası; kart bilgisi sunucumuza gelmez. Stripe taslağı kaldırıldı. Kalan: sandbox anahtarlarının test ortamına girilip test kartıyla denenmesi. |
+| ✅ | Sağlayıcı: iyzico (ödeme formu) | Kod hazır: IYZWSv2 imzalı istemci (`payments/iyzico.client.ts`), iyzico'nun güvenli ödeme sayfası; kart bilgisi sunucumuza gelmez. Stripe taslağı kaldırıldı. Sandbox anahtarlarıyla test ortamında test kartıyla denendi, çalışıyor. |
 | ✅ | Fiyat sunucuda | Planlar ve fiyatlar `payments/plans.ts`'te; istemci yalnızca `planId` gönderir, fazladan alan reddedilir. |
 | ✅ | Sahte başarı yanıtı kaldırıldı | Sağlayıcı hata verirse ödeme "başarısız" kaydedilir ve kullanıcıya bildirilir. |
 | ✅ | Premium süresi | `User.premiumUntil` (migration). Süresi dolan Premium'u saatlik görev kapatır; süre bitmeden alınan plan kalan sürenin sonuna eklenir. Elle verilen (bitiş tarihi olmayan) Premium etkilenmez. `isPremium` mobil uyumluluk için korunur. |
@@ -164,7 +164,7 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 | Hukuk | KVKK ve sözleşmeler | KVKK aydınlatma metni ve açık rıza (kamera, mesajlar ve çalışma verisi kişisel veri). Gizlilik politikası (görüntülü odalarda kayıt yok politikası dahil) ve kullanım koşulları. Web'de `/legal/...` sayfaları ve kayıt ekranında onay kutusu. |
 | Hukuk | Satış metinleri | Mesafeli satış sözleşmesi, ön bilgilendirme formu ve iptal/iade politikası (dijital içerikte cayma hakkı istisnası açıkça bildirilir); ödeme sayfasında onay kutusuyla gösterilir. |
 | Hukuk | Yaş sınırı | Öğrenci kitlesi nedeniyle 18 yaş altı kullanıcılar için veli onayı konusu netleştirilir. |
-| Ödeme | Canlı tahsilat | iyzico canlı anahtarlarına geçilir; `ALLOW_DEMO_PREMIUM` kapalıdır. İsteğe bağlı: coin paketi satışı (mağaza zaten coin ile çalışıyor). |
+| Ödeme | Canlıya taşıma ve canlı tahsilat | Ödeme kodu (PR #24) şu an yalnızca `staging`'de; test ortamında sandbox ile doğrulandı. Canlıya (`main`) Faz 6'da taşınır. Not: sonraki `staging` → `main` PR'ları bu kodu da taşır; canlıda `IYZICO_*` tanımlı olmadığı için ödeme düğmesi "Ödeme şu an kapalı" görünür, ama `premiumUntil` ve `payments` migration'ı çalışır. Canlıya geçişte: iyzico canlı anahtarları girilir, gerçek fatura bilgisi toplanır, `ALLOW_DEMO_PREMIUM` kapalı kalır. İsteğe bağlı: coin paketi satışı (mağaza zaten coin ile çalışıyor). |
 | Ödeme | Mobil ödeme | Uygulama içinde Premium satarken Apple ve Google kendi ödeme sistemlerini zorunlu tutuyor (%15–30 komisyon). RevenueCat, mağaza ve web aboneliklerini aynı `premiumUntil` alanında birleştirir. |
 | Altyapı | Süreli TURN kimlik bilgileri | Şu an Metered kullanıcı adı/şifresi sabit ve giriş yapmış her kullanıcıya `GET /rtc/ice-servers` ile veriliyor; kötüye kullanılırsa TURN kotası harcanabilir. Backend her istekte Metered API'sinden kısa ömürlü kimlik bilgisi üretir (`METERED_API_KEY`). |
 | Altyapı | Ücretli sunucu ve izleme | Render'ın ücretsiz planı uyku moduna geçiyor ve socket bağlantıları kopuyor; ücretli plana geçilir. Uptime izleme ve log toplama (ör. Better Stack). |
