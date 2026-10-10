@@ -61,8 +61,8 @@ export function FeedbackButton({ className = '' }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Geri bildirim gönder"
-        title="Geri bildirim gönder"
+        aria-label="Geri bildirim"
+        title="Geri bildirim"
         className={`grid h-10 w-10 place-items-center rounded-lg text-textMuted transition hover:bg-sunken hover:text-textDark ${className}`}
       >
         <MessageSquareText className="h-[18px] w-[18px]" />
