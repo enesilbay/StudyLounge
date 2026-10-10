@@ -156,12 +156,15 @@ test.describe('birden fazla kişi', () => {
     }
   })
 
-  test('yönetici şikayetler sayfasını açar, normal kullanıcı açamaz', async ({ browser }) => {
+  test('yönetici yönetim sayfasını açar, normal kullanıcı açamaz', async ({ browser }) => {
     const admin = await signedIn(browser, 'demo_admin')
     const ali = await signedIn(browser, 'demo_ali')
     try {
       await admin.page.goto('/app/admin')
-      await expect(admin.page.getByRole('heading', { name: 'Şikayetler', exact: true })).toBeVisible()
+      await expect(admin.page.getByRole('heading', { name: 'Yönetim', exact: true })).toBeVisible()
+      await expect(admin.page.getByRole('tab', { name: 'Şikayetler' })).toHaveAttribute('aria-selected', 'true')
+      await admin.page.getByRole('tab', { name: 'Geri bildirimler' }).click()
+      await expect(admin.page.getByText('Açık geri bildirim yok')).toBeVisible()
       await ali.page.goto('/app/admin')
       await expect(ali.page.getByText('Bu sayfa yöneticilere açık')).toBeVisible()
     } finally {
