@@ -90,7 +90,7 @@ export function ReportsPanel() {
             <li key={report.id}>
               <Surface className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <Link to={`/app/u/${report.target.id}`} className="flex min-w-0 items-center gap-3 hover:underline">
+                  <Link to={`/admin/users/${report.target.id}`} className="flex min-w-0 items-center gap-3 hover:underline">
                     <Avatar name={report.target.fullName} image={report.target.avatarUrl} size="sm" />
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-textDark">{report.target.fullName}</span>
@@ -106,7 +106,7 @@ export function ReportsPanel() {
                 </div>
 
                 {report.messageText ? (
-                  <blockquote className="mt-3 rounded-lg border-l-4 border-border bg-sunken px-3 py-2 text-[15px] text-textDark">
+                  <blockquote className="mt-3 rounded-lg bg-sunken px-3 py-2 text-[15px] text-textDark">
                     {report.messageText}
                     {report.roomName ? <span className="mt-1 block text-xs text-textMuted">{report.roomName} odasında</span> : null}
                   </blockquote>
@@ -124,10 +124,10 @@ export function ReportsPanel() {
                     </Button>
                   ) : (
                     <>
-                      <Button size="sm" variant="secondary" icon={MicOff} disabled={busy} onClick={() => void act(report.id, () => api.post(`/admin/users/${report.target.id}/mute`, { hours: 24 }), '24 saat susturuldu.')}>
+                      <Button size="sm" variant="secondary" icon={MicOff} disabled={busy} onClick={() => void act(report.id, () => api.post(`/admin/users/${report.target.id}/mute`, { hours: 24, reason: `Şikayet #${report.id}` }), '24 saat susturuldu.')}>
                         24 saat sustur
                       </Button>
-                      <Button size="sm" variant="secondary" icon={MicOff} disabled={busy} onClick={() => void act(report.id, () => api.post(`/admin/users/${report.target.id}/mute`, { hours: 168 }), '7 gün susturuldu.')}>
+                      <Button size="sm" variant="secondary" icon={MicOff} disabled={busy} onClick={() => void act(report.id, () => api.post(`/admin/users/${report.target.id}/mute`, { hours: 168, reason: `Şikayet #${report.id}` }), '7 gün susturuldu.')}>
                         7 gün sustur
                       </Button>
                     </>
@@ -137,7 +137,7 @@ export function ReportsPanel() {
                       Yasağı kaldır
                     </Button>
                   ) : (
-                    <Button size="sm" variant="danger" icon={Ban} disabled={busy} onClick={() => void act(report.id, () => api.post(`/admin/users/${report.target.id}/ban`), 'Hesap askıya alındı.')}>
+                    <Button size="sm" variant="danger" icon={Ban} disabled={busy} onClick={() => void act(report.id, () => api.post(`/admin/users/${report.target.id}/ban`, { reason: `Şikayet #${report.id}` }), 'Hesap askıya alındı.')}>
                       Yasakla
                     </Button>
                   )}

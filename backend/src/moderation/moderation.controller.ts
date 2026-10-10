@@ -1,8 +1,25 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../users/user.entity';
-import { CreateReportDto, MuteUserDto, ReportsQueryDto, ResolveReportDto } from './dto/moderation.dto';
+import {
+  AdminReasonDto,
+  CreateReportDto,
+  MuteUserDto,
+  ReportsQueryDto,
+  ResolveReportDto,
+} from './dto/moderation.dto';
 import { ModerationService } from './moderation.service';
 import { Roles, RolesGuard } from './roles.guard';
 
@@ -17,12 +34,18 @@ export class ModerationController {
   }
 
   @Post('blocks/:userId')
-  block(@CurrentUser() user: User, @Param('userId', ParseIntPipe) targetId: number) {
+  block(
+    @CurrentUser() user: User,
+    @Param('userId', ParseIntPipe) targetId: number,
+  ) {
     return this.moderationService.block(user.id, targetId);
   }
 
   @Delete('blocks/:userId')
-  unblock(@CurrentUser() user: User, @Param('userId', ParseIntPipe) targetId: number) {
+  unblock(
+    @CurrentUser() user: User,
+    @Param('userId', ParseIntPipe) targetId: number,
+  ) {
     return this.moderationService.unblock(user.id, targetId);
   }
 
@@ -44,27 +67,52 @@ export class AdminController {
   }
 
   @Patch('reports/:id')
-  resolve(@CurrentUser() admin: User, @Param('id', ParseIntPipe) id: number, @Body() body: ResolveReportDto) {
+  resolve(
+    @CurrentUser() admin: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: ResolveReportDto,
+  ) {
     return this.moderationService.resolveReport(admin.id, id, body.status);
   }
 
   @Post('users/:id/mute')
-  mute(@CurrentUser() admin: User, @Param('id', ParseIntPipe) id: number, @Body() body: MuteUserDto) {
-    return this.moderationService.muteUser(admin.id, id, body.hours);
+  mute(
+    @CurrentUser() admin: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: MuteUserDto,
+  ) {
+    return this.moderationService.muteUser(
+      admin.id,
+      id,
+      body.hours,
+      body.reason,
+    );
   }
 
   @Delete('users/:id/mute')
-  unmute(@Param('id', ParseIntPipe) id: number) {
-    return this.moderationService.unmuteUser(id);
+  unmute(
+    @CurrentUser() admin: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AdminReasonDto,
+  ) {
+    return this.moderationService.unmuteUser(admin.id, id, body.reason);
   }
 
   @Post('users/:id/ban')
-  ban(@CurrentUser() admin: User, @Param('id', ParseIntPipe) id: number) {
-    return this.moderationService.banUser(admin.id, id);
+  ban(
+    @CurrentUser() admin: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AdminReasonDto,
+  ) {
+    return this.moderationService.banUser(admin.id, id, body.reason);
   }
 
   @Delete('users/:id/ban')
-  unban(@Param('id', ParseIntPipe) id: number) {
-    return this.moderationService.unbanUser(id);
+  unban(
+    @CurrentUser() admin: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: AdminReasonDto,
+  ) {
+    return this.moderationService.unbanUser(admin.id, id, body.reason);
   }
 }

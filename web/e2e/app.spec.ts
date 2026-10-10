@@ -174,6 +174,23 @@ test.describe('birden fazla kişi', () => {
       await admin.page.getByRole('tab', { name: /Geri bildirimler/ }).click()
       await expect(admin.page.getByText('Açık geri bildirim yok')).toBeVisible()
 
+      // Kullanıcılar: arama, ayrıntı paneli; işlem penceresi açılıp vazgeçilir (veri değişmez).
+      await admin.page.goto('/admin/users')
+      await expect(admin.page.getByRole('heading', { name: 'Kullanıcılar', exact: true })).toBeVisible()
+      await admin.page.getByPlaceholder('Ad, kullanıcı adı ya da e-posta').fill('demo_ali')
+      await expect(admin.page).toHaveURL(/q=demo_ali/)
+      await admin.page.getByRole('link', { name: /@demo_ali/ }).first().click()
+      const detail = admin.page.getByRole('dialog', { name: /ayrıntısı/ })
+      await expect(detail.getByText('@demo_ali', { exact: true })).toBeVisible()
+      await detail.getByRole('button', { name: 'Sustur' }).click()
+      await expect(admin.page.getByRole('heading', { name: 'Kullanıcıyı sustur' })).toBeVisible()
+      await admin.page.getByRole('button', { name: 'Vazgeç' }).click()
+      await admin.page.keyboard.press('Escape')
+      await expect(admin.page).toHaveURL(/\/admin\/users\?q=demo_ali$/)
+
+      await admin.page.goto('/admin/actions')
+      await expect(admin.page.getByRole('heading', { name: 'İşlem kaydı', exact: true })).toBeVisible()
+
       await ali.page.goto('/admin')
       await expect(ali.page.getByText('Bu sayfa yöneticilere açık')).toBeVisible()
     } finally {

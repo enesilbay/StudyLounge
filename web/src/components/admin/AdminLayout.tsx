@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, ShieldAlert, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, ScrollText, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
 import { Avatar, BrandLockup, StateBlock, ThemeToggle } from '../ui';
 import { useAuthStore } from '../../store/authStore';
 import { useAdminPending, type AdminPending } from '../../lib/admin';
+import { CommandPalette } from './CommandPalette';
 
 interface AdminNavItem {
   path: string;
@@ -13,10 +14,12 @@ interface AdminNavItem {
   badge?: (pending: AdminPending) => number;
 }
 
-// Menüde yalnızca çalışan bölümler görünür; Kullanıcılar, Odalar, Ödemeler ve İşlem kaydı kendi aşamalarında eklenir.
+// Menüde yalnızca çalışan bölümler görünür; Odalar ve Ödemeler kendi aşamalarında eklenir.
 const NAV_ITEMS: AdminNavItem[] = [
   { path: '/admin', label: 'Genel bakış', icon: LayoutDashboard, end: true },
+  { path: '/admin/users', label: 'Kullanıcılar', icon: Users },
   { path: '/admin/moderation', label: 'Moderasyon', icon: ShieldAlert, badge: (p) => p.openReports + p.openFeedback },
+  { path: '/admin/actions', label: 'İşlem kaydı', icon: ScrollText },
 ];
 
 /** Yönetim paneli: uygulamadan ayrı, sol menülü düzen. Yalnızca yöneticiler görür. */
@@ -26,9 +29,24 @@ export default function AdminLayout() {
   const pending = useAdminPending((state) => state.pending);
   const refreshPending = useAdminPending((state) => state.refresh);
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   useEffect(() => {
     if (isAdmin) void refreshPending();
   }, [isAdmin, refreshPending]);
+
+  // Ctrl+K (Mac'te Cmd+K): genel arama.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -58,6 +76,16 @@ export default function AdminLayout() {
           <BrandLockup />
           <p className="mt-1.5 pl-[42px] text-sm font-semibold text-textMuted">Yönetim</p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setPaletteOpen(true)}
+          className="mb-4 flex min-h-10 items-center gap-2.5 rounded-lg border border-border bg-background px-3 text-[15px] text-textMuted transition hover:text-textDark"
+        >
+          <Search className="h-4 w-4" />
+          Ara
+          <kbd className="ml-auto rounded border border-border px-1.5 text-xs">Ctrl K</kbd>
+        </button>
 
         <nav aria-label="Yönetim menüsü" className="flex flex-1 flex-col gap-0.5">
           {NAV_ITEMS.map((item) => (
@@ -108,13 +136,16 @@ export default function AdminLayout() {
               <span className="text-sm font-semibold text-textMuted">Yönetim</span>
             </div>
             <div className="flex items-center gap-1">
+              <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Ara" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-textDark">
+                <Search className="h-[18px] w-[18px]" />
+              </button>
               <ThemeToggle />
               <Link to="/app/lobbies" aria-label="Uygulamaya dön" title="Uygulamaya dön" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-textDark">
                 <ArrowLeft className="h-[18px] w-[18px]" />
               </Link>
             </div>
           </div>
-          <nav aria-label="Yönetim menüsü" className="flex gap-1 overflow-x-auto px-3 pb-2">
+          <nav aria-label="Yönetim menüsü" className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.path}
@@ -136,6 +167,8 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} links={NAV_ITEMS} />
     </div>
   );
 }

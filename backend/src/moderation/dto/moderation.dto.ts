@@ -1,5 +1,13 @@
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { REPORT_REASONS } from '../report.entity';
 import type { ReportReason } from '../report.entity';
 
@@ -12,7 +20,9 @@ export class CreateReportDto {
   reason: ReportReason;
 
   @IsOptional()
-  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MaxLength(500)
   details?: string;
@@ -35,7 +45,18 @@ export class ResolveReportDto {
   status: 'resolved' | 'dismissed';
 }
 
-export class MuteUserDto {
+/** Yönetici işleminin gerekçesi; işlem kaydına yazılır. */
+export class AdminReasonDto {
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+export class MuteUserDto extends AdminReasonDto {
   /** Susturma süresi (saat), en fazla 30 gün. */
   @Type(() => Number)
   @IsInt()

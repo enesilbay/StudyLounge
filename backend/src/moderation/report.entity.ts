@@ -1,7 +1,19 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { User } from '../users/user.entity';
 
-export const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'cheating', 'other'] as const;
+export const REPORT_REASONS = [
+  'spam',
+  'harassment',
+  'inappropriate',
+  'cheating',
+  'other',
+] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 export type ReportStatus = 'open' | 'resolved' | 'dismissed';
 

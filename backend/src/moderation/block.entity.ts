@@ -1,4 +1,10 @@
-import { CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import {
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Unique,
+} from 'typeorm';
 import { User } from '../users/user.entity';
 
 /** `blocker`, `blocked` kişisini engelledi. Etki iki yönlüdür: DM, düello, dürtme ve istek kapanır. */

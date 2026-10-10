@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, SetMetadata } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  SetMetadata,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { User } from '../users/user.entity';
 
@@ -12,10 +18,14 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const roles = this.reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, [context.getHandler(), context.getClass()]);
+    const roles = this.reflector.getAllAndOverride<string[] | undefined>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (!roles?.length) return true;
     const user = context.switchToHttp().getRequest<{ user?: User }>().user;
-    if (!user || !roles.includes(user.role)) throw new ForbiddenException('Bu sayfa yalnızca yöneticilere açık.');
+    if (!user || !roles.includes(user.role))
+      throw new ForbiddenException('Bu sayfa yalnızca yöneticilere açık.');
     return true;
   }
 }
