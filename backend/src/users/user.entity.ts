@@ -28,6 +28,11 @@ export class User {
   @Column({ default: false })
   isPremium: boolean;
 
+  // Satin alinan Premium'un bitisi. Bos ise Premium elle verilmistir (suresiz).
+  // Baskalarinin profilinde gorunmesin diye varsayilan sorgulara girmez.
+  @Column({ type: 'timestamptz', nullable: true, select: false })
+  premiumUntil?: Date | null;
+
   @Column({ default: 0 })
   totalFocusMinutes: number;
 

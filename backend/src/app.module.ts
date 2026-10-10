@@ -37,6 +37,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { LeagueModule } from './league/league.module';
 import { WeeklyResult } from './league/weekly-result.entity';
 import { Feedback } from './feedback/feedback.entity';
+import { Payment } from './payments/payment.entity';
 import { Block } from './moderation/block.entity';
 import { Report } from './moderation/report.entity';
 import { Subject } from './study/subject.entity';
@@ -96,6 +97,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
             Report,
             WeeklyResult,
             Feedback,
+            Payment,
           ],
           autoLoadEntities: true,
           // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
