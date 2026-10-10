@@ -6,6 +6,7 @@ import { disconnectSocket } from '../../lib/socket';
 import { useInboxStore } from '../../store/inboxStore';
 import ToastStack from './ToastStack';
 import GoalProgress from './GoalProgress';
+import { FeedbackButton } from './FeedbackButton';
 import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
 
@@ -76,7 +77,7 @@ export default function AppLayout() {
               }
             >
               <ShieldCheck className="h-[18px] w-[18px]" />
-              Şikayetler
+              Yönetim
             </NavLink>
           ) : null}
 
@@ -103,9 +104,10 @@ export default function AppLayout() {
             <NavLink to="/app/settings" aria-label="Ayarlar" title="Ayarlar" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted transition hover:bg-sunken hover:text-textDark">
               <Settings className="h-[18px] w-[18px]" />
             </NavLink>
-            <button onClick={handleLogout} className="ml-auto flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-textMuted transition hover:bg-softDanger hover:text-danger">
+            <FeedbackButton />
+            <button onClick={handleLogout} title="Çıkış yap" className="ml-auto flex h-10 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-sm font-semibold text-textMuted transition hover:bg-softDanger hover:text-danger">
               <LogOut className="h-4 w-4" />
-              Çıkış yap
+              Çıkış
             </button>
           </div>
         </div>
@@ -117,6 +119,7 @@ export default function AppLayout() {
             <BrandLockup compact />
             <div className="flex items-center gap-1">
               <ThemeToggle />
+              <FeedbackButton />
               <NavLink to="/app/settings" aria-label="Ayarlar" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted">
                 <Settings className="h-[18px] w-[18px]" />
               </NavLink>

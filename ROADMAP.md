@@ -117,13 +117,36 @@ Gerçek para alınmadan bütün akış test ortamında kurulur; şirket kurulunc
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. |
+| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Kapalı beta başlamadan önce kurulacak (Sentry hesabı gerekiyor). |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
-| Orta | Geri bildirim / hata bildir | Uygulama içinde kısa bir form; beta aşamasının en değerli verisi. |
+| ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
-| Orta | Onboarding | İlk girişte "ders ekle → odaya katıl" yönlendirmesi. |
+| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → günlük hedef seç → odada ilk lambanı yak. Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
 
-Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → arkadaş çevresiyle kapalı beta.
+**Görsel kimlik: daha az yazı, daha çok görsel**
+
+Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üretilen, tek bir stile bağlı görsellerle anlatım sadeleşir ve marka tanınır hale gelir.
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Yüksek | Görsel stil rehberi | Önce tek bir stil belirlenir: mevcut lamba metaforu ve marka renkleri (turkuaz, açık pembe, krem) temel alınır. Tek bir prompt şablonu ve 2–3 referans görsel `docs/brand/` altında saklanır; sonraki bütün görseller bu şablonla üretilir, böylece hepsi aynı elden çıkmış gibi görünür. Kullanılan aracın ticari kullanım koşulları kontrol edilir. |
+| Yüksek | Logo ve uygulama simgeleri | Logo (yatay ve yalnız işaret), favicon, PWA simgeleri (192/512 ve maskable), mobil uygulama simgesi ve açılış ekranı (splash), sosyal medya paylaşım görseli (Open Graph). Logo son halinde SVG olarak temizlenir; açık ve koyu temada denenir. Mobilde yalnızca simge ve splash değişir (`mobile/` kodu değişmez). |
+| Orta | İllüstrasyonlar ve metin sadeleştirme | Yazı yoğun yerler görselle desteklenir ve yazıları kısaltılır: açılış sayfası, boş durumlar (oda yok, arkadaş yok, geçmiş yok), "Masanı hazırla" kartı, Premium sayfası, 404/hata sayfaları, e-posta şablonları. Görseller WebP/SVG olarak optimize edilir, her birine açıklayıcı alt metin yazılır. |
+
+**Yönetim paneli**
+
+Şu an `/app/admin` yalnızca şikayetleri ve geri bildirimleri gösteriyor. Kapalı betada uygulamayı izlemek ve kullanıcılara destek verebilmek için genişletilir. Bütün uçlar `RolesGuard` ile yalnızca `admin` rolüne açık kalır.
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Yüksek | Genel bakış | Toplam ve yeni kullanıcı (gün/hafta), günlük aktif kullanıcı, toplam odak süresi, şu an açık odalar ve odadaki kişi sayısı, açık şikayet ve geri bildirim sayısı; son 30 gün için basit grafikler. |
+| Yüksek | Kullanıcı yönetimi | Kullanıcı arama (ad, kullanıcı adı, e-posta); kullanıcı ayrıntısı (kayıt tarihi, son görülme, odak süresi, Premium, rol, şikayet geçmişi); susturma/yasaklama (mevcut uçlar), rol verme, destek amacıyla Premium verme/geri alma, e-posta doğrulamayı elle onaylama, hesap silme. |
+| Orta | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
+| Orta | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
+| Orta | İşlem kaydı | Hangi yöneticinin, kime, ne zaman, ne yaptığı (susturma, yasak, rol, Premium, silme) ayrı bir tabloda tutulur ve panelde listelenir. |
+| Sonra | Ödeme kayıtları | Ödeme akışı kurulunca: işlem listesi, iade ve abonelik durumu. |
+
+Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → arkadaş çevresiyle kapalı beta. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 

@@ -29,12 +29,14 @@ import { User } from './users/user.entity';
 import { UsersModule } from './users/users.module';
 import { WhiteboardModule } from './whiteboard/whiteboard.module';
 import { StorageModule } from './storage/storage.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { RoomTimerModule } from './room-timer/room-timer.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StudyModule } from './study/study.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { LeagueModule } from './league/league.module';
 import { WeeklyResult } from './league/weekly-result.entity';
+import { Feedback } from './feedback/feedback.entity';
 import { Block } from './moderation/block.entity';
 import { Report } from './moderation/report.entity';
 import { Subject } from './study/subject.entity';
@@ -93,6 +95,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
             Block,
             Report,
             WeeklyResult,
+            Feedback,
           ],
           autoLoadEntities: true,
           // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
@@ -119,6 +122,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     RtcModule,
     WhiteboardModule,
     StorageModule,
+    FeedbackModule,
     RoomTimerModule,
     ScheduleModule.forRoot(),
     StudyModule,
