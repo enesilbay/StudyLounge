@@ -21,6 +21,14 @@ import { NotificationsService } from '../src/notifications/notifications.service
 import { User } from '../src/users/user.entity';
 import { GoogleTokenService } from '../src/auth/google-token.service';
 import { StorageService } from '../src/storage/storage.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import {
+  AdminFeedbackController,
+  FeedbackController,
+} from '../src/feedback/feedback.controller';
+import { Feedback } from '../src/feedback/feedback.entity';
+import { FeedbackService } from '../src/feedback/feedback.service';
+import { RolesGuard } from '../src/moderation/roles.guard';
 import { UsersService } from '../src/users/users.service';
 import { ModerationService } from '../src/moderation/moderation.service';
 
@@ -50,10 +58,15 @@ describe('StudyLounge API (e2e)', () => {
   let usersService: InMemoryUsersService;
   /** Testlerin ayarlayabildigi ortam degiskenleri (ConfigService taklidi okur). */
   let testEnv: Record<string, string | undefined>;
+  let feedbackRepository: { create: jest.Mock; save: jest.Mock };
 
   beforeEach(async () => {
     usersService = new InMemoryUsersService();
     testEnv = {};
+    feedbackRepository = {
+      create: jest.fn((value: object) => value),
+      save: jest.fn((value: object) => Promise.resolve({ id: 1, ...value })),
+    };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -63,10 +76,19 @@ describe('StudyLounge API (e2e)', () => {
           signOptions: { expiresIn: '1h' },
         }),
       ],
-      controllers: [AuthController, LobbiesController, UsersController],
+      controllers: [
+        AuthController,
+        LobbiesController,
+        UsersController,
+        FeedbackController,
+        AdminFeedbackController,
+      ],
       providers: [
         AuthService,
         GoogleTokenService,
+        FeedbackService,
+        RolesGuard,
+        { provide: getRepositoryToken(Feedback), useValue: feedbackRepository },
         {
           provide: StorageService,
           useValue: { put: jest.fn(), removeByUrl: jest.fn() },
@@ -194,6 +216,41 @@ describe('StudyLounge API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
     expect((response.body as ProfileResponse).user.isPremium).toBe(true);
+  });
+
+  it('accepts feedback from users and keeps the list admin-only', async () => {
+    const token = await registerUser('ada', 'ada@example.com');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(getServer(app))
+      .post('/feedback')
+      .set(auth)
+      .send({
+        kind: 'bug',
+        message: '  Tahta açılmıyor  ',
+        page: '/app/lobbies',
+      })
+      .expect(201);
+    expect(feedbackRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'bug',
+        message: 'Tahta açılmıyor',
+        page: '/app/lobbies',
+        user: { id: 1 },
+      }),
+    );
+
+    await request(getServer(app))
+      .post('/feedback')
+      .set(auth)
+      .send({ kind: 'bug', message: '   ' })
+      .expect(400);
+    await request(getServer(app))
+      .post('/feedback')
+      .set(auth)
+      .send({ kind: 'spam', message: 'x' })
+      .expect(400);
+    await request(getServer(app)).get('/admin/feedback').set(auth).expect(403);
   });
 
   it('logs in and creates a lobby', async () => {

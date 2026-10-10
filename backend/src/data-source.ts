@@ -11,6 +11,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
 import { Block } from './moderation/block.entity';
 import { Report } from './moderation/report.entity';
 import { WeeklyResult } from './league/weekly-result.entity';
+import { Feedback } from './feedback/feedback.entity';
 import { Message } from './messages/message.entity';
 import { DirectMessage } from './messages/direct-message.entity';
 import { DailyAnalytics } from './users/daily-analytics.entity';
@@ -69,6 +70,7 @@ export default new DataSource({
     Block,
     Report,
     WeeklyResult,
+    Feedback,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

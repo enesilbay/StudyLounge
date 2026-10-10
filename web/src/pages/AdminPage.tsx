@@ -7,6 +7,7 @@ import type { AdminReport } from '../lib/types';
 import { Avatar, Button, Notice, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
 import { REPORT_REASON_LABELS } from '../lib/moderation';
 import { useAuthStore } from '../store/authStore';
+import { FeedbackPanel } from '../components/admin/FeedbackPanel';
 
 type Filter = 'open' | 'resolved' | 'dismissed' | 'all';
 const FILTERS: [Filter, string][] = [
@@ -18,9 +19,46 @@ const FILTERS: [Filter, string][] = [
 
 const dateFormatter = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
 
-/** Yönetici paneli: şikayetleri inceler, kullanıcıyı susturur ya da yasaklar. */
+type Section = 'reports' | 'feedback';
+
+/** Yönetici paneli: şikayetler ve kullanıcı geri bildirimleri. */
 export default function AdminPage() {
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  const [section, setSection] = useState<Section>('reports');
+
+  if (!isAdmin) {
+    return <StateBlock title="Bu sayfa yöneticilere açık" description="Hesabının yönetici yetkisi yok." />;
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Yönetim"
+        description={
+          section === 'reports'
+            ? "Bildirilen kullanıcıları incele. Susturulan kişi oda sohbetine ve DM'e yazamaz; yasaklanan kişi giriş yapamaz."
+            : 'Kullanıcıların uygulama içinden gönderdiği hata bildirimleri ve öneriler.'
+        }
+      />
+      <div className="mb-5 flex gap-2" role="tablist" aria-label="Yönetim bölümü">
+        {(
+          [
+            ['reports', 'Şikayetler'],
+            ['feedback', 'Geri bildirimler'],
+          ] as const
+        ).map(([key, label]) => (
+          <Button key={key} role="tab" aria-selected={section === key} variant={section === key ? 'primary' : 'secondary'} size="sm" onClick={() => setSection(key)}>
+            {label}
+          </Button>
+        ))}
+      </div>
+      {section === 'reports' ? <ReportsPanel /> : <FeedbackPanel />}
+    </div>
+  );
+}
+
+/** Şikayetleri inceler, kullanıcıyı susturur ya da yasaklar. */
+function ReportsPanel() {
   const [filter, setFilter] = useState<Filter>('open');
   const [reports, setReports] = useState<AdminReport[] | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -37,12 +75,8 @@ export default function AdminPage() {
   }, [filter]);
 
   useEffect(() => {
-    if (isAdmin) void load();
-  }, [isAdmin, load]);
-
-  if (!isAdmin) {
-    return <StateBlock title="Bu sayfa yöneticilere açık" description="Hesabının yönetici yetkisi yok." />;
-  }
+    void load();
+  }, [load]);
 
   const act = async (reportId: number, action: () => Promise<unknown>, success: string) => {
     setBusyId(reportId);
@@ -60,8 +94,6 @@ export default function AdminPage() {
 
   return (
     <div>
-      <PageHeader title="Şikayetler" description="Bildirilen kullanıcıları incele. Susturulan kişi oda sohbetine ve DM'e yazamaz; yasaklanan kişi giriş yapamaz." />
-
       <div className="mb-5 flex flex-wrap gap-1 rounded-lg bg-sunken p-1" role="tablist" aria-label="Şikayet durumu">
         {FILTERS.map(([key, label]) => (
           <button
