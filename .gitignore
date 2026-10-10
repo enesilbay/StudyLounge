@@ -81,7 +81,6 @@ Thumbs.db
 *.mobileprovision
 
 # Ignored markdown files
-AGENTS.md
 implementation_plan.md
 backend/README.md
 mobile/README.md
