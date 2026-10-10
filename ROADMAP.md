@@ -145,14 +145,27 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Genel bakış | Toplam ve yeni kullanıcı (gün/hafta), günlük aktif kullanıcı, toplam odak süresi, şu an açık odalar ve odadaki kişi sayısı, açık şikayet ve geri bildirim sayısı; son 30 gün için basit grafikler. |
+| ✅ | Genel bakış | Tamamlandı: panel uygulamadan ayrı `/admin` düzenine taşındı (sol menü: Genel bakış, Moderasyon; diğer bölümler kendi aşamalarında eklenir). Dönem seçimi (7/30/90 gün, Türkiye takvim günleri), önceki döneme göre değişim, bekleyenler şeridi, aktif kullanıcı (`users.lastSeenAt`), günlük eğilim grafiği, onboarding hunisi, elde tutma (1/7/30. gün) ve yoğun saatler ısı haritası. Kayıt tarihi (`users.createdAt`) bu sürümle tutulmaya başladı; eski hesaplar migration gününde kaydolmuş görünür. |
 | Yüksek | Kullanıcı yönetimi | Kullanıcı arama (ad, kullanıcı adı, e-posta); kullanıcı ayrıntısı (kayıt tarihi, son görülme, odak süresi, Premium, rol, şikayet geçmişi); susturma/yasaklama (mevcut uçlar), rol verme, destek amacıyla Premium verme/geri alma, e-posta doğrulamayı elle onaylama, hesap silme. |
 | Orta | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
 | Orta | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
 | Orta | İşlem kaydı | Hangi yöneticinin, kime, ne zaman, ne yaptığı (susturma, yasak, rol, Premium, silme) ayrı bir tabloda tutulur ve panelde listelenir. |
 | Sonra | Ödeme kayıtları | Ödeme akışı kurulunca: işlem listesi, iade ve abonelik durumu. |
 
-Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → arkadaş çevresiyle kapalı beta. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
+**Impeccable ile proje analizi**
+
+Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böylece arkadaşların ilk gördüğü ekranlarda tutarsızlık ve erişilebilirlik sorunu kalmaz. Bulgular yeni özellik eklemeden, küçük düzeltme PR'larıyla (`duzeltme/...`) kapatılır.
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| Yüksek | Tasarım eleştirisi ve denetim | Impeccable `critique` ve `audit` ile ana akışlar taranır: giriş/kayıt, odalar, oda içi (kamera, PDF tahtası), Premium, ayarlar, yönetim paneli, açılış sayfası. Bulgular önem sırasıyla listelenir; hata ve erişilebilirlik sorunları (kontrast, klavye, odak halkası, alt metin) önce düzeltilir. |
+| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; pembe yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
+| Orta | Mobil genişlik ve duyarlılık | Web'in telefon genişliğinde (360–430 px) kırılma, taşma ve dokunma hedeflerine göre gözden geçirilmesi. |
+| Düşük | Performans ve boş/hata durumları | Yükleme, boş ve hata durumları ile ilk yükleme boyutu denetlenir. |
+
+Çıktı: kısa bir bulgu raporu (`docs/` altında) ve kapatılan/ertelenen maddelerin listesi. Görsel kimlik işleriyle çakışan bulgular (logo, illüstrasyon) o başlıklara aktarılır.
+
+Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → Impeccable ile proje analizi → arkadaş çevresiyle kapalı beta → Faz 6. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, Undo2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/apiResponses';
+import { useAdminPending } from '../../lib/admin';
 import { Button, Notice, Pill, StateBlock, Surface } from '../ui';
 
 type FeedbackKind = 'bug' | 'idea' | 'other';
@@ -39,6 +40,7 @@ export function FeedbackPanel() {
   const [items, setItems] = useState<AdminFeedback[] | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const refreshPending = useAdminPending((state) => state.refresh);
 
   const load = useCallback(async () => {
     try {
@@ -60,6 +62,7 @@ export function FeedbackPanel() {
     try {
       await api.patch(`/admin/feedback/${id}`, { status });
       await load();
+      void refreshPending();
     } catch (updateError) {
       setError(getApiErrorMessage(updateError));
     } finally {

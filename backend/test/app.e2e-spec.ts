@@ -459,6 +459,10 @@ class InMemoryUsersService {
     return user ? this.sanitize(user) : null;
   }
 
+  touchLastSeen() {
+    return Promise.resolve();
+  }
+
   findIdByUsername(username: string) {
     return Promise.resolve(
       this.users.find((user) => user.username === username)?.id ?? null,

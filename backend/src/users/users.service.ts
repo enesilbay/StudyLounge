@@ -868,6 +868,22 @@ export class UsersService implements OnModuleInit {
     });
   }
 
+  /** Kullanicinin son yazildigi an (surec icinde); her istekte veritabanina yazmamak icin. */
+  private readonly lastSeenWrites = new Map<number, number>();
+
+  /** Son gorulmeyi en fazla 5 dakikada bir yazar. Hata istegi bozmaz. */
+  async touchLastSeen(userId: number): Promise<void> {
+    const now = Date.now();
+    const last = this.lastSeenWrites.get(userId);
+    if (last !== undefined && now - last < 5 * 60_000) return;
+    this.lastSeenWrites.set(userId, now);
+    try {
+      await this.usersRepository.update(userId, { lastSeenAt: new Date(now) });
+    } catch {
+      this.lastSeenWrites.delete(userId);
+    }
+  }
+
   async getRoomMemberCounts(roomNames: string[]): Promise<Map<string, number>> {
     if (roomNames.length === 0) {
       return new Map();

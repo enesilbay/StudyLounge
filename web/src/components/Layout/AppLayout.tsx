@@ -71,10 +71,8 @@ export default function AppLayout() {
 
           {user?.role === 'admin' ? (
             <NavLink
-              to="/app/admin"
-              className={({ isActive }) =>
-                `mt-4 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-semibold transition ${isActive ? 'bg-softIndigo text-textDark' : 'text-textMuted hover:bg-sunken hover:text-textDark'}`
-              }
+              to="/admin"
+              className="mt-4 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-semibold text-textMuted transition hover:bg-sunken hover:text-textDark"
             >
               <ShieldCheck className="h-[18px] w-[18px]" />
               Yönetim
@@ -118,6 +116,11 @@ export default function AppLayout() {
           <div className="flex h-14 items-center justify-between px-4">
             <BrandLockup compact />
             <div className="flex items-center gap-1">
+              {user?.role === 'admin' ? (
+                <NavLink to="/admin" aria-label="Yönetim" title="Yönetim" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted">
+                  <ShieldCheck className="h-[18px] w-[18px]" />
+                </NavLink>
+              ) : null}
               <ThemeToggle />
               <FeedbackButton />
               <NavLink to="/app/settings" aria-label="Ayarlar" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted">
