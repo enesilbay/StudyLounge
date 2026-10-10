@@ -106,12 +106,18 @@ Gerçek para alınmadan bütün akış test ortamında kurulur; şirket kurulunc
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Sağlayıcı: iyzico sandbox | Sandbox hesabı ücretsiz ve şirket istemiyor; test kartlarıyla denenebiliyor. Türk kartları, TL ve abonelik desteği var. Stripe Türkiye'de kurulu şirketlere hizmet vermediği için mevcut Stripe kodu gerçek tahsilata geçemez. |
-| Yüksek | Fiyat sunucuda | `payments.controller.ts` tutarı istemciden okuyor (`body.amount`). Aylık/yıllık planlar ve fiyatları sunucuda tanımlanır (`Plan`); istemci yalnızca `planId` gönderir. |
-| Yüksek | Sahte başarı yanıtı kaldırılır | `payments.service.ts` sağlayıcı hata verince `pi_test_...` biçiminde sahte bir başarılı yanıt dönüyor. Hata kullanıcıya iletilir. |
-| Yüksek | Premium süresi | `User.isPremium` yalnızca boolean. `premiumUntil` alanı eklenir (migration); süresi dolan Premium'u `@nestjs/schedule` (zaten kurulu) ile çalışan bir görev kapatır. `isPremium` mobil uyumluluk için korunur. |
-| Yüksek | Ödeme onayı yalnızca sunucudan | Ödeme sonucu callback/webhook ucuna gelir; imza doğrulanır ve aynı ödeme iki kez işlenmez (idempotency). Premium yalnızca bu onayla verilir, istemcinin "ödedim" demesine güvenilmez. `Payment` tablosu her işlemi kaydeder. |
-| Orta | Web ödeme ekranları | Premium sayfasında plan seçimi, ödeme formu, başarılı ve başarısız ödeme sayfaları, fatura geçmişi ve aboneliği iptal. |
+Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık ₺499 (aylığa göre %15, yılda ₺89 tasarruf). Otomatik yenilenen abonelik gerçek kullanıcılar gelince değerlendirilir.
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| ✅ | Sağlayıcı: iyzico (ödeme formu) | Kod hazır: IYZWSv2 imzalı istemci (`payments/iyzico.client.ts`), iyzico'nun güvenli ödeme sayfası; kart bilgisi sunucumuza gelmez. Stripe taslağı kaldırıldı. Kalan: sandbox anahtarlarının test ortamına girilip test kartıyla denenmesi. |
+| ✅ | Fiyat sunucuda | Planlar ve fiyatlar `payments/plans.ts`'te; istemci yalnızca `planId` gönderir, fazladan alan reddedilir. |
+| ✅ | Sahte başarı yanıtı kaldırıldı | Sağlayıcı hata verirse ödeme "başarısız" kaydedilir ve kullanıcıya bildirilir. |
+| ✅ | Premium süresi | `User.premiumUntil` (migration). Süresi dolan Premium'u saatlik görev kapatır; süre bitmeden alınan plan kalan sürenin sonuna eklenir. Elle verilen (bitiş tarihi olmayan) Premium etkilenmez. `isPremium` mobil uyumluluk için korunur. |
+| ✅ | Ödeme onayı yalnızca sunucudan | iyzico dönüşünde sonuç iyzico'ya tekrar sorulur; ödeme durumu, tutar, sepet numarası, eşleştirme kimliği ve dolandırıcılık durumu tutmazsa Premium verilmez. Aynı ödeme iki kez işlenmez (eşzamanlı isteklerde de). `payments` tablosu her denemeyi kaydeder. |
+| ✅ | Web ödeme ekranları | Premium sayfasında plan seçimi (yıllık indirim gösterilir), ödeme sonrası başarılı/başarısız/beklemede mesajları, Premium bitiş tarihi ve ödeme geçmişi. |
+| Faz 6 | Fatura bilgisi | iyzico alıcı adı, adres ve TC kimlik numarası istiyor; şimdilik yer tutucu değerler gönderiliyor. Canlı tahsilattan önce ödeme sayfasında gerçek fatura bilgisi toplanır. |
+| Faz 6 | Mobilde satın alma | Mobildeki eski demo ödeme ekranı artık hata mesajı gösteriyor; mobil ödeme mağaza kurallarıyla (Faz 6, "Mobil ödeme") ele alınacak. |
 
 **Beta deneyimi ve takip**
 
