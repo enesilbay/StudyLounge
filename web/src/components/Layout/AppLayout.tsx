@@ -105,9 +105,9 @@ export default function AppLayout() {
               <Settings className="h-[18px] w-[18px]" />
             </NavLink>
             <FeedbackButton />
-            <button onClick={handleLogout} className="ml-auto flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-textMuted transition hover:bg-softDanger hover:text-danger">
+            <button onClick={handleLogout} title="Çıkış yap" className="ml-auto flex h-10 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-sm font-semibold text-textMuted transition hover:bg-softDanger hover:text-danger">
               <LogOut className="h-4 w-4" />
-              Çıkış yap
+              Çıkış
             </button>
           </div>
         </div>

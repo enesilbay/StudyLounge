@@ -117,11 +117,11 @@ Gerçek para alınmadan bütün akış test ortamında kurulur; şirket kurulunc
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. |
+| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Kapalı beta başlamadan önce kurulacak (Sentry hesabı gerekiyor). |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
-| Orta | Geri bildirim / hata bildir | Uygulama içinde kısa bir form; beta aşamasının en değerli verisi. |
+| ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
-| Orta | Onboarding | İlk girişte "ders ekle → odaya katıl" yönlendirmesi. |
+| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → günlük hedef seç → odada ilk lambanı yak. Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → arkadaş çevresiyle kapalı beta.
 
