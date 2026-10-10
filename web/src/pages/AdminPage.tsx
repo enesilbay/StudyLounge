@@ -8,6 +8,7 @@ import { Avatar, Button, Notice, PageHeader, Pill, StateBlock, Surface } from '.
 import { REPORT_REASON_LABELS } from '../lib/moderation';
 import { useAuthStore } from '../store/authStore';
 import { FeedbackPanel } from '../components/admin/FeedbackPanel';
+import { OverviewPanel } from '../components/admin/OverviewPanel';
 
 type Filter = 'open' | 'resolved' | 'dismissed' | 'all';
 const FILTERS: [Filter, string][] = [
@@ -19,12 +20,18 @@ const FILTERS: [Filter, string][] = [
 
 const dateFormatter = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
 
-type Section = 'reports' | 'feedback';
+type Section = 'overview' | 'reports' | 'feedback';
 
-/** Yönetici paneli: şikayetler ve kullanıcı geri bildirimleri. */
+const SECTION_DESCRIPTIONS: Record<Section, string> = {
+  overview: 'Kullanıcı, odak ve oda sayıları ile son 30 günün özeti.',
+  reports: "Bildirilen kullanıcıları incele. Susturulan kişi oda sohbetine ve DM'e yazamaz; yasaklanan kişi giriş yapamaz.",
+  feedback: 'Kullanıcıların uygulama içinden gönderdiği hata bildirimleri ve öneriler.',
+};
+
+/** Yönetici paneli: genel bakış, şikayetler ve kullanıcı geri bildirimleri. */
 export default function AdminPage() {
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
-  const [section, setSection] = useState<Section>('reports');
+  const [section, setSection] = useState<Section>('overview');
 
   if (!isAdmin) {
     return <StateBlock title="Bu sayfa yöneticilere açık" description="Hesabının yönetici yetkisi yok." />;
@@ -34,15 +41,12 @@ export default function AdminPage() {
     <div>
       <PageHeader
         title="Yönetim"
-        description={
-          section === 'reports'
-            ? "Bildirilen kullanıcıları incele. Susturulan kişi oda sohbetine ve DM'e yazamaz; yasaklanan kişi giriş yapamaz."
-            : 'Kullanıcıların uygulama içinden gönderdiği hata bildirimleri ve öneriler.'
-        }
+        description={SECTION_DESCRIPTIONS[section]}
       />
-      <div className="mb-5 flex gap-2" role="tablist" aria-label="Yönetim bölümü">
+      <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Yönetim bölümü">
         {(
           [
+            ['overview', 'Genel bakış'],
             ['reports', 'Şikayetler'],
             ['feedback', 'Geri bildirimler'],
           ] as const
@@ -52,7 +56,9 @@ export default function AdminPage() {
           </Button>
         ))}
       </div>
-      {section === 'reports' ? <ReportsPanel /> : <FeedbackPanel />}
+      {section === 'overview' ? <OverviewPanel /> : null}
+      {section === 'reports' ? <ReportsPanel /> : null}
+      {section === 'feedback' ? <FeedbackPanel /> : null}
     </div>
   );
 }
