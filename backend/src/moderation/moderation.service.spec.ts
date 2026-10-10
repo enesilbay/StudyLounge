@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { AdminAuditService } from '../admin-audit/admin-audit.service';
 import { Message } from '../messages/message.entity';
 import { Friendship } from '../users/friendship.entity';
 import { User } from '../users/user.entity';
@@ -10,7 +11,11 @@ import { Report } from './report.entity';
 
 describe('ModerationService', () => {
   let service: ModerationService;
-  let blocks: { createQueryBuilder: jest.Mock; exists: jest.Mock; delete: jest.Mock };
+  let blocks: {
+    createQueryBuilder: jest.Mock;
+    exists: jest.Mock;
+    delete: jest.Mock;
+  };
   let users: { findOne: jest.Mock; update: jest.Mock };
   let friendships: { delete: jest.Mock };
   let messages: { findOne: jest.Mock };
@@ -45,6 +50,7 @@ describe('ModerationService', () => {
         { provide: getRepositoryToken(User), useValue: users },
         { provide: getRepositoryToken(Friendship), useValue: friendships },
         { provide: getRepositoryToken(Message), useValue: messages },
+        { provide: AdminAuditService, useValue: { record: jest.fn() } },
       ],
     }).compile();
 
@@ -57,38 +63,76 @@ describe('ModerationService', () => {
     await service.block(3, 9);
 
     expect(blockInsert).toHaveBeenCalled();
-    expect(friendships.delete).toHaveBeenCalledWith({ sender: { id: 3 }, receiver: { id: 9 } });
-    expect(friendships.delete).toHaveBeenCalledWith({ sender: { id: 9 }, receiver: { id: 3 } });
+    expect(friendships.delete).toHaveBeenCalledWith({
+      sender: { id: 3 },
+      receiver: { id: 9 },
+    });
+    expect(friendships.delete).toHaveBeenCalledWith({
+      sender: { id: 9 },
+      receiver: { id: 3 },
+    });
   });
 
   it('refuses to block yourself', async () => {
-    await expect(service.block(3, 3)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.block(3, 3)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('stops a muted user from chatting until the mute ends', async () => {
-    users.findOne.mockResolvedValue({ id: 3, mutedUntil: new Date(Date.now() + 60_000) });
-    await expect(service.assertCanChat(3)).rejects.toBeInstanceOf(ForbiddenException);
+    users.findOne.mockResolvedValue({
+      id: 3,
+      mutedUntil: new Date(Date.now() + 60_000),
+    });
+    await expect(service.assertCanChat(3)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
 
-    users.findOne.mockResolvedValue({ id: 3, mutedUntil: new Date(Date.now() - 60_000) });
+    users.findOne.mockResolvedValue({
+      id: 3,
+      mutedUntil: new Date(Date.now() - 60_000),
+    });
     await expect(service.assertCanChat(3)).resolves.toBeUndefined();
   });
 
   it('only accepts a message report when the message belongs to the reported user', async () => {
     users.findOne.mockResolvedValue({ id: 9 });
-    messages.findOne.mockResolvedValue({ id: 50, text: 'selam', roomName: 'Oda', user: { id: 7 } });
+    messages.findOne.mockResolvedValue({
+      id: 50,
+      text: 'selam',
+      roomName: 'Oda',
+      user: { id: 7 },
+    });
 
-    await expect(service.report(3, { targetUserId: 9, reason: 'spam', messageId: 50 })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.report(3, { targetUserId: 9, reason: 'spam', messageId: 50 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
-    messages.findOne.mockResolvedValue({ id: 50, text: 'reklam linki', roomName: 'Oda', user: { id: 9 } });
+    messages.findOne.mockResolvedValue({
+      id: 50,
+      text: 'reklam linki',
+      roomName: 'Oda',
+      user: { id: 9 },
+    });
     await service.report(3, { targetUserId: 9, reason: 'spam', messageId: 50 });
-    expect(reports.save).toHaveBeenCalledWith(expect.objectContaining({ messageText: 'reklam linki', roomName: 'Oda', reason: 'spam' }));
+    expect(reports.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageText: 'reklam linki',
+        roomName: 'Oda',
+        reason: 'spam',
+      }),
+    );
   });
 
   it('does not let an admin ban another admin or themselves', async () => {
-    await expect(service.banUser(1, 1)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.banUser(1, 1)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
 
     users.findOne.mockResolvedValue({ id: 2, role: 'admin' });
-    await expect(service.banUser(1, 2)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.banUser(1, 2)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
     expect(users.update).not.toHaveBeenCalled();
   });
 });

@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
@@ -220,17 +220,28 @@ export class UsersService implements OnModuleInit {
       }
     }
 
-    await this.usersRepository.manager.transaction(async (manager) => {
+    await this.purgeAccount(userId);
+    // Avatar dosyası depodan UsersController'da silinir (StorageService).
+  }
+
+  /**
+   * Hesabı ve bağlı kayıtları onay sormadan siler. Kullanıcının kendi silmesi
+   * (`deleteAccount`) ve yönetici silmesi bunu kullanır; onay çağıranın işidir.
+   * Verilen `manager` ile çağıranın transaction'ına katılır.
+   */
+  async purgeAccount(userId: number, manager?: EntityManager): Promise<void> {
+    const run = async (m: EntityManager) => {
       // Eski veritabanlarında DM kısıtlaması CASCADE değilse silme takılmasın diye önce açıkça silinir.
-      await manager
+      await m
         .createQueryBuilder()
         .delete()
         .from('direct_messages')
         .where('"senderId" = :id OR "receiverId" = :id', { id: userId })
         .execute();
-      await manager.delete(User, { id: userId });
-    });
-    // Avatar dosyası depodan UsersController'da silinir (StorageService).
+      await m.delete(User, { id: userId });
+    };
+    if (manager) return run(manager);
+    await this.usersRepository.manager.transaction(run);
   }
 
   async markEmailAsVerified(userId: number) {

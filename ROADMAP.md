@@ -146,10 +146,10 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | ✅ | Genel bakış | Tamamlandı: panel uygulamadan ayrı `/admin` düzenine taşındı (sol menü: Genel bakış, Moderasyon; diğer bölümler kendi aşamalarında eklenir). Dönem seçimi (7/30/90 gün, Türkiye takvim günleri), önceki döneme göre değişim, bekleyenler şeridi, aktif kullanıcı (`users.lastSeenAt`), günlük eğilim grafiği, onboarding hunisi, elde tutma (1/7/30. gün) ve yoğun saatler ısı haritası. Kayıt tarihi (`users.createdAt`) bu sürümle tutulmaya başladı; eski hesaplar migration gününde kaydolmuş görünür. |
-| Yüksek | Kullanıcı yönetimi | Kullanıcı arama (ad, kullanıcı adı, e-posta); kullanıcı ayrıntısı (kayıt tarihi, son görülme, odak süresi, Premium, rol, şikayet geçmişi); susturma/yasaklama (mevcut uçlar), rol verme, destek amacıyla Premium verme/geri alma, e-posta doğrulamayı elle onaylama, hesap silme. |
+| ✅ | Kullanıcı yönetimi | Tamamlandı: `/admin/users` arama (ad, kullanıcı adı, e-posta), birleştirilebilir filtreler, sıralama, sayfalama ve CSV dışa aktarma (Excel uyumlu, formül kaçışlı; dışa aktarma da kayda yazılır). Sağda açılan ayrıntı paneli: hesap, son 30 gün odak, son oturumlar, şikayetler, ödemeler ve kişiye ait işlem kaydı. Onaylı işlemler: susturma, yasak, rol, Premium verme/uzatma/geri alma, e-postayı doğrulanmış sayma, hesap silme (kullanıcı adı + gerekçe). Yönetici kendine rol değiştiremez ve kendini silemez; başka yöneticiye susturma, yasak ve silme uygulanamaz. Ctrl+K ile genel arama. |
 | Orta | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
 | Orta | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
-| Orta | İşlem kaydı | Hangi yöneticinin, kime, ne zaman, ne yaptığı (susturma, yasak, rol, Premium, silme) ayrı bir tabloda tutulur ve panelde listelenir. |
+| ✅ | İşlem kaydı | Tamamlandı: `admin_actions` tablosu ve `/admin/actions` sayfası; susturma, yasak, rol, Premium, e-posta onayı, hesap silme, şikayet kapatma ve liste indirme kaydedilir. Kayıtlar düzenlenemez; hedef silinse de kullanıcı adı kayıtta kalır. |
 | Sonra | Ödeme kayıtları | Ödeme akışı kurulunca: işlem listesi, iade ve abonelik durumu. |
 
 **Impeccable ile proje analizi**
