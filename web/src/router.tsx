@@ -122,8 +122,22 @@ const router = createBrowserRouter([
         lazy: page(() => import('./pages/admin/AdminOverviewPage')),
       },
       {
+        path: 'users',
+        lazy: page(() => import('./pages/admin/AdminUsersPage')),
+        children: [
+          {
+            path: ':userId',
+            lazy: page(() => import('./pages/admin/AdminUserDetail')),
+          },
+        ],
+      },
+      {
         path: 'moderation',
         lazy: page(() => import('./pages/admin/AdminModerationPage')),
+      },
+      {
+        path: 'actions',
+        lazy: page(() => import('./pages/admin/AdminActionsPage')),
       },
       {
         path: '*',
