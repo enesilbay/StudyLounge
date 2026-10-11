@@ -9,7 +9,7 @@ Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'lar
 - Sol menü ve üst çubuk (`web/src/components/Layout/AppLayout.tsx`) her sayfada yeni kimliktedir. Sol menü daraltılabilir; tercih tarayıcıda hatırlanır.
 - Yeni kimliğe geçirilen sayfalar `AppLayout.tsx` içindeki `NEW_DESIGN_PATHS` listesine eklenir. Bu sayfalarda içerik alanı `.sl-yeni` sınıfını taşır.
 - `.sl-yeni` (`web/src/index.css`) eski bileşenlerin (`ui.tsx`: düğme, form, modal) `--sl-*` değişkenlerini yeni paletle ezer ve koyu temayı da tanımlar. Böylece geçirilen sayfada eski bileşenler de yeni renklerle görünür; diğer sayfalar etkilenmez.
-- Taşınan sayfalar: Odalar (`/app/lobbies`).
+- Taşınan sayfalar: Odalar (`/app/lobbies`), Giriş ve kayıt (`/auth`; uygulama iskeletinin dışında olduğu için kökte kendisi `.sl-yeni` taşır).
 
 ## Renkler
 
