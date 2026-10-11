@@ -52,25 +52,66 @@
 
 /*
  * Açılış sayfası: uygulamanın açık/koyu temasından bağımsız, sabit bir dünya.
- * Gece turkuazı bir çalışma odası, masalarda pembe lamba ışığı; açıklama
- * bölümleri soğuk beyaz kâğıt üzerinde. Yalnızca LandingPage ve
- * components/landing kullanır.
+ * Neobrütalist kâğıt masa (referans: docs/brand/referans-didasko.md): 2px siyah
+ * kenarlık, sivri köşe, bulanıksız kaydırılmış siyah gölge, pastel yüzeyler.
+ * Hardal yalnızca tıklanabilir öğelerde ve "yanan lamba" vurgusunda.
+ * Yalnızca LandingPage ve components/landing kullanır.
  */
 @theme {
-  --color-lp-night: #0e2b2c;
-  --color-lp-night-2: #143738;
-  --color-lp-desk: #1d4547;
-  --color-lp-sea: #4fc3b4;
-  --color-lp-lamp: #ff9dbb;
-  --color-lp-lamp-ink: #a3285a;
-  --color-lp-paper: #f6f8f7;
-  --color-lp-paper-2: #e8efed;
-  --color-lp-ink: #122221;
-  --color-lp-graphite: #556563;
-  --color-lp-line: #d3dedb;
-  --color-lp-on-night: #e8f1ef;
-  --color-lp-on-night-muted: #9db9b5;
-  --font-lp-display: "Familjen Grotesk", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  /* Renkler */
+  --color-lp-paper: #f9f5f6;
+  --color-lp-ink: #000000;
+  /* Soluk metin: #666 şeftali ve hardal üstünde 4.5:1'in altında kalıyordu; bütün yüzeylerde AA geçsin diye biraz daha koyu. */
+  --color-lp-muted: #5c5c5c;
+  --color-lp-card: #ffffff;
+  --color-lp-lemon: #fdfd96;
+  --color-lp-peach: #f8d6b3;
+  --color-lp-mint: #daf5f0;
+  --color-lp-mustard: #ffdb58;
+  /* Süs çizgileri (metin değil): kâğıt ızgarası ve çizimlerdeki satır izleri */
+  --color-lp-grid: #0000000a;
+  --color-lp-line: #00000024;
+
+  /* Yazı tipleri */
+  --font-lp-sans: "Epilogue", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-lp-label: "Lexend Mega", "Epilogue", system-ui, sans-serif;
+
+  /* Yazı ölçeği: başlıklar 900, satır yüksekliği 1.2; gövde 1.5 */
+  --tracking-lp: -0.04em;
+  --text-lp-h1: 3.75rem;
+  --text-lp-h1--line-height: 4.5rem;
+  --text-lp-h1-sm: 2.25rem;
+  --text-lp-h1-sm--line-height: 2.7rem;
+  --text-lp-h2: 2.5rem;
+  --text-lp-h2--line-height: 3rem;
+  --text-lp-h2-sm: 1.625rem;
+  --text-lp-h2-sm--line-height: 1.95rem;
+  --text-lp-h3: 1.75rem;
+  --text-lp-h3--line-height: 2.1rem;
+  --text-lp-h3-sm: 1.375rem;
+  --text-lp-h3-sm--line-height: 1.65rem;
+  --text-lp-h4: 1.25rem;
+  --text-lp-h4--line-height: 1.5rem;
+  --text-lp-lg: 1.125rem;
+  --text-lp-lg--line-height: 1.6875rem;
+  --text-lp-base: 1rem;
+  --text-lp-base--line-height: 1.5rem;
+  --text-lp-sm: 0.875rem;
+  --text-lp-sm--line-height: 1.3125rem;
+  --text-lp-label: 0.75rem;
+  --text-lp-label--line-height: 1rem;
+
+  /* Gölge ölçeği: üzerine gelince · düğme/etiket · kart · büyük panel · giriş görseli */
+  --shadow-lp-xs: 2px 2px 0 0 var(--color-lp-ink);
+  --shadow-lp-sm: 4px 4px 0 0 var(--color-lp-ink);
+  --shadow-lp-md: 6px 6px 0 0 var(--color-lp-ink);
+  --shadow-lp-lg: 8px 8px 0 0 var(--color-lp-ink);
+  --shadow-lp-xl: 10px 10px 0 0 var(--color-lp-ink);
+
+  /* Yerleşim: 1200px içerik + iki yanda 40px boşluk */
+  --container-lp: 80rem;
+  --container-lp-narrow: 37.5rem;
+  --spacing-lp-section: 100px;
 }
 
 /* Açık tema: krem kağıt (varsayılan) */

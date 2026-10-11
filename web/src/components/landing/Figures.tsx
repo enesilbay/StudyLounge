@@ -1,37 +1,50 @@
-import { Eraser, Highlighter, MicOff, MonitorUp, PenLine, WandSparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Eraser, Highlighter, MicOff, MonitorUp, PenLine, Video, WandSparkles } from 'lucide-react';
+import { lpBox } from './styles';
 
 /*
  * Açılış sayfasındaki özellik çizimleri. Gerçek arayüzün sadeleştirilmiş
- * hâlleri; ekran görüntüsü değil, her biri tek bir fikri anlatır.
+ * hâlleri; ekran görüntüsü değil, her biri tek bir fikri anlatır. Kişiler
+ * örnektir. Her çizim kalın çerçeveli beyaz bir "ekran parçası" içindedir.
  */
+
+/** Çizimlerin ortak çerçevesi; içerik ekran okuyucuya tek bir görsel olarak, alt metniyle sunulur. */
+function Screen({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <div role="img" aria-label={label} className={`${lpBox} w-full bg-lp-card p-4 font-lp-sans tracking-lp text-lp-ink shadow-lp-sm md:p-5 ${className}`}>
+      {children}
+    </div>
+  );
+}
 
 /** Ortak sayacın ritmi: odak ve mola sırayla, odadaki herkes için aynı anda. */
 export function TimerRhythm() {
   const rounds = [1, 2, 3];
   return (
-    <div className="w-full">
-      <div className="flex h-14 w-full gap-1.5" aria-hidden="true">
+    <Screen label="Ortak sayacın ritmi: 25 dakika odak, 5 dakika mola, üç tur. Şu an ikinci turdayız, 9 dakika kaldı.">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-lp-h3 font-black tabular-nums">09:00</span>
+        <span className="text-lp-sm font-bold">2. tur · 9 dk kaldı</span>
+      </div>
+      <div className="mt-4 flex h-11 w-full gap-1.5">
         {rounds.map((round) => (
           <div key={round} className="flex flex-[30] gap-1.5">
-            <div className={`relative flex-[25] rounded-lg ${round <= 2 ? 'bg-lp-lamp' : 'bg-lp-lamp/35'}`}>
-              {round === 2 ? <span className="absolute -top-2 bottom-[-8px] left-[64%] w-0.5 rounded-full bg-lp-ink" /> : null}
+            <div className={`relative flex-[25] border-2 border-lp-ink ${round <= 2 ? 'bg-lp-mustard' : 'bg-lp-card'}`}>
+              {round === 2 ? <span className="absolute -bottom-2 -top-2 left-[64%] w-[3px] bg-lp-ink" /> : null}
             </div>
-            <div className="flex-[5] rounded-lg border border-lp-line bg-lp-paper-2" />
+            <div className="flex-[5] border-2 border-lp-ink bg-lp-mint" />
           </div>
         ))}
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[15px] text-lp-graphite">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-lp-sm font-medium">
         <span className="flex items-center gap-2">
-          <span className="h-3 w-5 rounded bg-lp-lamp" /> 25 dk odak
+          <span className="h-3 w-5 border-2 border-lp-ink bg-lp-mustard" /> 25 dk odak
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-3 w-5 rounded border border-lp-line bg-lp-paper-2" /> 5 dk mola
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="h-4 w-0.5 rounded-full bg-lp-ink" /> Şu an: 2. tur, 9 dk kaldı
+          <span className="h-3 w-5 border-2 border-lp-ink bg-lp-mint" /> 5 dk mola
         </span>
       </div>
-    </div>
+    </Screen>
   );
 }
 
@@ -44,50 +57,31 @@ export function BoardFigure() {
     { icon: Eraser, label: 'Silgi', active: false },
   ];
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-lp-line bg-white">
-      <div className="flex items-center gap-1 border-b border-lp-line px-3 py-2" aria-hidden="true">
+    <Screen label="Ortak PDF tahtası: Newton'un ikinci yasası sayfasında Mert fosforlu kalemle bir satırı işaretlemiş, Zeynep bir yeri yuvarlak içine almış." className="p-0!">
+      <div className="flex items-center gap-1 border-b-2 border-lp-ink px-3 py-2">
         {tools.map((tool) => (
-          <span key={tool.label} className={`grid h-8 w-8 place-items-center rounded-md ${tool.active ? 'bg-lp-night text-lp-on-night' : 'text-lp-graphite'}`}>
+          <span key={tool.label} className={`grid h-8 w-8 place-items-center border-2 ${tool.active ? 'border-lp-ink bg-lp-ink text-lp-card' : 'border-transparent text-lp-ink'}`}>
             <tool.icon className="h-4 w-4" />
           </span>
         ))}
-        <span className="ml-auto text-sm text-lp-graphite">3 / 12</span>
+        <span className="ml-auto text-lp-sm font-bold">3 / 12</span>
       </div>
-      <div className="relative px-6 py-5">
-        <p className="font-lp-display text-lg font-semibold text-lp-ink">Newton'un ikinci yasası</p>
-        <p className="mt-1 font-lp-display text-2xl font-semibold tracking-tight text-lp-ink">F = m · a</p>
-        <div className="mt-4 space-y-2.5" aria-hidden="true">
+      <div className="relative px-5 py-4">
+        <p className="text-lp-base font-bold">Newton'un ikinci yasası</p>
+        <p className="mt-1 text-lp-h3 font-black">F = m · a</p>
+        <div className="mt-3 space-y-2.5">
           {[94, 82, 90, 70, 86].map((width, line) => (
-            <div key={line} className="h-1.5 rounded-full bg-lp-line" style={{ width: `${width}%` }} />
+            <div key={line} className="h-1.5 bg-lp-line" style={{ width: `${width}%` }} />
           ))}
         </div>
-        <svg viewBox="0 0 300 160" className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M22 72 L120 72" stroke="var(--color-lp-lamp)" strokeOpacity="0.55" strokeWidth="14" strokeLinecap="round" fill="none" />
-          <path d="M200 40 C 230 30, 280 40, 276 66 C 272 88, 214 90, 204 70 C 198 56, 206 46, 214 42" stroke="var(--color-lp-sea)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        <svg viewBox="0 0 300 160" className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none">
+          <path d="M20 72 L130 72" stroke="var(--color-lp-mustard)" strokeOpacity="0.8" strokeWidth="14" fill="none" />
+          <path d="M196 40 C 226 30, 280 40, 276 66 C 272 88, 214 90, 204 70 C 198 56, 206 46, 214 42" stroke="var(--color-lp-ink)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
         </svg>
-        <span className="absolute right-6 top-24 rounded-full bg-lp-sea px-2 py-0.5 text-xs font-semibold text-lp-night">Zeynep</span>
-        <span className="absolute left-32 top-[4.6rem] rounded-full bg-lp-lamp px-2 py-0.5 text-xs font-semibold text-lp-night">Mert</span>
+        <span className="absolute right-5 top-[5.5rem] border-2 border-lp-ink bg-lp-mint px-1.5 py-0.5 text-[0.75rem] font-bold">Zeynep</span>
+        <span className="absolute left-[8.5rem] top-[4.4rem] border-2 border-lp-ink bg-lp-lemon px-1.5 py-0.5 text-[0.75rem] font-bold">Mert</span>
       </div>
-    </div>
-  );
-}
-
-/** Oda sohbeti ve dürtme. */
-export function ChatFigure() {
-  return (
-    <div className="w-full space-y-3" aria-hidden="true">
-      <div className="max-w-[80%]">
-        <p className="mb-1 text-sm font-semibold text-lp-graphite">Mert</p>
-        <p className="rounded-2xl rounded-tl-md bg-lp-paper-2 px-4 py-2.5 text-[15px] text-lp-ink">3. soruyu çözen var mı? Sonuç bende negatif çıkıyor.</p>
-      </div>
-      <div className="ml-auto max-w-[80%]">
-        <p className="rounded-2xl rounded-tr-md bg-lp-night px-4 py-2.5 text-[15px] text-lp-on-night">Notlarımı tahtaya açtım, işaret hatası var gibi.</p>
-      </div>
-      <div className="flex items-center gap-3 rounded-xl border border-lp-lamp/60 bg-white px-4 py-3 text-[15px] text-lp-ink">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-lp-lamp" />
-        Can seni masaya çağırıyor.
-      </div>
-    </div>
+    </Screen>
   );
 }
 
@@ -102,55 +96,118 @@ export function CameraFigure() {
     { name: 'Selin' },
   ];
   return (
-    <div className="grid w-full grid-cols-3 gap-2" aria-hidden="true">
-      {tiles.map((tile) => (
-        <div key={tile.name} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-lp-night-2">
-          {tile.camera ? (
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center">
-              <span className="h-[34%] min-h-5 w-[26%] rounded-full bg-lp-on-night-muted/45" style={{ aspectRatio: '1' }} />
-              <span className="mt-1 h-7 w-[58%] rounded-t-full bg-lp-on-night-muted/35" />
-            </div>
-          ) : tile.screen ? (
-            <div className="absolute inset-[14%] rounded-md bg-lp-paper p-1.5">
-              <div className="h-1 w-3/4 rounded bg-lp-line" />
-              <div className="mt-1 h-1 w-1/2 rounded bg-lp-line" />
-              <div className="mt-1 h-1 w-2/3 rounded bg-lp-line" />
-            </div>
-          ) : (
-            <span className="absolute inset-0 m-auto grid h-9 w-9 place-items-center rounded-full bg-lp-on-night-muted/25 font-lp-display text-sm font-semibold text-lp-on-night">{tile.name.charAt(0)}</span>
-          )}
-          <span className="absolute bottom-1.5 left-2 flex items-center gap-1 text-[11px] font-semibold text-lp-on-night">
-            {tile.name}
-            {tile.screen ? <MonitorUp className="h-3 w-3 text-lp-sea" /> : null}
-            {tile.muted ? <MicOff className="h-3 w-3 opacity-70" /> : null}
-          </span>
-        </div>
-      ))}
-    </div>
+    <Screen label="Altı kişilik kameralı oda: üç kişinin kamerası açık, Mert ekranını paylaşıyor, iki kişinin kamerası kapalı.">
+      <div className="mb-3 flex items-center gap-2 text-lp-sm font-bold">
+        <Video className="h-4 w-4" aria-hidden="true" /> Kameralı oda · 6 / 6
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {tiles.map((tile) => (
+          <div key={tile.name} className={`relative aspect-[4/3] overflow-hidden border-2 border-lp-ink ${tile.camera ? 'bg-lp-mint' : tile.screen ? 'bg-lp-lemon' : 'bg-lp-paper'}`}>
+            {tile.camera ? (
+              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center">
+                <span className="aspect-square w-[26%] rounded-full border-2 border-lp-ink bg-lp-card" />
+                <span className="-mt-px h-5 w-[56%] rounded-t-full border-2 border-b-0 border-lp-ink bg-lp-card md:h-7" />
+              </div>
+            ) : tile.screen ? (
+              <div className="absolute inset-x-[14%] top-[14%] bottom-[30%] border-2 border-lp-ink bg-lp-card p-1">
+                <div className="h-1 w-3/4 bg-lp-line" />
+                <div className="mt-1 h-1 w-1/2 bg-lp-line" />
+              </div>
+            ) : (
+              <span className="absolute inset-0 m-auto grid h-8 w-8 place-items-center rounded-full border-2 border-lp-ink bg-lp-card text-lp-sm font-black">{tile.name.charAt(0)}</span>
+            )}
+            <span className="absolute left-1 top-1 flex items-center gap-1 bg-lp-card px-1 text-[0.6875rem] font-bold leading-4">
+              {tile.name}
+              {tile.screen ? <MonitorUp className="h-3 w-3" /> : null}
+              {tile.muted ? <MicOff className="h-3 w-3" /> : null}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Screen>
   );
 }
 
-/** Masada ters duran telefon ve yanan lamba: kamera olmadan odak. */
+/** 1. adım: odalar listesi. */
+export function RoomListFigure() {
+  const rooms = [
+    { name: 'Sessiz kütüphane', meta: '5 kişi · 4 odakta', lit: 4 },
+    { name: 'YKS sayısal', meta: '9 kişi · 7 odakta', lit: 7 },
+    { name: 'Fizik 101 çalışma', meta: 'Kameralı · 3 / 6', lit: 2, camera: true },
+  ];
+  return (
+    <Screen label="Odalar listesi: Sessiz kütüphane, YKS sayısal ve kameralı Fizik 101 çalışma odası; her odada kaç kişinin odaklandığı görünüyor.">
+      <p className="text-lp-h4 font-black uppercase">Odalar</p>
+      <ul className="mt-3 space-y-2.5">
+        {rooms.map((room) => (
+          <li key={room.name} className="flex items-center gap-3 border-2 border-lp-ink bg-lp-paper px-3 py-2.5">
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 truncate text-lp-base font-bold">
+                {room.camera ? <Video className="h-4 w-4 shrink-0" /> : null}
+                {room.name}
+              </span>
+              <span className="mt-0.5 flex items-center gap-1 text-lp-sm font-medium text-lp-muted">
+                <span className="flex gap-0.5">
+                  {Array.from({ length: Math.min(room.lit, 5) }, (_, index) => (
+                    <span key={index} className="h-2 w-2 rounded-full border border-lp-ink bg-lp-mustard" />
+                  ))}
+                </span>
+                {room.meta}
+              </span>
+            </span>
+            <span className="shrink-0 border-2 border-lp-ink bg-lp-card px-2.5 py-1 text-lp-sm font-bold">Katıl</span>
+          </li>
+        ))}
+      </ul>
+    </Screen>
+  );
+}
+
+/** 2. adım: masada ters duran telefon ve yanan lamba; kamera olmadan odak. */
 export function PhoneOnDesk() {
   return (
-    <div className="relative mx-auto aspect-[5/4] w-full max-w-md" aria-hidden="true">
-      <div className="absolute inset-[6%] rounded-[28px] bg-lp-desk ring-1 ring-white/5" />
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{ background: 'radial-gradient(closest-side at 62% 42%, rgb(255 157 187 / 0.34), rgb(255 157 187 / 0.08) 60%, transparent 80%)' }}
-      />
-      {/* Lamba */}
-      <span className="absolute right-[16%] top-[16%] h-[9%] w-[7.2%] rounded-full bg-lp-lamp shadow-[0_0_28px_8px_rgb(255_157_187/0.6)]" />
-      {/* Defter */}
-      <div className="absolute left-[14%] top-[22%] h-[44%] w-[38%] -rotate-6 rounded-md bg-lp-on-night/90 p-[4%]">
-        {[80, 64, 72, 50, 68].map((width, line) => (
-          <div key={line} className="mb-[9%] h-[3%] min-h-[2px] rounded-full bg-lp-line" style={{ width: `${width}%` }} />
-        ))}
+    <Screen label="Yukarıdan bakılan bir masa: açık defter, ekranı masaya dönük telefon ve yanan masa lambası. Telefon masada durdukça odak süresi işler." className="p-0!">
+      <div className="relative aspect-[5/4] w-full overflow-hidden bg-lp-paper bg-[linear-gradient(var(--color-lp-grid)_1px,transparent_1px),linear-gradient(90deg,var(--color-lp-grid)_1px,transparent_1px)] bg-[size:24px_24px]">
+        <div
+          className="absolute right-[2%] top-[0%] h-[64%] w-[52%] rounded-full"
+          style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-mustard) 75%, transparent), transparent 80%)' }}
+        />
+        {/* Lamba */}
+        <span className="absolute right-[22%] top-[22%] aspect-square w-[11%] rounded-full border-2 border-lp-ink bg-lp-mustard" />
+        {/* Defter */}
+        <div className="absolute left-[12%] top-[18%] h-[50%] w-[40%] -rotate-6 border-2 border-lp-ink bg-lp-card p-[4%] shadow-lp-xs">
+          {[80, 64, 72, 50, 68].map((width, line) => (
+            <div key={line} className="mb-[9%] h-[4%] min-h-[2px] bg-lp-line" style={{ width: `${width}%` }} />
+          ))}
+        </div>
+        {/* Ekranı masaya dönük telefon */}
+        <div className="absolute bottom-[12%] right-[24%] h-[42%] w-[20%] rotate-12 rounded-[10px] border-2 border-lp-ink bg-lp-ink">
+          <span className="absolute left-[12%] top-[6%] h-[16%] w-[38%] rounded-[4px] border-2 border-lp-card/40" />
+        </div>
+        <span className="absolute bottom-[6%] left-[8%] border-2 border-lp-ink bg-lp-card px-2 py-1 text-lp-sm font-black">Odakta · 24:13</span>
       </div>
-      {/* Ekranı masaya dönük telefon */}
-      <div className="absolute bottom-[16%] right-[22%] h-[40%] w-[20%] rotate-12 rounded-[14px] bg-lp-night ring-1 ring-lp-sea/25">
-        <span className="absolute left-[14%] top-[6%] h-[16%] w-[36%] rounded-[6px] bg-lp-night-2 ring-1 ring-white/5" />
+    </Screen>
+  );
+}
+
+/** 3. adım: ortak mola. Sayaç herkes için aynı anda molaya geçer, sohbet molaya kalır. */
+export function BreakFigure() {
+  return (
+    <Screen label="Ortak sayaç molada, 4 dakika 12 saniye kaldı. Mert üçüncü soruyu soruyor, cevap olarak notların tahtaya açıldığı yazılıyor. Mola bitince zil çalacak.">
+      <div className="flex items-center justify-between gap-3 border-2 border-lp-ink bg-lp-mint px-3 py-2">
+        <span className="text-lp-h4 font-black uppercase">Mola</span>
+        <span className="text-lp-h4 font-black tabular-nums">04:12</span>
       </div>
-    </div>
+      <div className="mt-4 space-y-3">
+        <div className="max-w-[85%]">
+          <p className="mb-1 text-lp-sm font-bold">Mert</p>
+          <p className="border-2 border-lp-ink bg-lp-paper px-3 py-2 text-lp-sm font-medium md:text-lp-base">3. soruyu çözen var mı? Sonuç bende negatif çıkıyor.</p>
+        </div>
+        <div className="ml-auto max-w-[85%]">
+          <p className="border-2 border-lp-ink bg-lp-lemon px-3 py-2 text-lp-sm font-medium md:text-lp-base">Notlarımı tahtaya açtım, işaret hatası var gibi.</p>
+        </div>
+        <p className="text-lp-sm font-medium text-lp-muted">Mola bitince zil çalar, herkes masasına döner.</p>
+      </div>
+    </Screen>
   );
 }
