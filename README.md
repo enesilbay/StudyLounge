@@ -44,7 +44,7 @@ StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir gör
 | Yardımcı renk | `#FFC107` *(Amber)* |
 | Tipografi | `Montserrat` |
 
-**Web** için projenin yeni ana kimliği aşağıdadır. Ayrıntılar (tipografi ölçeği, köşe, gölge, hareket, kontrast) [`docs/brand/marka-rehberi.md`](docs/brand/marka-rehberi.md) dosyasında; kod karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
+**Web** için projenin ana renkleri ve yazı tipleri aşağıdadır. Ayrıntılar (tipografi ölçeği, köşe, gölge, hareket, kontrast) [`docs/brand/marka-rehberi.md`](docs/brand/marka-rehberi.md) dosyasında; kod karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
 
 | Eleman | Seçim | Açıklama |
 | :--- | :--- | :--- |
@@ -56,7 +56,7 @@ StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir gör
 | Biçim | Yuvarlak köşeler (kart 24px, düğme 14px), yumuşak gölgeler | |
 | İmza öğe | Masa lambası | Odaklanan kullanıcının masa kartında lamba yanar |
 
-Yeni kimlik şu an açılış sayfasında uygulanıyor. Uygulama sayfaları eski temayla (krem zemin `#FBF5EC`, turkuaz `#0B7A76`, açık pembe lamba rengi; Literata + Atkinson Hyperlegible) çalışmaya devam ediyor ve sayfa sayfa yeni kimliğe geçirilecek.
+Bütün web sayfaları bu renk ve yazı tiplerini kullanır; uygulama sayfaları adım adım bu kimliğe taşınıyor.
 
 ---
 

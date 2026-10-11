@@ -159,7 +159,7 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Yüksek | Tasarım eleştirisi ve denetim | Impeccable `critique` ve `audit` ile ana akışlar taranır: giriş/kayıt, odalar, oda içi (kamera, PDF tahtası), Premium, ayarlar, yönetim paneli, açılış sayfası. Bulgular önem sırasıyla listelenir; hata ve erişilebilirlik sorunları (kontrast, klavye, odak halkası, alt metin) önce düzeltilir. |
-| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; vurgu rengi (yeni kimlikte orman yeşili, eski temada pembe) yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
+| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; vurgu rengi (orman yeşili) yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
 | Orta | Mobil genişlik ve duyarlılık | Web'in telefon genişliğinde (360–430 px) kırılma, taşma ve dokunma hedeflerine göre gözden geçirilmesi. |
 | Düşük | Performans ve boş/hata durumları | Yükleme, boş ve hata durumları ile ilk yükleme boyutu denetlenir. |
 

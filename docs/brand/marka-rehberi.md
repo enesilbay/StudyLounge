@@ -1,18 +1,8 @@
 # StudyLounge marka rehberi
 
-Projenin görsel kimliği için tek kaynak bu dosyadır. Renkler, yazı tipleri, tipografi ölçeği, köşe, gölge ve hareket kuralları burada tanımlanır.
+Projenin ana renkleri, yazı tipleri ve tipografisi açılış sayfasınınkilerdir; bu dosya onların tek kaynağıdır. Köşe, gölge ve hareket kuralları da burada tanımlanır.
 
-Bu kimlik ilk olarak açılış sayfasında uygulandı (Mobilo tarzı; bkz. `referans-mobilo.md`). Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
-
-## Geçiş durumu
-
-| Yer | Durum |
-| :--- | :--- |
-| Açılış sayfası (`web/src/pages/LandingPage.tsx`) | Yeni kimlik uygulandı (`mb-*` token'ları) |
-| Uygulama sayfaları (`/app/...`, giriş, yönetim paneli) | Eski "kütüphane lambası" teması (`--sl-*`, `bg-surface`, `bg-accent` vb.). Sayfa sayfa geçirilecek; ilk deneme `/app/lobbies` |
-| Mobil uygulama (`mobile/`) | Değişmiyor; kendi `C` renk sabitlerini korur |
-
-Bir uygulama sayfası yeni kimliğe geçirilene kadar o sayfanın mevcut token'ları kullanılmaya devam eder. İki sistem aynı sayfada karıştırılmaz.
+Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır. Bütün web sayfaları bu kimliği kullanır; uygulama sayfaları (`/app/...`, giriş, yönetim paneli) adım adım bu kimliğe taşınıyor. Mobil uygulama (`mobile/`) değişmez.
 
 ## Renkler
 
