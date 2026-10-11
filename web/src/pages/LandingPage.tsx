@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Asterisk, ChevronRight, Menu, X } from 'lucide-react';
 import { ProductShot } from '../components/landing/ProductShot';
 import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
@@ -265,6 +266,8 @@ export default function LandingPage() {
 
 function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; primary: { to: string; label: string } }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -275,72 +278,92 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
+  // Kaydırınca çubuk incelir ve gölgesi belirir.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const close = () => setMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-lp-ink bg-lp-paper">
-      <Container className="flex h-[72px] items-center justify-between gap-4 md:h-[88px]">
-        <Link to="/" className={lpFocus} aria-label="StudyLounge ana sayfa">
-          <LandingLockup />
-        </Link>
-
-        <nav aria-label="Sayfa içi" className="hidden items-center gap-7 lg:flex">
-          {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className={`${lpFocus} text-lp-base font-bold hover:underline`}>
-              {link.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-3">
-          {!isAuthenticated ? (
-            <Link to="/auth" className={`${lpFocus} hidden min-h-11 items-center px-2 text-lp-base font-bold hover:underline md:inline-flex`}>
-              Giriş yap
-            </Link>
-          ) : null}
-          <Link to={primary.to} className={`hidden sm:inline-flex ${lpButtonSm}`}>
-            {primary.label}
+    <header className="sticky top-0 z-40 px-3 pt-3 md:px-6 md:pt-4">
+      <div className={`${lpBox} mx-auto max-w-lp bg-lp-paper transition-shadow duration-300 ${scrolled || menuOpen ? 'shadow-lp-sm' : 'shadow-none'}`}>
+        <div className={`flex items-center justify-between gap-4 px-4 transition-[height] duration-300 md:px-6 ${scrolled ? 'h-14 md:h-16' : 'h-16 md:h-[76px]'}`}>
+          <Link to="/" className={lpFocus} aria-label="StudyLounge ana sayfa">
+            <LandingLockup />
           </Link>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-controls="mobil-menu"
-            aria-label={menuOpen ? 'Menüyü kapat' : 'Menüyü aç'}
-            className={`${lpBox} ${lpFocus} grid h-11 w-11 place-items-center bg-lp-card shadow-lp-xs lg:hidden`}
-          >
-            {menuOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
-          </button>
-        </div>
-      </Container>
 
-      {menuOpen ? (
-        <div id="mobil-menu" className="border-t-2 border-lp-ink bg-lp-paper lg:hidden">
-          <Container className="py-5">
-            <nav aria-label="Menü">
-              <ul className="space-y-1">
-                {navLinks.map((link) => (
-                  <li key={link.href}>
-                    <a href={link.href} onClick={close} className={`${lpFocus} flex min-h-12 items-center ${lpHeading} text-lp-h4`}>
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <div className="mt-5 flex flex-col gap-3 border-t-2 border-lp-ink pt-5">
-              <Link to={primary.to} onClick={close} className={`${lpButton} w-full`}>
-                {primary.label}
+          <nav aria-label="Sayfa içi" className="hidden items-center gap-7 lg:flex">
+            {navLinks.map((link) => (
+              <a key={link.href} href={link.href} className={`${lpFocus} text-lp-base font-bold underline-offset-4 hover:underline`}>
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-3">
+            {!isAuthenticated ? (
+              <Link to="/auth" className={`${lpFocus} hidden min-h-11 items-center px-2 text-lp-base font-bold underline-offset-4 hover:underline md:inline-flex`}>
+                Giriş yap
               </Link>
-              {!isAuthenticated ? (
-                <Link to="/auth" onClick={close} className={`${lpTextLink} justify-center`}>
-                  Giriş yap
-                </Link>
-              ) : null}
-            </div>
-          </Container>
+            ) : null}
+            <Link to={primary.to} className={`hidden min-h-10 sm:inline-flex ${lpButtonSm}`}>
+              {primary.label}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-controls="mobil-menu"
+              aria-label={menuOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+              className={`${lpBox} ${lpFocus} grid h-11 w-11 place-items-center bg-lp-card shadow-lp-xs lg:hidden`}
+            >
+              {menuOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
+            </button>
+          </div>
         </div>
-      ) : null}
+
+        <AnimatePresence initial={false}>
+          {menuOpen ? (
+            <motion.div
+              id="mobil-menu"
+              key="mobil-menu"
+              className="overflow-hidden border-t-2 border-lp-ink lg:hidden"
+              initial={reduce ? false : { height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="px-4 py-5">
+                <nav aria-label="Menü">
+                  <ul className="space-y-1">
+                    {navLinks.map((link) => (
+                      <li key={link.href}>
+                        <a href={link.href} onClick={close} className={`${lpFocus} flex min-h-12 items-center ${lpHeading} text-lp-h4`}>
+                          {link.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+                <div className="mt-5 flex flex-col gap-3 border-t-2 border-lp-ink pt-5">
+                  <Link to={primary.to} onClick={close} className={`${lpButton} w-full`}>
+                    {primary.label}
+                  </Link>
+                  {!isAuthenticated ? (
+                    <Link to="/auth" onClick={close} className={`${lpTextLink} justify-center`}>
+                      Giriş yap
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </header>
   );
 }
