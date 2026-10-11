@@ -45,9 +45,11 @@ export default function LandingPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const primary = isAuthenticated ? { to: '/app/lobbies', label: 'Odalara git' } : { to: '/auth?mod=kayit', label: 'Ücretsiz hesap aç' };
   const premiumTo = isAuthenticated ? '/app/premium' : '/auth?mod=kayit';
+  // GEÇİCİ: palet denemesi, yalnızca geliştirmede (?palet=b|c|d). Karar sonrası silinecek.
+  const palette = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('palet') : null;
 
   return (
-    <div className={`min-h-screen overflow-x-clip font-lp-sans tracking-lp text-lp-ink ${lpPaper}`}>
+    <div data-lp-palette={palette ?? undefined} className={`min-h-screen overflow-x-clip font-lp-sans tracking-lp text-lp-ink ${lpPaper}`}>
       <a
         href="#icerik"
         className={`${lpBox} ${lpFocus} sr-only bg-lp-mustard px-4 py-2 font-bold focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50`}

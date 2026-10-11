@@ -318,6 +318,41 @@
   }
 }
 
+/*
+ * GEÇİCİ: açılış sayfası palet denemeleri (yalnızca geliştirmede, ?palet=b|c|d).
+ * Karar verilince seçilen değerler yukarıdaki lp-* token'larına yazılır ve bu blok silinir.
+ */
+[data-lp-palette="b"] {
+  --color-lp-paper: #f4f1ea;
+  --color-lp-ink: #121212;
+  --color-lp-muted: #545454;
+  --color-lp-card: #ffffff;
+  --color-lp-lemon: #ffe1cc;
+  --color-lp-peach: #e4ddf7;
+  --color-lp-mint: #d6ece2;
+  --color-lp-mustard: #ff6b3d;
+}
+[data-lp-palette="c"] {
+  --color-lp-paper: #f0ede4;
+  --color-lp-ink: #0f2a22;
+  --color-lp-muted: #46554e;
+  --color-lp-card: #fffdf8;
+  --color-lp-lemon: #f8d8c8;
+  --color-lp-peach: #dde8d2;
+  --color-lp-mint: #cfe2e6;
+  --color-lp-mustard: #ff8a6b;
+}
+[data-lp-palette="d"] {
+  --color-lp-paper: #eef0f5;
+  --color-lp-ink: #0b1533;
+  --color-lp-muted: #47516c;
+  --color-lp-card: #ffffff;
+  --color-lp-lemon: #dde4ff;
+  --color-lp-peach: #ffe0ec;
+  --color-lp-mint: #e6f7d2;
+  --color-lp-mustard: #d4ff3a;
+}
+
 /* Açılış sayfası: lamba yanışı ve tahtaya çizilen kalem (tek açılış sırası). */
 @keyframes lp-lamp-on {
   from {
