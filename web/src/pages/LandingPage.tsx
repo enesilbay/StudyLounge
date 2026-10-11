@@ -368,9 +368,12 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
                 Giriş yap
               </Link>
             ) : null}
-            <Link to={primary.to} className={`hidden min-h-11 px-5 text-[0.9375rem] sm:inline-flex ${mbButton}`}>
-              {primary.label}
-            </Link>
+            {/* Düğme stili inline-flex içerdiği için gizleme dıştaki kaba verilir. */}
+            <span className="hidden sm:block">
+              <Link to={primary.to} className={`${mbButton} min-h-11 px-5 text-[0.9375rem]`}>
+                {primary.label}
+              </Link>
+            </span>
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
