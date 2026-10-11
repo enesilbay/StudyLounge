@@ -4,7 +4,7 @@ import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from '
 import { ArrowUpRight, Check, Menu, Target, Trophy, Video, X, type LucideIcon } from 'lucide-react';
 import { ProductShot } from '../components/landing/ProductShot';
 import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
-import { LandingMark } from '../components/landing/Brutal';
+import { LogoMark } from '../components/brand/Logo';
 import { MbContainer, MbPill, MbSectionTitle, MbShot } from '../components/landing-mobilo/Parts';
 import { mbButton, mbButtonDark, mbDisplay, mbFocus } from '../components/landing-mobilo/styles';
 import { Accordion, Float, Lift, Marquee, Parallax, ProgressLine, RiseLetters, ScrollProgress, Spotlight, SwapText } from '../components/landing-mobilo/Effects';
@@ -62,8 +62,7 @@ export default function LandingPage() {
   return (
     // LazyMotion: framer-motion'ın yalnızca kullanılan özellikleri yüklenir (animasyonlar sadece bu sayfada).
     <LazyMotion features={domAnimation} strict>
-      {/* Geçici logo (LandingMark) lp-* renklerini kullanır; burada Mobilo yeşiline çevrilir. */}
-      <div className="min-h-screen overflow-x-clip bg-mb-bg font-mb-body text-mb-ink [--color-lp-action:var(--color-mb-action-2)]">
+      <div className="min-h-screen overflow-x-clip bg-mb-bg font-mb-body text-mb-ink">
         <a href="#icerik" className={`${mbFocus} sr-only rounded-lg bg-mb-action px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50`}>
           İçeriğe geç
         </a>
@@ -295,7 +294,7 @@ export default function LandingPage() {
           </section>
         </main>
 
-        <footer className="relative overflow-hidden bg-mb-ink text-mb-bg [--color-lp-ink:var(--color-mb-bg)]">
+        <footer className="relative overflow-hidden bg-mb-ink text-mb-bg">
           <p aria-hidden="true" className="pointer-events-none absolute inset-x-0 -bottom-[0.18em] select-none whitespace-nowrap text-center font-mb-display text-[16.5vw] font-semibold leading-none tracking-[-0.06em] text-mb-bg/[0.07]">
             <RiseLetters text="StudyLounge" />
           </p>
@@ -303,7 +302,7 @@ export default function LandingPage() {
             <div className="grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div>
                 <Link to="/" className={`${mbFocus} inline-flex items-center gap-2.5`} aria-label="StudyLounge ana sayfa">
-                  <LandingMark className="h-9 w-9" />
+                  <LogoMark className="h-10 w-10" />
                   <span className="font-mb-display text-2xl font-medium tracking-[-0.03em]">StudyLounge</span>
                 </Link>
                 <p className="mt-4 max-w-[28rem] leading-[1.8] text-mb-bg/70">{hero.intro}</p>
@@ -364,7 +363,7 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
       <div className={`mx-auto max-w-[62.5rem] rounded-[22px] border border-mb-line bg-mb-bg/90 backdrop-blur transition-shadow duration-300 ${scrolled || menuOpen ? 'shadow-mb-raised' : 'shadow-mb-card'}`}>
         <div className={`flex items-center justify-between gap-4 pl-5 pr-2.5 transition-[height] duration-300 ${scrolled ? 'h-14 md:h-16' : 'h-16 md:h-[76px]'}`}>
           <Link to="/" className={`${mbFocus} flex items-center gap-2`} aria-label="StudyLounge ana sayfa">
-            <LandingMark className="h-8 w-8" />
+            <LogoMark className="h-9 w-9 text-mb-action" />
             <span className="font-mb-display text-xl font-medium tracking-[-0.03em]">StudyLounge</span>
           </Link>
 

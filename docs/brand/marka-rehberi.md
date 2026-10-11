@@ -102,6 +102,10 @@ Başlıklar ince (Geist 300) ve sıkı harf aralıklıdır; büyüklük ağırl�
 
 ## Logo ve görseller
 
-- Logo: geçici olarak eski lamba işareti (`LandingMark`). Yeni logo gelince bu bölüm, favicon ve uygulama simgeleri güncellenecek.
+- **Logo:** Açık kitabın üstünde yanan lamba, yanında Geist 500 ile "StudyLounge" yazısı (harf aralığı −0.03em). İşaret yazıyla birlikte kullanılır; tek başına yalnızca simge gereken yerlerde (favicon, uygulama simgesi).
+  - Dosyalar `docs/brand/logo/`: `studylounge-isaret.svg` (açık zemin: yeşil işaret), `studylounge-isaret-beyaz.svg` (koyu ya da yeşil zemin), `studylounge-isaret-tek-renk.svg` (ışıksız, tek renk baskı), `studylounge-simge.svg` (yeşil kare içinde beyaz işaret).
+  - Kodda `web/src/components/brand/Logo.tsx` (`LogoMark`). Lamba ve kitap `currentColor` ile boyanır, ışık her zaman lamba rengindedir (`mb-lamp`, `#FFD27A`).
+  - Açık zeminde işaret orman yeşili, yazı siyah; koyu zeminde ikisi de beyaz. Işık rengi değiştirilmez, işaret eğilmez ya da gölgelendirilmez.
+  - Şu an yalnızca açılış sayfasında kullanılıyor. Favicon, uygulama simgeleri ve uygulama sayfaları yeni tasarıma geçtikçe güncellenecek.
 - İllüstrasyonlar: 3B nesne tarzı (lamba, kitap, kalem, kahve…), şeffaf arka planlı. Promptlar ve dosya adları `docs/brand/gorseller/` için belirlendi.
 - Ürün görselleri: her zaman gerçek uygulamadan, demo hesaplarla alınmış ekran görüntüleri. Sahte kullanıcı sayısı, puan ya da yorum gösterilmez.

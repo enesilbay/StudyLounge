@@ -339,6 +339,8 @@
   --color-mb-action-2: #1a746c;
   --color-mb-on-action: #ffffff;
   --color-mb-tint: #e3efed;
+  /* Lamba ışığı: yalnızca logodaki ışık ve lamba ışıması için. */
+  --color-mb-lamp: #ffd27a;
 
   --font-mb-display: "Geist", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mb-body: "Poppins", "Atkinson Hyperlegible Next", system-ui, sans-serif;
