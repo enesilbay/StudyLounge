@@ -98,7 +98,7 @@ export default function LandingPage() {
                 <p className="mt-5 text-sm text-mb-body">{hero.reassurance}</p>
               </FadeIn>
 
-              <div className="relative mx-auto mt-16 max-w-[62.5rem] text-left">
+              <div className="relative mx-auto mt-10 max-w-[75rem] text-left md:mt-12">
                 {/* Lamba ışığı: görüntünün arkasında tek sıcak ışık kaynağı */}
                 <div
                   aria-hidden="true"

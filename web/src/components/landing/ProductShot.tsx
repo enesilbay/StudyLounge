@@ -69,7 +69,7 @@ export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft
             <img
               src="/landing/oda-masaustu-2400.webp"
               srcSet="/landing/oda-masaustu-1200.webp 1200w, /landing/oda-masaustu-2400.webp 2400w"
-              sizes="(min-width: 1100px) 1000px, 100vw"
+              sizes="(min-width: 1300px) 1200px, 100vw"
               width={2400}
               height={1500}
               fetchPriority="high"
