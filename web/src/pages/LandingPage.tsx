@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Asterisk, ChevronRight, Menu, X } from 'lucide-react';
-import { RoomPlan } from '../components/landing/RoomPlan';
+import { ProductShot } from '../components/landing/ProductShot';
+import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
 import { BoardFigure, BreakFigure, CameraFigure, PhoneOnDesk, RoomListFigure, TimerRhythm } from '../components/landing/Figures';
 import { Container, HandArrow, LandingLockup, SectionHeading, Tag } from '../components/landing/Brutal';
 import { lpBox, lpButton, lpButtonSm, lpFocus, lpH1, lpH3, lpH4, lpHeading, lpPaper, lpTextLink } from '../components/landing/styles';
@@ -59,10 +60,13 @@ export default function LandingPage() {
         {/* ── Giriş ── */}
         <section aria-labelledby="giris-baslik" className="pb-16 pt-12 md:pb-lp-section md:pt-20">
           <Container className="text-center">
-            <Tag>{hero.tag}</Tag>
+            <FadeIn>
+              <Tag>{hero.tag}</Tag>
+            </FadeIn>
             <h1 id="giris-baslik" className={`${lpH1} mx-auto mt-7 max-w-[56rem] text-balance`}>
-              {hero.title}
+              <WordReveal text={hero.title} delay={0.15} />
             </h1>
+            <FadeIn delay={0.55}>
             <p className="mx-auto mt-5 max-w-[37rem] text-lp-lg font-medium text-lp-muted">
               {hero.intro}
             </p>
@@ -75,10 +79,11 @@ export default function LandingPage() {
               </a>
             </div>
             <p className="mt-5 text-lp-sm font-medium text-lp-muted">{hero.reassurance}</p>
+            </FadeIn>
 
-            <div className="mx-auto mt-12 max-w-[62.5rem] text-left md:mt-[60px]">
-              <RoomPlan />
-            </div>
+            <FadeIn delay={0.8} className="mx-auto mt-12 max-w-[62.5rem] text-left md:mt-[60px]">
+              <ProductShot />
+            </FadeIn>
           </Container>
         </section>
 
@@ -87,14 +92,14 @@ export default function LandingPage() {
           <Container>
             <SectionHeading id="sorun-baslik" title={problemSection.title} intro={problemSection.intro} />
             <ul className="mt-12 grid gap-5 md:mt-16 md:grid-cols-3">
-              {problems.map((problem) => (
-                <li key={problem.title} className={`${lpBox} bg-lp-card px-6 py-8 text-center shadow-lp-md md:px-7`}>
+              {problems.map((problem, index) => (
+                <Reveal as="li" key={problem.title} delay={index * 0.12} className={`${lpBox} bg-lp-card px-6 py-8 text-center shadow-lp-md md:px-7`}>
                   <span className="mx-auto grid h-12 w-12 place-items-center rounded-full border-2 border-lp-ink bg-lp-peach">
                     <problem.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <h3 className={`${lpH3} mt-5`}>{problem.title}</h3>
                   <p className="mt-3 text-lp-base font-medium text-lp-muted">{problem.text}</p>
-                </li>
+                </Reveal>
               ))}
             </ul>
           </Container>
@@ -106,8 +111,12 @@ export default function LandingPage() {
             <SectionHeading id="oda-baslik" title={benefitSection.title} intro={benefitSection.intro} />
             <div className="mt-12 grid gap-5 md:mt-16 lg:grid-cols-3">
               {benefitRows.map((row) =>
-                row.map((benefit) =>
-                  benefit.figure ? <WideBenefit key={benefit.title} benefit={benefit} /> : <NarrowBenefit key={benefit.title} benefit={benefit} />,
+                row.map((benefit, column) =>
+                  benefit.figure ? (
+                    <WideBenefit key={benefit.title} benefit={benefit} from={column === 0 ? 'left' : 'right'} />
+                  ) : (
+                    <NarrowBenefit key={benefit.title} benefit={benefit} from={column === 0 ? 'left' : 'right'} />
+                  ),
                 ),
               )}
             </div>
@@ -122,12 +131,18 @@ export default function LandingPage() {
               {steps.map((step, index) => (
                 <li key={step.title}>
                   <div className="grid items-center gap-8 md:grid-cols-2 md:gap-14">
-                    <div className={index % 2 === 1 ? 'md:order-2' : ''}>
+                    <Reveal from={index % 2 === 1 ? 'right' : 'left'} className={index % 2 === 1 ? 'md:order-2' : ''}>
                       <p className="font-lp-label text-lp-label font-black uppercase">{index + 1}. adım</p>
                       <h3 className={`${lpH3} mt-3`}>{step.title}</h3>
                       <p className="mt-4 max-w-[30rem] text-lp-lg font-medium">{step.text}</p>
-                    </div>
-                    <div className={`${lpBox} ${stepSurfaces[index % stepSurfaces.length]} p-5 shadow-lp-lg sm:p-8 lg:p-12 ${index % 2 === 1 ? 'md:order-1' : ''}`}>{figures[step.figure]}</div>
+                    </Reveal>
+                    <Reveal
+                      from={index % 2 === 1 ? 'left' : 'right'}
+                      delay={0.12}
+                      className={`${lpBox} ${stepSurfaces[index % stepSurfaces.length]} p-5 shadow-lp-lg sm:p-8 lg:p-12 ${index % 2 === 1 ? 'md:order-1' : ''}`}
+                    >
+                      {figures[step.figure]}
+                    </Reveal>
                   </div>
                   {index < steps.length - 1 ? <HandArrow flip={index % 2 === 1} className="mx-auto my-6 h-20 w-24 md:my-4 md:h-28 md:w-32" /> : null}
                 </li>
@@ -142,6 +157,7 @@ export default function LandingPage() {
             <SectionHeading id="fiyat-baslik" title={pricingSection.title} intro={pricingSection.intro} />
             <div className="mx-auto mt-12 grid max-w-[60rem] gap-5 md:mt-16 md:grid-cols-2">
               <PriceCard
+                delay={0}
                 surface="bg-lp-lemon"
                 name={plans.free.name}
                 description={plans.free.description}
@@ -154,6 +170,7 @@ export default function LandingPage() {
                 }
               />
               <PriceCard
+                delay={0.12}
                 surface="bg-lp-mint"
                 name={plans.premium.name}
                 description={plans.premium.description}
@@ -179,8 +196,9 @@ export default function LandingPage() {
           <Container>
             <SectionHeading id="sss-baslik" title={faqSection.title} />
             <div className="mx-auto mt-12 max-w-lp-narrow space-y-5 md:mt-16">
-              {faqs.map((faq) => (
-                <details key={faq.q} className={`${lpBox} group bg-lp-card shadow-lp-md`}>
+              {faqs.map((faq, index) => (
+                <Reveal key={faq.q} delay={index * 0.06}>
+                <details className={`${lpBox} group bg-lp-card shadow-lp-md`}>
                   <summary
                     className={`${lpFocus} flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden`}
                   >
@@ -191,6 +209,7 @@ export default function LandingPage() {
                   </summary>
                   <p className="border-t-2 border-lp-ink px-5 py-4 text-lp-base font-medium text-lp-muted">{faq.a}</p>
                 </details>
+                </Reveal>
               ))}
             </div>
           </Container>
@@ -199,7 +218,7 @@ export default function LandingPage() {
         {/* ── Son çağrı ── */}
         <section aria-labelledby="son-baslik" className="pb-16 md:pb-lp-section">
           <Container>
-            <div className={`${lpBox} bg-lp-lemon px-6 py-12 text-center shadow-lp-lg md:px-16 md:py-16`}>
+            <Reveal className={`${lpBox} bg-lp-lemon px-6 py-12 text-center shadow-lp-lg md:px-16 md:py-16`}>
               <h2 id="son-baslik" className={`${lpHeading} text-lp-h2-sm md:text-lp-h2`}>
                 {closing.title}
               </h2>
@@ -207,7 +226,7 @@ export default function LandingPage() {
               <Link to={primary.to} className={`${lpButton} mt-8 w-full sm:w-auto`}>
                 {primary.label}
               </Link>
-            </div>
+            </Reveal>
           </Container>
         </section>
       </main>
@@ -326,29 +345,30 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
   );
 }
 
-function WideBenefit({ benefit }: { benefit: Benefit }) {
+function WideBenefit({ benefit, from }: { benefit: Benefit; from: 'left' | 'right' }) {
   return (
-    <article className={`${lpBox} ${benefit.figure ? benefitSurfaces[benefit.figure] : ''} grid items-center gap-8 p-6 shadow-lp-md sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:col-span-2 lg:p-10`}>
+    <Reveal as="article" from={from} className={`${lpBox} ${benefit.figure ? benefitSurfaces[benefit.figure] : ''} grid items-center gap-8 p-6 shadow-lp-md sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:col-span-2 lg:p-10`}>
       <div>
         <h3 className={lpH3}>{benefit.title}</h3>
         <p className="mt-4 text-lp-base font-medium md:text-lp-lg">{benefit.text}</p>
         {benefit.detail ? <p className="mt-3 text-lp-sm font-medium">{benefit.detail}</p> : null}
       </div>
       {benefit.figure ? figures[benefit.figure] : null}
-    </article>
+    </Reveal>
   );
 }
 
-function NarrowBenefit({ benefit }: { benefit: Benefit }) {
+function NarrowBenefit({ benefit, from }: { benefit: Benefit; from: 'left' | 'right' }) {
   return (
-    <article className={`${lpBox} flex flex-col bg-lp-card p-6 shadow-lp-md sm:p-8 lg:p-10`}>
+    <Reveal as="article" from={from} delay={0.1} className={`${lpBox} flex flex-col bg-lp-card p-6 shadow-lp-md sm:p-8 lg:p-10`}>
       <h3 className={lpH3}>{benefit.title}</h3>
       <p className="mt-4 text-lp-base font-medium text-lp-muted md:text-lp-lg">{benefit.text}</p>
-    </article>
+    </Reveal>
   );
 }
 
 function PriceCard({
+  delay = 0,
   surface,
   name,
   description,
@@ -358,6 +378,7 @@ function PriceCard({
   features,
   action,
 }: {
+  delay?: number;
   surface: string;
   name: string;
   description: string;
@@ -368,7 +389,7 @@ function PriceCard({
   action: ReactNode;
 }) {
   return (
-    <article className={`${lpBox} ${surface} flex flex-col p-6 shadow-lp-md sm:p-8`}>
+    <Reveal as="article" delay={delay} className={`${lpBox} ${surface} flex flex-col p-6 shadow-lp-md sm:p-8`}>
       <h3 className={lpH3}>{name}</h3>
       <p className="mt-3 text-lp-base font-medium">{description}</p>
       <p className="mt-8 flex items-baseline gap-2">
@@ -386,6 +407,6 @@ function PriceCard({
         ))}
       </ul>
       <div className="mt-8">{action}</div>
-    </article>
+    </Reveal>
   );
 }

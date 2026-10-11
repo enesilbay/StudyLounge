@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Reveal } from './Motion';
 import { lpBox, lpH2 } from './styles';
 
 /*
@@ -46,27 +48,38 @@ export function Container({ children, className = '' }: { children: ReactNode; c
 /** Ortalanmış bölüm başlığı: büyük harf başlık + soluk açıklama. */
 export function SectionHeading({ id, title, intro, tone = 'muted' }: { id?: string; title: ReactNode; intro?: ReactNode; tone?: 'muted' | 'ink' }) {
   return (
-    <div className="mx-auto max-w-[46rem] text-center">
+    <Reveal className="mx-auto max-w-[46rem] text-center">
       <h2 id={id} className={`${lpH2} text-balance text-lp-ink`}>
         {title}
       </h2>
       {intro ? <p className={`mx-auto mt-4 max-w-[36rem] font-lp-sans text-lp-lg font-medium tracking-lp ${tone === 'ink' ? 'text-lp-ink' : 'text-lp-muted'}`}>{intro}</p> : null}
-    </div>
+    </Reveal>
   );
 }
 
-/** El çizimi kıvrımlı ok: adımlar arasında. `flip` iken soldan sağa iner. */
+/** El çizimi kıvrımlı ok: adımlar arasında, görünür alana girince çizilir. `flip` iken soldan sağa iner. */
 export function HandArrow({ flip = false, className = '' }: { flip?: boolean; className?: string }) {
+  const reduce = useReducedMotion();
+  const draw = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { pathLength: 0 },
+          whileInView: { pathLength: 1 },
+          viewport: { once: true, margin: '0px 0px -20% 0px' },
+          transition: { duration: 0.9, delay, ease: [0.65, 0, 0.35, 1] as const },
+        };
   return (
     <svg viewBox="0 0 120 110" className={`${className} ${flip ? '-scale-x-100' : ''}`} fill="none" aria-hidden="true">
-      <path
+      <motion.path
         d="M104 6c4 22-6 44-26 52-12 5-26 0-26-10 0-9 12-12 18-4 8 11 0 30-14 42-10 9-24 14-38 15"
         stroke="var(--color-lp-ink)"
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        {...draw(0)}
       />
-      <path d="M30 88 16 101l19 4" stroke="var(--color-lp-ink)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <motion.path d="M30 88 16 101l19 4" stroke="var(--color-lp-ink)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...draw(0.85)} />
     </svg>
   );
 }
