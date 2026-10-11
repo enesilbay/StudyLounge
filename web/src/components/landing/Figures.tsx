@@ -29,19 +29,19 @@ export function TimerRhythm() {
       <div className="mt-4 flex h-11 w-full gap-1.5">
         {rounds.map((round) => (
           <div key={round} className="flex flex-[30] gap-1.5">
-            <div className={`relative flex-[25] border-2 border-lp-ink ${round <= 2 ? 'bg-lp-mustard' : 'bg-lp-card'}`}>
+            <div className={`relative flex-[25] border-2 border-lp-ink ${round <= 2 ? 'bg-lp-action' : 'bg-lp-card'}`}>
               {round === 2 ? <span className="absolute -bottom-2 -top-2 left-[64%] w-[3px] bg-lp-ink" /> : null}
             </div>
-            <div className="flex-[5] border-2 border-lp-ink bg-lp-mint" />
+            <div className="flex-[5] border-2 border-lp-ink bg-lp-tint-green" />
           </div>
         ))}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-lp-sm font-medium">
         <span className="flex items-center gap-2">
-          <span className="h-3 w-5 border-2 border-lp-ink bg-lp-mustard" /> 25 dk odak
+          <span className="h-3 w-5 border-2 border-lp-ink bg-lp-action" /> 25 dk odak
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-3 w-5 border-2 border-lp-ink bg-lp-mint" /> 5 dk mola
+          <span className="h-3 w-5 border-2 border-lp-ink bg-lp-tint-green" /> 5 dk mola
         </span>
       </div>
     </Screen>
@@ -75,11 +75,11 @@ export function BoardFigure() {
           ))}
         </div>
         <svg viewBox="0 0 300 160" className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none">
-          <path d="M20 72 L130 72" stroke="var(--color-lp-mustard)" strokeOpacity="0.8" strokeWidth="14" fill="none" />
+          <path d="M20 72 L130 72" stroke="var(--color-lp-action)" strokeOpacity="0.8" strokeWidth="14" fill="none" />
           <path d="M196 40 C 226 30, 280 40, 276 66 C 272 88, 214 90, 204 70 C 198 56, 206 46, 214 42" stroke="var(--color-lp-ink)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
         </svg>
-        <span className="absolute right-5 top-[5.5rem] border-2 border-lp-ink bg-lp-mint px-1.5 py-0.5 text-[0.75rem] font-bold">Zeynep</span>
-        <span className="absolute left-[8.5rem] top-[4.4rem] border-2 border-lp-ink bg-lp-lemon px-1.5 py-0.5 text-[0.75rem] font-bold">Mert</span>
+        <span className="absolute right-5 top-[5.5rem] border-2 border-lp-ink bg-lp-tint-green px-1.5 py-0.5 text-[0.75rem] font-bold">Zeynep</span>
+        <span className="absolute left-[8.5rem] top-[4.4rem] border-2 border-lp-ink bg-lp-tint-warm px-1.5 py-0.5 text-[0.75rem] font-bold">Mert</span>
       </div>
     </Screen>
   );
@@ -102,7 +102,7 @@ export function CameraFigure() {
       </div>
       <div className="grid grid-cols-3 gap-2">
         {tiles.map((tile) => (
-          <div key={tile.name} className={`relative aspect-[4/3] overflow-hidden border-2 border-lp-ink ${tile.camera ? 'bg-lp-mint' : tile.screen ? 'bg-lp-lemon' : 'bg-lp-paper'}`}>
+          <div key={tile.name} className={`relative aspect-[4/3] overflow-hidden border-2 border-lp-ink ${tile.camera ? 'bg-lp-tint-green' : tile.screen ? 'bg-lp-tint-warm' : 'bg-lp-paper'}`}>
             {tile.camera ? (
               <div className="absolute inset-x-0 bottom-0 flex flex-col items-center">
                 <span className="aspect-square w-[26%] rounded-full border-2 border-lp-ink bg-lp-card" />
@@ -149,7 +149,7 @@ export function RoomListFigure() {
               <span className="mt-0.5 flex items-center gap-1 text-lp-sm font-medium text-lp-muted">
                 <span className="flex gap-0.5">
                   {Array.from({ length: Math.min(room.lit, 5) }, (_, index) => (
-                    <span key={index} className="h-2 w-2 rounded-full border border-lp-ink bg-lp-mustard" />
+                    <span key={index} className="h-2 w-2 rounded-full border border-lp-ink bg-lp-action" />
                   ))}
                 </span>
                 {room.meta}
@@ -170,10 +170,10 @@ export function PhoneOnDesk() {
       <div className="relative aspect-[5/4] w-full overflow-hidden bg-lp-paper bg-[linear-gradient(var(--color-lp-grid)_1px,transparent_1px),linear-gradient(90deg,var(--color-lp-grid)_1px,transparent_1px)] bg-[size:24px_24px]">
         <div
           className="absolute right-[2%] top-[0%] h-[64%] w-[52%] rounded-full"
-          style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-mustard) 75%, transparent), transparent 80%)' }}
+          style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-action) 75%, transparent), transparent 80%)' }}
         />
         {/* Lamba */}
-        <span className="absolute right-[22%] top-[22%] aspect-square w-[11%] rounded-full border-2 border-lp-ink bg-lp-mustard" />
+        <span className="absolute right-[22%] top-[22%] aspect-square w-[11%] rounded-full border-2 border-lp-ink bg-lp-action" />
         {/* Defter */}
         <div className="absolute left-[12%] top-[18%] h-[50%] w-[40%] -rotate-6 border-2 border-lp-ink bg-lp-card p-[4%] shadow-lp-xs">
           {[80, 64, 72, 50, 68].map((width, line) => (
@@ -194,7 +194,7 @@ export function PhoneOnDesk() {
 export function BreakFigure() {
   return (
     <Screen label="Ortak sayaç molada, 4 dakika 12 saniye kaldı. Mert üçüncü soruyu soruyor, cevap olarak notların tahtaya açıldığı yazılıyor. Mola bitince zil çalacak.">
-      <div className="flex items-center justify-between gap-3 border-2 border-lp-ink bg-lp-mint px-3 py-2">
+      <div className="flex items-center justify-between gap-3 border-2 border-lp-ink bg-lp-tint-green px-3 py-2">
         <span className="text-lp-h4 font-black uppercase">Mola</span>
         <span className="text-lp-h4 font-black tabular-nums">04:12</span>
       </div>
@@ -204,7 +204,7 @@ export function BreakFigure() {
           <p className="border-2 border-lp-ink bg-lp-paper px-3 py-2 text-lp-sm font-medium md:text-lp-base">3. soruyu çözen var mı? Sonuç bende negatif çıkıyor.</p>
         </div>
         <div className="ml-auto max-w-[85%]">
-          <p className="border-2 border-lp-ink bg-lp-lemon px-3 py-2 text-lp-sm font-medium md:text-lp-base">Notlarımı tahtaya açtım, işaret hatası var gibi.</p>
+          <p className="border-2 border-lp-ink bg-lp-tint-warm px-3 py-2 text-lp-sm font-medium md:text-lp-base">Notlarımı tahtaya açtım, işaret hatası var gibi.</p>
         </div>
         <p className="text-lp-sm font-medium text-lp-muted">Mola bitince zil çalar, herkes masasına döner.</p>
       </div>

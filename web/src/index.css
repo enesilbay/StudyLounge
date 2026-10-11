@@ -53,21 +53,22 @@
 /*
  * Açılış sayfası: uygulamanın açık/koyu temasından bağımsız, sabit bir dünya.
  * Neobrütalist kâğıt masa (referans: docs/brand/referans-didasko.md): 2px siyah
- * kenarlık, sivri köşe, bulanıksız kaydırılmış siyah gölge, pastel yüzeyler.
- * Hardal yalnızca tıklanabilir öğelerde ve "yanan lamba" vurgusunda.
+ * kenarlık, sivri köşe, bulanıksız kaydırılmış mürekkep gölge, açık tonlu yüzeyler.
+ * Turuncu eylem rengi (lp-action) yalnızca tıklanabilir öğelerde ve "yanan lamba" vurgusunda.
+ * Palet: docs/brand/palet-denemeleri (B varyantı seçildi).
  * Yalnızca LandingPage ve components/landing kullanır.
  */
 @theme {
   /* Renkler */
-  --color-lp-paper: #f9f5f6;
-  --color-lp-ink: #000000;
-  /* Soluk metin: #666 şeftali ve hardal üstünde 4.5:1'in altında kalıyordu; bütün yüzeylerde AA geçsin diye biraz daha koyu. */
-  --color-lp-muted: #5c5c5c;
+  --color-lp-paper: #f4f1ea;
+  --color-lp-ink: #121212;
+  /* Soluk metin: bütün yüzeylerde 4.5:1'in üstünde (en düşük: lp-tint-cool üstünde 5.8:1). Eylem renginin üstünde kullanılmaz. */
+  --color-lp-muted: #545454;
   --color-lp-card: #ffffff;
-  --color-lp-lemon: #fdfd96;
-  --color-lp-peach: #f8d6b3;
-  --color-lp-mint: #daf5f0;
-  --color-lp-mustard: #ffdb58;
+  --color-lp-tint-warm: #ffe1cc;
+  --color-lp-tint-cool: #e4ddf7;
+  --color-lp-tint-green: #d6ece2;
+  --color-lp-action: #ff6b3d;
   /* Süs çizgileri (metin değil): kâğıt ızgarası ve çizimlerdeki satır izleri */
   --color-lp-grid: #0000000a;
   --color-lp-line: #00000024;
@@ -316,41 +317,6 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-}
-
-/*
- * GEÇİCİ: açılış sayfası palet denemeleri (yalnızca geliştirmede, ?palet=b|c|d).
- * Karar verilince seçilen değerler yukarıdaki lp-* token'larına yazılır ve bu blok silinir.
- */
-[data-lp-palette="b"] {
-  --color-lp-paper: #f4f1ea;
-  --color-lp-ink: #121212;
-  --color-lp-muted: #545454;
-  --color-lp-card: #ffffff;
-  --color-lp-lemon: #ffe1cc;
-  --color-lp-peach: #e4ddf7;
-  --color-lp-mint: #d6ece2;
-  --color-lp-mustard: #ff6b3d;
-}
-[data-lp-palette="c"] {
-  --color-lp-paper: #f0ede4;
-  --color-lp-ink: #0f2a22;
-  --color-lp-muted: #46554e;
-  --color-lp-card: #fffdf8;
-  --color-lp-lemon: #f8d8c8;
-  --color-lp-peach: #dde8d2;
-  --color-lp-mint: #cfe2e6;
-  --color-lp-mustard: #ff8a6b;
-}
-[data-lp-palette="d"] {
-  --color-lp-paper: #eef0f5;
-  --color-lp-ink: #0b1533;
-  --color-lp-muted: #47516c;
-  --color-lp-card: #ffffff;
-  --color-lp-lemon: #dde4ff;
-  --color-lp-peach: #ffe0ec;
-  --color-lp-mint: #e6f7d2;
-  --color-lp-mustard: #d4ff3a;
 }
 
 /* Açılış sayfası: lamba yanışı ve tahtaya çizilen kalem (tek açılış sırası). */

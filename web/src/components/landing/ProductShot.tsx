@@ -36,9 +36,9 @@ export function ProductShot() {
           {/* Tarayıcı çubuğu */}
           <div className="flex items-center gap-2 border-b-2 border-lp-ink bg-lp-paper px-3 py-2 md:px-4">
             <span aria-hidden="true" className="flex gap-1.5">
-              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-peach" />
-              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-lemon" />
-              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-mint" />
+              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-cool" />
+              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-warm" />
+              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-green" />
             </span>
             <span className="ml-2 min-w-0 flex-1 truncate border-2 border-lp-ink bg-lp-card px-2 py-0.5 text-left font-lp-sans text-lp-label font-bold tracking-lp text-lp-ink md:max-w-sm">
               StudyLounge · Demo: Sessiz Kütüphane
@@ -69,7 +69,7 @@ export function ProductShot() {
                       top: `${desk.top}%`,
                       width: `${desk.width}%`,
                       height: `${desk.height}%`,
-                      background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-mustard) 55%, transparent), transparent)',
+                      background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-action) 55%, transparent), transparent)',
                     }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0, 0.9, 0.45, 0.9] }}
@@ -89,7 +89,7 @@ export function ProductShot() {
             animate={{ opacity: 1, y: 0, rotate: note.tilt }}
             transition={{ delay: note.delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className={`${lpBox} inline-block bg-lp-lemon px-3 py-2 font-lp-sans text-lp-sm font-bold leading-snug tracking-lp text-lp-ink shadow-lp-sm`}>{note.text}</span>
+            <span className={`${lpBox} inline-block bg-lp-tint-warm px-3 py-2 font-lp-sans text-lp-sm font-bold leading-snug tracking-lp text-lp-ink shadow-lp-sm`}>{note.text}</span>
           </motion.p>
         ))}
       </div>
@@ -98,7 +98,7 @@ export function ProductShot() {
       <figcaption className="mt-6 lg:hidden">
         <ul className="mx-auto flex max-w-[40rem] flex-wrap justify-center gap-2">
           {notes.map((note) => (
-            <li key={note.text} className={`${lpBox} bg-lp-lemon px-3 py-1.5 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink`}>
+            <li key={note.text} className={`${lpBox} bg-lp-tint-warm px-3 py-1.5 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink`}>
               {note.text}
             </li>
           ))}

@@ -23,11 +23,11 @@ export const lpH2 = `${lpHeading} text-lp-h2-sm md:text-lp-h2`;
 export const lpH3 = `${lpHeading} text-lp-h3-sm md:text-lp-h3`;
 export const lpH4 = `${lpHeading} text-lp-h4`;
 
-/** Hardal eylem düğmesi: üzerine gelince gölge 4px → 2px, düğme basılmış gibi kayar. */
-export const lpButton = `${lpBox} ${lpFocus} inline-flex min-h-12 items-center justify-center gap-2 bg-lp-mustard px-6 font-lp-sans text-lp-base font-bold tracking-lp text-lp-ink shadow-lp-sm transition-[box-shadow,translate] duration-150 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-lp-xs active:translate-x-1 active:translate-y-1 active:shadow-none`;
+/** Turuncu eylem düğmesi: üzerine gelince gölge 4px → 2px, düğme basılmış gibi kayar. */
+export const lpButton = `${lpBox} ${lpFocus} inline-flex min-h-12 items-center justify-center gap-2 bg-lp-action px-6 font-lp-sans text-lp-base font-bold tracking-lp text-lp-ink shadow-lp-sm transition-[box-shadow,translate] duration-150 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-lp-xs active:translate-x-1 active:translate-y-1 active:shadow-none`;
 
 /** Menüdeki daha küçük düğme. */
-export const lpButtonSm = `${lpBox} ${lpFocus} items-center justify-center bg-lp-mustard px-4 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink shadow-lp-sm transition-[box-shadow,translate] duration-150 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-lp-xs`;
+export const lpButtonSm = `${lpBox} ${lpFocus} items-center justify-center bg-lp-action px-4 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink shadow-lp-sm transition-[box-shadow,translate] duration-150 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-lp-xs`;
 
 /** Metin bağlantısı (ikincil eylem). */
 export const lpTextLink = `${lpFocus} inline-flex min-h-11 items-center gap-2 font-lp-sans text-lp-base font-bold tracking-lp text-lp-ink underline-offset-4 hover:underline`;

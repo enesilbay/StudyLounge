@@ -55,10 +55,10 @@ export function RoomPlan() {
         <div className="flex items-center justify-between gap-3 border-b-2 border-lp-ink px-3 py-2.5 md:px-5 md:py-3">
           <span className="flex min-w-0 items-center gap-2 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink md:text-lp-base">
             <span className="truncate">Sessiz kütüphane</span>
-            <span className="shrink-0 border-2 border-lp-ink bg-lp-mint px-1.5 py-0.5 text-[0.6875rem] font-bold leading-none">Örnek oda</span>
+            <span className="shrink-0 border-2 border-lp-ink bg-lp-tint-green px-1.5 py-0.5 text-[0.6875rem] font-bold leading-none">Örnek oda</span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5 font-lp-sans text-lp-sm font-medium tracking-lp text-lp-ink">
-            <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border-2 border-lp-ink bg-lp-mustard" />
+            <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border-2 border-lp-ink bg-lp-action" />
             {FOCUSING} kişi odakta
           </span>
         </div>
@@ -73,7 +73,7 @@ export function RoomPlan() {
           ))}
 
           {/* Ortak sayaç: iki masa sırası arasındaki koridorda */}
-          <div className="absolute left-[3%] top-[44.5%] flex w-[70%] items-center gap-[3cqw] border-2 border-lp-ink bg-lp-mint px-[2.4cqw] py-[1.1cqw] shadow-lp-xs">
+          <div className="absolute left-[3%] top-[44.5%] flex w-[70%] items-center gap-[3cqw] border-2 border-lp-ink bg-lp-tint-green px-[2.4cqw] py-[1.1cqw] shadow-lp-xs">
             <span className="font-lp-sans text-[max(18px,5.4cqw)] font-black leading-none tabular-nums tracking-lp text-lp-ink">{clock}</span>
             <span className="flex min-w-0 flex-col leading-tight">
               <span className="truncate font-lp-sans text-[max(11px,2.2cqw)] font-bold tracking-lp text-lp-ink">Odak, 2. tur</span>
@@ -92,7 +92,7 @@ export function RoomPlan() {
                 ))}
               </div>
               <svg viewBox="0 0 100 160" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
-                <path d="M10 46 L86 46" stroke="var(--color-lp-mustard)" strokeWidth="9" strokeLinecap="square" fill="none" className="lp-stroke" style={{ ['--len' as string]: 80, animationDelay: '2.1s' }} />
+                <path d="M10 46 L86 46" stroke="var(--color-lp-action)" strokeWidth="9" strokeLinecap="square" fill="none" className="lp-stroke" style={{ ['--len' as string]: 80, animationDelay: '2.1s' }} />
                 <path
                   d="M22 104 C 34 96, 74 96, 84 104 C 90 110, 70 114, 50 113 C 30 112, 16 110, 22 104"
                   stroke="var(--color-lp-ink)"
@@ -122,17 +122,17 @@ function DeskSpot({ x, y, desk, lit }: { x: number; y: number; desk: Desk; lit: 
         <div
           aria-hidden="true"
           className="lp-pool pointer-events-none absolute -inset-[22%] rounded-full"
-          style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-mustard) 70%, transparent), transparent 80%)' }}
+          style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-action) 70%, transparent), transparent 80%)' }}
         />
       ) : null}
 
       {desk ? (
         <>
           {/* Masa yüzeyi */}
-          <div className={`relative h-[62%] border-2 border-lp-ink transition-colors duration-700 ${lit ? 'bg-lp-lemon shadow-lp-xs' : 'bg-lp-card'}`}>
+          <div className={`relative h-[62%] border-2 border-lp-ink transition-colors duration-700 ${lit ? 'bg-lp-tint-warm shadow-lp-xs' : 'bg-lp-card'}`}>
             <span
               aria-hidden="true"
-              className={`absolute right-[7%] top-[12%] aspect-square w-[12%] rounded-full border-2 border-lp-ink transition-colors duration-700 ${lit ? 'bg-lp-mustard' : 'bg-lp-card'}`}
+              className={`absolute right-[7%] top-[12%] aspect-square w-[12%] rounded-full border-2 border-lp-ink transition-colors duration-700 ${lit ? 'bg-lp-action' : 'bg-lp-card'}`}
             />
             <span aria-hidden="true" className="absolute left-[8%] top-[14%] h-[28%] w-[34%] border-2 border-lp-ink bg-lp-card" />
             <span className="absolute bottom-[8%] left-[8%] right-[8%] truncate font-lp-sans text-[max(9px,1.8cqw)] font-medium leading-tight tracking-lp text-lp-ink">{desk.subject}</span>

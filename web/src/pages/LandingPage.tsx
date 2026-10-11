@@ -38,21 +38,19 @@ const figures: Record<FigureKey, ReactNode> = {
 };
 
 /** Geniş fayda kartlarının ve adım çizimlerinin zemin rengi, sırayla. */
-const benefitSurfaces: Partial<Record<FigureKey, string>> = { timer: 'bg-lp-lemon', board: 'bg-lp-mint', camera: 'bg-lp-peach' };
-const stepSurfaces = ['bg-lp-lemon', 'bg-lp-mint', 'bg-lp-card'];
+const benefitSurfaces: Partial<Record<FigureKey, string>> = { timer: 'bg-lp-tint-warm', board: 'bg-lp-tint-green', camera: 'bg-lp-tint-cool' };
+const stepSurfaces = ['bg-lp-tint-warm', 'bg-lp-tint-green', 'bg-lp-card'];
 
 export default function LandingPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const primary = isAuthenticated ? { to: '/app/lobbies', label: 'Odalara git' } : { to: '/auth?mod=kayit', label: 'Ücretsiz hesap aç' };
   const premiumTo = isAuthenticated ? '/app/premium' : '/auth?mod=kayit';
-  // GEÇİCİ: palet denemesi, yalnızca geliştirmede (?palet=b|c|d). Karar sonrası silinecek.
-  const palette = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('palet') : null;
 
   return (
-    <div data-lp-palette={palette ?? undefined} className={`min-h-screen overflow-x-clip font-lp-sans tracking-lp text-lp-ink ${lpPaper}`}>
+    <div className={`min-h-screen overflow-x-clip font-lp-sans tracking-lp text-lp-ink ${lpPaper}`}>
       <a
         href="#icerik"
-        className={`${lpBox} ${lpFocus} sr-only bg-lp-mustard px-4 py-2 font-bold focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50`}
+        className={`${lpBox} ${lpFocus} sr-only bg-lp-action px-4 py-2 font-bold focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50`}
       >
         İçeriğe geç
       </a>
@@ -97,7 +95,7 @@ export default function LandingPage() {
             <ul className="mt-12 grid gap-5 md:mt-16 md:grid-cols-3">
               {problems.map((problem, index) => (
                 <Reveal as="li" key={problem.title} delay={index * 0.12} className={`${lpBox} bg-lp-card px-6 py-8 text-center shadow-lp-md md:px-7`}>
-                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-full border-2 border-lp-ink bg-lp-peach">
+                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-full border-2 border-lp-ink bg-lp-tint-cool">
                     <problem.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <h3 className={`${lpH3} mt-5`}>{problem.title}</h3>
@@ -127,7 +125,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── Nasıl çalışır: gerçek bir sıra ── */}
-        <section id="nasil" aria-labelledby="nasil-baslik" className="scroll-mt-20 border-y-2 border-lp-ink bg-lp-peach py-16 md:scroll-mt-24 md:py-lp-section">
+        <section id="nasil" aria-labelledby="nasil-baslik" className="scroll-mt-20 border-y-2 border-lp-ink bg-lp-tint-cool py-16 md:scroll-mt-24 md:py-lp-section">
           <Container>
             <SectionHeading id="nasil-baslik" tone="ink" title={stepSection.title} intro={stepSection.intro} />
             <ol className="mt-12 md:mt-16">
@@ -161,7 +159,7 @@ export default function LandingPage() {
             <div className="mx-auto mt-12 grid max-w-[60rem] gap-5 md:mt-16 md:grid-cols-2">
               <PriceCard
                 delay={0}
-                surface="bg-lp-lemon"
+                surface="bg-lp-tint-warm"
                 name={plans.free.name}
                 description={plans.free.description}
                 price={plans.free.price}
@@ -174,7 +172,7 @@ export default function LandingPage() {
               />
               <PriceCard
                 delay={0.12}
-                surface="bg-lp-mint"
+                surface="bg-lp-tint-green"
                 name={plans.premium.name}
                 description={plans.premium.description}
                 price={plans.premium.price}
@@ -206,7 +204,7 @@ export default function LandingPage() {
                     className={`${lpFocus} flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden`}
                   >
                     <span className={`${lpH4}`}>{faq.q}</span>
-                    <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-lp-ink bg-lp-mustard transition-transform group-open:rotate-90">
+                    <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-lp-ink bg-lp-action transition-transform group-open:rotate-90">
                       <ChevronRight className="h-5 w-5" />
                     </span>
                   </summary>
@@ -221,7 +219,7 @@ export default function LandingPage() {
         {/* ── Son çağrı ── */}
         <section aria-labelledby="son-baslik" className="pb-16 md:pb-lp-section">
           <Container>
-            <Reveal className={`${lpBox} bg-lp-lemon px-6 py-12 text-center shadow-lp-lg md:px-16 md:py-16`}>
+            <Reveal className={`${lpBox} bg-lp-tint-warm px-6 py-12 text-center shadow-lp-lg md:px-16 md:py-16`}>
               <h2 id="son-baslik" className={`${lpHeading} text-lp-h2-sm md:text-lp-h2`}>
                 {closing.title}
               </h2>
@@ -234,7 +232,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t-2 border-lp-ink bg-lp-mint">
+      <footer className="border-t-2 border-lp-ink bg-lp-tint-green">
         <Container className="py-10">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <Link to="/" className={`${lpFocus} self-start`} aria-label="StudyLounge ana sayfa">

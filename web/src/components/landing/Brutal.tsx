@@ -12,9 +12,9 @@ import { lpBox, lpH2 } from './styles';
 export function LandingMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <ellipse cx="16" cy="18" rx="12" ry="5.5" fill="var(--color-lp-mustard)" />
+      <ellipse cx="16" cy="18" rx="12" ry="5.5" fill="var(--color-lp-action)" />
       <path d="M5 14.5C5 10.4 10 7.5 16 7.5s11 2.9 11 7H5Z" fill="var(--color-lp-ink)" />
-      <path d="M7 14.5h18l-1.8 2.6H8.8L7 14.5Z" fill="var(--color-lp-mustard)" stroke="var(--color-lp-ink)" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M7 14.5h18l-1.8 2.6H8.8L7 14.5Z" fill="var(--color-lp-action)" stroke="var(--color-lp-ink)" strokeWidth="1" strokeLinejoin="round" />
       <rect x="15" y="17" width="2" height="7.5" fill="var(--color-lp-ink)" />
       <rect x="10" y="24" width="12" height="2.4" rx="1.2" fill="var(--color-lp-ink)" />
     </svg>
@@ -34,7 +34,7 @@ export function LandingLockup({ size = 'md' }: { size?: 'md' | 'sm' }) {
 /** Küçük bölüm etiketi (Lexend Mega). Bilinçli olarak az yerde kullanılır. */
 export function Tag({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <span className={`${lpBox} inline-block bg-lp-peach px-3 py-1.5 font-lp-label text-lp-label font-black uppercase tracking-lp text-lp-ink shadow-lp-sm ${className}`}>
+    <span className={`${lpBox} inline-block bg-lp-tint-cool px-3 py-1.5 font-lp-label text-lp-label font-black uppercase tracking-lp text-lp-ink shadow-lp-sm ${className}`}>
       {children}
     </span>
   );
