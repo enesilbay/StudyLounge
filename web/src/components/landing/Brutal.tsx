@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { m, useReducedMotion } from 'framer-motion';
 import { Reveal } from './Motion';
 import { lpBox, lpH2 } from './styles';
 
@@ -71,7 +71,7 @@ export function HandArrow({ flip = false, className = '' }: { flip?: boolean; cl
         };
   return (
     <svg viewBox="0 0 120 110" className={`${className} ${flip ? '-scale-x-100' : ''}`} fill="none" aria-hidden="true">
-      <motion.path
+      <m.path
         d="M104 6c4 22-6 44-26 52-12 5-26 0-26-10 0-9 12-12 18-4 8 11 0 30-14 42-10 9-24 14-38 15"
         stroke="var(--color-lp-ink)"
         strokeWidth="2.5"
@@ -79,7 +79,7 @@ export function HandArrow({ flip = false, className = '' }: { flip?: boolean; cl
         strokeLinejoin="round"
         {...draw(0)}
       />
-      <motion.path d="M30 88 16 101l19 4" stroke="var(--color-lp-ink)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...draw(0.85)} />
+      <m.path d="M30 88 16 101l19 4" stroke="var(--color-lp-ink)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...draw(0.85)} />
     </svg>
   );
 }

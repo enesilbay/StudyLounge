@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { m, useReducedMotion } from 'framer-motion';
 import { lpBox } from './styles';
 import { useEnterProgress, useRange } from './useMotion';
 
@@ -32,7 +32,7 @@ export function ProductShot() {
   return (
     <figure className="m-0">
       <div ref={ref} className="relative [perspective:1600px]">
-        <motion.div style={reduce ? undefined : { rotateX, scale, transformOrigin: '50% 0%' }} className={`${lpBox} relative overflow-hidden bg-lp-card shadow-lp-lg md:shadow-lp-xl`}>
+        <m.div style={reduce ? undefined : { rotateX, scale, transformOrigin: '50% 0%' }} className={`${lpBox} relative overflow-hidden bg-lp-card shadow-lp-lg md:shadow-lp-xl`}>
           {/* Tarayıcı çubuğu */}
           <div className="flex items-center gap-2 border-b-2 border-lp-ink bg-lp-paper px-3 py-2 md:px-4">
             <span aria-hidden="true" className="flex gap-1.5">
@@ -60,7 +60,7 @@ export function ProductShot() {
             {reduce
               ? null
               : litDesks.map((desk, index) => (
-                  <motion.span
+                  <m.span
                     key={index}
                     aria-hidden="true"
                     className="pointer-events-none absolute rounded-[1.2%] mix-blend-multiply"
@@ -77,11 +77,11 @@ export function ProductShot() {
                   />
                 ))}
           </div>
-        </motion.div>
+        </m.div>
 
         {/* Açıklama notları: geniş ekranda görüntünün iki yanında */}
         {notes.map((note) => (
-          <motion.p
+          <m.p
             key={note.text}
             className={`absolute z-10 hidden w-48 lg:block ${note.side === 'right' ? '-right-6' : '-left-6'}`}
             style={{ top: note.top }}
@@ -90,7 +90,7 @@ export function ProductShot() {
             transition={{ delay: note.delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <span className={`${lpBox} inline-block bg-lp-tint-warm px-3 py-2 font-lp-sans text-lp-sm font-bold leading-snug tracking-lp text-lp-ink shadow-lp-sm`}>{note.text}</span>
-          </motion.p>
+          </m.p>
         ))}
       </div>
 

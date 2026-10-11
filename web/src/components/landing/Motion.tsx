@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { m, useReducedMotion } from 'framer-motion';
 
 /*
  * Açılış sayfasının ortak hareketleri. Hepsi yalnızca transform ve opacity
@@ -32,7 +32,7 @@ export function Reveal({
   as?: 'div' | 'li' | 'article';
 }) {
   const reduce = useReducedMotion();
-  const Tag = motion[as];
+  const Tag = m[as];
   if (reduce) return <Tag className={className}>{children}</Tag>;
   return (
     <Tag
@@ -57,7 +57,7 @@ export function WordReveal({ text, className, delay = 0 }: { text: string; class
       <span className="sr-only">{text}</span>
       <span aria-hidden="true">
         {words.map((word, index) => (
-          <motion.span
+          <m.span
             key={`${word}-${index}`}
             className="inline-block"
             initial={{ opacity: 0, y: '0.5em' }}
@@ -66,7 +66,7 @@ export function WordReveal({ text, className, delay = 0 }: { text: string; class
           >
             {word}
             {index < words.length - 1 ? ' ' : ''}
-          </motion.span>
+          </m.span>
         ))}
       </span>
     </span>
@@ -78,8 +78,8 @@ export function FadeIn({ children, className, delay = 0 }: { children: ReactNode
   const reduce = useReducedMotion();
   if (reduce) return <div className={className}>{children}</div>;
   return (
-    <motion.div className={className} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE_OUT, delay }}>
+    <m.div className={className} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE_OUT, delay }}>
       {children}
-    </motion.div>
+    </m.div>
   );
 }

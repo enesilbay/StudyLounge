@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Asterisk, ChevronRight, Menu, X } from 'lucide-react';
 import { ProductShot } from '../components/landing/ProductShot';
 import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
@@ -47,6 +47,8 @@ export default function LandingPage() {
   const premiumTo = isAuthenticated ? '/app/premium' : '/auth?mod=kayit';
 
   return (
+    // LazyMotion: framer-motion'ın yalnızca kullanılan özellikleri yüklenir (animasyonlar sadece bu sayfada).
+    <LazyMotion features={domAnimation} strict>
     <div className={`min-h-screen overflow-x-clip font-lp-sans tracking-lp text-lp-ink ${lpPaper}`}>
       <a
         href="#icerik"
@@ -261,6 +263,7 @@ export default function LandingPage() {
         </Container>
       </footer>
     </div>
+    </LazyMotion>
   );
 }
 
@@ -328,7 +331,7 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
 
         <AnimatePresence initial={false}>
           {menuOpen ? (
-            <motion.div
+            <m.div
               id="mobil-menu"
               key="mobil-menu"
               className="overflow-hidden border-t-2 border-lp-ink lg:hidden"
@@ -360,7 +363,7 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
                   ) : null}
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           ) : null}
         </AnimatePresence>
       </div>
