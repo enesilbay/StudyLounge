@@ -1,133 +1,43 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Asterisk, BatteryLow, ChevronRight, Menu, Smartphone, UserX, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Asterisk, ChevronRight, Menu, X } from 'lucide-react';
 import { RoomPlan } from '../components/landing/RoomPlan';
 import { BoardFigure, BreakFigure, CameraFigure, PhoneOnDesk, RoomListFigure, TimerRhythm } from '../components/landing/Figures';
 import { Container, HandArrow, LandingLockup, SectionHeading, Tag } from '../components/landing/Brutal';
 import { lpBox, lpButton, lpButtonSm, lpFocus, lpH1, lpH3, lpH4, lpHeading, lpPaper, lpTextLink } from '../components/landing/styles';
+import {
+  benefitRows,
+  benefitSection,
+  closing,
+  faqSection,
+  faqs,
+  footer,
+  hero,
+  navLinks,
+  plans,
+  pricingSection,
+  problemSection,
+  problems,
+  stepSection,
+  steps,
+  type Benefit,
+  type FigureKey,
+} from '../components/landing/content';
 import { useAuthStore } from '../store/authStore';
 
-const navLinks = [
-  { href: '#oda', label: 'Odada neler var' },
-  { href: '#nasil', label: 'Nasıl çalışır' },
-  { href: '#fiyat', label: 'Fiyat' },
-  { href: '#sss', label: 'Sorular' },
-];
+/** İçerikteki şekil anahtarlarının bu sürümdeki çizimleri. */
+const figures: Record<FigureKey, ReactNode> = {
+  timer: <TimerRhythm />,
+  board: <BoardFigure />,
+  camera: <CameraFigure />,
+  rooms: <RoomListFigure />,
+  phone: <PhoneOnDesk />,
+  break: <BreakFigure />,
+};
 
-const problems: Array<{ icon: LucideIcon; title: string; text: string }> = [
-  {
-    icon: Smartphone,
-    title: 'Dikkat dağılıyor',
-    text: 'Telefon elinin altında, bir sekme daha açık. Kimse görmeyince "beş dakika ara" bir saate uzuyor.',
-  },
-  {
-    icon: BatteryLow,
-    title: 'Motivasyon eriyor',
-    text: 'Aylara yayılan bir hazırlıkta her gün aynı saatte masaya oturmak, tek başına giderek zorlaşıyor.',
-  },
-  {
-    icon: UserX,
-    title: 'Yanında kimse yok',
-    text: 'Kütüphanede yer yok, arkadaşların başka şehirde. Takıldığın soruyu soracak kimse yok.',
-  },
-];
-
-type Benefit = { title: string; text: string; detail?: string; figure?: ReactNode; surface?: string };
-
-/** Bento ızgara: her satırda bir geniş (renkli, çizimli) ve bir dar (beyaz, yalnızca metin) kart; sıra satır satır değişir. */
-const benefitRows: Array<[Benefit, Benefit]> = [
-  [
-    {
-      title: 'Ortak sayaç',
-      text: 'Odak ve mola sırayla gelir; katılan herkesin sayacı aynıdır. Duraklatan ya da bitiren kim olursa olsun odadaki herkes görür.',
-      detail: 'Kendi sayacınla da çalışabilirsin; ortak sayaca katılmak isteğe bağlı.',
-      figure: <TimerRhythm />,
-      surface: 'bg-lp-lemon',
-    },
-    {
-      title: 'Kamera zorunlu değil',
-      text: 'Normal odalarda kamera hiç açılmaz. Odak, telefonun masada durmasıyla ya da tarayıcı sekmesinin açık kalmasıyla ölçülür.',
-    },
-  ],
-  [
-    {
-      title: 'Dersler ve hedefler',
-      text: 'Her oturum hangi derse ait olduğuyla kaydedilir. Günlük ve haftalık hedef koyarsın, üst üste çalıştığın günler serini büyütür.',
-    },
-    {
-      title: 'Ortak tahta',
-      text: 'Ders notunu PDF olarak yükle, odadaki herkes aynı sayfayı görsün. Kalemle çiz, fosforlu kalemle işaretle, lazerle bir yeri göster.',
-      detail: 'Tablet kalemiyle bastırdıkça çizgi kalınlaşır; avuç içi dokunuşu çizim yapmaz.',
-      figure: <BoardFigure />,
-      surface: 'bg-lp-mint',
-    },
-  ],
-  [
-    {
-      title: 'İstersen kamera',
-      text: 'Kameralı odalarda en fazla altı kişi görüntülü çalışır, takıldığı soruyu ekranını paylaşarak gösterir. Kamera ve mikrofon sen açana kadar kapalı kalır.',
-      detail: 'Görüntü ve ses kaydedilmez.',
-      figure: <CameraFigure />,
-      surface: 'bg-lp-peach',
-    },
-    {
-      title: 'Haftalık lig',
-      text: 'Sıralama her pazartesi sıfırlanır. Arkadaşlarınla ya da herkesle yarışırsın; ilk üçe giren puan ödülü alır.',
-    },
-  ],
-];
-
-const steps: Array<{ title: string; text: string; figure: ReactNode; surface: string }> = [
-  {
-    title: 'Bir odaya gir',
-    text: 'Konusuna göre açılmış odalardan birine katıl ya da arkadaşının kurduğu şifreli odaya gir. Kimin çalıştığını, kimin molada olduğunu hemen görürsün.',
-    figure: <RoomListFigure />,
-    surface: 'bg-lp-lemon',
-  },
-  {
-    title: 'Lambanı yak',
-    text: 'Telefon uygulamasını açıp telefonu masaya bırakman yeterli; telefon masada durdukça süren işler. Bilgisayarda "Odaklan"a basarsın, sekmeden uzun süre ayrılırsan odak durur.',
-    figure: <PhoneOnDesk />,
-    surface: 'bg-lp-mint',
-  },
-  {
-    title: 'Birlikte mola ver',
-    text: 'Biri ortak sayacı başlatınca katılan herkes aynı anda odaklanır, aynı anda mola verir. Sohbet molaya kalır; zil çalınca herkes masasına döner.',
-    figure: <BreakFigure />,
-    surface: 'bg-lp-card',
-  },
-];
-
-const freeFeatures = ['Odalara ve şifreli odalara katılma', 'Ortak sayaç ve ortak PDF tahtası', 'Oda sohbeti, özel mesaj ve arkadaşlar', 'Dersler, hedefler ve istatistikler', 'Seri, rozetler ve haftalık lig'];
-
-const premiumFeatures = ['Ücretsiz plandaki her şey', 'Kendi odanı kurma, istersen şifreli', 'Kameralı oda açma (en fazla 6 kişi)', 'Elite odalar: odak süren iki kat sayılır', 'Ortam seslerini odadakilerle eşleme'];
-
-const faqs = [
-  {
-    q: 'Ücretsiz mi?',
-    a: 'Evet. Hesap açmak, odalara katılmak, ortak sayaç, ortak tahta, sohbet, istatistikler, hedefler ve haftalık lig ücretsizdir.',
-  },
-  {
-    q: 'Premium neler ekliyor?',
-    a: 'Kendi odanı kurabilir, kameralı oda açabilir ve yalnızca Premium üyelerin girdiği, odak süresinin iki kat sayıldığı Elite odalara girebilirsin. Ortam seslerini de odadakilerle eşleyebilirsin.',
-  },
-  {
-    q: 'Kamera açmam gerekiyor mu?',
-    a: 'Hayır. Kamera yalnızca kameralı odalarda ve sen açarsan çalışır. Normal odalarda odak, telefonun masada durmasıyla ya da tarayıcı sekmesinin açık kalmasıyla ölçülür.',
-  },
-  {
-    q: 'Telefonum yanımda değilse?',
-    a: 'Bilgisayardan da çalışabilirsin. Odağı "Odaklan" düğmesi başlatır; sekmeden bir dakikadan uzun ayrılırsan odak duraklatılır. Aynı hesap telefonda ve bilgisayarda çalışır.',
-  },
-  {
-    q: 'Verilerime ne oluyor?',
-    a: 'Kameralı odalarda görüntü ve ses kaydedilmez. Hesabını Ayarlar\'dan istediğin an silebilirsin; oturum geçmişin, derslerin, görevlerin ve özel mesajların da silinir.',
-  },
-  {
-    q: 'Arkadaşlarımla nasıl aynı odaya girerim?',
-    a: 'Arkadaşını kullanıcı adıyla ekle, sonra aynı odaya katılın. Yalnızca sizin olacak bir oda istiyorsanız şifreli oda kurulabilir.',
-  },
-];
+/** Geniş fayda kartlarının ve adım çizimlerinin zemin rengi, sırayla. */
+const benefitSurfaces: Partial<Record<FigureKey, string>> = { timer: 'bg-lp-lemon', board: 'bg-lp-mint', camera: 'bg-lp-peach' };
+const stepSurfaces = ['bg-lp-lemon', 'bg-lp-mint', 'bg-lp-card'];
 
 export default function LandingPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -149,22 +59,22 @@ export default function LandingPage() {
         {/* ── Giriş ── */}
         <section aria-labelledby="giris-baslik" className="pb-16 pt-12 md:pb-lp-section md:pt-20">
           <Container className="text-center">
-            <Tag>Birlikte çalışma odası</Tag>
+            <Tag>{hero.tag}</Tag>
             <h1 id="giris-baslik" className={`${lpH1} mx-auto mt-7 max-w-[56rem] text-balance`}>
-              Ayrı masalarda, aynı lobide.
+              {hero.title}
             </h1>
             <p className="mx-auto mt-5 max-w-[37rem] text-lp-lg font-medium text-lp-muted">
-              StudyLounge, tek başına çalışan öğrencileri aynı sanal çalışma odasında buluşturur. Odaklanan herkesin lambası yanar; ortak sayaçla mola da birlikte gelir.
+              {hero.intro}
             </p>
             <div className="mt-8 flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center sm:gap-8">
               <Link to={primary.to} className={lpButton}>
                 {primary.label}
               </Link>
               <a href="#nasil" className={`${lpTextLink} justify-center`}>
-                Nasıl çalıştığını gör <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                {hero.secondary} <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </a>
             </div>
-            <p className="mt-5 text-lp-sm font-medium text-lp-muted">Kamera açman gerekmez. Telefonda ve bilgisayarda aynı hesapla çalışır.</p>
+            <p className="mt-5 text-lp-sm font-medium text-lp-muted">{hero.reassurance}</p>
 
             <div className="mx-auto mt-12 max-w-[62.5rem] text-left md:mt-[60px]">
               <RoomPlan />
@@ -175,7 +85,7 @@ export default function LandingPage() {
         {/* ── Sorun ── */}
         <section aria-labelledby="sorun-baslik" className="py-16 md:py-lp-section">
           <Container>
-            <SectionHeading id="sorun-baslik" title="Evde tek başına çalışmak zor" intro="Vize haftası da olsa, aylardır süren bir sınav hazırlığı da olsa sorun aynı: masada yalnızsın." />
+            <SectionHeading id="sorun-baslik" title={problemSection.title} intro={problemSection.intro} />
             <ul className="mt-12 grid gap-5 md:mt-16 md:grid-cols-3">
               {problems.map((problem) => (
                 <li key={problem.title} className={`${lpBox} bg-lp-card px-6 py-8 text-center shadow-lp-md md:px-7`}>
@@ -193,7 +103,7 @@ export default function LandingPage() {
         {/* ── Odada neler var (bento) ── */}
         <section id="oda" aria-labelledby="oda-baslik" className="scroll-mt-20 py-16 md:scroll-mt-24 md:py-lp-section">
           <Container>
-            <SectionHeading id="oda-baslik" title="Odada neler var" intro="Bir çalışma odası, birlikte çalışmayı kolaylaştıran şeylerle gelir. Hepsi odaya girdiğin anda hazır." />
+            <SectionHeading id="oda-baslik" title={benefitSection.title} intro={benefitSection.intro} />
             <div className="mt-12 grid gap-5 md:mt-16 lg:grid-cols-3">
               {benefitRows.map((row) =>
                 row.map((benefit) =>
@@ -207,7 +117,7 @@ export default function LandingPage() {
         {/* ── Nasıl çalışır: gerçek bir sıra ── */}
         <section id="nasil" aria-labelledby="nasil-baslik" className="scroll-mt-20 border-y-2 border-lp-ink bg-lp-peach py-16 md:scroll-mt-24 md:py-lp-section">
           <Container>
-            <SectionHeading id="nasil-baslik" tone="ink" title="Üç adımda çalışma odası" intro="Kurulum yok, takvim ayarlamak yok. Odaya girersin, odaklanırsın; gerisi herkes için aynı anda işler." />
+            <SectionHeading id="nasil-baslik" tone="ink" title={stepSection.title} intro={stepSection.intro} />
             <ol className="mt-12 md:mt-16">
               {steps.map((step, index) => (
                 <li key={step.title}>
@@ -217,7 +127,7 @@ export default function LandingPage() {
                       <h3 className={`${lpH3} mt-3`}>{step.title}</h3>
                       <p className="mt-4 max-w-[30rem] text-lp-lg font-medium">{step.text}</p>
                     </div>
-                    <div className={`${lpBox} ${step.surface} p-5 shadow-lp-lg sm:p-8 lg:p-12 ${index % 2 === 1 ? 'md:order-1' : ''}`}>{step.figure}</div>
+                    <div className={`${lpBox} ${stepSurfaces[index % stepSurfaces.length]} p-5 shadow-lp-lg sm:p-8 lg:p-12 ${index % 2 === 1 ? 'md:order-1' : ''}`}>{figures[step.figure]}</div>
                   </div>
                   {index < steps.length - 1 ? <HandArrow flip={index % 2 === 1} className="mx-auto my-6 h-20 w-24 md:my-4 md:h-28 md:w-32" /> : null}
                 </li>
@@ -229,14 +139,14 @@ export default function LandingPage() {
         {/* ── Fiyat ── */}
         <section id="fiyat" aria-labelledby="fiyat-baslik" className="scroll-mt-20 py-16 md:scroll-mt-24 md:py-lp-section">
           <Container>
-            <SectionHeading id="fiyat-baslik" title="Ücretsiz başla" intro="Birlikte çalışmak için gereken her şey ücretsiz. Kendi odanı kurmak ve kameralı odalar için Premium var." />
+            <SectionHeading id="fiyat-baslik" title={pricingSection.title} intro={pricingSection.intro} />
             <div className="mx-auto mt-12 grid max-w-[60rem] gap-5 md:mt-16 md:grid-cols-2">
               <PriceCard
                 surface="bg-lp-lemon"
-                name="Ücretsiz"
-                description="Odalara katıl, birlikte çalış, ilerlemeni takip et."
-                price="₺0"
-                features={freeFeatures}
+                name={plans.free.name}
+                description={plans.free.description}
+                price={plans.free.price}
+                features={plans.free.features}
                 action={
                   <Link to={primary.to} className={`${lpButton} w-full`}>
                     {primary.label}
@@ -245,21 +155,21 @@ export default function LandingPage() {
               />
               <PriceCard
                 surface="bg-lp-mint"
-                name="Premium"
-                description="Kendi odanı kur, kameralı çalış, Elite odalara gir."
-                price="₺49"
-                period="/ ay"
-                note="ya da yıllık ₺499 (aylığa göre yılda ₺89 daha az)"
-                features={premiumFeatures}
+                name={plans.premium.name}
+                description={plans.premium.description}
+                price={plans.premium.price}
+                period={plans.premium.period}
+                note={plans.premium.note}
+                features={plans.premium.features}
                 action={
                   <Link to={premiumTo} className={`${lpButton} w-full`}>
-                    Premium'a geç
+                    {plans.premium.action}
                   </Link>
                 }
               />
             </div>
             <p className="mx-auto mt-8 max-w-[37rem] text-center text-lp-sm font-medium text-lp-muted">
-              Premium dönemlik alınır, otomatik yenilenmez. Süre bitince hesabın ücretsiz plana döner; verilerin yerinde kalır.
+              {pricingSection.footnote}
             </p>
           </Container>
         </section>
@@ -267,7 +177,7 @@ export default function LandingPage() {
         {/* ── Sorular ── */}
         <section id="sss" aria-labelledby="sss-baslik" className="scroll-mt-20 py-16 md:scroll-mt-24 md:py-lp-section">
           <Container>
-            <SectionHeading id="sss-baslik" title="Sık sorulanlar" />
+            <SectionHeading id="sss-baslik" title={faqSection.title} />
             <div className="mx-auto mt-12 max-w-lp-narrow space-y-5 md:mt-16">
               {faqs.map((faq) => (
                 <details key={faq.q} className={`${lpBox} group bg-lp-card shadow-lp-md`}>
@@ -291,9 +201,9 @@ export default function LandingPage() {
           <Container>
             <div className={`${lpBox} bg-lp-lemon px-6 py-12 text-center shadow-lp-lg md:px-16 md:py-16`}>
               <h2 id="son-baslik" className={`${lpHeading} text-lp-h2-sm md:text-lp-h2`}>
-                Bu akşam bir masa boş.
+                {closing.title}
               </h2>
-              <p className="mx-auto mt-4 max-w-[32rem] text-lp-lg font-medium">Hesap açmak bir dakika sürer. E-postanı doğrularsın, ilk odana girersin.</p>
+              <p className="mx-auto mt-4 max-w-[32rem] text-lp-lg font-medium">{closing.text}</p>
               <Link to={primary.to} className={`${lpButton} mt-8 w-full sm:w-auto`}>
                 {primary.label}
               </Link>
@@ -327,7 +237,7 @@ export default function LandingPage() {
               </ul>
             </nav>
           </div>
-          <p className="mt-8 border-t-2 border-lp-ink pt-6 text-lp-sm font-medium">Enes İlbay tarafından mezuniyet projesi olarak geliştirildi, {new Date().getFullYear()}.</p>
+          <p className="mt-8 border-t-2 border-lp-ink pt-6 text-lp-sm font-medium">{footer.credit(new Date().getFullYear())}</p>
         </Container>
       </footer>
     </div>
@@ -418,13 +328,13 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
 
 function WideBenefit({ benefit }: { benefit: Benefit }) {
   return (
-    <article className={`${lpBox} ${benefit.surface} grid items-center gap-8 p-6 shadow-lp-md sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:col-span-2 lg:p-10`}>
+    <article className={`${lpBox} ${benefit.figure ? benefitSurfaces[benefit.figure] : ''} grid items-center gap-8 p-6 shadow-lp-md sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:col-span-2 lg:p-10`}>
       <div>
         <h3 className={lpH3}>{benefit.title}</h3>
         <p className="mt-4 text-lp-base font-medium md:text-lp-lg">{benefit.text}</p>
         {benefit.detail ? <p className="mt-3 text-lp-sm font-medium">{benefit.detail}</p> : null}
       </div>
-      {benefit.figure}
+      {benefit.figure ? figures[benefit.figure] : null}
     </article>
   );
 }
