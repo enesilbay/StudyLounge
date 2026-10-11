@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Check, Menu, Target, Trophy, Video, X, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Check, Menu, X } from 'lucide-react';
 import { ProductShot } from '../components/landing/ProductShot';
 import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
 import { LogoMark } from '../components/brand/Logo';
@@ -36,12 +36,15 @@ const [timerBenefit, noCameraBenefit] = benefitRows[0];
 const [goalsBenefit, boardBenefit] = benefitRows[1];
 const [cameraBenefit, leagueBenefit] = benefitRows[2];
 
-/** Görseli olmayan özellikler: kısa kart + ikon. */
-const smallBenefits: Array<{ title: string; text: string; icon: LucideIcon }> = [
-  { title: goalsBenefit.title, text: goalsBenefit.text, icon: Target },
-  { title: cameraBenefit.title, text: cameraBenefit.text, icon: Video },
-  { title: leagueBenefit.title, text: leagueBenefit.text, icon: Trophy },
+/** Ekran görüntüsü olmayan özellikler: kısa kart + 3B nesne. */
+const smallBenefits: Array<{ title: string; text: string; image: string }> = [
+  { title: goalsBenefit.title, text: goalsBenefit.text, image: 'hedef' },
+  { title: cameraBenefit.title, text: cameraBenefit.text, image: 'kamera' },
+  { title: leagueBenefit.title, text: leagueBenefit.text, image: 'kupa' },
 ];
+
+/** "Neden zor?" kartlarının 3B nesneleri (content.ts'teki sırayla). */
+const problemImages = ['telefon', 'kum-saati', 'bos-sandalye'];
 
 /** Adım görselleri: uygulamadan gerçek kesitler. */
 /** Giriş altındaki kayan şerit: uygulamada gerçekten olan özellikler. */
@@ -75,6 +78,20 @@ export default function LandingPage() {
           <section aria-labelledby="giris-baslik" className="relative -mt-24 bg-mb-band bg-[linear-gradient(90deg,var(--color-mb-grid)_1px,transparent_1px)] bg-[size:88px_100%] pb-20 pt-40 md:-mt-28 md:pt-48">
             <Spotlight>
             <MbContainer className="relative text-center">
+              <FadeIn delay={0.9} className="pointer-events-none absolute left-10 top-4 hidden w-32 xl:block 2xl:left-2 2xl:top-2 2xl:w-52">
+                <Parallax distance={50}>
+                  <Float amplitude={12} duration={6.5}>
+                    <Object3D name="lamba" className="h-auto w-full -rotate-6" />
+                  </Float>
+                </Parallax>
+              </FadeIn>
+              <FadeIn delay={1.05} className="pointer-events-none absolute right-10 top-20 hidden w-32 xl:block 2xl:right-2 2xl:top-16 2xl:w-48">
+                <Parallax distance={70}>
+                  <Float amplitude={10} duration={7.5} delay={1}>
+                    <Object3D name="kitaplar" className="h-auto w-full rotate-6" />
+                  </Float>
+                </Parallax>
+              </FadeIn>
               <FadeIn>
                 <MbPill>{hero.tag}</MbPill>
               </FadeIn>
@@ -107,6 +124,12 @@ export default function LandingPage() {
                 <div className="relative">
                   <ProductShot variant="soft" />
                 </div>
+                {/* Kahve: görselin sağ alt köşesinde, görselin önünde */}
+                <FadeIn delay={1.3} className="pointer-events-none absolute -bottom-10 -right-2 z-20 hidden w-28 md:block lg:-right-10 lg:w-36">
+                  <Float amplitude={8} duration={6} delay={0.5}>
+                    <Object3D name="kahve" />
+                  </Float>
+                </FadeIn>
               </div>
             </MbContainer>
             </Spotlight>
@@ -126,10 +149,8 @@ export default function LandingPage() {
                     <Lift className="flex flex-col rounded-[24px] bg-mb-surface p-6 transition-shadow duration-300 hover:shadow-mb-card md:p-7">
                     <h3 className="font-mb-display text-[1.625rem] font-normal leading-tight tracking-[-0.03em]">{problem.title}</h3>
                     <p className="mt-3 flex-1 leading-[1.8] text-mb-body">{problem.text}</p>
-                    <div className="mt-6 grid h-40 place-items-center rounded-[16px] bg-mb-bg shadow-mb-card">
-                      <span className="grid h-20 w-20 place-items-center rounded-full bg-mb-tint transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110">
-                        <problem.icon className="h-9 w-9 text-mb-action" strokeWidth={1.5} aria-hidden="true" />
-                      </span>
+                    <div className="mt-6 grid h-48 place-items-center rounded-[16px] bg-mb-bg shadow-mb-card">
+                      <Object3D name={problemImages[index]} className="h-40 w-auto max-w-full transition-transform duration-500 group-hover:-rotate-3 group-hover:scale-110" />
                     </div>
                     </Lift>
                   </Reveal>
@@ -163,10 +184,8 @@ export default function LandingPage() {
                 {smallBenefits.map((benefit, index) => (
                   <Reveal as="li" key={benefit.title} delay={index * 0.1}>
                     <Lift className="rounded-[24px] border border-mb-line bg-mb-bg p-6 shadow-mb-card transition-shadow duration-300 hover:shadow-mb-shot">
-                    <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-mb-tint text-mb-action transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110">
-                      <benefit.icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
-                    </span>
-                    <h3 className="mt-5 font-mb-display text-xl font-normal tracking-[-0.02em]">{benefit.title}</h3>
+                    <Object3D name={benefit.image} className="h-24 w-auto transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110" />
+                    <h3 className="mt-4 font-mb-display text-xl font-normal tracking-[-0.02em]">{benefit.title}</h3>
                     <p className="mt-2 text-[0.9375rem] leading-[1.75] text-mb-body">{benefit.text}</p>
                     </Lift>
                   </Reveal>
@@ -278,6 +297,9 @@ export default function LandingPage() {
                   <img src="/landing/oda-sayac.webp" alt="" width={760} height={250} loading="lazy" className="block h-auto w-full rotate-6 rounded-[16px] shadow-mb-shot" />
                 </Float>
                 <div className="relative mx-auto max-w-[36rem]">
+                  <Float className="mx-auto mb-6 w-56 md:w-72" amplitude={8} duration={7}>
+                    <Object3D name="masa-sahne" />
+                  </Float>
                   <h2 id="son-baslik" className={`${mbDisplay} text-balance text-[2.25rem] leading-[1.1] md:text-[3.25rem]`}>
                     {closing.title}
                   </h2>
@@ -529,4 +551,9 @@ function StepDot() {
       transition={{ type: 'spring', stiffness: 320, damping: 16 }}
     />
   );
+}
+
+/** 3B nesne görseli (public/landing/3b). Süs amaçlı: metin zaten anlamı taşıdığı için alt boş. */
+function Object3D({ name, className = 'h-auto w-full' }: { name: string; className?: string }) {
+  return <img src={`/landing/3b/${name}.webp`} alt="" loading="lazy" decoding="async" draggable={false} className={`block select-none object-contain ${className}`} />;
 }
