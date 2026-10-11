@@ -85,7 +85,9 @@ export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft
                       top: `${desk.top}%`,
                       width: `${desk.width}%`,
                       height: `${desk.height}%`,
-                      background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-action) 55%, transparent), transparent)',
+                      background: soft
+                        ? 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 40%, transparent), transparent)'
+                        : 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-action) 55%, transparent), transparent)',
                     }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0, 0.9, 0.45, 0.9] }}
@@ -101,9 +103,10 @@ export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft
             key={note.text}
             className={`absolute z-10 hidden w-48 lg:block ${note.side === 'right' ? '-right-6' : '-left-6'}`}
             style={{ top: note.top }}
-            initial={reduce ? false : { opacity: 0, y: 12, rotate: 0 }}
-            animate={{ opacity: 1, y: 0, rotate: note.tilt }}
-            transition={{ delay: note.delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            initial={reduce ? false : { opacity: 0, y: 12, rotate: 0, scale: soft ? 0.8 : 1 }}
+            animate={{ opacity: 1, y: 0, rotate: note.tilt, scale: 1 }}
+            // Mobilo sürümünde notlar yaylanarak oturur.
+            transition={soft ? { delay: note.delay, type: 'spring', stiffness: 260, damping: 14 } : { delay: note.delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <span
               className={

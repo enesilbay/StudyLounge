@@ -34,7 +34,7 @@ export function MbSectionTitle({ id, pill, title, intro }: { id?: string; pill: 
 export function MbShot({ src, alt, width, height, className = '' }: { src: string; alt: string; width: number; height: number; className?: string }) {
   return (
     <div className={`overflow-hidden rounded-[16px] border border-mb-line bg-mb-bg shadow-mb-card ${className}`}>
-      <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" className="block h-auto w-full" />
+      <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" className="block h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.03]" />
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Check, ChevronDown, Menu, Target, Trophy, Video, X, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Check, Menu, Target, Trophy, Video, X, type LucideIcon } from 'lucide-react';
 import { ProductShot } from '../components/landing/ProductShot';
 import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
 import { LandingMark } from '../components/landing/Brutal';
 import { MbContainer, MbPill, MbSectionTitle, MbShot } from '../components/landing-mobilo/Parts';
 import { mbButton, mbButtonDark, mbDisplay, mbFocus } from '../components/landing-mobilo/styles';
+import { Accordion, Float, Lift, Marquee, Parallax, ProgressLine, RiseLetters, ScrollProgress, Spotlight, SwapText } from '../components/landing-mobilo/Effects';
 import {
   benefitRows,
   benefitSection,
@@ -43,6 +44,9 @@ const smallBenefits: Array<{ title: string; text: string; icon: LucideIcon }> = 
 ];
 
 /** Adım görselleri: uygulamadan gerçek kesitler. */
+/** Giriş altındaki kayan şerit: uygulamada gerçekten olan özellikler. */
+const featureStrip = ['Ortak sayaç', 'PDF tahtası', 'Kamera isteğe bağlı', 'Haftalık lig', 'Dersler ve hedefler', 'Oda sohbeti', 'Ortam sesleri', 'Planlı oturumlar'];
+
 const stepShots = [
   { src: '/landing/oda-kategoriler.webp', width: 1200, height: 168, alt: 'Odalar sayfası: oda arama kutusu ve Bilgisayar Bilimi, Tıp ve Sağlık, Hukuk, Sınav Hazırlık gibi konu filtreleri.' },
   { src: '/landing/oda-odaklan.webp', width: 1045, height: 200, alt: 'Oda içindeki sayaç: 25:00, süre seçenekleri, Odayla başlat bağlantısı ve Odaklan düğmesi.' },
@@ -58,16 +62,19 @@ export default function LandingPage() {
   return (
     // LazyMotion: framer-motion'ın yalnızca kullanılan özellikleri yüklenir (animasyonlar sadece bu sayfada).
     <LazyMotion features={domAnimation} strict>
-      <div className="min-h-screen overflow-x-clip bg-mb-bg font-mb-body text-mb-ink">
+      {/* Geçici logo (LandingMark) lp-* renklerini kullanır; burada Mobilo yeşiline çevrilir. */}
+      <div className="min-h-screen overflow-x-clip bg-mb-bg font-mb-body text-mb-ink [--color-lp-action:var(--color-mb-action-2)]">
         <a href="#icerik" className={`${mbFocus} sr-only rounded-lg bg-mb-action px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50`}>
           İçeriğe geç
         </a>
 
+        <ScrollProgress />
         <SiteHeader isAuthenticated={isAuthenticated} primary={primary} />
 
         <main id="icerik">
           {/* ── Giriş ── */}
           <section aria-labelledby="giris-baslik" className="relative -mt-24 bg-mb-band bg-[linear-gradient(90deg,var(--color-mb-grid)_1px,transparent_1px)] bg-[size:88px_100%] pb-20 pt-40 md:-mt-28 md:pt-48">
+            <Spotlight>
             <MbContainer className="relative text-center">
               <FadeIn>
                 <MbPill>{hero.tag}</MbPill>
@@ -78,10 +85,10 @@ export default function LandingPage() {
               <FadeIn delay={0.55}>
                 <p className="mx-auto mt-6 max-w-[40rem] text-base leading-[1.8] text-mb-body md:text-lg">{hero.intro}</p>
                 <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-                  <Link to={primary.to} className={`${mbButton} pr-2`}>
+                  <Link to={primary.to} className={`${mbButton} group pr-2`}>
                     {primary.label}
-                    <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-[10px] bg-mb-bg">
-                      <ArrowUpRight className="h-4 w-4" />
+                    <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-[10px] bg-mb-bg text-mb-action">
+                      <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                     </span>
                   </Link>
                   <a href="#nasil" className={mbButtonDark}>
@@ -96,13 +103,18 @@ export default function LandingPage() {
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute -inset-x-24 -top-24 bottom-1/3 rounded-full opacity-70 blur-3xl"
-                  style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action) 45%, transparent), transparent)' }}
+                  style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 30%, transparent), transparent)' }}
                 />
-                <div className="relative">
+                <Float className="relative" amplitude={8} duration={7}>
                   <ProductShot variant="soft" />
-                </div>
+                </Float>
               </FadeIn>
             </MbContainer>
+            </Spotlight>
+            <FadeIn delay={1.2} className="mt-16">
+              <h2 className="sr-only">Özellikler</h2>
+              <Marquee items={featureStrip} />
+            </FadeIn>
           </section>
 
           {/* ── Sorun ── */}
@@ -111,14 +123,16 @@ export default function LandingPage() {
               <MbSectionTitle id="sorun-baslik" pill="Neden zor?" title={problemSection.title} intro={problemSection.intro} />
               <ul className="mt-14 grid gap-6 md:grid-cols-3">
                 {problems.map((problem, index) => (
-                  <Reveal as="li" key={problem.title} delay={index * 0.12} className="flex flex-col rounded-[24px] bg-mb-surface p-6 md:p-7">
+                  <Reveal as="li" key={problem.title} delay={index * 0.12}>
+                    <Lift className="flex flex-col rounded-[24px] bg-mb-surface p-6 transition-shadow duration-300 hover:shadow-mb-card md:p-7">
                     <h3 className="font-mb-display text-[1.625rem] font-normal leading-tight tracking-[-0.03em]">{problem.title}</h3>
                     <p className="mt-3 flex-1 leading-[1.8] text-mb-body">{problem.text}</p>
                     <div className="mt-6 grid h-40 place-items-center rounded-[16px] bg-mb-bg shadow-mb-card">
-                      <span className="grid h-20 w-20 place-items-center rounded-full bg-mb-tint">
-                        <problem.icon className="h-9 w-9 text-mb-ink" strokeWidth={1.5} aria-hidden="true" />
+                      <span className="grid h-20 w-20 place-items-center rounded-full bg-mb-tint transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110">
+                        <problem.icon className="h-9 w-9 text-mb-action" strokeWidth={1.5} aria-hidden="true" />
                       </span>
                     </div>
+                    </Lift>
                   </Reveal>
                 ))}
               </ul>
@@ -136,22 +150,26 @@ export default function LandingPage() {
                 <FeatureCard title={boardBenefit.title} text={boardBenefit.text} detail={boardBenefit.detail} from="right">
                   <MbShot src="/landing/oda-tahta.webp" width={1200} height={724} alt="Ortak PDF tahtası: Fizik 101 ders notunda F = m · a formülü fosforlu kalemle işaretlenmiş, cevap 3 m/s² yuvarlak içine alınmış." />
                 </FeatureCard>
-                <Reveal as="article" className="grid items-center gap-8 rounded-[24px] bg-mb-surface p-6 md:p-8 lg:col-span-2 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                <Reveal as="article" className="lg:col-span-2">
+                  <Lift className="grid items-center gap-8 rounded-[24px] bg-mb-surface p-6 md:p-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                   <div>
                     <h3 className={`${mbDisplay} text-[1.75rem] font-normal leading-tight md:text-[2rem]`}>{noCameraBenefit.title}</h3>
                     <p className="mt-4 leading-[1.8] text-mb-body">{noCameraBenefit.text}</p>
                   </div>
                   <MbShot src="/landing/oda-masalar.webp" width={1200} height={503} alt="Oda masaları: Elif, Ali ve Zeynep odakta, Deniz molada. Kamera yok; kim odakta, kim molada yazıyor." />
+                  </Lift>
                 </Reveal>
               </div>
               <ul className="mt-6 grid gap-6 md:grid-cols-3">
                 {smallBenefits.map((benefit, index) => (
-                  <Reveal as="li" key={benefit.title} delay={index * 0.1} className="rounded-[24px] border border-mb-line bg-mb-bg p-6 shadow-mb-card">
-                    <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-mb-tint">
+                  <Reveal as="li" key={benefit.title} delay={index * 0.1}>
+                    <Lift className="rounded-[24px] border border-mb-line bg-mb-bg p-6 shadow-mb-card transition-shadow duration-300 hover:shadow-mb-shot">
+                    <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-mb-tint text-mb-action transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110">
                       <benefit.icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
                     </span>
                     <h3 className="mt-5 font-mb-display text-xl font-normal tracking-[-0.02em]">{benefit.title}</h3>
                     <p className="mt-2 text-[0.9375rem] leading-[1.75] text-mb-body">{benefit.text}</p>
+                    </Lift>
                   </Reveal>
                 ))}
               </ul>
@@ -162,19 +180,23 @@ export default function LandingPage() {
           <section id="nasil" aria-labelledby="nasil-baslik" className="scroll-mt-28 bg-mb-surface py-20 md:py-28">
             <MbContainer>
               <MbSectionTitle id="nasil-baslik" pill="Nasıl çalışır" title={stepSection.title} intro={stepSection.intro} />
-              <ol className="mt-14 space-y-16 md:space-y-24">
+              <ol className="relative mt-14 space-y-16 md:space-y-24">
+                <ProgressLine className="inset-y-0 left-1/2 hidden md:block" />
                 {steps.map((step, index) => {
                   const shot = stepShots[index];
                   const flip = index % 2 === 1;
                   return (
-                    <li key={step.title} className="grid items-center gap-8 md:grid-cols-2 md:gap-16">
+                    <li key={step.title} className="relative grid items-center gap-8 md:grid-cols-2 md:gap-16">
+                      <StepDot />
                       <Reveal from={flip ? 'right' : 'left'} className={flip ? 'md:order-2' : ''}>
                         <p className="font-mb-body text-sm font-medium text-mb-body">{index + 1}. adım</p>
                         <h3 className={`${mbDisplay} mt-2 text-[2rem] leading-tight md:text-[2.5rem]`}>{step.title}</h3>
                         <p className="mt-4 max-w-[32rem] leading-[1.8] text-mb-body md:text-lg">{step.text}</p>
                       </Reveal>
                       <Reveal from={flip ? 'left' : 'right'} delay={0.12} className={`rounded-[24px] bg-mb-bg p-4 shadow-mb-card md:p-6 ${flip ? 'md:order-1' : ''}`}>
-                        <MbShot src={shot.src} width={shot.width} height={shot.height} alt={shot.alt} className={index === 2 ? 'mx-auto max-w-[24rem]' : ''} />
+                        <Parallax distance={18}>
+                          <MbShot src={shot.src} width={shot.width} height={shot.height} alt={shot.alt} className={index === 2 ? 'mx-auto max-w-[24rem]' : ''} />
+                        </Parallax>
                       </Reveal>
                     </li>
                   );
@@ -188,7 +210,15 @@ export default function LandingPage() {
             <MbContainer>
               <MbSectionTitle id="fiyat-baslik" pill="Fiyat" title={pricingSection.title} intro={pricingSection.intro} />
               <div className="mt-10 flex justify-center">
-                <div role="radiogroup" aria-label="Premium ödeme dönemi" className="inline-flex rounded-full bg-mb-surface p-1.5">
+                <div role="radiogroup" aria-label="Premium ödeme dönemi" className="relative grid grid-cols-2 rounded-full bg-mb-surface p-1.5">
+                  {/* Seçim göstergesi: seçilen seçeneğin altına kayar. */}
+                  <m.span
+                    aria-hidden="true"
+                    className="absolute inset-y-1.5 left-1.5 w-[calc(50%-0.375rem)] rounded-full bg-mb-ink shadow-mb-raised"
+                    initial={false}
+                    animate={{ x: yearly ? '100%' : '0%' }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
                   {[
                     { value: false, label: 'Aylık' },
                     { value: true, label: 'Yıllık' },
@@ -199,7 +229,7 @@ export default function LandingPage() {
                       role="radio"
                       aria-checked={yearly === option.value}
                       onClick={() => setYearly(option.value)}
-                      className={`${mbFocus} min-h-11 rounded-full px-6 text-[0.9375rem] font-medium transition ${yearly === option.value ? 'bg-mb-ink text-mb-bg shadow-mb-raised' : 'text-mb-body hover:text-mb-ink'}`}
+                      className={`${mbFocus} relative min-h-11 rounded-full px-7 text-[0.9375rem] font-medium transition-colors duration-300 ${yearly === option.value ? 'text-mb-bg' : 'text-mb-body hover:text-mb-ink'}`}
                     >
                       {option.label}
                     </button>
@@ -231,13 +261,7 @@ export default function LandingPage() {
               <div className="mx-auto mt-12 max-w-[50rem] space-y-3">
                 {faqs.map((faq, index) => (
                   <Reveal key={faq.q} delay={index * 0.05}>
-                    <details className="group rounded-[16px] border border-mb-line bg-mb-bg shadow-mb-card">
-                      <summary className={`${mbFocus} flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 rounded-[16px] px-6 py-4 [&::-webkit-details-marker]:hidden`}>
-                        <span className="font-mb-display text-lg tracking-[-0.02em]">{faq.q}</span>
-                        <ChevronDown className="h-5 w-5 shrink-0 text-mb-body transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
-                      </summary>
-                      <p className="px-6 pb-5 leading-[1.8] text-mb-body">{faq.a}</p>
-                    </details>
+                    <Accordion question={faq.q} answer={faq.a} />
                   </Reveal>
                 ))}
               </div>
@@ -248,31 +272,21 @@ export default function LandingPage() {
           <section aria-labelledby="son-baslik" className="py-20 md:py-28">
             <MbContainer>
               <Reveal className="relative overflow-hidden rounded-[28px] bg-mb-band bg-[linear-gradient(90deg,var(--color-mb-grid)_1px,transparent_1px)] bg-[size:88px_100%] px-6 py-16 text-center md:px-16 md:py-24">
-                <img
-                  src="/landing/oda-sohbet.webp"
-                  alt=""
-                  width={745}
-                  height={650}
-                  loading="lazy"
-                  className="pointer-events-none absolute -left-10 top-10 hidden w-64 -rotate-6 rounded-[16px] shadow-mb-shot lg:block"
-                />
-                <img
-                  src="/landing/oda-sayac.webp"
-                  alt=""
-                  width={760}
-                  height={250}
-                  loading="lazy"
-                  className="pointer-events-none absolute -right-12 bottom-14 hidden w-80 rotate-6 rounded-[16px] shadow-mb-shot lg:block"
-                />
+                <Float className="pointer-events-none absolute -left-10 top-10 hidden w-64 lg:block" amplitude={12} duration={7}>
+                  <img src="/landing/oda-sohbet.webp" alt="" width={745} height={650} loading="lazy" className="block h-auto w-full -rotate-6 rounded-[16px] shadow-mb-shot" />
+                </Float>
+                <Float className="pointer-events-none absolute -right-12 bottom-14 hidden w-80 lg:block" amplitude={10} duration={8} delay={1.5}>
+                  <img src="/landing/oda-sayac.webp" alt="" width={760} height={250} loading="lazy" className="block h-auto w-full rotate-6 rounded-[16px] shadow-mb-shot" />
+                </Float>
                 <div className="relative mx-auto max-w-[36rem]">
                   <h2 id="son-baslik" className={`${mbDisplay} text-balance text-[2.25rem] leading-[1.1] md:text-[3.25rem]`}>
                     {closing.title}
                   </h2>
                   <p className="mt-5 leading-[1.8] text-mb-body md:text-lg">{closing.text}</p>
-                  <Link to={primary.to} className={`${mbButton} mt-8 pr-2`}>
+                  <Link to={primary.to} className={`${mbButton} group mt-8 pr-2`}>
                     {primary.label}
-                    <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-[10px] bg-mb-bg">
-                      <ArrowUpRight className="h-4 w-4" />
+                    <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-[10px] bg-mb-bg text-mb-action">
+                      <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                     </span>
                   </Link>
                 </div>
@@ -281,9 +295,9 @@ export default function LandingPage() {
           </section>
         </main>
 
-        <footer className="relative overflow-hidden bg-mb-ink text-mb-bg">
-          <p aria-hidden="true" className="pointer-events-none absolute inset-x-0 -bottom-[0.18em] select-none text-center font-mb-display text-[22vw] font-semibold leading-none tracking-[-0.06em] text-mb-bg/[0.04]">
-            StudyLounge
+        <footer className="relative overflow-hidden bg-mb-ink text-mb-bg [--color-lp-ink:var(--color-mb-bg)]">
+          <p aria-hidden="true" className="pointer-events-none absolute inset-x-0 -bottom-[0.18em] select-none whitespace-nowrap text-center font-mb-display text-[16.5vw] font-semibold leading-none tracking-[-0.06em] text-mb-bg/[0.07]">
+            <RiseLetters text="StudyLounge" />
           </p>
           <MbContainer className="relative py-16">
             <div className="grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -431,11 +445,13 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
 
 function FeatureCard({ title, text, detail, from, children }: { title: string; text: string; detail?: string; from: 'left' | 'right'; children: ReactNode }) {
   return (
-    <Reveal as="article" from={from} className="flex flex-col rounded-[24px] bg-mb-surface p-6 md:p-8">
+    <Reveal as="article" from={from}>
+      <Lift className="flex flex-col rounded-[24px] bg-mb-surface p-6 md:p-8">
       <h3 className={`${mbDisplay} text-[1.75rem] font-normal leading-tight md:text-[2rem]`}>{title}</h3>
       <p className="mt-4 leading-[1.8] text-mb-body">{text}</p>
       {detail ? <p className="mt-2 text-sm leading-[1.7] text-mb-body">{detail}</p> : null}
       <div className="mt-8 flex flex-1 items-end">{children}</div>
+      </Lift>
     </Reveal>
   );
 }
@@ -478,10 +494,10 @@ function PriceCard({
         <h3 className="font-mb-display text-2xl tracking-[-0.03em]">{name}</h3>
         <p className="mt-2 text-[0.9375rem] leading-[1.7] text-mb-body">{description}</p>
         <p className="mt-7 flex items-baseline gap-2">
-          <span className={`${mbDisplay} text-[3rem] leading-none tabular-nums`}>{price}</span>
-          {period ? <span className="text-mb-body">{period}</span> : null}
+          <SwapText value={price} className={`${mbDisplay} text-[3rem] leading-none tabular-nums`} />
+          {period ? <SwapText value={period} className="text-mb-body" /> : null}
         </p>
-        <p className="mt-2 min-h-6 text-sm text-mb-body">{note}</p>
+        <p className="mt-2 min-h-6 text-sm text-mb-body">{note ? <SwapText value={note} /> : null}</p>
         <Link to={cta.to} className={`${highlighted ? mbButton : mbButtonDark} mt-6 w-full`}>
           {cta.label}
         </Link>
@@ -498,5 +514,20 @@ function PriceCard({
         </ul>
       </div>
     </Reveal>
+  );
+}
+
+/** Adım ortasındaki nokta: görünüme girince yaylanarak belirir (dolan çizginin üstünde). */
+function StepDot() {
+  const reduce = useReducedMotion();
+  return (
+    <m.span
+      aria-hidden="true"
+      className="absolute left-[calc(50%-0.5rem)] top-[calc(50%-0.5rem)] hidden h-4 w-4 rounded-full bg-mb-action ring-[6px] ring-mb-surface md:block"
+      initial={reduce ? false : { scale: 0 }}
+      whileInView={{ scale: 1 }}
+      viewport={{ once: true, margin: '0px 0px -40% 0px' }}
+      transition={{ type: 'spring', stiffness: 320, damping: 16 }}
+    />
   );
 }

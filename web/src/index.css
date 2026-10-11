@@ -322,27 +322,32 @@
 /*
  * Açılış sayfası, Mobilo denemesi (ozellik/acilis-mobilo): sakin, aydınlık,
  * yuvarlak köşeli ve yumuşak gölgeli dil (referans: docs/brand/referans-mobilo.md).
- * Renkler seçilen B paletiyle aynı aileden: mürekkep + turuncu eylem.
+ * Renkler Mobilo'nun kendi paleti: siyah mürekkep, açık griler, orman yeşili eylem.
  * Yalnızca LandingPage ve components/landing-mobilo kullanır.
  */
 @theme {
+  /* Mobilo paleti (docs/brand/referans-mobilo.md): beyaz zemin, açık griler, orman yeşili vurgu. */
   --color-mb-bg: #ffffff;
-  --color-mb-surface: #f7f6f2;
-  --color-mb-band: #efede6;
-  --color-mb-ink: #121212;
-  --color-mb-body: #545454;
+  --color-mb-surface: #f7f7f7;
+  --color-mb-band: #ececec;
+  --color-mb-ink: #000000;
+  --color-mb-body: #5c5c5c;
   /* Süs çizgileri ve kenarlıklar (metin değil) */
-  --color-mb-line: #e5e2da;
-  --color-mb-grid: #12121208;
-  --color-mb-action: #ff6b3d;
-  --color-mb-tint: #ffe1cc;
+  --color-mb-line: #e2e2e2;
+  --color-mb-grid: #0000000a;
+  --color-mb-action: #055049;
+  --color-mb-action-2: #1a746c;
+  --color-mb-on-action: #ffffff;
+  --color-mb-tint: #e3efed;
 
   --font-mb-display: "Geist", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mb-body: "Poppins", "Atkinson Hyperlegible Next", system-ui, sans-serif;
 
-  --shadow-mb-card: 6px 6px 16px 0 rgb(18 18 18 / 0.06);
+  --shadow-mb-card: 6px 6px 16px 0 rgb(16 25 24 / 0.06);
   --shadow-mb-raised: 0 1px 1px -0.3px rgb(0 0 0 / 0.07), 0 2px 2px -0.6px rgb(0 0 0 / 0.07), 0 4px 4px -1px rgb(0 0 0 / 0.08), 0 10px 18px -3px rgb(0 0 0 / 0.1);
-  --shadow-mb-shot: 0 30px 60px -20px rgb(18 18 18 / 0.25), 0 12px 24px -12px rgb(18 18 18 / 0.15);
+  --shadow-mb-shot: 0 30px 60px -20px rgb(5 80 73 / 0.22), 0 12px 24px -12px rgb(16 25 24 / 0.15);
+  /* Yeşil düğmenin içe doğru kabartması (Mobilo'daki gibi) */
+  --shadow-mb-press: inset 0 -2px 7.6px -2px rgb(0 0 0 / 0.35), 0 1px 1px -0.3px rgb(0 0 0 / 0.07), 0 4px 4px -1px rgb(0 0 0 / 0.08), 0 10px 18px -3px rgb(5 80 73 / 0.25);
 
   --container-mb: 82.5rem;
 }
