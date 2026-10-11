@@ -135,7 +135,7 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Görsel stil rehberi | Önce tek bir stil belirlenir: mevcut lamba metaforu ve marka renkleri (turkuaz, açık pembe, krem) temel alınır. Tek bir prompt şablonu ve 2–3 referans görsel `docs/brand/` altında saklanır; sonraki bütün görseller bu şablonla üretilir, böylece hepsi aynı elden çıkmış gibi görünür. Kullanılan aracın ticari kullanım koşulları kontrol edilir. |
+| Yüksek | Görsel stil rehberi | Stil belirlendi: 3B nesne tarzı, lamba metaforu ve yeni marka renkleri (beyaz/açık gri, siyah, orman yeşili; bkz. `docs/brand/marka-rehberi.md`). Tek bir prompt şablonu ve 2–3 referans görsel `docs/brand/` altında saklanır; sonraki bütün görseller bu şablonla üretilir, böylece hepsi aynı elden çıkmış gibi görünür. Kullanılan aracın ticari kullanım koşulları kontrol edilir. |
 | Yüksek | Logo ve uygulama simgeleri | Logo (yatay ve yalnız işaret), favicon, PWA simgeleri (192/512 ve maskable), mobil uygulama simgesi ve açılış ekranı (splash), sosyal medya paylaşım görseli (Open Graph). Logo son halinde SVG olarak temizlenir; açık ve koyu temada denenir. Mobilde yalnızca simge ve splash değişir (`mobile/` kodu değişmez). |
 | Orta | İllüstrasyonlar ve metin sadeleştirme | Yazı yoğun yerler görselle desteklenir ve yazıları kısaltılır: açılış sayfası, boş durumlar (oda yok, arkadaş yok, geçmiş yok), "Masanı hazırla" kartı, Premium sayfası, 404/hata sayfaları, e-posta şablonları. Görseller WebP/SVG olarak optimize edilir, her birine açıklayıcı alt metin yazılır. |
 
@@ -159,7 +159,7 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Yüksek | Tasarım eleştirisi ve denetim | Impeccable `critique` ve `audit` ile ana akışlar taranır: giriş/kayıt, odalar, oda içi (kamera, PDF tahtası), Premium, ayarlar, yönetim paneli, açılış sayfası. Bulgular önem sırasıyla listelenir; hata ve erişilebilirlik sorunları (kontrast, klavye, odak halkası, alt metin) önce düzeltilir. |
-| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; pembe yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
+| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; vurgu rengi (yeni kimlikte orman yeşili, eski temada pembe) yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
 | Orta | Mobil genişlik ve duyarlılık | Web'in telefon genişliğinde (360–430 px) kırılma, taşma ve dokunma hedeflerine göre gözden geçirilmesi. |
 | Düşük | Performans ve boş/hata durumları | Yükleme, boş ve hata durumları ile ilk yükleme boyutu denetlenir. |
 

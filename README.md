@@ -44,16 +44,19 @@ StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir gör
 | Yardımcı renk | `#FFC107` *(Amber)* |
 | Tipografi | `Montserrat` |
 
-**Web** istemcisi "kütüphane lambası" temasıyla yeniden tasarlandı (`web/src/index.css`):
+**Web** için projenin yeni ana kimliği aşağıdadır. Ayrıntılar (tipografi ölçeği, köşe, gölge, hareket, kontrast) [`docs/brand/marka-rehberi.md`](docs/brand/marka-rehberi.md) dosyasında; kod karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
 
 | Eleman | Seçim | Açıklama |
 | :--- | :--- | :--- |
-| Zemin | `#101A16` koyu / `#E7EBE2` açık | Gece kütüphanesi ve gündüz okuma salonu; açık/koyu tema sistem tercihine uyar |
-| Cam yeşili | `#3A8264` | Banker lambasının yeşil camı, birincil eylemler |
-| Pirinç / lamba ışığı | `#D9A748` | Sadece "odakta" durumu ve ana eylem için kullanılır |
-| Başlık fontu | `Literata` | E-kitap okuma için tasarlanmış serif |
-| Arayüz fontu | `Atkinson Hyperlegible Next` | Okunabilirlik odaklı sans-serif; sayaçta `Atkinson Hyperlegible Mono` |
+| Zemin | `#FFFFFF` beyaz, `#F7F7F7` yüzey, `#ECECEC` bant | Sade, nötr ve aydınlık zemin |
+| Yazı | `#000000` başlık, `#5C5C5C` gövde metni | Yüksek kontrast (gövde metni beyazda 6.7:1) |
+| Ana renk (orman yeşili) | `#055049`, üzerine gelince `#1A746C` | Ana eylem ve "odakta" durumu; açık tonu `#E3EFED` |
+| Başlık fontu | `Geist` (300) | İnce, sıkı harf aralıklı büyük başlıklar |
+| Arayüz fontu | `Poppins` | Gövde metni ve arayüz |
+| Biçim | Yuvarlak köşeler (kart 24px, düğme 14px), yumuşak gölgeler | |
 | İmza öğe | Masa lambası | Odaklanan kullanıcının masa kartında lamba yanar |
+
+Yeni kimlik şu an açılış sayfasında uygulanıyor. Uygulama sayfaları eski temayla (krem zemin `#FBF5EC`, turkuaz `#0B7A76`, açık pembe lamba rengi; Literata + Atkinson Hyperlegible) çalışmaya devam ediyor ve sayfa sayfa yeni kimliğe geçirilecek.
 
 ---
 

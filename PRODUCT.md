@@ -63,7 +63,8 @@ Henüz karar verilmemiş / tamamlanmamış:
 - Ad: **StudyLounge**. Slogan: **"Ayrı masalarda, aynı lobide."**
 - Ürün dilinde temel metafor **lamba**: odaklanan kişinin lambası yanar, molada söner. "Odakta" ve "Molada" bu metaforun parçası.
 - Ses: sade, samimi, Türkçe; öğrenciye "sen" diye hitap eder.
-- Kullanıcının bağlayıcı olarak belirlediği renkler: turkuaz, açık pembe ve krem/kırık beyaz. Proje kuralına göre pembe yalnızca "odakta" durumu ve ana eylem için kullanılır.
+- Görsel kimlik (kullanıcının seçtiği, bağlayıcı): beyaz/açık gri zemin, siyah yazı, tek vurgu rengi koyu orman yeşili (`#055049`); başlıklarda Geist, gövdede Poppins; yuvarlak köşeler ve yumuşak gölgeler. Yeşil yalnızca ana eylem ve "odakta" durumu için kullanılır. Tek kaynak: `docs/brand/marka-rehberi.md`.
+- Kimlik açılış sayfasında uygulandı; uygulama sayfaları adım adım geçirilecek. Geçiş tamamlanana kadar eski turkuaz/pembe/krem tema uygulama sayfalarında geçerlidir.
 
 ## Evidence on Hand
 
