@@ -23,7 +23,9 @@ const notes = [
   { text: 'Oda sohbeti: mola gelince konuşulur', side: 'right' as const, top: '52%', tilt: -1.5, delay: 1.9 },
 ];
 
-export function ProductShot() {
+/** `brutal`: Didasko sürümü (kalın kenarlık, sert gölge). `soft`: Mobilo sürümü (yuvarlak, yumuşak gölge). */
+export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft' }) {
+  const soft = variant === 'soft';
   const reduce = useReducedMotion();
   const { ref, progress } = useEnterProgress<HTMLDivElement>();
   const rotateX = useRange(progress, 14, 0);
@@ -32,18 +34,32 @@ export function ProductShot() {
   return (
     <figure className="m-0">
       <div ref={ref} className="relative [perspective:1600px]">
-        <m.div style={reduce ? undefined : { rotateX, scale, transformOrigin: '50% 0%' }} className={`${lpBox} relative overflow-hidden bg-lp-card shadow-lp-lg md:shadow-lp-xl`}>
+        <m.div
+          style={reduce ? undefined : { rotateX, scale, transformOrigin: '50% 0%' }}
+          className={soft ? 'relative overflow-hidden rounded-[24px] border-4 border-mb-bg bg-mb-bg shadow-mb-shot' : `${lpBox} relative overflow-hidden bg-lp-card shadow-lp-lg md:shadow-lp-xl`}
+        >
           {/* Tarayıcı çubuğu */}
-          <div className="flex items-center gap-2 border-b-2 border-lp-ink bg-lp-paper px-3 py-2 md:px-4">
-            <span aria-hidden="true" className="flex gap-1.5">
-              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-cool" />
-              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-warm" />
-              <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-green" />
-            </span>
-            <span className="ml-2 min-w-0 flex-1 truncate border-2 border-lp-ink bg-lp-card px-2 py-0.5 text-left font-lp-sans text-lp-label font-bold tracking-lp text-lp-ink md:max-w-sm">
-              StudyLounge · Demo: Sessiz Kütüphane
-            </span>
-          </div>
+          {soft ? (
+            <div className="flex items-center gap-2 border-b border-mb-line bg-mb-surface px-4 py-2.5">
+              <span aria-hidden="true" className="flex gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-mb-line" />
+                <span className="h-2.5 w-2.5 rounded-full bg-mb-line" />
+                <span className="h-2.5 w-2.5 rounded-full bg-mb-line" />
+              </span>
+              <span className="ml-2 min-w-0 flex-1 truncate rounded-full bg-mb-bg px-3 py-1 text-left font-mb-body text-xs text-mb-body md:max-w-sm">StudyLounge · Demo: Sessiz Kütüphane</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 border-b-2 border-lp-ink bg-lp-paper px-3 py-2 md:px-4">
+              <span aria-hidden="true" className="flex gap-1.5">
+                <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-cool" />
+                <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-warm" />
+                <span className="h-3 w-3 rounded-full border-2 border-lp-ink bg-lp-tint-green" />
+              </span>
+              <span className="ml-2 min-w-0 flex-1 truncate border-2 border-lp-ink bg-lp-card px-2 py-0.5 text-left font-lp-sans text-lp-label font-bold tracking-lp text-lp-ink md:max-w-sm">
+                StudyLounge · Demo: Sessiz Kütüphane
+              </span>
+            </div>
+          )}
 
           <div className="relative">
             <img
@@ -89,7 +105,15 @@ export function ProductShot() {
             animate={{ opacity: 1, y: 0, rotate: note.tilt }}
             transition={{ delay: note.delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className={`${lpBox} inline-block bg-lp-tint-warm px-3 py-2 font-lp-sans text-lp-sm font-bold leading-snug tracking-lp text-lp-ink shadow-lp-sm`}>{note.text}</span>
+            <span
+              className={
+                soft
+                  ? 'inline-block rounded-[14px] border border-mb-line bg-mb-bg px-3.5 py-2.5 font-mb-body text-sm font-medium leading-snug text-mb-ink shadow-mb-raised'
+                  : `${lpBox} inline-block bg-lp-tint-warm px-3 py-2 font-lp-sans text-lp-sm font-bold leading-snug tracking-lp text-lp-ink shadow-lp-sm`
+              }
+            >
+              {note.text}
+            </span>
           </m.p>
         ))}
       </div>
@@ -98,7 +122,10 @@ export function ProductShot() {
       <figcaption className="mt-6 lg:hidden">
         <ul className="mx-auto flex max-w-[40rem] flex-wrap justify-center gap-2">
           {notes.map((note) => (
-            <li key={note.text} className={`${lpBox} bg-lp-tint-warm px-3 py-1.5 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink`}>
+            <li
+              key={note.text}
+              className={soft ? 'rounded-full border border-mb-line bg-mb-bg px-3.5 py-1.5 font-mb-body text-sm text-mb-ink' : `${lpBox} bg-lp-tint-warm px-3 py-1.5 font-lp-sans text-lp-sm font-bold tracking-lp text-lp-ink`}
+            >
               {note.text}
             </li>
           ))}
