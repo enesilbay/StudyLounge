@@ -48,11 +48,7 @@ export default function AppLayout() {
   useAppNotifications();
   // Arkadaşlar sekmesindeki rozet: okunmamış sohbetler + bekleyen istekler.
   const friendsBadge = useInboxStore((state) => state.unreadFrom.length + state.friendRequests.length);
-  // Odalar sekmesindeki rozet: yanıt bekleyen planlı oturum davetleri.
-  const planInvites = useInboxStore((state) =>
-    state.plans.filter((plan) => plan.invites.some((invite) => invite.user.id === user?.id && invite.status === 'pending')).length,
-  );
-  const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : path === '/app/lobbies' ? planInvites : 0);
+  const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : 0);
   const displayName = user?.fullName ?? 'StudyLounge';
   const newDesign = NEW_DESIGN_PATHS.some((path) => location.pathname.startsWith(path));
   // Odak odası ve Odalar panosu tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
@@ -95,7 +91,7 @@ export default function AppLayout() {
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
                 `relative flex min-h-11 items-center gap-3 rounded-[12px] text-[15px] font-medium transition ${collapsed ? 'justify-center' : 'px-3'} ${
-                  isActive ? 'bg-mb-ink text-mb-bg shadow-mb-raised' : 'text-mb-body hover:bg-mb-surface hover:text-mb-ink'
+                  isActive ? 'bg-mb-solid text-mb-on-solid shadow-mb-raised' : 'text-mb-body hover:bg-mb-surface hover:text-mb-ink'
                 }`
               }
             >

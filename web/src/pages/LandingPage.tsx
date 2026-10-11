@@ -48,7 +48,7 @@ const problemImages = ['telefon', 'kum-saati', 'bos-sandalye'];
 
 /** Adım görselleri: uygulamadan gerçek kesitler. */
 /** Giriş altındaki kayan şerit: uygulamada gerçekten olan özellikler. */
-const featureStrip = ['Ortak sayaç', 'PDF tahtası', 'Kamera isteğe bağlı', 'Haftalık lig', 'Dersler ve hedefler', 'Oda sohbeti', 'Ortam sesleri', 'Planlı oturumlar'];
+const featureStrip = ['Ortak sayaç', 'PDF tahtası', 'Kamera isteğe bağlı', 'Haftalık lig', 'Dersler ve hedefler', 'Oda sohbeti', 'Ortam sesleri'];
 
 const stepShots = [
   { src: '/landing/oda-kategoriler.webp', width: 1200, height: 168, alt: 'Odalar sayfası: oda arama kutusu ve Bilgisayar Bilimi, Tıp ve Sağlık, Hukuk, Sınav Hazırlık gibi konu filtreleri.' },

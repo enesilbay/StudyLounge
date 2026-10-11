@@ -61,7 +61,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Yüksek | Çalışma oturumu geçmişi + dersler | Kullanıcı kendi derslerini (ad + renk) oluşturur (`Subject`). Her odak oturumu ayrı kaydedilir (`StudySession`: başlangıç, bitiş, süre, oda, ders). Analitik sayfasına ders dağılımı, oturum geçmişi ve aylık ısı haritası eklenir. Mobilin kullandığı `DailyAnalytics` aynen güncellenmeye devam eder. |
 | Yüksek | Günlük/haftalık hedefler | Kullanıcı ayarlarda hedef belirler (`dailyGoalMinutes`, `weeklyGoalMinutes`, varsayılan kapalı). İlerleme halkası gösterilir; hedef tutulunca günde bir kez bonus coin verilir. |
 | Orta | Odada görev listesi | Kişisel yapılacaklar listesi (`Task`). Odada yan panelde "bu turda ne yapacağım" yazılır; istenirse odada sohbet mesajı olarak paylaşılır. |
-| Orta | Planlı çalışma oturumları | Arkadaşlarla ileri tarihli oturum planlama ve davet (`ScheduledSession`). Başlamadan 10 dk önce hatırlatma gider (`@nestjs/schedule`); mobil için mevcut push altyapısı kullanılır. |
+| Orta | Planlı çalışma oturumları | Web'den kaldırıldı (kullanıcı kararı, Ekim 2026): arayüz, bildirimler ve rozet çıkarıldı. Backend'deki `ScheduledSession` uç noktaları, tablo ve hatırlatma görevi henüz duruyor; tamamen silinmesi ayrı bir iş (migration gerekir). |
 
 ### Faz 3: Sosyal özellikler ve görsel yenileme ✅ (tamamlandı, `faz-3` dalı)
 

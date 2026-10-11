@@ -341,6 +341,11 @@
   --color-mb-tint: #e3efed;
   /* Lamba ışığı: yalnızca logodaki ışık ve lamba ışıması için. */
   --color-mb-lamp: #ffd27a;
+  /* Uygulama katmanları: kart yüzeyi, koyu (dolu) düğme ve doluluk çubuğu. Koyu temada .sl-yeni içinde değişir. */
+  --color-mb-card: #ffffff;
+  --color-mb-solid: #000000;
+  --color-mb-on-solid: #ffffff;
+  --color-mb-meter: #000000;
 
   --font-mb-display: "Geist", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mb-body: "Poppins", "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -392,72 +397,102 @@
   outline-color: var(--sl-primary);
 }
 
+/* Premium rozeti yeni kimlikte sarı değil, sade koyu bir rozet. */
+.sl-yeni [data-premium-rozet] {
+  background: var(--color-mb-solid);
+  color: var(--color-mb-on-solid);
+  border-color: var(--color-mb-bg);
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .sl-yeni {
     color-scheme: dark;
-    --sl-bg: #0f1312;
-    --sl-surface: #161b1a;
-    --sl-sunken: #1d2423;
-    --sl-border: #2a3331;
-    --sl-ink: #f2f4f3;
-    --sl-muted: #a2aba8;
-    --sl-primary: #4fbfb0;
-    --sl-primary-strong: #6fd0c3;
-    --sl-primary-soft: rgb(79 191 176 / 0.14);
-    --sl-on-primary: #04201d;
-    --sl-sea: #4fbfb0;
+    --sl-bg: #0c0d0d;
+    --sl-surface: #141516;
+    --sl-sunken: #1d1f21;
+    --sl-border: #26282a;
+    --sl-ink: #ededec;
+    --sl-muted: #9c9fa1;
+    --sl-primary: #1f7f73;
+    --sl-primary-strong: #248c7f;
+    --sl-primary-soft: rgb(31 127 115 / 0.18);
+    --sl-on-primary: #ffffff;
+    --sl-sea: #3fae9f;
     --sl-blush: #ffd27a;
-    --sl-blush-ink: #ffd27a;
-    --sl-blush-soft: rgb(255 210 122 / 0.14);
+    --sl-blush-ink: #e9c27a;
+    --sl-blush-soft: rgb(255 210 122 / 0.12);
     --sl-on-blush: #1a1200;
-    --sl-lamp: rgb(255 210 122 / 0.22);
-    --sl-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px rgb(0 0 0 / 0.3);
-    --color-mb-bg: #0f1312;
-    --color-mb-surface: #161b1a;
-    --color-mb-band: #1d2423;
-    --color-mb-ink: #f2f4f3;
-    --color-mb-body: #a2aba8;
-    --color-mb-line: #2a3331;
-    --color-mb-grid: #ffffff0a;
-    --color-mb-action: #4fbfb0;
-    --color-mb-action-2: #6fd0c3;
-    --color-mb-on-action: #04201d;
-    --color-mb-tint: rgb(79 191 176 / 0.14);
-    --shadow-mb-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 20px rgb(0 0 0 / 0.25);
+    --sl-lamp: rgb(255 210 122 / 0.16);
+    --sl-shadow: 0 0 0 1px #26282a;
+    --color-mb-bg: #0c0d0d;
+    --color-mb-surface: #111213;
+    --color-mb-band: #161719;
+    --color-mb-card: #1d1f21;
+    --color-mb-ink: #ededec;
+    --color-mb-body: #9c9fa1;
+    --color-mb-line: #26282a;
+    --color-mb-grid: #ffffff08;
+    --color-mb-action: #1f7f73;
+    --color-mb-action-2: #248c7f;
+    --color-mb-on-action: #ffffff;
+    --color-mb-tint: rgb(31 127 115 / 0.18);
+    --color-mb-solid: #232527;
+    --color-mb-on-solid: #ededec;
+    --color-mb-meter: #3fae9f;
+    --shadow-mb-card: 0 0 0 1px #26282a;
+    --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
+    --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
   }
 }
 
 :root[data-theme="dark"] .sl-yeni {
   color-scheme: dark;
-  --sl-bg: #0f1312;
-  --sl-surface: #161b1a;
-  --sl-sunken: #1d2423;
-  --sl-border: #2a3331;
-  --sl-ink: #f2f4f3;
-  --sl-muted: #a2aba8;
-  --sl-primary: #4fbfb0;
-  --sl-primary-strong: #6fd0c3;
-  --sl-primary-soft: rgb(79 191 176 / 0.14);
-  --sl-on-primary: #04201d;
-  --sl-sea: #4fbfb0;
+  --sl-bg: #0c0d0d;
+  --sl-surface: #141516;
+  --sl-sunken: #1d1f21;
+  --sl-border: #26282a;
+  --sl-ink: #ededec;
+  --sl-muted: #9c9fa1;
+  --sl-primary: #1f7f73;
+  --sl-primary-strong: #248c7f;
+  --sl-primary-soft: rgb(31 127 115 / 0.18);
+  --sl-on-primary: #ffffff;
+  --sl-sea: #3fae9f;
   --sl-blush: #ffd27a;
-  --sl-blush-ink: #ffd27a;
-  --sl-blush-soft: rgb(255 210 122 / 0.14);
+  --sl-blush-ink: #e9c27a;
+  --sl-blush-soft: rgb(255 210 122 / 0.12);
   --sl-on-blush: #1a1200;
-  --sl-lamp: rgb(255 210 122 / 0.22);
-  --sl-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px rgb(0 0 0 / 0.3);
-  --color-mb-bg: #0f1312;
-  --color-mb-surface: #161b1a;
-  --color-mb-band: #1d2423;
-  --color-mb-ink: #f2f4f3;
-  --color-mb-body: #a2aba8;
-  --color-mb-line: #2a3331;
-  --color-mb-grid: #ffffff0a;
-  --color-mb-action: #4fbfb0;
-  --color-mb-action-2: #6fd0c3;
-  --color-mb-on-action: #04201d;
-  --color-mb-tint: rgb(79 191 176 / 0.14);
-  --shadow-mb-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 20px rgb(0 0 0 / 0.25);
+  --sl-lamp: rgb(255 210 122 / 0.16);
+  --sl-shadow: 0 0 0 1px #26282a;
+  --color-mb-bg: #0c0d0d;
+  --color-mb-surface: #111213;
+  --color-mb-band: #161719;
+  --color-mb-card: #1d1f21;
+  --color-mb-ink: #ededec;
+  --color-mb-body: #9c9fa1;
+  --color-mb-line: #26282a;
+  --color-mb-grid: #ffffff08;
+  --color-mb-action: #1f7f73;
+  --color-mb-action-2: #248c7f;
+  --color-mb-on-action: #ffffff;
+  --color-mb-tint: rgb(31 127 115 / 0.18);
+  --color-mb-solid: #232527;
+  --color-mb-on-solid: #ededec;
+  --color-mb-meter: #3fae9f;
+  --shadow-mb-card: 0 0 0 1px #26282a;
+  --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* Uygulama: yanan lambanın yavaş nefesi (Odalar kartları ve canlı şerit). */
+@keyframes sl-lamba {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 /* Açılış sayfası: lamba yanışı ve tahtaya çizilen kalem (tek açılış sırası). */

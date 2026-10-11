@@ -125,7 +125,7 @@ export function Avatar({
         <span aria-hidden="true">{initial}</span>
       )}
       {premium ? (
-        <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2 border-surface bg-accent text-onAccent" title="Premium">
+        <span data-premium-rozet className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2 border-surface bg-accent text-onAccent" title="Premium">
           <Crown className="h-2.5 w-2.5" />
         </span>
       ) : null}

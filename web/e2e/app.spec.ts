@@ -39,7 +39,7 @@ test.describe('giriş', () => {
     await page.getByRole('button', { name: 'Giriş yap' }).click()
     await expect(page).toHaveURL(/\/app\/lobbies/)
     await expect(page.getByText(ROOM)).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Planlı oturumlar' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Pano' })).toBeVisible()
   })
 
   test('kullanıcı adıyla da giriş yapılır', async ({ page }) => {

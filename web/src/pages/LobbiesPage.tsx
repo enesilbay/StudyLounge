@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, LazyMotion, MotionConfig, animate, domAnimation, m, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Columns3, Crown, List, LockKeyhole, Plus, Search, UserPlus, Users, Video, type LucideIcon } from 'lucide-react';
+import { Columns3, Crown, List, LockKeyhole, Plus, Search, UserPlus, Users, Video, type LucideIcon } from 'lucide-react';
 import { Button, ModalShell, Notice, StateBlock, TextField, Toggle } from '../components/ui';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Lobby } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import PlansSection from '../components/plans/PlansSection';
 import { OnboardingCard } from '../components/onboarding/OnboardingCard';
 import { ROOM_CATEGORIES, ROOM_FILTER_CATEGORIES } from '../lib/roomCategories';
 
@@ -87,7 +87,6 @@ export default function LobbiesPage() {
 
   const totalInRooms = lobbies.reduce((sum, lobby) => sum + (lobby.memberCount ?? 0), 0);
   const totalFocused = lobbies.reduce((sum, lobby) => sum + (lobby.activeUsers ?? 0), 0);
-  const firstName = user?.fullName?.split(' ')[0] ?? 'Hoş geldin';
 
   const openCreate = () => {
     if (!user?.isPremium) {
@@ -172,20 +171,13 @@ export default function LobbiesPage() {
   };
 
   return (
+    // Animasyonlar yalnızca bu sayfada; "hareketi azalt" açıkken MotionConfig hepsini durdurur.
+    <LazyMotion features={domAnimation} strict>
+    <MotionConfig reducedMotion="user">
     <div>
-      <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-sm text-mb-body">
-            StudyLounge <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /> <span className="font-medium text-mb-ink">Odalar</span>
-          </p>
-          <h1 className="mt-2 font-mb-display text-[2rem] font-light leading-tight tracking-[-0.04em] text-mb-ink md:text-[2.5rem]">{firstName}, hangi masaya oturuyorsun?</h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-mb-body md:text-base">
-            {totalInRooms > 0
-              ? `${lobbies.length} odada ${totalInRooms} kişi var, ${totalFocused > 0 ? `${totalFocused} kişinin lambası şu an yanıyor.` : 'şu an kimse odaklanmıyor.'}`
-              : 'Odalar şu an sessiz. İlk lambayı sen yak.'}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-mb-display text-[2rem] font-light leading-tight tracking-[-0.04em] text-mb-ink md:text-[2.25rem]">Odalar</h1>
+        <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={openCreate} className={user?.isPremium ? darkButton : outlineButton}>
             {user?.isPremium ? <Plus className="h-4 w-4" /> : <Crown className="h-4 w-4 text-mb-action" />}
             {user?.isPremium ? 'Oda kur' : 'Oda kurmak için Premium'}
@@ -197,13 +189,14 @@ export default function LobbiesPage() {
         </div>
       </header>
 
-      <div className="mt-8">
+      <LiveBanner rooms={lobbies.length} people={totalInRooms} lit={Math.min(totalFocused, totalInRooms)} ready={!isLoading} />
+
+      <div className="mt-6">
         <OnboardingCard roomListId="oda-listesi" />
-        <PlansSection lobbies={lobbies} />
       </div>
 
       {/* Görünüm sekmeleri */}
-      <div className="flex items-end justify-between gap-4 border-b border-mb-line">
+      <div className="mt-2 flex items-end justify-between gap-4 border-b border-mb-line">
         <div role="tablist" aria-label="Oda görünümü" className="flex gap-1">
           {views.map((option) => (
             <button
@@ -213,7 +206,7 @@ export default function LobbiesPage() {
               aria-selected={view === option.value}
               onClick={() => setView(option.value)}
               className={`-mb-px flex min-h-11 items-center gap-2 border-b-2 px-3 text-[15px] font-medium transition ${
-                view === option.value ? 'border-mb-action text-mb-action' : 'border-transparent text-mb-body hover:text-mb-ink'
+                view === option.value ? 'border-mb-action text-mb-ink' : 'border-transparent text-mb-body hover:text-mb-ink'
               }`}
             >
               <option.icon className="h-4 w-4" />
@@ -221,20 +214,19 @@ export default function LobbiesPage() {
             </button>
           ))}
         </div>
-        <p className="hidden pb-3 text-sm text-mb-body sm:block">{visibleLobbies.length} oda gösteriliyor</p>
       </div>
 
       <section id="oda-listesi" aria-label="Odalar" className="mt-5 scroll-mt-20 rounded-[24px] bg-mb-surface p-3 md:p-4">
         {/* Arama: odaların hemen üstünde */}
         <div className="flex flex-col gap-2 sm:flex-row">
-          <label className="flex min-h-12 flex-1 items-center gap-2.5 rounded-[14px] border border-mb-line bg-mb-bg px-4 transition focus-within:border-mb-action">
+          <label className="flex min-h-12 flex-1 items-center gap-2.5 rounded-[14px] border border-mb-line bg-mb-card px-4 transition focus-within:border-mb-action">
             <Search className="h-[18px] w-[18px] shrink-0 text-mb-body" />
             <span className="sr-only">Oda ara</span>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Oda adı ya da konu ara" className="w-full bg-transparent text-[15px] text-mb-ink outline-none placeholder:text-mb-body" />
           </label>
-          <label className="flex min-h-12 items-center gap-2 rounded-[14px] border border-mb-line bg-mb-bg pl-4 pr-2 transition focus-within:border-mb-action">
+          <label className="flex min-h-12 items-center gap-2 rounded-[14px] border border-mb-line bg-mb-card pl-4 pr-2 transition focus-within:border-mb-action">
             <span className="text-sm text-mb-body">Kategori</span>
-            <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="min-h-10 bg-transparent pr-1 text-[15px] font-medium text-mb-ink outline-none">
+            <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="min-h-10 bg-transparent pr-1 text-[15px] font-medium text-mb-ink outline-none [&>option]:bg-mb-card">
               {categories.map((category) => (
                 <option key={category}>{category}</option>
               ))}
@@ -254,23 +246,24 @@ export default function LobbiesPage() {
           </div>
         ) : null}
 
+        <AnimatePresence mode="wait" initial={false}>
         {!isLoading && visibleLobbies.length > 0 && view === 'board' ? (
-          <div className="scrollbar-hide -mx-3 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
-            {columns.map((column) => {
+          <m.div key="pano" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }} className="scrollbar-hide -mx-3 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
+            {columns.map((column, columnIndex) => {
               const rooms = visibleLobbies.filter((lobby) => roomKind(lobby) === column.kind);
               return (
                 <section key={column.kind} aria-labelledby={`sutun-${column.kind}`} className="flex w-[85%] shrink-0 snap-start flex-col rounded-[18px] bg-mb-band/70 p-2.5 sm:w-[60%] md:w-auto">
                   <header className="flex items-center gap-2.5 px-1.5 pb-3 pt-1">
-                    <span className={`grid h-7 w-7 place-items-center rounded-[8px] ${column.tone}`}>
+                    <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-mb-card text-mb-body shadow-mb-card">
                       <column.icon className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <h2 id={`sutun-${column.kind}`} className="font-mb-display text-[15px] font-medium tracking-[-0.01em] text-mb-ink">{column.title}</h2>
-                    <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-[7px] bg-mb-bg px-1.5 text-xs font-semibold text-mb-ink">{rooms.length}</span>
+                    <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-[7px] bg-mb-card px-1.5 text-xs font-semibold tabular-nums text-mb-ink">{rooms.length}</span>
                   </header>
                   {rooms.length > 0 ? (
                     <ul className="space-y-2.5">
-                      {rooms.map((lobby) => (
-                        <RoomCard key={lobby.id} lobby={lobby} kind={column.kind} friends={friends} isPremium={!!user?.isPremium} onEnter={enterLobby} />
+                      {rooms.map((lobby, index) => (
+                        <RoomCard key={lobby.id} lobby={lobby} kind={column.kind} friends={friends} isPremium={!!user?.isPremium} onEnter={enterLobby} delay={columnIndex * 0.06 + index * 0.05} />
                       ))}
                     </ul>
                   ) : (
@@ -279,16 +272,17 @@ export default function LobbiesPage() {
                 </section>
               );
             })}
-          </div>
+          </m.div>
         ) : null}
 
         {!isLoading && visibleLobbies.length > 0 && view === 'list' ? (
-          <ul className="mt-4 divide-y divide-mb-line overflow-hidden rounded-[18px] border border-mb-line bg-mb-bg">
+          <m.ul key="liste" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }} className="mt-4 divide-y divide-mb-line overflow-hidden rounded-[18px] border border-mb-line bg-mb-card">
             {visibleLobbies.map((lobby) => (
               <RoomRow key={lobby.id} lobby={lobby} friends={friends} isPremium={!!user?.isPremium} onEnter={enterLobby} />
             ))}
-          </ul>
+          </m.ul>
         ) : null}
+        </AnimatePresence>
 
         {!isLoading && visibleLobbies.length === 0 ? (
           <div className="mt-4">
@@ -341,6 +335,8 @@ export default function LobbiesPage() {
         </form>
       </ModalShell>
     </div>
+    </MotionConfig>
+    </LazyMotion>
   );
 }
 
@@ -350,11 +346,11 @@ type RoomKind = 'open' | 'video' | 'elite' | 'private';
  * Pano sütunları (oda türüne göre). Bir oda birden çok türe uyabilir; en kısıtlayıcı
  * olana yerleşir (şifreli > Elite > kameralı > herkese açık), diğer türleri kartta etiket olarak görünür.
  */
-const columns: Array<{ kind: RoomKind; title: string; icon: LucideIcon; tone: string; empty: string }> = [
-  { kind: 'open', title: 'Herkese açık', icon: Users, tone: 'bg-mb-tint text-mb-action', empty: 'Herkese açık oda yok.' },
-  { kind: 'video', title: 'Kameralı', icon: Video, tone: 'bg-softInfo text-info', empty: 'Kameralı oda yok.' },
-  { kind: 'elite', title: 'Elite', icon: Crown, tone: 'bg-lightAmber text-accentDark', empty: 'Elite oda yok.' },
-  { kind: 'private', title: 'Şifreli', icon: LockKeyhole, tone: 'bg-mb-bg text-mb-ink', empty: 'Şifreli oda yok.' },
+const columns: Array<{ kind: RoomKind; title: string; icon: LucideIcon; empty: string }> = [
+  { kind: 'open', title: 'Herkese açık', icon: Users, empty: 'Herkese açık oda yok.' },
+  { kind: 'video', title: 'Kameralı', icon: Video, empty: 'Kameralı oda yok.' },
+  { kind: 'elite', title: 'Elite', icon: Crown, empty: 'Elite oda yok.' },
+  { kind: 'private', title: 'Şifreli', icon: LockKeyhole, empty: 'Şifreli oda yok.' },
 ];
 
 function roomKind(lobby: Lobby): RoomKind {
@@ -379,8 +375,8 @@ function readView(): 'board' | 'list' {
   }
 }
 
-const darkButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] bg-mb-ink px-4 text-[15px] font-medium text-mb-bg shadow-mb-raised transition hover:-translate-y-0.5 active:translate-y-0';
-const outlineButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] border border-mb-line bg-mb-bg px-4 text-[15px] font-medium text-mb-ink transition hover:bg-mb-surface';
+const darkButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] bg-mb-solid px-4 text-[15px] font-medium text-mb-on-solid shadow-mb-raised transition hover:-translate-y-0.5 active:translate-y-0';
+const outlineButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] border border-mb-line bg-mb-card px-4 text-[15px] font-medium text-mb-ink transition hover:bg-mb-surface';
 
 type RoomProps = { lobby: Lobby; friends: FriendPresence[]; isPremium: boolean; onEnter: (lobby: Lobby) => void };
 
@@ -426,11 +422,17 @@ function RoomTags({ lobby, kind }: { lobby: Lobby; kind?: RoomKind }) {
   );
 }
 
-function RoomCard({ lobby, kind, friends, isPremium, onEnter }: RoomProps & { kind: RoomKind }) {
+function RoomCard({ lobby, kind, friends, isPremium, onEnter, delay = 0 }: RoomProps & { kind: RoomKind; delay?: number }) {
   const info = useRoomInfo({ lobby, friends, isPremium });
   const ratio = info.capacity ? Math.min(1, info.members / info.capacity) : 0;
   return (
-    <li className="rounded-[16px] bg-mb-bg p-4 shadow-mb-card transition duration-200 hover:-translate-y-0.5 hover:shadow-mb-raised">
+    <m.li
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-[16px] bg-mb-card p-4 shadow-mb-card transition-shadow duration-200 hover:shadow-mb-raised"
+    >
       <RoomTags lobby={lobby} kind={kind} />
       <h3 className="mt-3 font-mb-display text-[17px] font-medium leading-snug tracking-[-0.02em] text-mb-ink">{lobby.name}</h3>
       <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-mb-body">{lobby.description || 'Sessiz, odaklı bir çalışma masası.'}</p>
@@ -449,12 +451,17 @@ function RoomCard({ lobby, kind, friends, isPremium, onEnter }: RoomProps & { ki
           </span>
         </div>
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-mb-line" aria-hidden="true">
-          <div className="h-full rounded-full bg-mb-ink transition-[width] duration-500" style={{ width: `${Math.max(ratio * 100, info.members ? 4 : 0)}%` }} />
+          <m.div
+            className="h-full rounded-full bg-mb-meter"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.max(ratio * 100, info.members ? 4 : 0)}%` }}
+            transition={{ duration: 0.8, delay: delay + 0.2, ease: [0.16, 1, 0.3, 1] }}
+          />
         </div>
       </div>
 
       <EnterButton label={info.action} locked={info.locked} disabled={info.full} onClick={() => onEnter(lobby)} className="mt-4 w-full" />
-    </li>
+    </m.li>
   );
 }
 
@@ -507,10 +514,104 @@ function LampRow({ total, lit }: { total: number; lit: number }) {
       {Array.from({ length: shown }, (_, index) => (
         <span
           key={index}
-          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-accent shadow-[0_0_8px_var(--sl-blush)]' : 'border border-mb-body/50'}`}
+          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-accent shadow-[0_0_8px_var(--sl-blush)] motion-safe:animate-[sl-lamba_2.6s_ease-in-out_infinite]' : 'border border-mb-body/50'}`}
         />
       ))}
       {total > MAX_LAMPS ? <span className="ml-0.5 text-xs">+{total - MAX_LAMPS}</span> : null}
     </span>
+  );
+}
+
+/**
+ * Planlı oturumların yerinde duran canlı şerit: üç sayı, süzülen 3B lamba ve
+ * ışığında yükselen toz zerreleri. Sayılar açılışta sayarak gelir.
+ */
+function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: number; lit: number; ready: boolean }) {
+  const reduce = useReducedMotion();
+  return (
+    <section aria-label="Şu an odalarda" className="relative mt-6 overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
+      {/* Lamba ışığı: yanan lamba varsa daha güçlü, yavaşça nefes alır */}
+      <m.div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-16 -top-24 h-[22rem] w-[30rem] rounded-full blur-3xl"
+        style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-lamp) 55%, transparent), transparent)' }}
+        initial={{ opacity: 0.35 }}
+        animate={reduce ? { opacity: lit > 0 ? 0.7 : 0.35 } : { opacity: lit > 0 ? [0.55, 0.85, 0.55] : [0.3, 0.42, 0.3] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-96 rounded-full opacity-60 blur-3xl"
+        style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 70%, transparent), transparent)' }}
+      />
+      {reduce ? null : <Motes />}
+
+      <div className="relative flex items-center justify-between gap-4 px-5 py-6 md:px-8 md:py-7">
+        <dl className="grid grid-cols-3 gap-4 sm:gap-10">
+          <Stat value={rooms} label="oda açık" ready={ready} />
+          <Stat value={people} label="kişi masada" ready={ready} />
+          <Stat value={lit} label="lamba yanıyor" ready={ready} lamp />
+        </dl>
+        <m.img
+          src="/landing/3b/lamba.webp"
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className="pointer-events-none relative -my-4 hidden w-28 shrink-0 select-none drop-shadow-[0_18px_30px_rgb(0_0_0/0.35)] sm:block md:w-36"
+          animate={{ y: [0, -8, 0], rotate: [-3, -1, -3] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+    </section>
+  );
+}
+
+function Stat({ value, label, ready, lamp = false }: { value: number; label: string; ready: boolean; lamp?: boolean }) {
+  const count = useMotionValue(0);
+  const shown = useTransform(count, (latest) => Math.round(latest).toLocaleString('tr-TR'));
+  useEffect(() => {
+    if (!ready) return;
+    const controls = animate(count, value, { duration: 1.1, ease: [0.16, 1, 0.3, 1] });
+    return () => controls.stop();
+  }, [count, value, ready]);
+  return (
+    // Etiket telefonda iki satıra kırılabilir; sayılar yine de alt çizgide hizalı kalır.
+    <div className="flex min-w-0 flex-col justify-between">
+      <dt className="flex items-center gap-1.5 text-[13px] leading-snug text-mb-on-solid/70">
+        {lamp ? <span aria-hidden="true" className={`h-2 w-2 rounded-full ${value > 0 ? 'bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)] motion-safe:animate-[sl-lamba_2.6s_ease-in-out_infinite]' : 'bg-mb-on-solid/30'}`} /> : null}
+        {label}
+      </dt>
+      <dd className="mt-2 font-mb-display text-[2rem] font-light leading-none tracking-[-0.04em] tabular-nums md:text-[2.75rem]">
+        {ready ? <m.span>{shown}</m.span> : '–'}
+      </dd>
+    </div>
+  );
+}
+
+/** Lamba ışığında yavaşça yükselen toz zerreleri (konumlar sabit, rastgele değil). */
+const motes = [
+  { left: '58%', size: 3, delay: 0, duration: 7 },
+  { left: '66%', size: 2, delay: 1.6, duration: 8 },
+  { left: '72%', size: 3, delay: 3.1, duration: 6.5 },
+  { left: '79%', size: 2, delay: 0.8, duration: 9 },
+  { left: '85%', size: 2, delay: 2.4, duration: 7.5 },
+  { left: '62%', size: 2, delay: 4.2, duration: 8.5 },
+  { left: '90%', size: 3, delay: 5, duration: 7 },
+];
+
+function Motes() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {motes.map((mote, index) => (
+        <m.span
+          key={index}
+          className="absolute bottom-0 rounded-full bg-mb-lamp"
+          style={{ left: mote.left, width: mote.size, height: mote.size }}
+          initial={{ y: 0, opacity: 0 }}
+          animate={{ y: [-4, -150], opacity: [0, 0.8, 0] }}
+          transition={{ duration: mote.duration, delay: mote.delay, repeat: Infinity, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
   );
 }
