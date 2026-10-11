@@ -354,6 +354,112 @@
   --container-mb: 82.5rem;
 }
 
+/*
+ * Yeni kimliğe (docs/brand/marka-rehberi.md) geçirilmiş uygulama alanları:
+ * sol menü, üst çubuk ve geçirilen sayfalar bu sınıfı taşır. Eski bileşenler
+ * (ui.tsx) --sl-* değişkenlerinden boyandığı için burada yeni paletle ezilir;
+ * sınıfın dışındaki sayfalar eski renklerinde kalır. Koyu tema da kapsama dahildir.
+ */
+.sl-yeni {
+  --sl-bg: #ffffff;
+  --sl-surface: #ffffff;
+  --sl-sunken: #f4f4f4;
+  --sl-border: #e2e2e2;
+  --sl-ink: #000000;
+  --sl-muted: #5c5c5c;
+  --sl-primary: #055049;
+  --sl-primary-strong: #1a746c;
+  --sl-primary-soft: #e3efed;
+  --sl-on-primary: #ffffff;
+  --sl-sea: #1a746c;
+  /* Lamba ışığı: "odakta" durumu ve Premium vurgusu */
+  --sl-blush: #ffd27a;
+  --sl-blush-ink: #7a4f00;
+  --sl-blush-soft: #fff3d6;
+  --sl-on-blush: #000000;
+  --sl-lamp: rgb(255 210 122 / 0.45);
+  --sl-shadow: 6px 6px 16px 0 rgb(16 25 24 / 0.06);
+  --font-display: var(--font-mb-display);
+  font-family: var(--font-mb-body);
+  color: var(--sl-ink);
+}
+
+.sl-yeni :where(h1, h2, h3) {
+  letter-spacing: -0.03em;
+}
+
+.sl-yeni :focus-visible {
+  outline-color: var(--sl-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sl-yeni {
+    color-scheme: dark;
+    --sl-bg: #0f1312;
+    --sl-surface: #161b1a;
+    --sl-sunken: #1d2423;
+    --sl-border: #2a3331;
+    --sl-ink: #f2f4f3;
+    --sl-muted: #a2aba8;
+    --sl-primary: #4fbfb0;
+    --sl-primary-strong: #6fd0c3;
+    --sl-primary-soft: rgb(79 191 176 / 0.14);
+    --sl-on-primary: #04201d;
+    --sl-sea: #4fbfb0;
+    --sl-blush: #ffd27a;
+    --sl-blush-ink: #ffd27a;
+    --sl-blush-soft: rgb(255 210 122 / 0.14);
+    --sl-on-blush: #1a1200;
+    --sl-lamp: rgb(255 210 122 / 0.22);
+    --sl-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px rgb(0 0 0 / 0.3);
+    --color-mb-bg: #0f1312;
+    --color-mb-surface: #161b1a;
+    --color-mb-band: #1d2423;
+    --color-mb-ink: #f2f4f3;
+    --color-mb-body: #a2aba8;
+    --color-mb-line: #2a3331;
+    --color-mb-grid: #ffffff0a;
+    --color-mb-action: #4fbfb0;
+    --color-mb-action-2: #6fd0c3;
+    --color-mb-on-action: #04201d;
+    --color-mb-tint: rgb(79 191 176 / 0.14);
+    --shadow-mb-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 20px rgb(0 0 0 / 0.25);
+  }
+}
+
+:root[data-theme="dark"] .sl-yeni {
+  color-scheme: dark;
+  --sl-bg: #0f1312;
+  --sl-surface: #161b1a;
+  --sl-sunken: #1d2423;
+  --sl-border: #2a3331;
+  --sl-ink: #f2f4f3;
+  --sl-muted: #a2aba8;
+  --sl-primary: #4fbfb0;
+  --sl-primary-strong: #6fd0c3;
+  --sl-primary-soft: rgb(79 191 176 / 0.14);
+  --sl-on-primary: #04201d;
+  --sl-sea: #4fbfb0;
+  --sl-blush: #ffd27a;
+  --sl-blush-ink: #ffd27a;
+  --sl-blush-soft: rgb(255 210 122 / 0.14);
+  --sl-on-blush: #1a1200;
+  --sl-lamp: rgb(255 210 122 / 0.22);
+  --sl-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px rgb(0 0 0 / 0.3);
+  --color-mb-bg: #0f1312;
+  --color-mb-surface: #161b1a;
+  --color-mb-band: #1d2423;
+  --color-mb-ink: #f2f4f3;
+  --color-mb-body: #a2aba8;
+  --color-mb-line: #2a3331;
+  --color-mb-grid: #ffffff0a;
+  --color-mb-action: #4fbfb0;
+  --color-mb-action-2: #6fd0c3;
+  --color-mb-on-action: #04201d;
+  --color-mb-tint: rgb(79 191 176 / 0.14);
+  --shadow-mb-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 20px rgb(0 0 0 / 0.25);
+}
+
 /* Açılış sayfası: lamba yanışı ve tahtaya çizilen kalem (tek açılış sırası). */
 @keyframes lp-lamp-on {
   from {

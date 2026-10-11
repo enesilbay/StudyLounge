@@ -4,6 +4,13 @@ Projenin ana renkleri, yazı tipleri ve tipografisi açılış sayfasınınkiler
 
 Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır. Bütün web sayfaları bu kimliği kullanır; uygulama sayfaları (`/app/...`, giriş, yönetim paneli) adım adım bu kimliğe taşınıyor. Mobil uygulama (`mobile/`) değişmez.
 
+## Uygulama sayfalarını taşıma
+
+- Sol menü ve üst çubuk (`web/src/components/Layout/AppLayout.tsx`) her sayfada yeni kimliktedir. Sol menü daraltılabilir; tercih tarayıcıda hatırlanır.
+- Yeni kimliğe geçirilen sayfalar `AppLayout.tsx` içindeki `NEW_DESIGN_PATHS` listesine eklenir. Bu sayfalarda içerik alanı `.sl-yeni` sınıfını taşır.
+- `.sl-yeni` (`web/src/index.css`) eski bileşenlerin (`ui.tsx`: düğme, form, modal) `--sl-*` değişkenlerini yeni paletle ezer ve koyu temayı da tanımlar. Böylece geçirilen sayfada eski bileşenler de yeni renklerle görünür; diğer sayfalar etkilenmez.
+- Taşınan sayfalar: Odalar (`/app/lobbies`).
+
 ## Renkler
 
 Zemin beyaz ve açık gri, yazı siyah, tek vurgu rengi koyu orman yeşili. Sayfanın büyük kısmı nötr kalır; yeşil yalnızca eylem ve "odakta" anlamı taşıyan yerlerde görünür.
