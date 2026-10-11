@@ -1,6 +1,6 @@
 import { m, useReducedMotion } from 'framer-motion';
 import { lpBox } from './styles';
-import { useEnterProgress, useRange } from './useMotion';
+import { useMediaQuery, useRange, useShotProgress } from './useMotion';
 
 /*
  * Girişteki gerçek oda ekran görüntüsü (yerelde demo hesaplarla alındı):
@@ -27,15 +27,19 @@ const notes = [
 export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft' }) {
   const soft = variant === 'soft';
   const reduce = useReducedMotion();
-  const { ref, progress } = useEnterProgress<HTMLDivElement>();
-  const rotateX = useRange(progress, 14, 0);
-  const scale = useRange(progress, 0.92, 1);
+  // Didasko'dan ölçülen değerler: 25° yatık ve %90 boyuttan, doğrusal olarak düz ve %100'e;
+  // perspektif 1200px, dönme merkezi görselin ortası. Didasko gibi telefonda (810px altı) kapalı.
+  const wide = useMediaQuery('(min-width: 810px)');
+  const tilt = !reduce && wide;
+  const { ref, progress } = useShotProgress<HTMLDivElement>();
+  const rotateX = useRange(progress, 25, 0);
+  const scale = useRange(progress, 0.9, 1);
 
   return (
     <figure className="m-0">
-      <div ref={ref} className="relative [perspective:1600px]">
+      <div ref={ref} className="relative">
         <m.div
-          style={reduce ? undefined : { rotateX, scale, transformOrigin: '50% 0%' }}
+          style={tilt ? { rotateX, scale, transformPerspective: 1200 } : undefined}
           className={soft ? 'relative overflow-hidden rounded-[24px] border-4 border-mb-bg bg-mb-bg shadow-mb-shot' : `${lpBox} relative overflow-hidden bg-lp-card shadow-lp-lg md:shadow-lp-xl`}
         >
           {/* Tarayıcı çubuğu */}

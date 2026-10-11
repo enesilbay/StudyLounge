@@ -98,17 +98,17 @@ export default function LandingPage() {
                 <p className="mt-5 text-sm text-mb-body">{hero.reassurance}</p>
               </FadeIn>
 
-              <FadeIn delay={0.8} className="relative mx-auto mt-16 max-w-[62.5rem] text-left">
+              <div className="relative mx-auto mt-16 max-w-[62.5rem] text-left">
                 {/* Lamba ışığı: görüntünün arkasında tek sıcak ışık kaynağı */}
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute -inset-x-24 -top-24 bottom-1/3 rounded-full opacity-70 blur-3xl"
                   style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 30%, transparent), transparent)' }}
                 />
-                <Float className="relative" amplitude={8} duration={7}>
+                <div className="relative">
                   <ProductShot variant="soft" />
-                </Float>
-              </FadeIn>
+                </div>
+              </div>
             </MbContainer>
             </Spotlight>
             <FadeIn delay={1.2} className="mt-16">
