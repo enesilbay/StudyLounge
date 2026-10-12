@@ -346,18 +346,12 @@ export default function AuthPage() {
             <p className="mt-5 max-w-md font-mb-display text-[2.25rem] font-light leading-[1.15] tracking-[-0.04em] text-mb-ink">
               Ayrı masalarda, <span className="text-mb-action">aynı lobide.</span>
             </p>
-            <div className="relative mt-6 w-full max-w-[30rem]">
+            <div className="relative mt-6 w-full max-w-[34rem]">
               <div
                 className="absolute inset-x-6 bottom-4 top-10 rounded-full opacity-80 blur-3xl"
                 style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 35%, transparent), transparent)' }}
               />
               <img src={AUTH_SCENE} alt="" draggable={false} className="relative mx-auto w-full select-none motion-safe:animate-[sl-yuz_7s_ease-in-out_infinite]" />
-              <img src="/landing/3b/kitaplar.webp" alt="" draggable={false} className="absolute -left-4 top-6 w-20 -rotate-12 select-none motion-safe:animate-[sl-yuz_6s_ease-in-out_infinite_0.8s]" />
-              <img src="/landing/3b/kum-saati.webp" alt="" draggable={false} className="absolute -right-2 bottom-10 w-12 rotate-6 select-none motion-safe:animate-[sl-yuz_5.5s_ease-in-out_infinite_1.6s]" />
-              {/* Süzülen küçük kareler (referanstaki gibi) */}
-              <span className="absolute left-10 top-0 h-5 w-5 rotate-12 rounded-[6px] border border-mb-line bg-mb-card shadow-mb-card motion-safe:animate-[sl-yuz_5s_ease-in-out_infinite]" />
-              <span className="absolute right-16 top-12 h-3.5 w-3.5 -rotate-12 rounded-[4px] border border-mb-line bg-mb-card shadow-mb-card motion-safe:animate-[sl-yuz_6.5s_ease-in-out_infinite_1s]" />
-              <span className="absolute bottom-2 left-1/3 h-4 w-4 rotate-45 rounded-[5px] bg-mb-tint motion-safe:animate-[sl-yuz_7.5s_ease-in-out_infinite_0.4s]" />
             </div>
           </section>
         </div>
@@ -366,8 +360,8 @@ export default function AuthPage() {
   );
 }
 
-/** Sağdaki sahne. Yeni görsel gelene kadar açılış sayfasındaki masa sahnesi kullanılır. */
-const AUTH_SCENE = '/landing/3b/masa-sahne.webp';
+/** Sağdaki sahne: ayrı masalarda, ortak sayaçla çalışan iki öğrenci. */
+const AUTH_SCENE = '/landing/3b/giris-sahne.webp';
 
 function titleForMode(mode: AuthMode) {
   if (mode === 'register') return 'Kayıt ol';
