@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AnimatePresence, m } from 'framer-motion';
 import { ArrowLeft, Check, Flag, Search, Send, UserPlus, X } from 'lucide-react';
-import { Avatar, Button, Notice, PageHeader, Pill, StateBlock, Surface, ModalShell } from '../components/ui';
+import { Avatar, Notice, ModalShell } from '../components/ui';
+import { AppPage, Card, EmptyState, SegmentedTabs, actionButton, ghostButton, inputClass, solidButton } from '../components/app/Kit';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
@@ -23,9 +25,12 @@ export default function DMPage() {
   const [tab, setTab] = useState<'chats' | 'requests'>('chats');
   const [requestError, setRequestError] = useState<string | null>(null);
   const [respondingId, setRespondingId] = useState<number | null>(null);
+  // Telefonda liste ve sohbet aynı anda sığmaz; sohbet açılınca liste gizlenir.
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const unreadFrom = useInboxStore((state) => state.unreadFrom);
   const friendRequests = useInboxStore((state) => state.friendRequests);
-  
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   // Profil sayfasındaki "Mesaj gönder" bu sohbeti açar (?with=kullanıcıId).
@@ -42,7 +47,9 @@ export default function DMPage() {
       const nextFriends = unwrapData<User[]>(response.data);
       if (!isCancelled()) {
         setFriends(nextFriends);
-        setActiveFriendId((current) => current ?? (nextFriends.some((friend) => friend.id === requestedFriendId) ? requestedFriendId : nextFriends[0]?.id ?? null));
+        const requested = nextFriends.some((friend) => friend.id === requestedFriendId);
+        setActiveFriendId((current) => current ?? (requested ? requestedFriendId : nextFriends[0]?.id ?? null));
+        if (requested) setMobileChatOpen(true);
       }
     } catch {
       if (!isCancelled()) setFriends([]);
@@ -128,10 +135,18 @@ export default function DMPage() {
     };
   }, [activeFriend?.id, user?.id]);
 
+  // Yeni mesajda yalnızca mesaj kutusu kayar (sayfa değil).
+  useEffect(() => {
+    const list = messagesRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
   const filteredFriends = useMemo(() => {
-    const needle = query.toLowerCase();
-    return friends.filter((friend) => `${friend.fullName} ${friend.username ?? ''}`.toLowerCase().includes(needle));
-  }, [friends, query]);
+    const needle = query.toLocaleLowerCase('tr-TR');
+    return friends
+      .filter((friend) => `${friend.fullName} ${friend.username ?? ''}`.toLocaleLowerCase('tr-TR').includes(needle))
+      .sort((a, b) => Number(unreadFrom.includes(b.id)) - Number(unreadFrom.includes(a.id)) || Number(Boolean(b.isOnline)) - Number(Boolean(a.isOnline)));
+  }, [friends, query, unreadFrom]);
 
   const handleSend = () => {
     if (!activeFriend?.id || !messageText.trim()) return;
@@ -142,141 +157,172 @@ export default function DMPage() {
     setMessageText('');
   };
 
+  const openChat = (friendId: number) => {
+    setActiveFriendId(friendId);
+    setMobileChatOpen(true);
+  };
+
   return (
-    <div>
-      <PageHeader
-        eyebrow="Sosyal"
-        title="Arkadaşlarım"
-        description="Arkadaşlarını görebilir ve onlara direkt mesaj gönderebilirsin."
-      />
+    <AppPage
+      title="Arkadaşlar"
+      actions={
+        <button type="button" onClick={() => setAddFriendOpen(true)} className={solidButton}>
+          <UserPlus className="h-4 w-4" />
+          Arkadaş ekle
+        </button>
+      }
+    >
+      <div className="grid h-[calc(100dvh-15rem)] min-h-[30rem] grid-cols-1 gap-4 lg:h-[calc(100dvh-12rem)] lg:grid-cols-[22rem_minmax(0,1fr)]">
+        {/* ── Liste ── */}
+        <Card className={`flex min-h-0 flex-col overflow-hidden ${mobileChatOpen ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="space-y-3 p-4">
+            <label className="relative block">
+              <span className="sr-only">Arkadaş ara</span>
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mb-body" aria-hidden="true" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Arkadaş ara" className={`${inputClass} pl-11`} />
+            </label>
+            <SegmentedTabs
+              label="Arkadaş listesi"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'chats', label: 'Sohbetler' },
+                { value: 'requests', label: 'İstekler', badge: friendRequests.length },
+              ]}
+            />
+          </div>
 
-      <div className="grid h-[calc(100vh-220px)] min-h-[620px] grid-cols-1 gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <Surface className="flex flex-col overflow-hidden">
-          <div className="border-b border-border p-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Arkadaş ara"
-                  className="min-h-11 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-base font-semibold outline-none focus:border-primary"
-                />
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+            {tab === 'requests' ? (
+              <div className="space-y-2 px-2">
+                {requestError ? <Notice tone="danger" onDismiss={() => setRequestError(null)}>{requestError}</Notice> : null}
+                {friendRequests.length === 0 ? <EmptyState image="kahve" title="Bekleyen istek yok" text="Sana gönderilen arkadaşlık istekleri burada görünür." /> : null}
+                <AnimatePresence initial={false}>
+                  {friendRequests.map((request, index) => (
+                    <m.div
+                      key={request.id}
+                      layout={false}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -24 }}
+                      transition={{ duration: 0.3, delay: index * 0.04 }}
+                      className="rounded-[16px] border border-mb-line bg-mb-surface/60 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar name={request.sender.fullName} image={request.sender.avatarUrl} frame={request.sender.equippedProfileFrame} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-mb-ink">{request.sender.fullName}</p>
+                          <p className="truncate text-sm text-mb-body">@{request.sender.username ?? 'kullanici'}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button type="button" className={ghostButton} disabled={respondingId === request.id} onClick={() => void respond(request.id, 'rejected')}>
+                          <X className="h-4 w-4" />
+                          Reddet
+                        </button>
+                        <button type="button" className={`${actionButton} min-h-10 text-sm`} disabled={respondingId === request.id} onClick={() => void respond(request.id, 'accepted')}>
+                          <Check className="h-4 w-4" />
+                          Kabul et
+                        </button>
+                      </div>
+                    </m.div>
+                  ))}
+                </AnimatePresence>
               </div>
-              <button onClick={() => setAddFriendOpen(true)} aria-label="Arkadaş ekle" title="Arkadaş ekle" className="flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-onPrimary hover:bg-secondary">
-                <UserPlus className="h-5 w-5" />
-              </button>
-            </div>
+            ) : (
+              <ul className="space-y-1">
+                {isLoadingFriends ? <FriendSkeleton /> : null}
+                {!isLoadingFriends &&
+                  filteredFriends.map((friend, index) => {
+                    const active = activeFriend?.id === friend.id;
+                    const unread = unreadFrom.includes(friend.id);
+                    return (
+                      <m.li key={friend.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: Math.min(index, 10) * 0.035 }}>
+                        <button
+                          type="button"
+                          onClick={() => openChat(friend.id)}
+                          aria-current={active ? 'true' : undefined}
+                          className={`relative flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors ${active ? 'bg-mb-surface' : 'hover:bg-mb-surface/60'}`}
+                        >
+                          {active ? <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-full bg-mb-action" /> : null}
+                          <span className="relative shrink-0">
+                            <Avatar name={friend.fullName} image={friend.avatarUrl} frame={friend.equippedProfileFrame} size="sm" />
+                            {friend.isOnline ? <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-mb-action ring-2 ring-mb-card" /> : null}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={`block truncate text-[15px] ${unread ? 'font-semibold text-mb-ink' : 'font-medium text-mb-ink'}`}>{friend.fullName}</span>
+                            <span className="block truncate text-[13px] text-mb-body">{friend.isOnline ? 'Çevrim içi' : `${friend.totalFocusMinutes ?? 0} dk odak`}</span>
+                          </span>
+                          {unread ? <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-mb-action" aria-label="Okunmamış mesaj" /> : null}
+                        </button>
+                      </m.li>
+                    );
+                  })}
+              </ul>
+            )}
+            {tab === 'chats' && !isLoadingFriends && filteredFriends.length === 0 ? (
+              <EmptyState
+                image="bos-sandalye"
+                title={friends.length ? 'Bu adla arkadaş yok' : 'Henüz arkadaşın yok'}
+                text={friends.length ? 'Aramayı değiştirip tekrar bak.' : 'Birlikte çalışacağın kişileri ekle; sohbetleriniz burada görünür.'}
+                action={
+                  friends.length ? undefined : (
+                    <button type="button" onClick={() => setAddFriendOpen(true)} className={actionButton}>
+                      <UserPlus className="h-4 w-4" />
+                      Arkadaş ekle
+                    </button>
+                  )
+                }
+              />
+            ) : null}
           </div>
+        </Card>
 
-          <div className="grid grid-cols-2 gap-1 border-b border-border bg-sunken p-1" role="tablist" aria-label="Arkadaş listesi">
-            {(['chats', 'requests'] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={tab === item}
-                onClick={() => setTab(item)}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-md text-[15px] font-semibold transition ${tab === item ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
-              >
-                {item === 'chats' ? 'Sohbetler' : 'İstekler'}
-                {item === 'requests' && friendRequests.length > 0 ? (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-onPrimary">{friendRequests.length}</span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-
-          {tab === 'requests' ? (
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              {requestError ? <Notice tone="danger" onDismiss={() => setRequestError(null)}>{requestError}</Notice> : null}
-              {friendRequests.length === 0 ? <StateBlock title="Bekleyen istek yok" description="Sana gönderilen arkadaşlık istekleri burada görünür." /> : null}
-              {friendRequests.map((request) => (
-                <div key={request.id} className="rounded-lg border border-border bg-surface p-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={request.sender.fullName} image={request.sender.avatarUrl} frame={request.sender.equippedProfileFrame} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-textDark">{request.sender.fullName}</p>
-                      <p className="truncate text-sm text-textMuted">@{request.sender.username ?? 'kullanici'}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" icon={X} disabled={respondingId === request.id} onClick={() => void respond(request.id, 'rejected')}>
-                      Reddet
-                    </Button>
-                    <Button size="sm" icon={Check} loading={respondingId === request.id} onClick={() => void respond(request.id, 'accepted')}>
-                      Kabul et
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-          <div className="flex-1 overflow-y-auto">
-            {isLoadingFriends ? <StateBlock loading title="Arkadaşlar yükleniyor" /> : null}
-            {!isLoadingFriends && filteredFriends.map((friend) => (
-              <button
-                key={friend.id}
-                onClick={() => setActiveFriendId(friend.id)}
-                className={`flex w-full items-center gap-4 border-b border-border p-4 text-left transition-colors ${
-                  activeFriend?.id === friend.id ? 'bg-softIndigo' : 'bg-surface hover:bg-background'
-                }`}
-              >
-                <Avatar name={friend.fullName} image={friend.avatarUrl} frame={friend.equippedProfileFrame} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 font-semibold text-textDark">
-                    <span className="truncate">{friend.fullName}</span>
-                    {unreadFrom.includes(friend.id) ? <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" aria-label="Okunmamış mesaj" /> : null}
-                  </p>
-                  <p className="mt-1 truncate text-base text-textMuted">
-                    {friend.isOnline ? 'Çevrim içi ve çalışmaya hazır' : `${friend.totalFocusMinutes ?? 0} dk odak`}
-                  </p>
-                </div>
-              </button>
-            ))}
-            {!isLoadingFriends && filteredFriends.length === 0 ? <StateBlock title="Arkadaş bulunamadı" description="Arkadaş ekledikçe konuşmalar burada görünecek." /> : null}
-          </div>
-          )}
-        </Surface>
-
-        <Surface className="flex flex-col overflow-hidden">
+        {/* ── Sohbet ── */}
+        <Card className={`min-h-0 flex-col overflow-hidden ${mobileChatOpen ? 'flex' : 'hidden lg:flex'}`}>
           {activeFriend ? (
             <>
-              <div className="flex items-center justify-between border-b border-border bg-surface p-4">
-                <div className="flex items-center gap-4">
-                  <button className="grid h-10 w-10 place-items-center rounded-xl bg-background text-textMuted lg:hidden">
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
-                  <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isPremium} />
-                  <Link to={`/app/u/${activeFriend.id}`} className="min-w-0 hover:underline">
-                    <h2 className="truncate font-semibold text-textDark">{activeFriend.fullName}</h2>
-                    <p className="truncate text-base text-textMuted">@{activeFriend.username ?? 'kullanici'}</p>
-                  </Link>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Pill tone={activeFriend.isOnline ? 'success' : 'neutral'}>{activeFriend.isOnline ? 'Çevrim içi' : 'Çevrim dışı'}</Pill>
-                  <button type="button" onClick={() => setReportOpen(true)} title="Şikayet et" aria-label={`${activeFriend.fullName} kişisini şikayet et`} className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-danger">
-                    <Flag className="h-4 w-4" />
-                  </button>
-                </div>
+              <div className="flex items-center gap-3 border-b border-mb-line px-4 py-3">
+                <button type="button" onClick={() => setMobileChatOpen(false)} aria-label="Arkadaş listesine dön" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-mb-body hover:bg-mb-surface lg:hidden">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <span className="relative shrink-0">
+                  <Avatar name={activeFriend.fullName} image={activeFriend.avatarUrl} frame={activeFriend.equippedProfileFrame} premium={activeFriend.isPremium} size="sm" />
+                  {activeFriend.isOnline ? <span aria-hidden="true" className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-mb-action ring-2 ring-mb-card" /> : null}
+                </span>
+                <Link to={`/app/u/${activeFriend.id}`} className="min-w-0 flex-1 rounded-[8px] hover:underline">
+                  <h2 className="truncate font-mb-display text-[17px] font-medium tracking-[-0.02em] text-mb-ink">{activeFriend.fullName}</h2>
+                  <p className="truncate text-[13px] text-mb-body">{activeFriend.isOnline ? 'Çevrim içi' : `@${activeFriend.username ?? 'kullanici'}`}</p>
+                </Link>
+                <button type="button" onClick={() => setReportOpen(true)} title="Şikayet et" aria-label={`${activeFriend.fullName} kişisini şikayet et`} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-mb-body hover:bg-mb-surface hover:text-danger">
+                  <Flag className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="flex-1 space-y-4 overflow-y-auto bg-background p-5">
-                {isLoadingMessages ? <StateBlock loading title="Mesajlar yükleniyor" /> : null}
-                {!isLoadingMessages && messages.map((message) => {
-                  const senderId = message.senderId ?? message.sender?.id;
-                  const mine = senderId === user?.id;
-                  return (
-                    <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xl rounded-xl px-4 py-3 ${mine ? 'bg-primary text-onPrimary' : 'border border-border bg-surface text-textDark'}`}>
-                        {!mine ? <p className="mb-1 text-base font-semibold text-accentDark">{message.sender?.fullName ?? message.senderName ?? activeFriend.fullName}</p> : null}
-                        <p className="text-base font-semibold leading-6">{message.text}</p>
-                        <p className={`mt-1 text-base font-semibold ${mine ? 'text-white/70' : 'text-textMuted'}`}>{formatTime(message.createdAt)}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {!isLoadingMessages && messages.length === 0 ? <StateBlock title="Henüz mesaj yok" description="İlk mesajı yazarak sohbeti başlat." /> : null}
+              <div ref={messagesRef} className="min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-mb-surface/50 px-4 py-5 md:px-6">
+                {isLoadingMessages ? <p className="py-10 text-center text-sm text-mb-body">Mesajlar yükleniyor…</p> : null}
+                <AnimatePresence initial={false}>
+                  {!isLoadingMessages &&
+                    messages.map((message) => {
+                      const senderId = message.senderId ?? message.sender?.id;
+                      const mine = senderId === user?.id;
+                      return (
+                        <m.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.25 }}
+                          className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-[80%] rounded-[16px] px-3.5 py-2 md:max-w-lg ${mine ? 'rounded-br-[4px] bg-mb-action text-mb-on-action' : 'rounded-bl-[4px] border border-mb-line bg-mb-card text-mb-ink'}`}>
+                            <p className="whitespace-pre-wrap break-words text-[15px] leading-6">{message.text}</p>
+                            <p className={`mt-0.5 text-right text-[11px] ${mine ? 'text-mb-on-action/70' : 'text-mb-body'}`}>{formatTime(message.createdAt)}</p>
+                          </div>
+                        </m.div>
+                      );
+                    })}
+                </AnimatePresence>
+                {!isLoadingMessages && messages.length === 0 ? <EmptyState image="kahve" title="Henüz mesaj yok" text="Bir merhaba yaz; birlikte çalışmak için bir odada buluşun." /> : null}
               </div>
 
               <form
@@ -284,32 +330,22 @@ export default function DMPage() {
                   event.preventDefault();
                   handleSend();
                 }}
-                className="border-t border-border bg-surface p-4"
+                className="flex items-center gap-2 border-t border-mb-line p-3"
               >
-                <div className="flex items-center gap-3">
-                  <input
-                    value={messageText}
-                    onChange={(event) => setMessageText(event.target.value)}
-                    placeholder="Mesaj yaz..."
-                    className="min-h-12 flex-1 rounded-xl border border-border bg-background px-4 text-base font-semibold outline-none focus:border-primary"
-                  />
-                  <button
-                    disabled={!messageText.trim()}
-                    className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-onPrimary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Send className="h-5 w-5" />
-                  </button>
-                </div>
+                <input value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Mesaj yaz" aria-label="Mesaj" className={inputClass} />
+                <button disabled={!messageText.trim()} aria-label="Gönder" className="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-mb-action text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2 disabled:opacity-40">
+                  <Send className="h-4 w-4" />
+                </button>
               </form>
             </>
           ) : (
-            <div className="grid flex-1 place-items-center p-8 text-center">
-              <StateBlock title="Sohbet seçilmedi" description="Arkadaş ekledikçe konuşmalar burada görünecek." />
+            <div className="grid flex-1 place-items-center">
+              <EmptyState image="telefon" title="Sohbet seçilmedi" text="Soldan bir arkadaşını seç ya da yeni arkadaş ekle." />
             </div>
           )}
-        </Surface>
+        </Card>
       </div>
-      
+
       <ModalShell open={addFriendOpen} title="Arkadaş ekle" description="Adını ya da kullanıcı adını yaz, profiline gidip istek gönder." onClose={() => setAddFriendOpen(false)}>
         <div className="min-h-64">
           <UserSearch placeholder="Ad ya da kullanıcı adı" onPick={() => setAddFriendOpen(false)} />
@@ -317,7 +353,24 @@ export default function DMPage() {
       </ModalShell>
 
       <ReportDialog target={reportOpen && activeFriend ? { id: activeFriend.id, fullName: activeFriend.fullName } : null} onClose={() => setReportOpen(false)} />
-    </div>
+    </AppPage>
+  );
+}
+
+/** Liste yüklenirken yanıp sönen yer tutucular. */
+function FriendSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, index) => (
+        <li key={index} className="flex items-center gap-3 px-3 py-2.5" aria-hidden="true">
+          <span className="h-10 w-10 animate-pulse rounded-full bg-mb-surface" />
+          <span className="flex-1 space-y-1.5">
+            <span className="block h-3 w-2/3 animate-pulse rounded bg-mb-surface" />
+            <span className="block h-2.5 w-1/3 animate-pulse rounded bg-mb-surface" />
+          </span>
+        </li>
+      ))}
+    </>
   );
 }
 

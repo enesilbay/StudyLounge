@@ -399,6 +399,11 @@
   outline-color: var(--sl-primary);
 }
 
+/* Eski bileşenlerdeki serif başlık yazı tipi (font-display) de yeni başlık yazı tipine geçer. */
+.sl-yeni .font-display {
+  font-family: var(--font-mb-display);
+}
+
 /* Premium rozeti yeni kimlikte sarı değil, sade koyu bir rozet. */
 .sl-yeni [data-premium-rozet] {
   background: var(--color-mb-solid);
