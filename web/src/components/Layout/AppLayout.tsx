@@ -27,7 +27,7 @@ const navItems = [
  * alanı da `.sl-yeni` kapsamına girer; diğer sayfaların içeriği eski renklerinde kalır.
  * Sol menü ve üst çubuk her sayfada yeni tasarımdadır.
  */
-const NEW_DESIGN_PATHS = ['/app/lobbies', '/app/focus/', '/app/dm'];
+const NEW_DESIGN_PATHS = ['/app/lobbies', '/app/focus/', '/app/dm', '/app/profile', '/app/u/'];
 
 const COLLAPSE_KEY = 'sl-menu-daraltilmis';
 
