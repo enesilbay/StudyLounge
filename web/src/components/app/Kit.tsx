@@ -38,7 +38,46 @@ export function AppPage({ title, description, actions, children }: { title: stri
 
 /** Beyaz (koyu temada kömür) kart. */
 export function Card({ children, className = '', as: Tag = 'section' }: { children: ReactNode; className?: string; as?: 'section' | 'div' | 'article' | 'li' }) {
-  return <Tag className={`rounded-[20px] border border-mb-line/70 bg-mb-card shadow-mb-card ${className}`}>{children}</Tag>;
+  return <Tag className={`rounded-[16px] border border-mb-line/70 bg-mb-card shadow-mb-card ${className}`}>{children}</Tag>;
+}
+
+/**
+ * Sola yaslı bölüm başlığı: kart kullanmadan bölümleri ayırır (üstte ince ayraç).
+ * Bilgi bölümlerinde kart yerine bunu tercih et (docs/brand/yeniden-tasarim-plani.md).
+ */
+export function SectionHeader({ title, description, aside, id }: { title: string; description?: string; aside?: ReactNode; id?: string }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3 border-t border-mb-line pt-5">
+      <div className="min-w-0">
+        <h2 id={id} className="font-mb-display text-xl font-normal tracking-[-0.03em] text-mb-ink">{title}</h2>
+        {description ? <p className="mt-1 max-w-xl text-sm text-mb-body">{description}</p> : null}
+      </div>
+      {aside ? <div className="text-sm text-mb-body">{aside}</div> : null}
+    </div>
+  );
+}
+
+/** Etiket solda, değer sağda satır; listeler `divide-y divide-mb-line` içinde kullanılır. */
+export function DataRow({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+  return (
+    <div className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="min-w-0">
+        <p className="text-[15px] font-medium text-mb-ink">{label}</p>
+        {hint ? <p className="mt-0.5 text-[13px] text-mb-body">{hint}</p> : null}
+      </div>
+      <div className="min-w-0 shrink-0 sm:max-w-[60%]">{children}</div>
+    </div>
+  );
+}
+
+/** İnce ilerleme cetveli; açılışta dolarak gelir. `value` 0–1 arası. */
+export function Ruler({ value, label, delay = 0.2 }: { value: number; label: string; delay?: number }) {
+  const ratio = Math.max(0, Math.min(1, value));
+  return (
+    <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ratio * 100)} className="h-1.5 overflow-hidden rounded-full bg-mb-surface">
+      <m.div className="h-full rounded-full bg-mb-meter" initial={{ width: 0 }} animate={{ width: `${ratio * 100}%` }} transition={{ duration: 0.9, delay, ease: EASE_OUT }} />
+    </div>
+  );
 }
 
 /** Kart içi başlık. */

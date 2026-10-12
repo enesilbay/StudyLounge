@@ -84,19 +84,6 @@ export default function PremiumPage() {
 
         {/* Üst bant */}
         <Rise as="section" className="relative overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
-          <m.div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-16 -top-24 h-96 w-[34rem] rounded-full blur-3xl"
-            style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-lamp) 55%, transparent), transparent)' }}
-            initial={{ opacity: 0.45 }}
-            animate={reduce ? { opacity: 0.6 } : { opacity: [0.45, 0.8, 0.45] }}
-            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-36 -left-24 h-80 w-[28rem] rounded-full opacity-60 blur-3xl"
-            style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 70%, transparent), transparent)' }}
-          />
           <div className="relative flex items-center gap-6 px-6 py-7 md:px-10 md:py-9">
             <div className="min-w-0 flex-1">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-mb-on-solid/10 px-3 py-1 text-[13px] font-medium">

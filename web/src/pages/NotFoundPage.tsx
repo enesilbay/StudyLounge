@@ -65,11 +65,6 @@ function ErrorScreen({ fullPage, image, title, description, action }: { fullPage
     <div className={`sl-yeni grid place-items-center px-5 text-center ${fullPage ? 'min-h-screen bg-mb-surface' : 'py-16'}`}>
       <div className="max-w-md">
         <div className="relative mx-auto w-fit">
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 top-1/3 rounded-full opacity-80 blur-2xl"
-            style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 35%, transparent), transparent)' }}
-          />
           <img src={`/landing/3b/${image}.webp`} alt="" aria-hidden="true" draggable={false} className="relative h-40 w-auto select-none motion-safe:animate-[sl-yuz_6s_ease-in-out_infinite]" />
         </div>
         <h1 className="mt-6 font-mb-display text-[2rem] font-light tracking-[-0.04em] text-mb-ink">{title}</h1>

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { m, useReducedMotion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Avatar } from '../ui';
 import { CountUp } from '../app/Kit';
 import { badgeIcon } from '../../lib/badges';
@@ -34,22 +34,8 @@ export function ProfileHero({
   avatarSlot?: ReactNode;
   children?: ReactNode;
 }) {
-  const reduce = useReducedMotion();
   return (
     <section className="relative overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
-      <m.div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-20 -top-28 h-[22rem] w-[32rem] rounded-full blur-3xl"
-        style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-lamp) 50%, transparent), transparent)' }}
-        initial={{ opacity: 0.4 }}
-        animate={reduce ? { opacity: 0.55 } : { opacity: [0.4, 0.7, 0.4] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-32 -left-24 h-72 w-96 rounded-full opacity-60 blur-3xl"
-        style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 70%, transparent), transparent)' }}
-      />
       <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center md:p-8">
         <m.div className="relative w-fit shrink-0" initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
           <div className="rounded-full ring-4 ring-mb-on-solid/10">
@@ -85,7 +71,7 @@ export function StatGrid({ items }: { items: Array<{ label: string; value: numbe
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.08 + index * 0.06, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-[18px] border border-mb-line/70 bg-mb-card p-4 shadow-mb-card"
+          className="rounded-[16px] border border-mb-line/70 bg-mb-card p-4 shadow-mb-card"
         >
           <dt className="flex items-center gap-2 text-[13px] text-mb-body">
             {item.icon ? <item.icon className="h-4 w-4 text-mb-action" aria-hidden="true" /> : null}

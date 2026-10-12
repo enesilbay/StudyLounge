@@ -201,11 +201,6 @@ function LeagueBanner({ league }: { league: WeeklyLeague }) {
 
   return (
     <Rise as="section" className="relative overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-10 -top-24 h-80 w-[28rem] rounded-full opacity-60 blur-3xl"
-        style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-lamp) 50%, transparent), transparent)' }}
-      />
       <div className="relative flex items-center gap-4 px-5 py-5 md:px-8">
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-mb-on-solid/70">
