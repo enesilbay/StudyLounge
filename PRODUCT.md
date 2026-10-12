@@ -64,7 +64,7 @@ Henüz karar verilmemiş / tamamlanmamış:
 - Ürün dilinde temel metafor **lamba**: odaklanan kişinin lambası yanar, molada söner. "Odakta" ve "Molada" bu metaforun parçası.
 - Ses: sade, samimi, Türkçe; öğrenciye "sen" diye hitap eder.
 - Ana renkler ve yazı tipleri (kullanıcının seçtiği, bağlayıcı): beyaz/açık gri zemin, siyah yazı, tek vurgu rengi koyu orman yeşili (`#055049`); başlıklarda Geist, gövdede Poppins; yuvarlak köşeler ve yumuşak gölgeler. Yeşil yalnızca ana eylem ve "odakta" durumu için kullanılır. Tek kaynak: `docs/brand/marka-rehberi.md`.
-- Bütün web sayfaları bu kimliği kullanır; uygulama sayfaları adım adım bu kimliğe taşınıyor.
+- Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu kimliği kullanır.
 
 ## Evidence on Hand
 

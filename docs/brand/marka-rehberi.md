@@ -2,14 +2,15 @@
 
 Projenin ana renkleri, yazı tipleri ve tipografisi açılış sayfasınınkilerdir; bu dosya onların tek kaynağıdır. Köşe, gölge ve hareket kuralları da burada tanımlanır.
 
-Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır. Bütün web sayfaları bu kimliği kullanır; uygulama sayfaları (`/app/...`, giriş, yönetim paneli) adım adım bu kimliğe taşınıyor. Mobil uygulama (`mobile/`) değişmez.
+Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır. Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu kimliği kullanır. Mobil uygulama (`mobile/`) değişmez.
 
-## Uygulama sayfalarını taşıma
+## Uygulama sayfaları
 
-- Sol menü ve üst çubuk (`web/src/components/Layout/AppLayout.tsx`) her sayfada yeni kimliktedir. Sol menü daraltılabilir; tercih tarayıcıda hatırlanır.
-- Yeni kimliğe geçirilen sayfalar `AppLayout.tsx` içindeki `NEW_DESIGN_PATHS` listesine eklenir. Bu sayfalarda içerik alanı `.sl-yeni` sınıfını taşır.
-- `.sl-yeni` (`web/src/index.css`) eski bileşenlerin (`ui.tsx`: düğme, form, modal) `--sl-*` değişkenlerini yeni paletle ezer ve koyu temayı da tanımlar. Böylece geçirilen sayfada eski bileşenler de yeni renklerle görünür; diğer sayfalar etkilenmez.
-- Taşınan sayfalar: Odalar (`/app/lobbies`), Odak odası (`/app/focus/:id`; menü ve üst çubuk gizlenir, yalnızca "Odadan çık" vardır), Giriş ve kayıt (`/auth`; uygulama iskeletinin dışında olduğu için kökte kendisi `.sl-yeni` taşır).
+- **İskelet:** Sol menü ve üst çubuk `web/src/components/Layout/AppLayout.tsx` içinde. Sol menü daraltılabilir; tercih tarayıcıda hatırlanır. Odak odasında menü ve üst çubuk gizlenir, yalnızca "Odadan çık" vardır. Yönetim panelinin kendi iskeleti `web/src/components/admin/AdminLayout.tsx`.
+- **`.sl-yeni` kapsamı** (`web/src/index.css`): uygulama ve yönetim paneli iskeletiyle giriş ve 404 sayfalarının kökünde durur. Eski bileşenlerin (`ui.tsx`: düğme, form, modal, avatar) `--sl-*` değişkenlerini ve serif yazı tipini yeni kimlikle ezer, koyu temayı tanımlar.
+- **Ortak kit** (`web/src/components/app/Kit.tsx`): `AppPage` (sayfa başlığı ve eylemler), `Card`, `CardTitle`, `Rise` (görününce belirme), `SegmentedTabs` (kayan göstergeli sekmeler), `CountUp` (sayarak artan sayı), `EmptyState` (3B görselli boş durum) ve düğme/alan sınıfları (`actionButton`, `solidButton`, `outlineButton`, `ghostButton`, `inputClass`). Yeni sayfa bunlarla kurulur.
+- **Animasyon:** framer-motion `AppLayout` içinde `LazyMotion` + `MotionConfig reducedMotion="user"` ile bir kez yüklenir; sayfalar `m.*` bileşenlerini kullanır. "Hareketi azalt" açıkken hareketler durur.
+- **Profil parçaları** (`web/src/components/profile/ProfileParts.tsx`): lamba ışıklı üst bant, istatistik kutuları ve rozet ızgarası.
 
 ## Renkler
 

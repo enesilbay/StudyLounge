@@ -56,7 +56,7 @@ StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir gör
 | Biçim | Yuvarlak köşeler (kart 24px, düğme 14px), yumuşak gölgeler | |
 | İmza öğe | Masa lambası | Odaklanan kullanıcının masa kartında lamba yanar |
 
-Bütün web sayfaları bu renk ve yazı tiplerini kullanır; uygulama sayfaları adım adım bu kimliğe taşınıyor.
+Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu renk ve yazı tiplerini kullanır.
 
 ---
 
