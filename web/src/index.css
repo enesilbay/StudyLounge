@@ -366,6 +366,8 @@
  * sınıfın dışındaki sayfalar eski renklerinde kalır. Koyu tema da kapsama dahildir.
  */
 .sl-yeni {
+  /* Odak odasının arka planı: gündüz salonu (koyu temada gece salonu) */
+  --salon-image: url('/oda/salon-gunduz.webp');
   --sl-bg: #ffffff;
   --sl-surface: #ffffff;
   --sl-sunken: #f4f4f4;
@@ -414,6 +416,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .sl-yeni {
     color-scheme: dark;
+    --salon-image: url('/oda/salon-gece.webp');
     --sl-bg: #0c0d0d;
     --sl-surface: #141516;
     --sl-sunken: #1d1f21;
@@ -454,6 +457,7 @@
 
 :root[data-theme="dark"] .sl-yeni {
   color-scheme: dark;
+  --salon-image: url('/oda/salon-gece.webp');
   --sl-bg: #0c0d0d;
   --sl-surface: #141516;
   --sl-sunken: #1d1f21;

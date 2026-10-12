@@ -32,6 +32,7 @@ export function DeskTile({
   person,
   videoRoom,
   compact = false,
+  scene = false,
   selected = false,
   speaking = false,
   onSelect,
@@ -42,6 +43,8 @@ export function DeskTile({
   person: DeskPerson;
   videoRoom: boolean;
   compact?: boolean;
+  /** Okuma salonu görünümü: kamera kapalıyken kişi 3B masada oturur. */
+  scene?: boolean;
   selected?: boolean;
   /** Şu an konuşuyorsa kart turkuaz halkayla parlar (Discord gibi). */
   speaking?: boolean;
@@ -53,6 +56,61 @@ export function DeskTile({
 }) {
   const showVideo = hasLiveVideo(person.cameraStream);
   const status = person.isAtDesk ? 'Odakta' : 'Molada';
+
+  if (scene && !compact && !showVideo) {
+    return (
+      <article aria-label={`${person.name}${person.isSelf ? ' (sen)' : ''}: ${status}${speaking ? ', konuşuyor' : ''}`} className="group relative mx-auto w-full max-w-[14rem]">
+        <div className="relative">
+          <img src="/oda/masa-kapali.webp" alt="" aria-hidden="true" draggable={false} width={720} height={667} className="block h-auto w-full select-none drop-shadow-[0_18px_24px_rgb(0_0_0/0.18)]" />
+          {/* Odaklanınca lamba yanar: açık masa yumuşakça belirir */}
+          <img
+            src="/oda/masa-acik.webp"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className={`absolute inset-0 h-full w-full select-none transition-opacity duration-1000 ${person.isAtDesk ? 'opacity-100' : 'opacity-0'}`}
+          />
+          {/* Kişi sandalyesinde (avatar sandalyenin arkalığının önünde) */}
+          <div className={`absolute left-[63%] top-[-8%] w-[30%] -translate-x-1/2 rounded-full transition ${speaking ? 'ring-[3px] ring-sea ring-offset-2 ring-offset-transparent' : ''}`}>
+            <div className="[&>div]:!h-auto [&>div]:!w-full [&>div]:aspect-square">
+              <Avatar name={person.name} image={person.avatarUrl} frame={person.frame ?? undefined} size="lg" premium={person.isPremium} />
+            </div>
+          </div>
+        </div>
+        {/* Masanın önündeki isim levhası */}
+        <p className="relative mx-auto -mt-4 flex w-fit max-w-full items-center gap-1.5 rounded-full border border-mb-line/70 bg-mb-card/95 px-3 py-1 text-[13px] shadow-mb-card">
+          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${person.isAtDesk ? 'bg-mb-lamp shadow-[0_0_8px_var(--color-mb-lamp)]' : 'bg-mb-body/40'}`} />
+          <span className="truncate font-medium text-mb-ink">{person.name}</span>
+          {person.isSelf ? <span className="shrink-0 text-mb-body">(sen)</span> : null}
+          {person.sharing ? <MonitorUp className="h-3.5 w-3.5 shrink-0 text-mb-action" aria-label="Ekran paylaşıyor" /> : null}
+          {videoRoom && person.inCall && !person.micOn ? <MicOff className="h-3.5 w-3.5 shrink-0 text-mb-body" aria-label="Mikrofon kapalı" /> : null}
+          <QualityBadge quality={person.quality} onVideo={false} />
+        </p>
+        {!person.isSelf ? (
+          <div className="absolute right-0 top-0 z-[3] flex flex-col gap-1 opacity-100 transition md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+            <Link to={`/app/u/${person.userId}`} title="Profili gör" aria-label={`${person.name} profilini gör`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/95 text-mb-ink shadow-mb-card hover:bg-mb-card">
+              <UserRound className="h-4 w-4" />
+            </Link>
+            {onNudge ? (
+              <button type="button" onClick={onNudge} title="Dürt" aria-label={`${person.name} kişisini dürt`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/95 text-mb-action shadow-mb-card hover:bg-mb-card">
+                <Bell className="h-4 w-4" />
+              </button>
+            ) : null}
+            {onDuel ? (
+              <button type="button" onClick={onDuel} title="Düelloya davet et" aria-label={`${person.name} kişisini düelloya davet et`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/95 text-danger shadow-mb-card hover:bg-mb-card">
+                <Swords className="h-4 w-4" />
+              </button>
+            ) : null}
+            {onKick ? (
+              <button type="button" onClick={onKick} title="Odadan çıkar" aria-label={`${person.name} kişisini odadan çıkar`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/95 text-mb-body shadow-mb-card hover:bg-mb-card hover:text-danger">
+                <UserX className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </article>
+    );
+  }
 
   return (
     <article

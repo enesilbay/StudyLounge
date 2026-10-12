@@ -36,3 +36,13 @@ Her promptun sonuna aynen eklenir:
 
 - **Logo:** Ayrı bir iş. İşaret + yazılı hâl, mümkünse SVG. Gelince üst çubuk, alt bilgi, favicon ve uygulama simgeleri değişir.
 - **Paylaşım görseli (1200×630):** Bu görsellerden ben birleştiririm.
+
+## Odak odası (`oda/`)
+
+Kullanıcının ürettiği görseller; işlenmiş halleri `web/public/oda/` ve `web/public/avatars/` altında WebP.
+
+| Dosya | Nerede |
+| :--- | :--- |
+| `salon-gunduz.png`, `salon-gece.png` | Odak odası sahnesinin arka planı (açık / koyu tema), 1920 px |
+| `masa-kapali.png`, `masa-acik.png` | Kişinin masası; lamba kapalı (molada, boş masa) ve yanık (odakta). Aynı kutuyla kırpıldı (720×667) |
+| `avatar1.png` … `avatar10.png` | Fotoğrafı olmayan kullanıcıların 3B karakter avatarları; daire maskeli, 256 px |

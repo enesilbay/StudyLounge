@@ -33,14 +33,21 @@ export function TimerRing({ seconds, total, lit, size, children }: { seconds: nu
   );
 }
 
-/** Boş masa: oturulabilecek yer olduğunu gösterir; ekran okuyucuya okunmaz. */
+/** Boş masa: oturulabilecek yer olduğunu gösteren soluk masa; ekran okuyucuya okunmaz. */
 export function EmptySeat({ videoRoom, className = '' }: { videoRoom: boolean; className?: string }) {
+  if (videoRoom) {
+    return (
+      <div aria-hidden="true" className={`grid aspect-[4/3] place-items-center rounded-[16px] border border-dashed border-mb-line/80 text-mb-body/60 ${className}`}>
+        <span className="flex flex-col items-center gap-2 text-[13px]">
+          <Armchair className="h-7 w-7" strokeWidth={1.5} />
+          Boş masa
+        </span>
+      </div>
+    );
+  }
   return (
-    <div aria-hidden="true" className={`grid place-items-center rounded-[16px] border border-dashed border-mb-line text-mb-body/50 ${videoRoom ? 'aspect-[4/3]' : 'min-h-[10.5rem]'} ${className}`}>
-      <span className="flex flex-col items-center gap-2 text-[13px]">
-        <Armchair className="h-7 w-7" strokeWidth={1.5} />
-        Boş masa
-      </span>
+    <div aria-hidden="true" className={`mx-auto w-full max-w-[14rem] opacity-75 ${className}`}>
+      <img src="/oda/masa-kapali.webp" alt="" draggable={false} width={720} height={667} className="block h-auto w-full select-none" />
     </div>
   );
 }

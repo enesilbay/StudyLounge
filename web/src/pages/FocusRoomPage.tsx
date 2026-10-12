@@ -942,75 +942,80 @@ export default function FocusRoomPage() {
               ) : null}
             </>
           ) : (
-            /* Okuma salonu: ortada ortak masa ve sayaç, çevresinde masalar */
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="mx-auto grid min-h-full w-full max-w-6xl grid-cols-2 content-center gap-3 md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)_minmax(0,1fr)] md:items-center md:gap-4">
-                <div className={`col-span-2 md:col-span-1 ${TABLE_POSITION}`}>
-                  <div
-                    className={`relative flex flex-col items-center rounded-[24px] border bg-mb-card px-5 py-6 text-center shadow-mb-card transition-[border-color] duration-700 ${timerLit ? 'border-mb-lamp/60' : 'border-mb-line'}`}
-                    style={timerLit ? LAMP_LIGHT : undefined}
-                  >
-                    {panels.timer.open ? (
-                      <>
-                        <div className="absolute right-2 top-2 flex gap-0.5">
-                          <button type="button" onClick={() => collapsePanel('timer')} aria-label={panels.timer.collapsed ? 'Sayacı büyüt' : 'Sayacı küçült'} aria-expanded={!panels.timer.collapsed} title={panels.timer.collapsed ? 'Büyüt' : 'Küçült'} className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
-                            <ChevronDown className={`h-4 w-4 transition-transform ${panels.timer.collapsed ? '-rotate-90' : ''}`} />
-                          </button>
-                          <button type="button" onClick={() => togglePanel('timer')} aria-label="Sayacı gizle" title="Gizle" className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <p className="text-[13px] text-mb-body">{timerTitle}</p>
-                        {panels.timer.collapsed ? (
-                          // Küçültülünce yalnızca sayaç kalır.
-                          <p className="mt-1 font-mb-display text-[2.75rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
-                            {formatDuration(timerSeconds)}
-                          </p>
-                        ) : (
-                          <>
-                            <div className="mt-3">
-                              <TimerRing seconds={timerSeconds} total={timerTotal} lit={timerLit} size={212}>
-                                <p className="font-mb-display text-[3.25rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
-                                  {formatDuration(timerSeconds)}
-                                </p>
-                                <p className="mt-2 flex items-center justify-center gap-1.5 text-[13px] text-mb-body">
-                                  <span aria-hidden="true" className={`h-2 w-2 rounded-full ${timerLit ? 'bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)]' : 'bg-mb-body/40'}`} />
-                                  {timerPhase}
-                                </p>
-                              </TimerRing>
-                            </div>
-                            <div className="mt-4 w-full text-left">{timerControls}</div>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => togglePanel('timer')} className="flex flex-col items-center gap-2 py-6 text-sm text-mb-body hover:text-mb-ink">
-                        <Timer className="h-6 w-6" aria-hidden="true" />
-                        Sayacı göster
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {Array.from({ length: Math.max(seatCount, people.length) }, (_, index) => {
-                  const person = people[index];
-                  const position = SEAT_POSITIONS[index] ?? '';
-                  return person ? (
-                    <div key={person.userId} className={position}>
-                      <DeskTile
-                        speaking={speakingIds.has(person.userId)}
-                        person={person}
-                        videoRoom={videoRoom}
-                        selected={stageCameraKey === `camera:${person.userId}`}
-                        onSelect={() => toggleCameraPin(person.userId)}
-                        onNudge={() => nudgeUser(person.userId, person.name)}
-                        onDuel={() => challengeUser(person.userId, person.name)}
-                        onKick={isOwner && !person.isSelf ? () => kickUser(person.userId) : undefined}
-                      />
+            /* Okuma salonu: salon arka planı, ortada ortak masa ve sayaç, çevresinde masalar */
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-[24px] bg-mb-band bg-cover bg-bottom" style={{ backgroundImage: 'var(--salon-image)' }}>
+              {/* Arka planı hafif yumuşatır; masalar ve sayaç öne çıkar */}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-mb-bg/40 via-mb-bg/10 to-mb-bg/35" />
+              <div className="relative h-full overflow-y-auto">
+                <div className="mx-auto grid min-h-full w-full max-w-6xl grid-cols-2 content-center gap-x-3 gap-y-6 p-4 md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)_minmax(0,1fr)] md:items-center md:gap-x-6 md:p-6">
+                  <div className={`col-span-2 md:col-span-1 ${TABLE_POSITION}`}>
+                    <div
+                      className={`relative flex flex-col items-center rounded-[24px] border bg-mb-card px-5 py-6 text-center shadow-mb-raised transition-[border-color] duration-700 ${timerLit ? 'border-mb-lamp/60' : 'border-mb-line'}`}
+                      style={timerLit ? LAMP_LIGHT : undefined}
+                    >
+                      {panels.timer.open ? (
+                        <>
+                          <div className="absolute right-2 top-2 flex gap-0.5">
+                            <button type="button" onClick={() => collapsePanel('timer')} aria-label={panels.timer.collapsed ? 'Sayacı büyüt' : 'Sayacı küçült'} aria-expanded={!panels.timer.collapsed} title={panels.timer.collapsed ? 'Büyüt' : 'Küçült'} className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
+                              <ChevronDown className={`h-4 w-4 transition-transform ${panels.timer.collapsed ? '-rotate-90' : ''}`} />
+                            </button>
+                            <button type="button" onClick={() => togglePanel('timer')} aria-label="Sayacı gizle" title="Gizle" className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <p className="text-[13px] text-mb-body">{timerTitle}</p>
+                          {panels.timer.collapsed ? (
+                            // Küçültülünce yalnızca sayaç kalır.
+                            <p className="mt-1 font-mb-display text-[2.75rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
+                              {formatDuration(timerSeconds)}
+                            </p>
+                          ) : (
+                            <>
+                              <div className="mt-3">
+                                <TimerRing seconds={timerSeconds} total={timerTotal} lit={timerLit} size={184}>
+                                  <p className="font-mb-display text-[2.75rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
+                                    {formatDuration(timerSeconds)}
+                                  </p>
+                                  <p className="mt-2 flex items-center justify-center gap-1.5 text-[13px] text-mb-body">
+                                    <span aria-hidden="true" className={`h-2 w-2 rounded-full ${timerLit ? 'bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)]' : 'bg-mb-body/40'}`} />
+                                    {timerPhase}
+                                  </p>
+                                </TimerRing>
+                              </div>
+                              <div className="mt-4 w-full text-left">{timerControls}</div>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => togglePanel('timer')} className="flex flex-col items-center gap-2 py-6 text-sm text-mb-body hover:text-mb-ink">
+                          <Timer className="h-6 w-6" aria-hidden="true" />
+                          Sayacı göster
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <EmptySeat key={`bos-${index}`} videoRoom={videoRoom} className={position} />
-                  );
-                })}
+                  </div>
+                  {Array.from({ length: Math.max(seatCount, people.length) }, (_, index) => {
+                    const person = people[index];
+                    const position = SEAT_POSITIONS[index] ?? '';
+                    return person ? (
+                      <div key={person.userId} className={position}>
+                        <DeskTile
+                          scene
+                          speaking={speakingIds.has(person.userId)}
+                          person={person}
+                          videoRoom={videoRoom}
+                          selected={stageCameraKey === `camera:${person.userId}`}
+                          onSelect={() => toggleCameraPin(person.userId)}
+                          onNudge={() => nudgeUser(person.userId, person.name)}
+                          onDuel={() => challengeUser(person.userId, person.name)}
+                          onKick={isOwner && !person.isSelf ? () => kickUser(person.userId) : undefined}
+                        />
+                      </div>
+                    ) : (
+                      <EmptySeat key={`bos-${index}`} videoRoom={videoRoom} className={position} />
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
