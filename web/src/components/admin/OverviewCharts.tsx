@@ -102,7 +102,6 @@ export function OnboardingFunnel({ funnel }: { funnel: AdminOverview['funnel'] }
   const steps = [
     { label: 'Kayıt oldu', value: funnel.registered },
     { label: 'Ders ekledi', value: funnel.addedSubject },
-    { label: 'Hedef seçti', value: funnel.setGoal },
     { label: 'İlk odak oturumu', value: funnel.firstFocus },
   ];
   if (!funnel.registered) {

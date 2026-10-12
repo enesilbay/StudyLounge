@@ -155,7 +155,6 @@ export default function AdminUserDetail() {
                 <p className="mt-3 text-sm text-textMuted">
                   Toplam <span className="font-semibold text-textDark">{formatMinutes(user.totalFocusMinutes)}</span>
                   {' · '}son odak {timeAgo(user.lastFocusAt)}
-                  {user.dailyGoalMinutes ? ` · günlük hedef ${formatMinutes(user.dailyGoalMinutes)}` : ''}
                 </p>
                 {data.recentSessions.length ? (
                   <ul className="mt-3 divide-y divide-border rounded-lg border border-border">

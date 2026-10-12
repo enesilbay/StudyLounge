@@ -43,7 +43,7 @@ Mevcut özellikler:
 - Hesap: JWT, e-posta doğrulama, şifre sıfırlama.
 - Çalışma odaları: kur/katıl, şifreli oda, Elite (Premium) oda, oda sahibi kontrolleri (düzenle, sil, kullanıcı çıkar, kilitle).
 - Odada: kişisel ve ortak Pomodoro, ortam sesleri, sohbet ve dosya paylaşımı, ortak PDF ve boş tahta (kalem, fosforlu kalem, lazer, silgi), kameralı odalarda kamera/mikrofon/ekran paylaşımı, cihaz seçimi, bağlantı kalitesi göstergesi, konuşanı vurgulama, dürtme, düello.
-- Çalışma takibi: dersler, oturum geçmişi, günlük/haftalık hedefler, görev listesi, planlı oturumlar, analitik.
+- Çalışma takibi: dersler, oturum geçmişi, görev listesi, analitik.
 - Sosyal: arkadaşlık, DM, okunmamış mesajlar, kullanıcı arama ve herkese açık profil, engelleme ve şikayet, admin paneli.
 - Oyunlaştırma: odak puanı, seri, rütbeler, rozetler, haftalık lig, mağaza (sohbet balonu rengi, isim ikonu, profil çerçevesi).
 - PWA, uygulama geneli bildirimler.
@@ -63,7 +63,8 @@ Henüz karar verilmemiş / tamamlanmamış:
 - Ad: **StudyLounge**. Slogan: **"Ayrı masalarda, aynı lobide."**
 - Ürün dilinde temel metafor **lamba**: odaklanan kişinin lambası yanar, molada söner. "Odakta" ve "Molada" bu metaforun parçası.
 - Ses: sade, samimi, Türkçe; öğrenciye "sen" diye hitap eder.
-- Kullanıcının bağlayıcı olarak belirlediği renkler: turkuaz, açık pembe ve krem/kırık beyaz. Proje kuralına göre pembe yalnızca "odakta" durumu ve ana eylem için kullanılır.
+- Ana renkler ve yazı tipleri (kullanıcının seçtiği, bağlayıcı): beyaz/açık gri zemin, siyah yazı, tek vurgu rengi koyu orman yeşili (`#055049`); başlıklarda Geist, gövdede Poppins; yuvarlak köşeler ve yumuşak gölgeler. Yeşil yalnızca ana eylem ve "odakta" durumu için kullanılır. Tek kaynak: `docs/brand/marka-rehberi.md`.
+- Bütün web sayfaları bu kimliği kullanır; uygulama sayfaları adım adım bu kimliğe taşınıyor.
 
 ## Evidence on Hand
 

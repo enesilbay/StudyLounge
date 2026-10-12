@@ -8,15 +8,13 @@ import type { OnboardingStepId } from '../../lib/onboarding';
 import { useAuthStore } from '../../store/authStore';
 import { useStudyStore } from '../../store/studyStore';
 
-const GOAL_CHOICES = [60, 120, 180];
-
 /**
- * İlk giriş yönlendirmesi: ders ekle → günlük hedef seç → bir odada ilk lambanı yak.
+ * İlk giriş yönlendirmesi: ders ekle → bir odada ilk lambanı yak.
  * Adımlar gerçek veriden hesaplanır; hepsi bitince ya da kullanıcı kapatınca görünmez.
  */
 export function OnboardingCard({ roomListId }: { roomListId: string }) {
   const user = useAuthStore((state) => state.user);
-  const { subjects, subjectsLoaded, goals, loadSubjects, createSubject, refreshGoals, updateGoals } = useStudyStore();
+  const { subjects, subjectsLoaded, loadSubjects, createSubject } = useStudyStore();
   const [dismissed, setDismissed] = useState(() => (user ? readOnboardingDismissed(user.id) : true));
   const [subjectName, setSubjectName] = useState('');
   const [busy, setBusy] = useState<OnboardingStepId | null>(null);
@@ -25,15 +23,13 @@ export function OnboardingCard({ roomListId }: { roomListId: string }) {
   useEffect(() => {
     if (!user || dismissed) return;
     if (!subjectsLoaded) loadSubjects(user.id).catch(() => undefined);
-    if (!goals) refreshGoals().catch(() => undefined);
-  }, [user, dismissed, subjectsLoaded, goals, loadSubjects, refreshGoals]);
+  }, [user, dismissed, subjectsLoaded, loadSubjects]);
 
   // Veri gelmeden kart gösterilmez; yoksa tamamlanmış adımlar bir an eksik görünür.
-  if (!user || dismissed || !subjectsLoaded || !goals) return null;
+  if (!user || dismissed || !subjectsLoaded) return null;
 
   const steps = onboardingSteps({
     subjectCount: subjects.length,
-    dailyGoalMinutes: goals.dailyGoalMinutes,
     totalFocusMinutes: user.totalFocusMinutes ?? 0,
   });
   if (!shouldShowOnboarding(steps, dismissed)) return null;
@@ -73,7 +69,7 @@ export function OnboardingCard({ roomListId }: { roomListId: string }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl text-textDark">Masanı hazırla</h2>
-          <p className="mt-1 text-base text-textMuted">Üç kısa adım; {completed} / 3 tamam.</p>
+          <p className="mt-1 text-base text-textMuted">İki kısa adım; {completed} / 2 tamam.</p>
         </div>
         <button type="button" onClick={dismiss} aria-label="Başlangıç adımlarını gizle" title="Gizle" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-textDark">
           <X className="h-5 w-5" />
@@ -101,19 +97,7 @@ export function OnboardingCard({ roomListId }: { roomListId: string }) {
           )}
         </Step>
 
-        <Step number={2} done={done('goal')} title="Günlük hedefini seç" description="Hedefini ilk tuttuğun gün Odak Puanı kazanırsın. Ayarlar'dan istediğin zaman değiştirebilirsin.">
-          {done('goal') ? null : (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {GOAL_CHOICES.map((minutes) => (
-                <Button key={minutes} size="sm" variant="secondary" disabled={busy === 'goal'} onClick={() => void run('goal', () => updateGoals({ dailyGoalMinutes: minutes }))}>
-                  Günde {minutes / 60} saat
-                </Button>
-              ))}
-            </div>
-          )}
-        </Step>
-
-        <Step number={3} done={done('focus')} title="Bir odaya katıl ve lambanı yak" description="Odaya girip sayacı başlatınca lamban yanar; odadakiler senin de çalıştığını görür.">
+        <Step number={2} done={done('focus')} title="Bir odaya katıl ve lambanı yak" description="Odaya girip sayacı başlatınca lamban yanar; odadakiler senin de çalıştığını görür.">
           {done('focus') ? null : (
             <Button size="sm" className="mt-3" onClick={() => document.getElementById(roomListId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
               Odaları gör
