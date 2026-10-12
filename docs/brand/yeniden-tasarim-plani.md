@@ -40,14 +40,19 @@ Bu belge, uygulamanın bütün sayfalarının yeni kimliğe taşınmasından son
 - **Kart yalnızca tıklanabilir nesne için.** Bilgi bölümleri boşluk, ince ayraç ve sola yaslı editoryal başlıklarla ayrılır.
 - **Köşe ölçeği:** 8 px (etiket), 12 px (düğme, alan), 16 px (kart), 24 px yalnızca ürün görseli ve sahne.
 - **Hiyerarşi tipografiyle kurulur.** Her sayfada tek bir dev rakam ya da cümle; diğerleri küçülür. Eşit kutu dizileri kullanılmaz.
-- **3B nesneler** landing page, giriş ve gerçek boş durumlarda kalır; uygulama sayfalarında süs olmaz. İstisna: odak odasının resimli salonu ve kişilerin 3B karakter avatarları (anlam taşır: kim, hangi masada).
+- **3B nesneler** landing page, giriş ve gerçek boş durumlarda kalır; uygulama sayfalarında süs olmaz. İstisna: kişilerin 3B karakter avatarları (anlam taşır: kim).
 - **Animasyon anlam taşır:** lamba yanınca ışık yayılır, sayaç halkası akar, sıralama değişince satır kayar. Genel belirme yalnızca ilk görünümde ve ölçülü.
 - **Kit eklemeleri** (`web/src/components/app/Kit.tsx`): `SectionHeader` (sola yaslı bölüm başlığı), `DataRow` (etiket solda, değer sağda satır), `Ruler` (ince ilerleme cetveli). Ortak ısı haritası Analitik ve Profil adımında eklenir.
 
 ## 3. Sayfa planları
 
-1. **Odak odası, "Okuma salonu":** Ortak sayaç sağdaki panelden çıkıp sahnenin merkezine iner (büyük halka, akan süre, tur ve aşama). Masalar halkanın çevresine dizilir; kişinin lambası odaklanınca masasına ışık yayar. Boş yerler soluk "boş masa" olarak görünür. Tahta/ekran açılınca halka üst şeride küçülür, masalar alt şeride iner. Paneller sağda dar bir ray. Uygulamada kart kullanmayan tek sayfa; tamamen sahne.
-   - **Resimli salon (kullanıcı geri bildirimiyle eklendi):** sahnenin arkasında 3B okuma salonu görseli (açık temada gündüz, koyuda gece; `--salon-image`). Kamerası kapalı kişi 3B masada oturur: avatarı sandalyede, önünde isim levhası; odaklanınca masanın lambası yanar (kapalı/açık masa görselleri arasında geçiş). Boş yerler soluk boş masa. Kamera açıkken video kutusu kalır.
+1. **Odak odası (3. sürüm, Meet/Discord düzeni):** "Okuma salonu" ve resimli salon denendi, kullanıcı beğenmedi; yerine görüntülü görüşme uygulamalarının düzeni geldi.
+   - **Izgara:** Herkes kaydırmadan sığar (`web/src/lib/room/useFitGrid.ts`); kutu oranı kare ile 16:9 arasında esner, alan büyüdükçe kutular büyür. Kamera açıksa görüntü, kapalıysa kişiye özgü renkli zeminde avatar (8 renk, `mb-tile-*`, `web/src/lib/room/tileColors.ts`). Odaktaki kişinin kutusu lamba ışığıyla, konuşanınki yeşil halkayla çevrelenir. Yalnızken davet kutusu.
+   - **Sayaç:** Üst çubuğun ortasında hap (`components/room/TimerDock.tsx`): kalan süre, aşama, tek ana eylem; ok düğmesi süre, ortak sayaç ve ders panelini açar.
+   - **Sahne:** Tahta, izlenen ekran ya da büyütülen kamera solda; kişiler yanda şerit (telefonda altta). Tahta ortak çalışma alanı olduğu için biri açınca herkesin sahnesine gelir.
+   - **Ekran paylaşımı isteğe bağlı (Discord gibi):** Paylaşım herkese bildirilir ve ızgarada "CANLI" kutusu olur; görüntü yalnızca "Yayını izle" diyene gönderilir (`PeerManager` `meta.watch`, arka uç değişmedi).
+   - **Kontrol çubuğu:** Gizlenip gösterilebilir (tercih hatırlanır); oda tam ekrana alınabilir, tam ekranda fare 3 sn durunca çubuk gizlenir. Kapalı mikrofon/kamera kırmızı. Telefonda yalnızca mikrofon, kamera, sohbet, "Diğer" menüsü ve Ayrıl.
+   - **Yan panel:** Sohbet, görevler ve ortam sesi tek panelde sekme; sohbet kapalıyken gelen mesajlar düğmede sayı olarak görünür. Telefonda alanın üstüne açılır.
    - **3B karakter avatarlar:** fotoğrafı olmayan kişi, adına göre seçilen 10 karakterden birini alır (`web/src/lib/avatars.ts`); her yerde aynı karakter görünür.
 2. **Odalar, "Lobi":** Kanban kalkar. Üstte "Şu an canlı": en kalabalık oda geniş, diğerleri küçük (asimetrik). Altta bütün odalar sık bir dizin listesi; tür filtre hapı olur. Koyu bant kalkar; sayılar başlığın yanında tek satır.
 3. **Landing page:** "Neden zor?" solda editoryal cümle + sağda bir akşamın zaman çizelgesi (3B nesneler çizgi üstünde). "Nasıl çalışır" yapışkan tek ürün ekranı + kaydırdıkça değişen adımlar. "Odada neler var" farklı boyutlu gerçek ekran kesitleri. SSS iki sütun. Kayan şerit kalkar.
@@ -81,5 +86,5 @@ Her adım ayrı commit'tir; her adımdan sonra gerçek ekranlar açık/koyu tema
 | Adım | Durum |
 | :--- | :--- |
 | 1. Ortak kurallar | Yapıldı |
-| 2. Odak odası | Yapıldı (resimli salon ve 3B karakter avatarlarla) |
+| 2. Odak odası | Yapıldı (3. sürüm: Meet/Discord düzeni, isteğe bağlı yayın izleme, gizlenen kontrol çubuğu) |
 | 3–10 | Bekliyor |

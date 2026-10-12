@@ -39,10 +39,8 @@ Her promptun sonuna aynen eklenir:
 
 ## Odak odası (`oda/`)
 
-Kullanıcının ürettiği görseller; işlenmiş halleri `web/public/oda/` ve `web/public/avatars/` altında WebP.
+Kullanıcının ürettiği görseller; işlenmiş halleri `web/public/avatars/` altında WebP. Salon ve masa görselleri odanın 3. sürümünde kaldırıldı (git geçmişinde duruyor).
 
 | Dosya | Nerede |
 | :--- | :--- |
-| `salon-gunduz.png`, `salon-gece.png` | Odak odası sahnesinin arka planı (açık / koyu tema), 1920 px |
-| `masa-kapali.png`, `masa-acik.png` | Kişinin masası; lamba kapalı (molada, boş masa) ve yanık (odakta). Aynı kutuyla kırpıldı (720×667) |
 | `avatar1.png` … `avatar10.png` | Fotoğrafı olmayan kullanıcıların 3B karakter avatarları; daire maskeli, 256 px |

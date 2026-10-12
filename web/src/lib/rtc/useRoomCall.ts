@@ -33,6 +33,8 @@ export interface RoomCall {
   setDevice: (kind: DeviceKind, deviceId: string | null) => Promise<void>;
   /** Ekran paylaşımı sesli mi (tarayıcı ve kullanıcı izin verdiyse). */
   screenHasAudio: boolean;
+  /** Bir kişinin ekran paylaşımını izlemeye başlar ya da bırakır (yayın yalnızca izleyene gönderilir). */
+  watchScreen: (userId: number, watch: boolean) => void;
 }
 
 const OFF: MediaState = { camera: false, mic: false, screen: false };
@@ -252,6 +254,7 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
     devices,
     setDevice,
     screenHasAudio: Boolean(screenStream?.getAudioTracks().some((track) => track.readyState === 'live')),
+    watchScreen: (userId: number, watch: boolean) => manager?.setWatching(userId, watch),
   };
 }
 

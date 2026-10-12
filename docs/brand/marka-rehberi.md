@@ -6,7 +6,7 @@ Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'lar
 
 ## Uygulama sayfaları
 
-- **İskelet:** Sol menü ve üst çubuk `web/src/components/Layout/AppLayout.tsx` içinde. Sol menü daraltılabilir; tercih tarayıcıda hatırlanır. Odak odasında menü ve üst çubuk gizlenir, yalnızca "Odadan çık" vardır. Yönetim panelinin kendi iskeleti `web/src/components/admin/AdminLayout.tsx`.
+- **İskelet:** Sol menü ve üst çubuk `web/src/components/Layout/AppLayout.tsx` içinde. Sol menü daraltılabilir; tercih tarayıcıda hatırlanır. Odak odasında menü ve üst çubuk gizlenir; oda kendi üst şeridini ve alttaki kontrol çubuğunu (Meet/Discord düzeni) kullanır. Yönetim panelinin kendi iskeleti `web/src/components/admin/AdminLayout.tsx`.
 - **`.sl-yeni` kapsamı** (`web/src/index.css`): uygulama ve yönetim paneli iskeletiyle giriş ve 404 sayfalarının kökünde durur. Eski bileşenlerin (`ui.tsx`: düğme, form, modal, avatar) `--sl-*` değişkenlerini ve serif yazı tipini yeni kimlikle ezer, koyu temayı tanımlar.
 - **Ortak kit** (`web/src/components/app/Kit.tsx`): `AppPage` (sayfa başlığı ve eylemler), `Card`, `CardTitle`, `Rise` (görününce belirme), `SegmentedTabs` (kayan göstergeli sekmeler), `CountUp` (sayarak artan sayı), `EmptyState` (3B görselli boş durum) ve düğme/alan sınıfları (`actionButton`, `solidButton`, `outlineButton`, `ghostButton`, `inputClass`). Yeni sayfa bunlarla kurulur.
 - **Animasyon:** framer-motion `AppLayout` içinde `LazyMotion` + `MotionConfig reducedMotion="user"` ile bir kez yüklenir; sayfalar `m.*` bileşenlerini kullanır. "Hareketi azalt" açıkken hareketler durur.

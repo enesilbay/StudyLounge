@@ -346,6 +346,18 @@
   --color-mb-solid: #000000;
   --color-mb-on-solid: #ffffff;
   --color-mb-meter: #000000;
+  /* Odak odası: zemin ve kişi kutularının renkleri (kişiye göre sabit, bkz. lib/room/tileColors.ts) */
+  --color-mb-room: #eef1ef;
+  --color-mb-tile-1: #d9e8df;
+  --color-mb-tile-2: #d6e4f2;
+  --color-mb-tile-3: #f2dfd2;
+  --color-mb-tile-4: #e3ddf2;
+  --color-mb-tile-5: #efe5c9;
+  --color-mb-tile-6: #f1d9df;
+  --color-mb-tile-7: #cfe7e4;
+  --color-mb-tile-8: #dfe3ea;
+  /* Canlı yayın rozeti */
+  --color-mb-live: #e5484d;
 
   --font-mb-display: "Geist", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mb-body: "Poppins", "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -366,8 +378,6 @@
  * sınıfın dışındaki sayfalar eski renklerinde kalır. Koyu tema da kapsama dahildir.
  */
 .sl-yeni {
-  /* Odak odasının arka planı: gündüz salonu (koyu temada gece salonu) */
-  --salon-image: url('/oda/salon-gunduz.webp');
   --sl-bg: #ffffff;
   --sl-surface: #ffffff;
   --sl-sunken: #f4f4f4;
@@ -416,7 +426,6 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .sl-yeni {
     color-scheme: dark;
-    --salon-image: url('/oda/salon-gece.webp');
     --sl-bg: #0c0d0d;
     --sl-surface: #141516;
     --sl-sunken: #1d1f21;
@@ -449,6 +458,15 @@
     --color-mb-solid: #232527;
     --color-mb-on-solid: #ededec;
     --color-mb-meter: #3fae9f;
+    --color-mb-room: #161b19;
+    --color-mb-tile-1: #23342b;
+    --color-mb-tile-2: #222e3e;
+    --color-mb-tile-3: #3d2e24;
+    --color-mb-tile-4: #312a43;
+    --color-mb-tile-5: #383221;
+    --color-mb-tile-6: #3d2833;
+    --color-mb-tile-7: #1b3934;
+    --color-mb-tile-8: #2a2f38;
     --shadow-mb-card: 0 0 0 1px #26282a;
     --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
     --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
@@ -457,7 +475,6 @@
 
 :root[data-theme="dark"] .sl-yeni {
   color-scheme: dark;
-  --salon-image: url('/oda/salon-gece.webp');
   --sl-bg: #0c0d0d;
   --sl-surface: #141516;
   --sl-sunken: #1d1f21;
@@ -490,6 +507,15 @@
   --color-mb-solid: #232527;
   --color-mb-on-solid: #ededec;
   --color-mb-meter: #3fae9f;
+  --color-mb-room: #161b19;
+  --color-mb-tile-1: #23342b;
+  --color-mb-tile-2: #222e3e;
+  --color-mb-tile-3: #3d2e24;
+  --color-mb-tile-4: #312a43;
+  --color-mb-tile-5: #383221;
+  --color-mb-tile-6: #3d2833;
+  --color-mb-tile-7: #1b3934;
+  --color-mb-tile-8: #2a2f38;
   --shadow-mb-card: 0 0 0 1px #26282a;
   --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
   --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
