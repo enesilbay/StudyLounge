@@ -4,23 +4,24 @@ import { useMediaQuery, useRange, useShotProgress } from './useMotion';
 
 /*
  * Girişteki gerçek oda ekran görüntüsü (yerelde demo hesaplarla alındı):
- * dört kişilik "Demo: Sessiz Kütüphane", üçünün lambası yanık, ortak sayaç
- * akıyor, sohbette iki mesaj var. Görüntü taklit edilmez; yalnızca üstünde
- * lamba ışıması ve kenarlarında açıklama notları hareket eder.
+ * altı kişilik "Demo: Sessiz Kütüphane", dördünün lambası yanık, ortak sayaç
+ * akıyor, altta tahta/ekran/ses kontrolleri, sohbette mesajlar var.
  */
 
-/** Görüntüdeki yanık masaların yeri (yüzde, 1440×900 çekime göre). */
+/** Görüntüdeki yanık masaların yeri (yüzde, 1200×750 / 2400×1500 çekime göre). */
 const litDesks = [
-  { left: 19, top: 21.3, width: 16.9, height: 16.3 },
-  { left: 36.7, top: 21.3, width: 16.9, height: 16.3 },
-  { left: 54.5, top: 21.3, width: 16.9, height: 16.3 },
+  { left: 24, top: 14.3, width: 21.7, height: 34.7 },
+  { left: 46.7, top: 14.3, width: 21.7, height: 34.7 },
+  { left: 1.3, top: 50.5, width: 21.7, height: 34.7 },
+  { left: 24, top: 50.5, width: 21.7, height: 34.7 },
 ];
 
-/** Açıklama notları: görüntünün dışında, oku ilgili yere uzanır. */
+/** Açıklama notları: odak odasındaki özellikleri öne çıkaran etiketler. */
 const notes = [
-  { text: 'Ortak sayaç: odadaki herkes için aynı', side: 'right' as const, top: '4%', tilt: 2, delay: 1.1 },
-  { text: 'Lambası yanan şu an odakta', side: 'left' as const, top: '38%', tilt: -2, delay: 1.5 },
-  { text: 'Oda sohbeti: mola gelince konuşulur', side: 'right' as const, top: '52%', tilt: -1.5, delay: 1.9 },
+  { text: 'Ortak sayaç: herkes aynı anda odaklanır', side: 'left' as const, top: '2%', tilt: -2, delay: 1.1 },
+  { text: 'Lambası yanan şu an odakta', side: 'left' as const, top: '34%', tilt: 2, delay: 1.5 },
+  { text: 'Ortak tahta, ekran paylaşımı ve sesler', side: 'left' as const, top: '84%', tilt: -1.5, delay: 1.9 },
+  { text: 'Oda sohbeti ve görev paneli', side: 'right' as const, top: '46%', tilt: 2, delay: 1.7 },
 ];
 
 /** `brutal`: Didasko sürümü (kalın kenarlık, sert gölge). `soft`: Mobilo sürümü (yuvarlak, yumuşak gölge). */
@@ -74,7 +75,7 @@ export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft
               height={1500}
               fetchPriority="high"
               decoding="async"
-              alt="StudyLounge çalışma odası: dört kişilik Demo: Sessiz Kütüphane odasında Elif, Ali ve Zeynep odakta, Deniz molada. Sağ üstte Elif'in başlattığı ortak sayaç 24:51 gösteriyor; sağda oda sohbetinde iki mesaj var."
+              alt="StudyLounge odak odası: altı kişilik Demo: Sessiz Kütüphane odasında Ali, Zeynep, Mert ve Selin odakta; Elif ve Deniz molada. Üstte ortak sayaç 24:50 gösteriyor; altta tahta, ekran ve ses kontrol çubuğu; sağda oda sohbeti açık."
               className="block h-auto w-full"
             />
             {reduce

@@ -52,8 +52,8 @@ const featureStrip = ['Ortak sayaç', 'PDF tahtası', 'Kamera isteğe bağlı', 
 
 const stepShots = [
   { src: '/landing/oda-kategoriler.webp', width: 1200, height: 168, alt: 'Odalar sayfası: oda arama kutusu ve Bilgisayar Bilimi, Tıp ve Sağlık, Hukuk, Sınav Hazırlık gibi konu filtreleri.' },
-  { src: '/landing/oda-odaklan.webp', width: 1045, height: 200, alt: 'Oda içindeki sayaç: 25:00, süre seçenekleri, Odayla başlat bağlantısı ve Odaklan düğmesi.' },
-  { src: '/landing/oda-sohbet.webp', width: 745, height: 650, alt: 'Oda sohbeti: Ali "Herkese kolay gelsin, ilk turdan sonra 5 dk mola." ve Zeynep "Biyokimya 3. ünite bitene kadar buradayım." yazmış.' },
+  { src: '/landing/oda-odaklan.webp', width: 752, height: 552, alt: 'Oda içindeki sayaç: süre seçenekleri, Odayla başlat seçeneği ve Odaklan düğmesi.' },
+  { src: '/landing/oda-sohbet.webp', width: 704, height: 940, alt: 'Oda sohbeti: Ali, Zeynep, Deniz, Mert ve Selin çalışma odasında mesajlaşıyor.' },
 ];
 
 export default function LandingPage() {
@@ -165,10 +165,10 @@ export default function LandingPage() {
               <MbSectionTitle id="oda-baslik" pill="Odada neler var" title={benefitSection.title} intro={benefitSection.intro} />
               <div className="mt-14 grid gap-6 lg:grid-cols-2">
                 <FeatureCard title={timerBenefit.title} text={timerBenefit.text} detail={timerBenefit.detail} from="left">
-                  <MbShot src="/landing/oda-sayac.webp" width={760} height={250} alt="Ortak sayaç: 24:51, Odak, Elif Kaya başlattı; duraklat, bitir ve Ayrıl düğmeleri." />
+                  <MbShot src="/landing/oda-sayac.webp" width={752} height={528} alt="Ortak sayaç: 24:49, Odak aşaması, tur bilgisi, duraklat, bitir ve Katıl düğmeleri." />
                 </FeatureCard>
                 <FeatureCard title={boardBenefit.title} text={boardBenefit.text} detail={boardBenefit.detail} from="right">
-                  <MbShot src="/landing/oda-tahta.webp" width={1200} height={724} alt="Ortak PDF tahtası: Fizik 101 ders notunda F = m · a formülü fosforlu kalemle işaretlenmiş, cevap 3 m/s² yuvarlak içine alınmış." />
+                  <MbShot src="/landing/oda-tahta.webp" width={1200} height={893} alt="Ortak PDF tahtası: Fizik 101 ders notunda F = m · a formülü fosforlu kalemle işaretlenmiş, cevap 3 m/s² yuvarlak içine alınmış." />
                 </FeatureCard>
                 <Reveal as="article" className="lg:col-span-2">
                   <Lift className="grid items-center gap-8 rounded-[24px] bg-mb-surface p-6 md:p-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
@@ -176,7 +176,7 @@ export default function LandingPage() {
                     <h3 className={`${mbDisplay} text-[1.75rem] font-normal leading-tight md:text-[2rem]`}>{noCameraBenefit.title}</h3>
                     <p className="mt-4 leading-[1.8] text-mb-body">{noCameraBenefit.text}</p>
                   </div>
-                  <MbShot src="/landing/oda-masalar.webp" width={1200} height={503} alt="Oda masaları: Elif, Ali ve Zeynep odakta, Deniz molada. Kamera yok; kim odakta, kim molada yazıyor." />
+                  <MbShot src="/landing/oda-masalar.webp" width={1200} height={808} alt="Oda masaları: 6 öğrenci çalışma masasında. Kamera yok; kim odakta kim molada görünüyor, odaklananların masasında lamba yanıyor." />
                   </Lift>
                 </Reveal>
               </div>
@@ -291,10 +291,10 @@ export default function LandingPage() {
             <MbContainer>
               <Reveal className="relative overflow-hidden rounded-[28px] bg-mb-band bg-[linear-gradient(90deg,var(--color-mb-grid)_1px,transparent_1px)] bg-[size:88px_100%] px-6 py-16 text-center md:px-16 md:py-24">
                 <Float className="pointer-events-none absolute -left-10 top-10 hidden w-64 lg:block" amplitude={12} duration={7}>
-                  <img src="/landing/oda-sohbet.webp" alt="" width={745} height={650} loading="lazy" className="block h-auto w-full -rotate-6 rounded-[16px] shadow-mb-shot" />
+                  <img src="/landing/oda-sohbet.webp" alt="" width={704} height={940} loading="lazy" className="block h-auto w-full -rotate-6 rounded-[16px] shadow-mb-shot" />
                 </Float>
                 <Float className="pointer-events-none absolute -right-12 bottom-14 hidden w-80 lg:block" amplitude={10} duration={8} delay={1.5}>
-                  <img src="/landing/oda-sayac.webp" alt="" width={760} height={250} loading="lazy" className="block h-auto w-full rotate-6 rounded-[16px] shadow-mb-shot" />
+                  <img src="/landing/oda-sayac.webp" alt="" width={752} height={528} loading="lazy" className="block h-auto w-full rotate-6 rounded-[16px] shadow-mb-shot" />
                 </Float>
                 <div className="relative mx-auto max-w-[36rem]">
                   <Float className="mx-auto mb-6 w-56 md:w-72" amplitude={8} duration={7}>
