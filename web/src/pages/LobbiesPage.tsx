@@ -27,6 +27,8 @@ export default function LobbiesPage() {
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [query, setQuery] = useState('');
   const [view, setViewState] = useState(readView);
+  // "+N oda daha" ile açılan sütunlar
+  const [expanded, setExpanded] = useState<Partial<Record<RoomKind, boolean>>>({});
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [friends, setFriends] = useState<FriendPresence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -250,7 +252,10 @@ export default function LobbiesPage() {
         {!isLoading && visibleLobbies.length > 0 && view === 'board' ? (
           <m.div key="pano" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }} className="scrollbar-hide -mx-3 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
             {columns.map((column, columnIndex) => {
-              const rooms = visibleLobbies.filter((lobby) => roomKind(lobby) === column.kind);
+              const rooms = sortByActivity(visibleLobbies.filter((lobby) => roomKind(lobby) === column.kind));
+              const open = expanded[column.kind] ?? false;
+              const shown = open ? rooms : rooms.slice(0, COLUMN_LIMIT);
+              const hiddenCount = rooms.length - shown.length;
               return (
                 <section key={column.kind} aria-labelledby={`sutun-${column.kind}`} className="flex w-[85%] shrink-0 snap-start flex-col rounded-[18px] bg-mb-band/70 p-2.5 sm:w-[60%] md:w-auto">
                   <header className="flex items-center gap-2.5 px-1.5 pb-3 pt-1">
@@ -261,11 +266,27 @@ export default function LobbiesPage() {
                     <span className="ml-auto grid h-6 min-w-6 place-items-center rounded-[7px] bg-mb-card px-1.5 text-xs font-semibold tabular-nums text-mb-ink">{rooms.length}</span>
                   </header>
                   {rooms.length > 0 ? (
-                    <ul className="space-y-2.5">
-                      {rooms.map((lobby, index) => (
-                        <RoomCard key={lobby.id} lobby={lobby} kind={column.kind} friends={friends} isPremium={!!user?.isPremium} onEnter={enterLobby} delay={columnIndex * 0.06 + index * 0.05} />
-                      ))}
-                    </ul>
+                    <>
+                      <ul className="space-y-2">
+                        {shown.map((lobby, index) =>
+                          (lobby.memberCount ?? 0) > 0 ? (
+                            <RoomCard key={lobby.id} lobby={lobby} kind={column.kind} friends={friends} isPremium={!!user?.isPremium} onEnter={enterLobby} delay={columnIndex * 0.06 + index * 0.05} />
+                          ) : (
+                            <QuietRoomCard key={lobby.id} lobby={lobby} kind={column.kind} isPremium={!!user?.isPremium} onEnter={enterLobby} delay={columnIndex * 0.06 + index * 0.05} />
+                          ),
+                        )}
+                      </ul>
+                      {rooms.length > COLUMN_LIMIT ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpanded((current) => ({ ...current, [column.kind]: !open }))}
+                          aria-expanded={open}
+                          className="mt-2 min-h-10 w-full rounded-[12px] text-sm font-medium text-mb-body transition hover:bg-mb-card hover:text-mb-ink"
+                        >
+                          {open ? 'Daha az göster' : `+${hiddenCount} oda daha`}
+                        </button>
+                      ) : null}
+                    </>
                   ) : (
                     <p className="rounded-[14px] border border-dashed border-mb-line px-3 py-6 text-center text-sm text-mb-body">{column.empty}</p>
                   )}
@@ -422,6 +443,17 @@ function RoomTags({ lobby, kind }: { lobby: Lobby; kind?: RoomKind }) {
   );
 }
 
+/** Sütunda en fazla bu kadar oda görünür; gerisi "+N oda daha" ile açılır. */
+const COLUMN_LIMIT = 5;
+
+/** Canlı odalar üstte: önce lambası yanan çok olan, sonra kalabalık olan; boş odalar en altta. */
+function sortByActivity(rooms: Lobby[]) {
+  return [...rooms].sort(
+    (a, b) => (b.activeUsers ?? 0) - (a.activeUsers ?? 0) || (b.memberCount ?? 0) - (a.memberCount ?? 0),
+  );
+}
+
+/** Canlı oda (içinde biri var): büyük kart. Odakta biri varsa üstünde lamba ışığı. */
 function RoomCard({ lobby, kind, friends, isPremium, onEnter, delay = 0 }: RoomProps & { kind: RoomKind; delay?: number }) {
   const info = useRoomInfo({ lobby, friends, isPremium });
   const ratio = info.capacity ? Math.min(1, info.members / info.capacity) : 0;
@@ -432,6 +464,7 @@ function RoomCard({ lobby, kind, friends, isPremium, onEnter, delay = 0 }: RoomP
       whileHover={{ y: -3 }}
       transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-[16px] bg-mb-card p-4 shadow-mb-card transition-shadow duration-200 hover:shadow-mb-raised"
+      style={info.focused > 0 ? { backgroundImage: 'radial-gradient(120% 60% at 50% -10%, var(--sl-lamp), transparent 70%)' } : undefined}
     >
       <RoomTags lobby={lobby} kind={kind} />
       <h3 className="mt-3 font-mb-display text-[17px] font-medium leading-snug tracking-[-0.02em] text-mb-ink">{lobby.name}</h3>
@@ -461,6 +494,31 @@ function RoomCard({ lobby, kind, friends, isPremium, onEnter, delay = 0 }: RoomP
       </div>
 
       <EnterButton label={info.action} locked={info.locked} disabled={info.full} onClick={() => onEnter(lobby)} className="mt-4 w-full" />
+    </m.li>
+  );
+}
+
+/** Boş oda: tek satırlık sakin kart. */
+function QuietRoomCard({ lobby, kind, isPremium, onEnter, delay = 0 }: Omit<RoomProps, 'friends'> & { kind: RoomKind; delay?: number }) {
+  const info = useRoomInfo({ lobby, friends: [], isPremium });
+  return (
+    <m.li
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="flex items-center gap-3 rounded-[14px] bg-mb-card/70 px-3.5 py-2.5 transition-colors hover:bg-mb-card"
+    >
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-[15px] font-medium tracking-[-0.01em] text-mb-ink">{lobby.name}</h3>
+        <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-mb-body">
+          {lobby.category ?? 'Genel'}
+          {lobby.allowVideo && kind !== 'video' ? <Video className="h-3 w-3 shrink-0" aria-label="Kameralı" /> : null}
+          {lobby.isPremiumOnly && kind !== 'elite' ? <Crown className="h-3 w-3 shrink-0" aria-label="Elite" /> : null}
+          {lobby.isPrivate && kind !== 'private' ? <LockKeyhole className="h-3 w-3 shrink-0" aria-label="Şifreli" /> : null}
+          <span aria-hidden="true">·</span> Boş
+        </p>
+      </div>
+      <EnterButton label={info.action} locked={info.locked} disabled={info.full} onClick={() => onEnter(lobby)} className="min-h-9 shrink-0 px-3" />
     </m.li>
   );
 }
