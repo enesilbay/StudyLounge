@@ -4,7 +4,6 @@ import { getSocket } from '../../lib/socket';
 import { notifyInBackground } from '../../lib/browserNotify';
 import { useAuthStore } from '../../store/authStore';
 import { useInboxStore } from '../../store/inboxStore';
-import { useStudyStore } from '../../store/studyStore';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -71,21 +70,9 @@ export function useAppNotifications() {
       notifyInBackground('Düello daveti', `${payload.challengerName ?? 'Biri'} seni ${payload.betAmount ?? ''} puanlık düelloya çağırıyor.`);
     };
 
-    // Odak süresi yazılınca hedef halkası güncellenir; hedef tutulduysa kutlanır.
-    const onScore = (payload: { userId?: number }) => {
-      if (payload.userId === userId) useStudyStore.getState().refreshGoals().catch(() => undefined);
-    };
-    const onGoalReached = (payload: { bonus?: number }) => {
-      useInboxStore.getState().pushToast({ title: 'Günlük hedefini tuttun!', body: `+${payload.bonus ?? 0} Odak Puanı hesabına eklendi.`, to: '/app/analytics' });
-      void useAuthStore.getState().refreshUser();
-      useStudyStore.getState().refreshGoals().catch(() => undefined);
-    };
-
     socket.on('receive_dm', onReceiveDm);
     socket.on('nudge_received', onNudge);
     socket.on('duel_received', onDuel);
-    socket.on('score_updated', onScore);
-    socket.on('goal_reached', onGoalReached);
     const onBadge = (payload: { badge?: string }) => {
       if (!payload.badge) return;
       useInboxStore.getState().pushToast({ title: 'Yeni rozet kazandın', body: payload.badge, to: `/app/u/${userId}` });
@@ -97,8 +84,6 @@ export function useAppNotifications() {
       socket.off('receive_dm', onReceiveDm);
       socket.off('nudge_received', onNudge);
       socket.off('duel_received', onDuel);
-      socket.off('score_updated', onScore);
-      socket.off('goal_reached', onGoalReached);
     };
   }, [userId, inRoom, navigate]);
 

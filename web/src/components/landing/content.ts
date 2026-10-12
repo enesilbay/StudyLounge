@@ -70,8 +70,8 @@ export const benefitRows: Array<[Benefit, Benefit]> = [
   ],
   [
     {
-      title: 'Dersler ve hedefler',
-      text: 'Her oturum hangi derse ait olduğuyla kaydedilir. Günlük ve haftalık hedef koyarsın, üst üste çalıştığın günler serini büyütür.',
+      title: 'Dersler ve analitik',
+      text: "Her oturum hangi derse ait olduğuyla kaydedilir. Analitik'te hangi derse ne kadar çalıştığını görürsün; üst üste çalıştığın günler serini büyütür.",
     },
     {
       title: 'Ortak tahta',
@@ -128,7 +128,7 @@ export const plans = {
     name: 'Ücretsiz',
     description: 'Odalara katıl, birlikte çalış, ilerlemeni takip et.',
     price: '₺0',
-    features: ['Odalara ve şifreli odalara katılma', 'Ortak sayaç ve ortak PDF tahtası', 'Oda sohbeti, özel mesaj ve arkadaşlar', 'Dersler, hedefler ve istatistikler', 'Seri, rozetler ve haftalık lig'],
+    features: ['Odalara ve şifreli odalara katılma', 'Ortak sayaç ve ortak PDF tahtası', 'Oda sohbeti, özel mesaj ve arkadaşlar', 'Dersler ve istatistikler', 'Seri, rozetler ve haftalık lig'],
   },
   premium: {
     name: 'Premium',
@@ -146,7 +146,7 @@ export const faqSection = { title: 'Sık sorulanlar' };
 export const faqs = [
   {
     q: 'Ücretsiz mi?',
-    a: 'Evet. Hesap açmak, odalara katılmak, ortak sayaç, ortak tahta, sohbet, istatistikler, hedefler ve haftalık lig ücretsizdir.',
+    a: 'Evet. Hesap açmak, odalara katılmak, ortak sayaç, ortak tahta, sohbet, istatistikler ve haftalık lig ücretsizdir.',
   },
   {
     q: 'Premium neler ekliyor?',

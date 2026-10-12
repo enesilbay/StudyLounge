@@ -59,7 +59,7 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Yüksek | Çalışma oturumu geçmişi + dersler | Kullanıcı kendi derslerini (ad + renk) oluşturur (`Subject`). Her odak oturumu ayrı kaydedilir (`StudySession`: başlangıç, bitiş, süre, oda, ders). Analitik sayfasına ders dağılımı, oturum geçmişi ve aylık ısı haritası eklenir. Mobilin kullandığı `DailyAnalytics` aynen güncellenmeye devam eder. |
-| Yüksek | Günlük/haftalık hedefler | Kullanıcı ayarlarda hedef belirler (`dailyGoalMinutes`, `weeklyGoalMinutes`, varsayılan kapalı). İlerleme halkası gösterilir; hedef tutulunca günde bir kez bonus coin verilir. |
+| Yüksek | Günlük/haftalık hedefler | Web'den kaldırıldı (kullanıcı kararı, Ekim 2026): sol menüdeki hedef kutusu, Ayarlar'daki hedef formu, Analitik'teki hedef çizgisi, ilk giriş adımı ve hedef bildirimi çıkarıldı. Backend'deki `dailyGoalMinutes`/`weeklyGoalMinutes` kolonları ve günlük hedef bonusu henüz duruyor; tamamen silinmesi ayrı bir iş. |
 | Orta | Odada görev listesi | Kişisel yapılacaklar listesi (`Task`). Odada yan panelde "bu turda ne yapacağım" yazılır; istenirse odada sohbet mesajı olarak paylaşılır. |
 | Orta | Planlı çalışma oturumları | Web'den kaldırıldı (kullanıcı kararı, Ekim 2026): arayüz, bildirimler ve rozet çıkarıldı. Backend'deki `ScheduledSession` uç noktaları, tablo ve hatırlatma görevi henüz duruyor; tamamen silinmesi ayrı bir iş (migration gerekir). |
 
@@ -127,7 +127,7 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
-| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → günlük hedef seç → odada ilk lambanı yak. Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
+| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → odada ilk lambanı yak (günlük hedef adımı hedefler kaldırılınca çıkarıldı). Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
 
 **Görsel kimlik: daha az yazı, daha çok görsel**
 

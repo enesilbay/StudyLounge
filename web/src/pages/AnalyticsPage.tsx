@@ -5,7 +5,6 @@ import { formatMinutes } from '../lib/study';
 import type { DailyAnalytics } from '../lib/types';
 import { StateBlock, Surface } from '../components/ui';
 import { useAuthStore } from '../store/authStore';
-import { useStudyStore } from '../store/studyStore';
 import StudyInsights from '../components/analytics/StudyInsights';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -20,8 +19,6 @@ function localKey(date: Date) {
 
 export default function AnalyticsPage() {
   const user = useAuthStore((state) => state.user);
-  const goals = useStudyStore((state) => state.goals);
-  const refreshGoals = useStudyStore((state) => state.refreshGoals);
   const [records, setRecords] = useState<DailyAnalytics[] | null>(null);
 
   useEffect(() => {
@@ -31,11 +28,10 @@ export default function AnalyticsPage() {
       .get<DailyAnalytics[]>(`/users/analytics/${user.id}`)
       .then((response) => !ignore && setRecords(unwrapData<DailyAnalytics[]>(response.data)))
       .catch(() => !ignore && setRecords([]));
-    refreshGoals().catch(() => undefined);
     return () => {
       ignore = true;
     };
-  }, [user?.id, refreshGoals]);
+  }, [user?.id]);
 
   const days = useMemo(() => {
     const byDate = new Map((records ?? []).map((record) => [record.date, record.focusMinutes ?? 0]));
@@ -61,7 +57,6 @@ export default function AnalyticsPage() {
   const today = days[6].minutes;
   const best = days.reduce((top, day) => (day.minutes > top.minutes ? day : top), days[0]);
   const peakHour = hours.reduce((top, value, index) => (value > hours[top] ? index : top), 0);
-  const dailyGoal = goals?.dailyGoalMinutes ?? 0;
 
   return (
     <div>
@@ -71,8 +66,8 @@ export default function AnalyticsPage() {
       </header>
 
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4">
-        <Stat label="Son 7 gün" value={formatMinutes(weekTotal)} note={goals?.weeklyGoalMinutes ? `Haftalık hedef ${formatMinutes(goals.weeklyGoalMinutes)}` : `Günde ortalama ${formatMinutes(Math.round(weekTotal / 7))}`} />
-        <Stat label="Bugün" value={formatMinutes(today)} note={dailyGoal ? (today >= dailyGoal ? 'Günlük hedef tamam' : `Hedefe ${formatMinutes(dailyGoal - today)} kaldı`) : 'Günlük hedef koymadın'} />
+        <Stat label="Son 7 gün" value={formatMinutes(weekTotal)} note={`Günde ortalama ${formatMinutes(Math.round(weekTotal / 7))}`} />
+        <Stat label="Bugün" value={formatMinutes(today)} note={today ? 'Bugün odaklandın' : 'Henüz odak yok'} />
         <Stat label="Seri" value={`${user?.currentStreak ?? 0} gün`} note={`En uzun ${user?.bestStreak ?? 0} gün`} />
         <Stat label="En verimli saat" value={weekTotal ? `${String(peakHour).padStart(2, '0')}:00` : '—'} note={weekTotal && best.minutes ? `En iyi gün ${weekdayShort.format(best.date)}` : 'Veri bekleniyor'} />
       </dl>
@@ -80,8 +75,8 @@ export default function AnalyticsPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Surface className="p-5">
           <h2 className="text-lg font-semibold text-textDark">Son 7 gün</h2>
-          <p className="text-sm text-textMuted">Günlük odak süresi{dailyGoal ? ', kesikli çizgi günlük hedefin' : ''}</p>
-          <WeekChart days={days} goal={dailyGoal} />
+          <p className="text-sm text-textMuted">Günlük odak süresi</p>
+          <WeekChart days={days} />
         </Surface>
 
         <Surface className="p-5">
@@ -106,10 +101,10 @@ function Stat({ label, value, note }: { label: string; value: string; note: stri
   );
 }
 
-/** Tek seri çubuk grafik: ince çubuklar, sade ızgara, isteğe bağlı hedef çizgisi ve üzerine gelince değer. */
-function WeekChart({ days, goal }: { days: { date: Date; minutes: number; isToday: boolean }[]; goal: number }) {
+/** Tek seri çubuk grafik: ince çubuklar, sade ızgara ve üzerine gelince değer. */
+function WeekChart({ days }: { days: { date: Date; minutes: number; isToday: boolean }[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
-  const top = niceCeiling(Math.max(30, goal, ...days.map((day) => day.minutes)));
+  const top = niceCeiling(Math.max(30, ...days.map((day) => day.minutes)));
   const ticks = [top, top / 2, 0];
 
   return (
@@ -125,9 +120,6 @@ function WeekChart({ days, goal }: { days: { date: Date; minutes: number; isToda
         {ticks.map((tick) => (
           <span key={tick} className="absolute inset-x-0 border-t border-border" style={{ top: `${100 - (tick / top) * 100}%` }} aria-hidden="true" />
         ))}
-        {goal ? (
-          <span className="absolute inset-x-0 z-[1] border-t-2 border-dashed border-textMuted/70" style={{ top: `${100 - (goal / top) * 100}%` }} aria-hidden="true" />
-        ) : null}
         <ol className="absolute inset-0 grid grid-cols-7 gap-2" aria-label="Son 7 günün odak süreleri">
           {days.map((day, index) => {
             const height = (day.minutes / top) * 100;

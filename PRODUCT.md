@@ -43,7 +43,7 @@ Mevcut özellikler:
 - Hesap: JWT, e-posta doğrulama, şifre sıfırlama.
 - Çalışma odaları: kur/katıl, şifreli oda, Elite (Premium) oda, oda sahibi kontrolleri (düzenle, sil, kullanıcı çıkar, kilitle).
 - Odada: kişisel ve ortak Pomodoro, ortam sesleri, sohbet ve dosya paylaşımı, ortak PDF ve boş tahta (kalem, fosforlu kalem, lazer, silgi), kameralı odalarda kamera/mikrofon/ekran paylaşımı, cihaz seçimi, bağlantı kalitesi göstergesi, konuşanı vurgulama, dürtme, düello.
-- Çalışma takibi: dersler, oturum geçmişi, günlük/haftalık hedefler, görev listesi, analitik.
+- Çalışma takibi: dersler, oturum geçmişi, görev listesi, analitik.
 - Sosyal: arkadaşlık, DM, okunmamış mesajlar, kullanıcı arama ve herkese açık profil, engelleme ve şikayet, admin paneli.
 - Oyunlaştırma: odak puanı, seri, rütbeler, rozetler, haftalık lig, mağaza (sohbet balonu rengi, isim ikonu, profil çerçevesi).
 - PWA, uygulama geneli bildirimler.

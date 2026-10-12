@@ -45,15 +45,6 @@ export interface StudySummary {
   daily: { date: string; minutes: number }[];
 }
 
-export interface GoalProgress {
-  dailyGoalMinutes: number;
-  weeklyGoalMinutes: number;
-  todayMinutes: number;
-  weekMinutes: number;
-  rewardedToday: boolean;
-  dailyGoalBonus: number;
-}
-
 export interface Task {
   id: number;
   title: string;

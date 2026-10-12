@@ -8,7 +8,6 @@ import { disconnectSocket } from '../../lib/socket';
 import { useTheme } from '../../lib/theme';
 import { useInboxStore } from '../../store/inboxStore';
 import ToastStack from './ToastStack';
-import GoalProgress from './GoalProgress';
 import { FeedbackButton } from './FeedbackButton';
 import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
@@ -134,7 +133,6 @@ export default function AppLayout() {
           ) : null}
         </nav>
 
-        {collapsed ? null : <GoalProgress />}
 
         <div className="border-t border-mb-line pt-4">
           <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : 'px-1'}`}>

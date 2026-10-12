@@ -232,9 +232,8 @@ sequenceDiagram
 7. 📝 **Ortak PDF Tahtası ve Pomodoro (Web):**
    - Odadakiler aynı PDF ya da boş tahta üzerinde birlikte çizer; ortak Pomodoro sayacı herkesi aynı tura sokar.
 
-8. 📚 **Ders, Hedef ve Görevler:**
+8. 📚 **Ders ve Görevler:**
    - Her odak oturumu ders, oda ve süreyle kaydedilir; analitikte ders dağılımı, 30 günlük takvim ve oturum geçmişi görünür.
-   - Günlük/haftalık hedef; günlük hedef ilk tutulduğunda bonus Odak Puanı.
    - Odada kişisel görev listesi ("bu turda" işaretleme, odada paylaşma).
 
 9. 🏆 **Haftalık Lig ve Rozetler:**
