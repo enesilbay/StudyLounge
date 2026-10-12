@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m } from 'framer-motion';
-import { ArrowLeft, Check, Flag, Search, Send, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Check, Flag, MessageCircle, MessagesSquare, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
 import { Avatar, Notice, ModalShell } from '../components/ui';
 import { AppPage, Card, EmptyState, SegmentedTabs, actionButton, ghostButton, inputClass, solidButton } from '../components/app/Kit';
 import { api } from '../lib/api';
@@ -196,7 +196,7 @@ export default function DMPage() {
             {tab === 'requests' ? (
               <div className="space-y-2 px-2">
                 {requestError ? <Notice tone="danger" onDismiss={() => setRequestError(null)}>{requestError}</Notice> : null}
-                {friendRequests.length === 0 ? <EmptyState image="kahve" title="Bekleyen istek yok" text="Sana gönderilen arkadaşlık istekleri burada görünür." /> : null}
+                {friendRequests.length === 0 ? <EmptyState icon={UserCheck} title="Bekleyen istek yok" text="Sana gönderilen arkadaşlık istekleri burada görünür." /> : null}
                 <AnimatePresence initial={false}>
                   {friendRequests.map((request, index) => (
                     <m.div
@@ -262,7 +262,7 @@ export default function DMPage() {
             )}
             {tab === 'chats' && !isLoadingFriends && filteredFriends.length === 0 ? (
               <EmptyState
-                image="bos-sandalye"
+                icon={Users}
                 title={friends.length ? 'Bu adla arkadaş yok' : 'Henüz arkadaşın yok'}
                 text={friends.length ? 'Aramayı değiştirip tekrar bak.' : 'Birlikte çalışacağın kişileri ekle; sohbetleriniz burada görünür.'}
                 action={
@@ -322,7 +322,7 @@ export default function DMPage() {
                       );
                     })}
                 </AnimatePresence>
-                {!isLoadingMessages && messages.length === 0 ? <EmptyState image="kahve" title="Henüz mesaj yok" text="Bir merhaba yaz; birlikte çalışmak için bir odada buluşun." /> : null}
+                {!isLoadingMessages && messages.length === 0 ? <EmptyState icon={MessageCircle} title="Henüz mesaj yok" text="Bir merhaba yaz; birlikte çalışmak için bir odada buluşun." /> : null}
               </div>
 
               <form
@@ -340,7 +340,7 @@ export default function DMPage() {
             </>
           ) : (
             <div className="grid flex-1 place-items-center">
-              <EmptyState image="telefon" title="Sohbet seçilmedi" text="Soldan bir arkadaşını seç ya da yeni arkadaş ekle." />
+              <EmptyState icon={MessagesSquare} title="Sohbet seçilmedi" text="Soldan bir arkadaşını seç ya da yeni arkadaş ekle." />
             </div>
           )}
         </Card>

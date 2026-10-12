@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { m, useReducedMotion } from 'framer-motion';
+import { Trophy } from 'lucide-react';
 import { api } from '../lib/api';
 import { unwrapData } from '../lib/apiResponses';
 import { formatMinutes } from '../lib/study';
@@ -113,7 +114,7 @@ export default function LeaderboardPage() {
             {rows?.length === 0 ? (
               <Card>
                 <EmptyState
-                  image="kupa"
+                  icon={Trophy}
                   title={period === 'week' ? 'Bu hafta henüz kimse odaklanmadı' : 'Gösterilecek kimse yok'}
                   text={period === 'week' ? 'İlk lambayı sen yak; haftanın ilk dakikaları burada görünür.' : scope === 'friends' ? 'Arkadaş ekledikçe burada sıralanırsınız.' : undefined}
                   action={

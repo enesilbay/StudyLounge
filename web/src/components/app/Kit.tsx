@@ -1,5 +1,10 @@
-import { useEffect, type ReactNode } from 'react';
-import { animate, m, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { animate, m, useMotionValue, useTransform } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
+import { AlertCircle, MoreHorizontal, RotateCcw } from 'lucide-react';
+import { Avatar } from '../ui';
+import { tileColorFor } from '../../lib/room/tileColors';
+import { useClickOutside } from '../../lib/useClickOutside';
 
 /*
  * Yeni kimliğe taşınan uygulama sayfalarının ortak parçaları (docs/brand/marka-rehberi.md).
@@ -163,23 +168,189 @@ export function CountUp({ value, format = (n) => Math.round(n).toLocaleString('t
   return <m.span>{shown}</m.span>;
 }
 
-/** Boş durum: süzülen 3B nesne, kısa başlık ve isteğe bağlı eylem. */
-export function EmptyState({ image, title, text, action, className = '' }: { image: string; title: string; text?: string; action?: ReactNode; className?: string }) {
-  const reduce = useReducedMotion();
+
+/** Boş durum: ikon (yuvarlak yüzeyde), kısa başlık ve isteğe bağlı eylem. */
+export function EmptyState({ icon: Icon, title, text, action, className = '' }: { icon: LucideIcon; title: string; text?: string; action?: ReactNode; className?: string }) {
   return (
     <div className={`flex flex-col items-center px-6 py-10 text-center ${className}`}>
-      <m.img
-        src={`/landing/3b/${image}.webp`}
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className="h-28 w-auto select-none"
-        animate={reduce ? undefined : { y: [0, -8, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-mb-surface text-mb-body">
+        <Icon className="h-6 w-6" aria-hidden="true" />
+      </span>
       <p className="mt-4 font-mb-display text-lg font-medium tracking-[-0.02em] text-mb-ink">{title}</p>
       {text ? <p className="mt-1 max-w-xs text-sm text-mb-body">{text}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
+    </div>
+  );
+}
+
+/** Hata durumu: ikon, başlık, açıklama ve "Yeniden dene" düğmesi (`role="alert"` değil `status`: sayfada tek uyarı kuralı). */
+export function ErrorState({ title, text, onRetry, className = '' }: { title: string; text?: string; onRetry?: () => void; className?: string }) {
+  return (
+    <div role="status" className={`flex flex-col items-center px-6 py-10 text-center ${className}`}>
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-mb-live-soft text-mb-live-ink">
+        <AlertCircle className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <p className="mt-4 font-mb-display text-lg font-medium tracking-[-0.02em] text-mb-ink">{title}</p>
+      {text ? <p className="mt-1 max-w-xs text-sm text-mb-body">{text}</p> : null}
+      {onRetry ? (
+        <button type="button" onClick={onRetry} className={`${outlineButton} mt-5`}>
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Yeniden dene
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Yüklenen içeriğin yerinde duran soluk blok; boyutu `className` ile verilir. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div aria-hidden="true" className={`rounded-[8px] bg-mb-surface ring-1 ring-mb-line/50 motion-safe:animate-pulse ${className}`} />;
+}
+
+/** Liste yüklenirken avatar + iki çizgilik satırlar; ekran okuyucuya tek "Yükleniyor" duyurur. */
+export function SkeletonRows({ rows = 3, className = '' }: { rows?: number; className?: string }) {
+  return (
+    <div role="status" aria-busy="true" className={`space-y-4 ${className}`}>
+      <span className="sr-only">Yükleniyor</span>
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="flex items-center gap-3" aria-hidden="true">
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-2/5" />
+            <Skeleton className="h-3 w-3/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Kırmızı "CANLI" rozeti (ekran paylaşımı gibi canlı yayınlar); konumu `className` ile verilir. */
+export function LiveBadge({ className = '' }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-[6px] bg-mb-live px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-mb-on-live ${className}`}>
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-mb-on-live motion-safe:animate-pulse" />
+      CANLI
+    </span>
+  );
+}
+
+/** Kırmızı sayı rozeti (okunmamış mesaj vb.); 0 ise çizilmez, `max`'ı aşınca "9+" gibi görünür. */
+export function CountBadge({ count, max = 9, className = '' }: { count: number; max?: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span className={`grid h-5 min-w-5 place-items-center rounded-full bg-mb-live px-1 text-[11px] font-semibold leading-none tabular-nums text-mb-on-live ${className}`}>
+      {count > max ? `${max}+` : count}
+    </span>
+  );
+}
+
+const STACK_MORE = {
+  xs: 'h-9 w-9 text-xs',
+  sm: 'h-11 w-11 text-sm',
+  md: 'h-[52px] w-[52px] text-sm',
+} as const;
+
+/** Üst üste binen avatarlar; her biri kişiye özgü renkli bir halkayla ayrışır, kalanlar "+N" olur. */
+export function AvatarStack({
+  people,
+  max = 4,
+  size = 'xs',
+}: {
+  people: Array<{ id: number; name: string; avatarUrl?: string | null }>;
+  max?: number;
+  size?: 'xs' | 'sm' | 'md';
+}) {
+  const shown = people.slice(0, max);
+  const rest = people.length - shown.length;
+  return (
+    <div className="flex items-center">
+      {shown.map((person) => (
+        <span key={person.id} title={person.name} className={`-ml-2 rounded-full p-0.5 ring-2 ring-mb-card first:ml-0 ${tileColorFor(person.id)}`}>
+          <Avatar name={person.name} image={person.avatarUrl} size={size} />
+        </span>
+      ))}
+      {rest > 0 ? (
+        <span
+          role="img"
+          aria-label={`ve ${rest} kişi daha`}
+          className={`-ml-2 grid place-items-center rounded-full bg-mb-surface font-medium tabular-nums text-mb-body ring-2 ring-mb-card ${STACK_MORE[size]}`}
+        >
+          +{rest}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export interface OverflowMenuItem {
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+  disabled?: boolean;
+  /** Açık/seçili durum: sağda yeşil nokta. */
+  active?: boolean;
+  /** Yıkıcı eylem: kırmızı metin. */
+  danger?: boolean;
+}
+
+/** Açılır "Diğer" menüsü: simge düğmesi + menü (kontrol çubuğunda yukarı, sayfalarda aşağı açılabilir). */
+export function OverflowMenu({
+  items,
+  label = 'Diğer kontroller',
+  icon: Icon = MoreHorizontal,
+  align = 'center',
+  placement = 'up',
+  className = '',
+}: {
+  items: OverflowMenuItem[];
+  label?: string;
+  icon?: LucideIcon;
+  align?: 'center' | 'end';
+  placement?: 'up' | 'down';
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useClickOutside(ref, () => setOpen(false), open);
+
+  const side = placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2';
+  const horizontal = align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2';
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={label}
+        title={label}
+        className={`grid h-10 w-10 place-items-center rounded-[12px] transition ${open ? 'bg-mb-surface text-mb-ink' : 'text-mb-ink hover:bg-mb-surface'}`}
+      >
+        <Icon className="h-[18px] w-[18px]" />
+      </button>
+      {open ? (
+        <div role="menu" aria-label={label} className={`absolute z-50 w-64 rounded-[16px] border border-mb-line bg-mb-card p-1.5 shadow-mb-raised ${side} ${horizontal}`}>
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              disabled={item.disabled}
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+              className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium transition hover:bg-mb-surface disabled:opacity-45 ${item.danger ? 'text-mb-live-ink' : 'text-mb-ink'}`}
+            >
+              <item.icon className={`h-[18px] w-[18px] shrink-0 ${item.danger ? 'text-mb-live-ink' : 'text-mb-body'}`} aria-hidden="true" />
+              <span className="min-w-0 flex-1">{item.label}</span>
+              {item.active ? <span aria-hidden="true" className="h-2 w-2 rounded-full bg-mb-action" /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

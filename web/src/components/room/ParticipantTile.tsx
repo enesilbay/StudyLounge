@@ -7,6 +7,7 @@ import { VideoView } from './MediaViews';
 import { hasLiveVideo } from '../../lib/rtc/media';
 import type { PeerQuality } from '../../lib/rtc/PeerManager';
 import { tileColorFor } from '../../lib/room/tileColors';
+import { LiveBadge } from '../app/Kit';
 
 export interface RoomPerson {
   userId: number;
@@ -170,12 +171,7 @@ export function SceneTile({
         live ? 'bg-stage text-white' : dashed ? 'border-2 border-dashed border-mb-line bg-mb-card/40 text-mb-ink' : 'bg-mb-card text-mb-ink ring-1 ring-mb-line'
       }`}
     >
-      {live ? (
-        <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-[6px] bg-mb-live px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white">
-          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-pulse" />
-          CANLI
-        </span>
-      ) : null}
+      {live ? <LiveBadge className="absolute left-2.5 top-2.5" /> : null}
       <span className={`grid place-items-center rounded-full ${small ? 'h-8 w-8' : 'h-12 w-12'} ${live ? 'bg-white/10' : 'bg-mb-surface'}`}>
         <Icon className={small ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />
       </span>

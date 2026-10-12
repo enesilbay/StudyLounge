@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useClickOutside } from '../../lib/useClickOutside';
 
 /*
  * Odanın sayacı: üst çubuğun ortasında duran hap (Focusmate ve Meet'teki gibi).
@@ -57,19 +58,7 @@ export function TimerPill({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false);
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  useClickOutside(rootRef, () => setOpen(false), open);
 
   return (
     <div ref={rootRef} className="relative w-full md:w-auto">

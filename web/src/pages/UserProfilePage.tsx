@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, CalendarDays, Check, DoorOpen, Flag, Flame, MessageCircle, Mountain, Timer, UserPlus } from 'lucide-react';
+import { ArrowLeft, Ban, CalendarDays, Check, DoorOpen, Flag, Flame, MessageCircle, Mountain, Timer, UserPlus, UserX } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage } from '../lib/apiResponses';
 import { useBadgeCatalog } from '../lib/badges';
@@ -40,7 +40,7 @@ export default function UserProfilePage() {
   if (notFound) {
     return (
       <EmptyState
-        image="bos-sandalye"
+        icon={UserX}
         title="Bu profil görüntülenemiyor"
         text="Kullanıcı bulunamadı ya da profilini göremezsin."
         action={

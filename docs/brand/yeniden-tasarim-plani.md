@@ -88,3 +88,17 @@ Her adım ayrı commit'tir; her adımdan sonra gerçek ekranlar açık/koyu tema
 | 1. Ortak kurallar | Yapıldı |
 | 2. Odak odası | Yapıldı (3. sürüm: Meet/Discord düzeni, isteğe bağlı yayın izleme, gizlenen kontrol çubuğu) |
 | 3–10 | Bekliyor |
+
+## Ekranlar v3 (odadaki dilin bütün ekranlara yayılması)
+
+Odak odasının 3. sürümündeki ilkeler (gerçek ürün kalıpları, kaydırmasız yerleşim, kişi renkleri `mb-tile-*`, CANLI ve sayı rozetleri, eylemli bildirimler, telefonda "Diğer" menüsü, iskelet/boş/hata durumları, süs görseli yok) ikişer ekranlık adımlarla bütün uygulamaya yayılıyor. Landing page, giriş ekranı ve yönetim paneli kapsam dışı. Ortak parçalar `web/src/components/app/Kit.tsx`: `OverflowMenu`, `LiveBadge`, `CountBadge`, `AvatarStack`, `Skeleton`, `SkeletonRows`, `ErrorState`, ikonlu `EmptyState`; dışarı tıklama `web/src/lib/useClickOutside.ts`.
+
+| Adım | Ekranlar | Durum |
+| :--- | :--- | :--- |
+| 0 | Ortak temel (token'lar, Kit, `ui.tsx` yeni renklerde) | Yapıldı |
+| 1 | Uygulama kabuğu + Odalar | Bekliyor |
+| 2 | Arkadaşlar + Sıralama | Bekliyor |
+| 3 | Profil + Başkasının profili | Bekliyor |
+| 4 | Analitik + Ayarlar | Bekliyor |
+| 5 | Mağaza + Premium | Bekliyor |
+| 6 | 404 + Oda yan pencereleri | Bekliyor |

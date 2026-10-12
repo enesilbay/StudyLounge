@@ -19,7 +19,6 @@ import {
   Mic,
   MicOff,
   Minimize2,
-  MoreHorizontal,
   MonitorUp,
   MonitorX,
   Paperclip,
@@ -38,6 +37,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button, Notice } from '../components/ui';
+import { OverflowMenu } from '../components/app/Kit';
 import { LogoMark } from '../components/brand/Logo';
 import { ParticipantTile, SceneTile, type RoomPerson } from '../components/room/ParticipantTile';
 import { TimerPill } from '../components/room/TimerDock';
@@ -1154,7 +1154,7 @@ export default function FocusRoomPage() {
                     }`}
                   >
                     {item.label}
-                    {item.badge ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-mb-live px-1 text-[11px] font-semibold text-white">{item.badge}</span> : null}
+                    {item.badge ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-mb-live px-1 text-[11px] font-semibold text-mb-on-live">{item.badge}</span> : null}
                   </button>
                 ))}
               </div>
@@ -1349,7 +1349,7 @@ export default function FocusRoomPage() {
               >
                 <item.icon className="h-[18px] w-[18px]" />
                 {item.badge ? (
-                  <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-mb-live px-1 text-[10px] font-semibold text-white">
+                  <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-mb-live px-1 text-[10px] font-semibold text-mb-on-live">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 ) : null}
@@ -1363,6 +1363,7 @@ export default function FocusRoomPage() {
               <IconButton label="Kontrolleri gizle" onClick={() => setBarHidden(true)} icon={ChevronDown} />
             </div>
             <OverflowMenu
+              className="md:hidden"
               items={[
                 ...(videoRoom
                   ? [
@@ -1389,7 +1390,7 @@ export default function FocusRoomPage() {
               onClick={leaveRoom}
               aria-label="Odadan çık"
               title="Odadan çık"
-              className="ml-1 inline-flex h-10 shrink-0 items-center gap-2 rounded-[12px] bg-mb-live px-3 text-sm font-medium text-white transition hover:brightness-110"
+              className="ml-1 inline-flex h-10 shrink-0 items-center gap-2 rounded-[12px] bg-mb-live px-3 text-sm font-medium text-mb-on-live transition hover:brightness-110"
             >
               <LogOut className="h-[18px] w-[18px]" />
               <span className="hidden sm:inline">Ayrıl</span>
@@ -1418,63 +1419,6 @@ export default function FocusRoomPage() {
         messagePreview={reportTarget?.preview}
         onClose={() => setReportTarget(null)}
       />
-    </div>
-  );
-}
-
-/** Telefonda kontrol çubuğuna sığmayan düğmeler: yukarı açılan "Diğer" menüsü. */
-function OverflowMenu({ items }: { items: Array<{ label: string; icon: typeof Mic; onClick: () => void; disabled?: boolean; active?: boolean }> }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false);
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative md:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label="Diğer kontroller"
-        title="Diğer kontroller"
-        className={`grid h-10 w-10 place-items-center rounded-[12px] transition ${open ? 'bg-mb-surface text-mb-ink' : 'text-mb-ink hover:bg-mb-surface'}`}
-      >
-        <MoreHorizontal className="h-[18px] w-[18px]" />
-      </button>
-      {open ? (
-        <div role="menu" aria-label="Diğer kontroller" className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-[16px] border border-mb-line bg-mb-card p-1.5 shadow-mb-raised">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              onClick={() => {
-                setOpen(false);
-                item.onClick();
-              }}
-              className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium text-mb-ink transition hover:bg-mb-surface disabled:opacity-45"
-            >
-              <item.icon className="h-[18px] w-[18px] shrink-0 text-mb-body" aria-hidden="true" />
-              <span className="min-w-0 flex-1">{item.label}</span>
-              {item.active ? <span aria-hidden="true" className="h-2 w-2 rounded-full bg-mb-action" /> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }

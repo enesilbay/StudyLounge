@@ -356,8 +356,17 @@
   --color-mb-tile-6: #f1d9df;
   --color-mb-tile-7: #cfe7e4;
   --color-mb-tile-8: #dfe3ea;
-  /* Canlı yayın rozeti */
+  /* Canlı yayın rozeti, kırmızı uyarı ve kapalı mikrofon. Yeşil "odakta" içindir; kırmızı canlı ve uyarı içindir. */
   --color-mb-live: #e5484d;
+  /* Kırmızı metin ve simge (açık zeminde 4.5:1'in üstünde), yumuşak kırmızı zemin ve kırmızı zeminin üstündeki yazı */
+  --color-mb-live-ink: #c42f34;
+  --color-mb-live-soft: #fdecec;
+  --color-mb-on-live: #ffffff;
+  /* Durum tonları: başarı (yeşil), bilgi (sakin mavi). Eski --sl-success ve --sl-info bunlara bağlanır. */
+  --color-mb-success: #055049;
+  --color-mb-success-soft: #e3efed;
+  --color-mb-info: #2a6b94;
+  --color-mb-info-soft: #e8f1f7;
 
   --font-mb-display: "Geist", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mb-body: "Poppins", "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -396,6 +405,16 @@
   --sl-on-blush: #000000;
   --sl-lamp: rgb(255 210 122 / 0.45);
   --sl-shadow: 6px 6px 16px 0 rgb(16 25 24 / 0.06);
+  /*
+   * Durum renkleri mb-* token'larına bağlıdır. Koyu tema blokları aynı öğede --color-mb-*
+   * değerlerini değiştirdiği için bunlar koyuda da kendiliğinden koyu tonu alır.
+   */
+  --sl-danger: var(--color-mb-live-ink);
+  --sl-danger-soft: var(--color-mb-live-soft);
+  --sl-success: var(--color-mb-success);
+  --sl-success-soft: var(--color-mb-success-soft);
+  --sl-info: var(--color-mb-info);
+  --sl-info-soft: var(--color-mb-info-soft);
   /* Sahne (tahta, ekran paylaşımı): iki temada da nötr koyu gri */
   --sl-stage: #1b1c1e;
   --font-display: var(--font-mb-display);
@@ -467,6 +486,14 @@
     --color-mb-tile-6: #3d2833;
     --color-mb-tile-7: #1b3934;
     --color-mb-tile-8: #2a2f38;
+    --color-mb-live: #f0585d;
+    --color-mb-live-ink: #f47f83;
+    --color-mb-live-soft: rgb(240 88 93 / 0.16);
+    --color-mb-on-live: #2a0708;
+    --color-mb-success: #3fae9f;
+    --color-mb-success-soft: rgb(63 174 159 / 0.14);
+    --color-mb-info: #8db8d6;
+    --color-mb-info-soft: rgb(141 184 214 / 0.14);
     --shadow-mb-card: 0 0 0 1px #26282a;
     --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
     --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
@@ -516,6 +543,14 @@
   --color-mb-tile-6: #3d2833;
   --color-mb-tile-7: #1b3934;
   --color-mb-tile-8: #2a2f38;
+  --color-mb-live: #f0585d;
+  --color-mb-live-ink: #f47f83;
+  --color-mb-live-soft: rgb(240 88 93 / 0.16);
+  --color-mb-on-live: #2a0708;
+  --color-mb-success: #3fae9f;
+  --color-mb-success-soft: rgb(63 174 159 / 0.14);
+  --color-mb-info: #8db8d6;
+  --color-mb-info-soft: rgb(141 184 214 / 0.14);
   --shadow-mb-card: 0 0 0 1px #26282a;
   --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
   --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
