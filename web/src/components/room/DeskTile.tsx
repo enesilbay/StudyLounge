@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Bell, Mic, MicOff, MonitorUp, Swords, UserRound, UserX, WifiLow, WifiOff } from 'lucide-react';
 import { Avatar } from '../ui';
+import { LogoMark } from '../brand/Logo';
 import type { FrameId } from '../../lib/types';
 import { VideoView } from './MediaViews';
 import { hasLiveVideo } from '../../lib/rtc/media';
@@ -56,9 +57,9 @@ export function DeskTile({
   return (
     <article
       aria-label={`${person.name}${person.isSelf ? ' (sen)' : ''}: ${status}${speaking ? ', konuşuyor' : ''}`}
-      className={`group relative overflow-hidden rounded-xl border bg-surface transition-[color,background-color,box-shadow] ${
+      className={`group relative overflow-hidden rounded-[16px] border bg-surface transition-[color,background-color,box-shadow,border-color] duration-700 ${
         person.isAtDesk ? 'sl-lamp-on' : 'border-border'
-      } ${speaking ? 'ring-[3px] ring-sea' : person.isAtDesk && showVideo ? 'ring-2 ring-accent/80' : ''} ${selected ? 'outline-2 outline-offset-2 outline-primary' : ''} ${compact ? 'aspect-video w-36 shrink-0 sm:w-44' : videoRoom ? 'aspect-[4/3]' : 'min-h-[148px]'}`}
+      } ${speaking ? 'ring-[3px] ring-sea' : person.isAtDesk && showVideo ? 'ring-2 ring-accent/80' : ''} ${selected ? 'outline-2 outline-offset-2 outline-primary' : ''} ${compact ? 'aspect-video w-36 shrink-0 sm:w-44' : videoRoom ? 'aspect-[4/3]' : 'min-h-[10.5rem]'}`}
     >
       {showVideo ? (
         <div className="absolute inset-0 bg-black">
@@ -66,7 +67,14 @@ export function DeskTile({
         </div>
       ) : (
         <div className="absolute inset-0 grid place-items-center">
-          <div className={`flex flex-col items-center gap-2 ${compact ? 'pb-5' : 'pb-6'}`}>
+          {/* Masanın lambası: odaklanınca yanar, ışığı masaya düşer (sl-lamp-on). */}
+          {!compact ? (
+            <LogoMark
+              beam={person.isAtDesk}
+              className={`absolute left-3 top-3 h-7 w-7 transition-colors duration-700 md:left-1/2 md:-translate-x-1/2 ${person.isAtDesk ? 'text-mb-action' : 'text-textMuted/40'}`}
+            />
+          ) : null}
+          <div className={`flex flex-col items-center gap-2 ${compact ? 'pb-5' : 'pb-4 pt-6'}`}>
             <Avatar name={person.name} image={person.avatarUrl} frame={person.frame ?? undefined} size={compact ? 'sm' : 'lg'} premium={person.isPremium} />
           </div>
         </div>

@@ -38,6 +38,8 @@ import {
 import { Button, Notice } from '../components/ui';
 import { LogoMark } from '../components/brand/Logo';
 import { DeskTile, type DeskPerson } from '../components/room/DeskTile';
+import { EmptySeat, TimerRing } from '../components/room/RoomScene';
+import { LAMP_LIGHT, MIN_SEATS, SEAT_POSITIONS, TABLE_POSITION } from '../components/room/sceneLayout';
 import { AudioSink, VideoView } from '../components/room/MediaViews';
 import { api, assetUrl } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
@@ -652,7 +654,107 @@ export default function FocusRoomPage() {
   const timerSeconds = sharedView ? sharedView.remainingSeconds : remainingSeconds;
   const timerLit = sharedView ? followShared && sharedView.phase === 'focus' && !sharedView.paused : running;
   const timerPhase = sharedView ? (sharedView.paused ? 'Duraklatıldı' : sharedView.phase === 'focus' ? 'Odak' : 'Mola') : running ? 'Odakta' : 'Hazır';
-  const dockOpen = (Object.keys(panels) as PanelKey[]).some((key) => panels[key].open);
+  // Ortak sayaç sahnenin ortasında; sağdaki rayda yalnızca sohbet, görevler ve ortam sesi var.
+  const dockOpen = panels.chat.open || panels.tasks.open || panels.sound.open;
+  const timerTotal = sharedView && roomTimer.timer ? (sharedView.phase === 'focus' ? roomTimer.timer.focusSeconds : roomTimer.timer.breakSeconds) : selectedDuration;
+  const timerTitle = sharedView ? `Ortak sayaç · ${sharedView.round}. tur` : 'Sayaç';
+
+  // Sayaç kontrolleri: ortak sayaç varsa duraklat/bitir/katıl, yoksa süre seçimi ve Odaklan.
+  const timerControls = (
+    <>
+      {sharedView && roomTimer.timer ? (
+        <>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mb-body">
+            <span className={`rounded-[6px] px-2 py-0.5 font-medium ${sharedView.paused ? 'bg-mb-surface text-mb-body' : sharedView.phase === 'focus' ? 'bg-lightAmber text-accentDark' : 'bg-mb-tint text-mb-action'}`}>{timerPhase}</span>
+            {describeTimerEvent(roomTimer.lastEvent, roomTimer.timer.startedByName)}
+          </p>
+          <div className="mt-4 flex items-center gap-1.5">
+            <IconButton label={sharedView.paused ? 'Ortak sayacı sürdür' : 'Ortak sayacı herkes için duraklat'} onClick={sharedView.paused ? roomTimer.resume : roomTimer.pause} icon={sharedView.paused ? Play : Pause} />
+            <IconButton label="Ortak sayacı herkes için bitir" onClick={roomTimer.stop} icon={Square} />
+            {followShared ? (
+              <button type="button" onClick={leaveShared} className="ml-auto inline-flex min-h-10 items-center rounded-[12px] border border-mb-line bg-mb-card px-4 text-sm font-medium text-mb-ink transition hover:bg-mb-surface">
+                Sayaçtan ayrıl
+              </button>
+            ) : (
+              <button type="button" onClick={joinShared} className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-[12px] bg-mb-action px-4 text-sm font-medium text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2">
+                <LogoMark className="h-4 w-4" />
+                Katıl
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-3 flex flex-wrap gap-1" role="group" aria-label="Seans süresi">
+            {durationOptions.map((item) => (
+              <button
+                key={item.seconds}
+                type="button"
+                onClick={() => selectDuration(item.seconds)}
+                aria-pressed={selectedDuration === item.seconds}
+                className={`rounded-[8px] px-2.5 py-1 text-xs font-medium transition ${selectedDuration === item.seconds ? 'bg-mb-solid text-mb-on-solid' : 'bg-mb-surface text-mb-body hover:text-mb-ink'}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => (running ? stopFocus() : startFocus())}
+              disabled={!roomName}
+              className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium transition disabled:opacity-50 ${
+                running ? 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface' : 'bg-mb-action text-mb-on-action shadow-mb-press hover:bg-mb-action-2'
+              }`}
+            >
+              {running ? <Coffee className="h-4 w-4" /> : <LogoMark className="h-5 w-5" />}
+              {running ? 'Mola ver' : 'Odaklan'}
+            </button>
+            <button
+              type="button"
+              onClick={startShared}
+              disabled={!joinedLobby}
+              title="Bu süreyle odadaki herkes için ortak sayaç başlat"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-[12px] border border-mb-line bg-mb-card px-3 text-sm font-medium text-mb-ink transition hover:bg-mb-surface disabled:opacity-50"
+            >
+              <Users className="h-4 w-4" />
+              Odayla
+            </button>
+          </div>
+        </>
+      )}
+      <SubjectPicker onError={setError} />
+    </>
+  );
+
+  // Tahta ya da ekran açıkken sahnenin üstündeki ince sayaç şeridinin tek eylemi.
+  const timerMainAction = sharedView ? (
+    followShared ? (
+      <button type="button" onClick={leaveShared} className="inline-flex min-h-9 items-center rounded-[10px] border border-mb-line bg-mb-card px-3 text-sm font-medium text-mb-ink transition hover:bg-mb-surface">
+        Sayaçtan ayrıl
+      </button>
+    ) : (
+      <button type="button" onClick={joinShared} className="inline-flex min-h-9 items-center gap-1.5 rounded-[10px] bg-mb-action px-3 text-sm font-medium text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2">
+        <LogoMark className="h-4 w-4" />
+        Katıl
+      </button>
+    )
+  ) : (
+    <button
+      type="button"
+      onClick={() => (running ? stopFocus() : startFocus())}
+      disabled={!roomName}
+      className={`inline-flex min-h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition disabled:opacity-50 ${
+        running ? 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface' : 'bg-mb-action text-mb-on-action shadow-mb-press hover:bg-mb-action-2'
+      }`}
+    >
+      {running ? <Coffee className="h-4 w-4" /> : <LogoMark className="h-4 w-4" />}
+      {running ? 'Mola ver' : 'Odaklan'}
+    </button>
+  );
+
+  // Ortak masanın çevresindeki yerler: kişi sayısı kadar, en az MIN_SEATS (oda kapasitesini aşmadan, en fazla 8); boşlar "boş masa".
+  const seatCount = Math.min(SEAT_POSITIONS.length, Math.max(people.length, Math.min(lobby?.maxUsers ?? MIN_SEATS, MIN_SEATS)));
   const panelButtons: Array<{ key: PanelKey; label: string; icon: typeof Mic; badge?: number }> = [
     { key: 'timer', label: 'Sayaç', icon: Timer },
     { key: 'chat', label: 'Sohbet', icon: MessageSquare, badge: messages.length },
@@ -774,8 +876,24 @@ export default function FocusRoomPage() {
 
           {stage ? (
             <>
+              {panels.timer.open ? (
+                <div
+                  className={`flex shrink-0 items-center gap-3 rounded-[16px] border bg-mb-card px-3 py-2 shadow-mb-card ${timerLit ? 'border-mb-lamp/60' : 'border-mb-line'}`}
+                  style={timerLit ? LAMP_LIGHT : undefined}
+                >
+                  <TimerRing seconds={timerSeconds} total={timerTotal} lit={timerLit} size={36} />
+                  <p className="font-mb-display text-2xl font-light tabular-nums tracking-[-0.03em] text-mb-ink" aria-live="off">{formatDuration(timerSeconds)}</p>
+                  <p className="hidden min-w-0 truncate text-[13px] text-mb-body sm:block">{timerTitle} · {timerPhase}</p>
+                  <div className="ml-auto flex items-center gap-1">
+                    {timerMainAction}
+                    <button type="button" onClick={() => togglePanel('timer')} aria-label="Sayacı gizle" title="Gizle" className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {/* Sahne: tahta, paylaşılan ekran ya da büyütülen kamera */}
-              <div ref={stageRef} className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-stage ${stageFullscreen ? 'h-dvh' : 'rounded-[20px] shadow-mb-card'}`}>
+              <div ref={stageRef} className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-stage ${stageFullscreen ? 'h-dvh' : 'rounded-[24px] shadow-mb-card'}`}>
                 {sources.length > 1 ? (
                   <div className="flex shrink-0 gap-1 overflow-x-auto px-2 py-1.5 scrollbar-hide" role="tablist" aria-label="Sahnede ne gösterilsin">
                     {sources.map((source) => {
@@ -824,14 +942,75 @@ export default function FocusRoomPage() {
               ) : null}
             </>
           ) : (
+            /* Okuma salonu: ortada ortak masa ve sayaç, çevresinde masalar */
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className={`grid gap-3 ${videoRoom ? 'grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 2xl:grid-cols-4'}`}>
-                {deskTiles(false)}
-                {people.length <= 1 ? (
-                  <div className="grid min-h-[148px] place-items-center rounded-[16px] border border-dashed border-mb-line p-4 text-center text-sm text-mb-body">
-                    Diğer masalar boş.
+              <div className="mx-auto grid min-h-full w-full max-w-6xl grid-cols-2 content-center gap-3 md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)_minmax(0,1fr)] md:items-center md:gap-4">
+                <div className={`col-span-2 md:col-span-1 ${TABLE_POSITION}`}>
+                  <div
+                    className={`relative flex flex-col items-center rounded-[24px] border bg-mb-card px-5 py-6 text-center shadow-mb-card transition-[border-color] duration-700 ${timerLit ? 'border-mb-lamp/60' : 'border-mb-line'}`}
+                    style={timerLit ? LAMP_LIGHT : undefined}
+                  >
+                    {panels.timer.open ? (
+                      <>
+                        <div className="absolute right-2 top-2 flex gap-0.5">
+                          <button type="button" onClick={() => collapsePanel('timer')} aria-label={panels.timer.collapsed ? 'Sayacı büyüt' : 'Sayacı küçült'} aria-expanded={!panels.timer.collapsed} title={panels.timer.collapsed ? 'Büyüt' : 'Küçült'} className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
+                            <ChevronDown className={`h-4 w-4 transition-transform ${panels.timer.collapsed ? '-rotate-90' : ''}`} />
+                          </button>
+                          <button type="button" onClick={() => togglePanel('timer')} aria-label="Sayacı gizle" title="Gizle" className="grid h-8 w-8 place-items-center rounded-[8px] text-mb-body hover:bg-mb-surface hover:text-mb-ink">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <p className="text-[13px] text-mb-body">{timerTitle}</p>
+                        {panels.timer.collapsed ? (
+                          // Küçültülünce yalnızca sayaç kalır.
+                          <p className="mt-1 font-mb-display text-[2.75rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
+                            {formatDuration(timerSeconds)}
+                          </p>
+                        ) : (
+                          <>
+                            <div className="mt-3">
+                              <TimerRing seconds={timerSeconds} total={timerTotal} lit={timerLit} size={212}>
+                                <p className="font-mb-display text-[3.25rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
+                                  {formatDuration(timerSeconds)}
+                                </p>
+                                <p className="mt-2 flex items-center justify-center gap-1.5 text-[13px] text-mb-body">
+                                  <span aria-hidden="true" className={`h-2 w-2 rounded-full ${timerLit ? 'bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)]' : 'bg-mb-body/40'}`} />
+                                  {timerPhase}
+                                </p>
+                              </TimerRing>
+                            </div>
+                            <div className="mt-4 w-full text-left">{timerControls}</div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => togglePanel('timer')} className="flex flex-col items-center gap-2 py-6 text-sm text-mb-body hover:text-mb-ink">
+                        <Timer className="h-6 w-6" aria-hidden="true" />
+                        Sayacı göster
+                      </button>
+                    )}
                   </div>
-                ) : null}
+                </div>
+                {Array.from({ length: Math.max(seatCount, people.length) }, (_, index) => {
+                  const person = people[index];
+                  const position = SEAT_POSITIONS[index] ?? '';
+                  return person ? (
+                    <div key={person.userId} className={position}>
+                      <DeskTile
+                        speaking={speakingIds.has(person.userId)}
+                        person={person}
+                        videoRoom={videoRoom}
+                        selected={stageCameraKey === `camera:${person.userId}`}
+                        onSelect={() => toggleCameraPin(person.userId)}
+                        onNudge={() => nudgeUser(person.userId, person.name)}
+                        onDuel={() => challengeUser(person.userId, person.name)}
+                        onKick={isOwner && !person.isSelf ? () => kickUser(person.userId) : undefined}
+                      />
+                    </div>
+                  ) : (
+                    <EmptySeat key={`bos-${index}`} videoRoom={videoRoom} className={position} />
+                  );
+                })}
               </div>
             </div>
           )}
@@ -896,95 +1075,6 @@ export default function FocusRoomPage() {
         {/* ── Paneller: her biri açılıp kapanır ve küçültülür ── */}
         {dockOpen ? (
           <aside aria-label="Oda panelleri" className="flex w-full shrink-0 flex-col gap-3 lg:w-[22rem] lg:overflow-y-auto">
-            {panels.timer.open ? (
-              <Panel
-                title={sharedView ? `Ortak sayaç · ${sharedView.round}. tur` : 'Sayaç'}
-                name="Sayaç"
-                collapsed={panels.timer.collapsed}
-                onCollapse={() => collapsePanel('timer')}
-                onClose={() => togglePanel('timer')}
-                lit={timerLit}
-                compact={
-                  // Küçültülünce yalnızca sayaç kalır.
-                  <button type="button" onClick={() => collapsePanel('timer')} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left" aria-label="Sayacı büyüt">
-                    <span className="font-mb-display text-[2rem] font-light leading-none tracking-[-0.03em] tabular-nums">{formatDuration(timerSeconds)}</span>
-                    <span className="flex items-center gap-1.5 text-xs text-mb-body">
-                      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${timerLit ? 'bg-accent shadow-[0_0_8px_var(--sl-blush)]' : 'bg-mb-body/40'}`} />
-                      {timerPhase}
-                    </span>
-                  </button>
-                }
-              >
-                <div className="px-4 pb-4">
-                  <p className="font-mb-display text-[3.25rem] font-light leading-none tracking-[-0.04em] tabular-nums text-mb-ink" aria-live="off">
-                    {formatDuration(timerSeconds)}
-                  </p>
-                  {sharedView && roomTimer.timer ? (
-                    <>
-                      <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mb-body">
-                        <span className={`rounded-[6px] px-2 py-0.5 font-medium ${sharedView.paused ? 'bg-mb-surface text-mb-body' : sharedView.phase === 'focus' ? 'bg-lightAmber text-accentDark' : 'bg-mb-tint text-mb-action'}`}>{timerPhase}</span>
-                        {describeTimerEvent(roomTimer.lastEvent, roomTimer.timer.startedByName)}
-                      </p>
-                      <div className="mt-4 flex items-center gap-1.5">
-                        <IconButton label={sharedView.paused ? 'Ortak sayacı sürdür' : 'Ortak sayacı herkes için duraklat'} onClick={sharedView.paused ? roomTimer.resume : roomTimer.pause} icon={sharedView.paused ? Play : Pause} />
-                        <IconButton label="Ortak sayacı herkes için bitir" onClick={roomTimer.stop} icon={Square} />
-                        {followShared ? (
-                          <button type="button" onClick={leaveShared} className="ml-auto inline-flex min-h-10 items-center rounded-[12px] border border-mb-line bg-mb-card px-4 text-sm font-medium text-mb-ink transition hover:bg-mb-surface">
-                            Sayaçtan ayrıl
-                          </button>
-                        ) : (
-                          <button type="button" onClick={joinShared} className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-[12px] bg-mb-action px-4 text-sm font-medium text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2">
-                            <LogoMark className="h-4 w-4" />
-                            Katıl
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mt-3 flex flex-wrap gap-1" role="group" aria-label="Seans süresi">
-                        {durationOptions.map((item) => (
-                          <button
-                            key={item.seconds}
-                            type="button"
-                            onClick={() => selectDuration(item.seconds)}
-                            aria-pressed={selectedDuration === item.seconds}
-                            className={`rounded-[8px] px-2.5 py-1 text-xs font-medium transition ${selectedDuration === item.seconds ? 'bg-mb-solid text-mb-on-solid' : 'bg-mb-surface text-mb-body hover:text-mb-ink'}`}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => (running ? stopFocus() : startFocus())}
-                          disabled={!roomName}
-                          className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium transition disabled:opacity-50 ${
-                            running ? 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface' : 'bg-mb-action text-mb-on-action shadow-mb-press hover:bg-mb-action-2'
-                          }`}
-                        >
-                          {running ? <Coffee className="h-4 w-4" /> : <LogoMark className="h-5 w-5" />}
-                          {running ? 'Mola ver' : 'Odaklan'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={startShared}
-                          disabled={!joinedLobby}
-                          title="Bu süreyle odadaki herkes için ortak sayaç başlat"
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-[12px] border border-mb-line bg-mb-card px-3 text-sm font-medium text-mb-ink transition hover:bg-mb-surface disabled:opacity-50"
-                        >
-                          <Users className="h-4 w-4" />
-                          Odayla
-                        </button>
-                      </div>
-                    </>
-                  )}
-                  <SubjectPicker onError={setError} />
-                </div>
-              </Panel>
-            ) : null}
-
             {panels.chat.open ? (
               <Panel title={`Sohbet${messages.length ? ` · ${messages.length}` : ''}`} name="Sohbet" collapsed={panels.chat.collapsed} onCollapse={() => collapsePanel('chat')} onClose={() => togglePanel('chat')} grow>
                 <div className="flex min-h-[18rem] flex-1 flex-col lg:min-h-0">
