@@ -22,12 +22,6 @@ const navItems = [
   { path: '/app/profile', icon: UserRound, label: 'Profil' },
 ];
 
-/**
- * Yeni kimliğe (docs/brand/marka-rehberi.md) geçirilmiş sayfalar. Bunlarda içerik
- * alanı da `.sl-yeni` kapsamına girer; diğer sayfaların içeriği eski renklerinde kalır.
- * Sol menü ve üst çubuk her sayfada yeni tasarımdadır.
- */
-const NEW_DESIGN_PATHS = ['/app/lobbies', '/app/focus/', '/app/dm', '/app/profile', '/app/u/', '/app/leaderboard', '/app/analytics', '/app/settings', '/app/premium'];
 
 const COLLAPSE_KEY = 'sl-menu-daraltilmis';
 
@@ -50,7 +44,6 @@ export default function AppLayout() {
   const friendsBadge = useInboxStore((state) => state.unreadFrom.length + state.friendRequests.length);
   const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : 0);
   const displayName = user?.fullName ?? 'StudyLounge';
-  const newDesign = NEW_DESIGN_PATHS.some((path) => location.pathname.startsWith(path));
   // Odalar panosu tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
   const wide = location.pathname.startsWith('/app/lobbies');
 
@@ -82,7 +75,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className={`min-h-screen ${newDesign ? 'sl-yeni bg-mb-bg text-mb-ink' : 'bg-background text-textDark'}`}>
+    <div className="sl-yeni min-h-screen bg-mb-bg text-mb-ink">
       {/* ── Sol menü (geniş ekran) ── */}
       <aside
         className={`sl-yeni fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-mb-line bg-mb-bg py-5 transition-[width] duration-300 ease-out lg:flex ${
