@@ -4,12 +4,12 @@
 - Web: React 19 + Vite + Tailwind v4 (TypeScript), `web/` klasörü.
 - Tasarım (mobil): Her zaman `mobile/app/(tabs)/sensor.tsx` içindeki "C" (Colors) sabitlerini kullan.
 - Tasarım (web): Projenin ana renkleri ve yazı tipleri açılış sayfasınınkilerdir; `docs/brand/marka-rehberi.md` dosyasındadır: beyaz/açık gri zemin, siyah yazı, orman yeşili ana renk (`#055049`), Geist başlık + Poppins gövde, yuvarlak köşe ve yumuşak gölge. Kod karşılığı `web/src/index.css` içindeki `mb-*` token'larıdır (`bg-mb-action`, `text-mb-body`, `font-mb-display` vb.). Yeşil yalnızca ana eylem ve "odakta" durumu içindir. Sabit hex renk yazma.
-- Tasarım (web, taşıma): Uygulama sayfaları bu renklere kullanıcıyla adım adım, sayfa sayfa taşınır; kullanıcı hangi sayfayı söylerse o sayfaya dokun.
+- Tasarım (web, sayfalar): Bütün web sayfaları bu kimlikte. Yeni sayfa `web/src/components/app/Kit.tsx` parçalarıyla (AppPage, Card, Rise, SegmentedTabs, EmptyState, düğme sınıfları) kurulur; ayrıntılar marka rehberinin "Uygulama sayfaları" bölümünde.
 - Mimari: Backend'de tüm yeni özellikler için Controller ve Service yapısını koru. 
 - Ağ: IP adreslerini ve fetch URL'lerini her zaman projeye uygun şekilde yönet.
 - Veritabanı: TypeORM kullanılıyor, yeni Entity eklendiğinde ilişkileri (ManyToOne vs.) kontrol et.
 - Geriye uyumluluk: Backend değişiklikleri mobil istemciyi bozmamalı; yeni kolonlar varsayılan değerli, yeni socket event'leri isteğe bağlı olmalı.
-- WebRTC: Kameralı odalar P2P mesh (en fazla 6 kişi). Sinyalleşme `backend/src/rtc/rtc.service.ts` + `sensors.gateway.ts` içindeki `rtc_*` event'leri; istemci tarafı `web/src/lib/rtc/`.
+- WebRTC: Kameralı odalar P2P mesh (en fazla 6 kişi). Sinyalleşme `backend/src/rtc/rtc.service.ts` + `sensors.gateway.ts` içindeki `rtc_*` event'leri; istemci tarafı `web/src/lib/rtc/`. Ekran paylaşımı isteğe bağlı: görüntü yalnızca izlemek isteyene gönderilir (`PeerManager`, sinyaldeki `meta.watch`).
 - PDF tahtası: Oda başına ortak PDF + çizim durumu `backend/src/whiteboard/` içinde (bellekte tutulur, oda boşalınca 2 dk sonra silinir); socket event'leri `board_*` (`sensors.gateway.ts`); istemci tarafı `web/src/lib/board/` ve `web/src/components/room/PdfBoard.tsx`. Mobil bu event'leri yok sayar.
 
 ## Model seçimi

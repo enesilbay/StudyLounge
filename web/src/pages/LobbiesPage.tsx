@@ -581,8 +581,8 @@ function LampRow({ total, lit }: { total: number; lit: number }) {
 }
 
 /**
- * Planlı oturumların yerinde duran canlı şerit: üç sayı, süzülen 3B lamba ve
- * ışığında yükselen toz zerreleri. Sayılar açılışta sayarak gelir.
+ * Canlı şerit: üç sayı ve süzülen 3B lamba. Lamba ışığı yalnızca odakta biri
+ * varken güçlenir. Sayılar açılışta sayarak gelir.
  */
 function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: number; lit: number; ready: boolean }) {
   const reduce = useReducedMotion();
@@ -597,12 +597,6 @@ function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: numb
         animate={reduce ? { opacity: lit > 0 ? 0.7 : 0.35 } : { opacity: lit > 0 ? [0.55, 0.85, 0.55] : [0.3, 0.42, 0.3] }}
         transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
       />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-96 rounded-full opacity-60 blur-3xl"
-        style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-mb-action-2) 70%, transparent), transparent)' }}
-      />
-      {reduce ? null : <Motes />}
 
       <div className="relative flex items-center justify-between gap-4 px-5 py-6 md:px-8 md:py-7">
         <dl className="grid grid-cols-3 gap-4 sm:gap-10">
@@ -642,34 +636,6 @@ function Stat({ value, label, ready, lamp = false }: { value: number; label: str
       <dd className="mt-2 font-mb-display text-[2rem] font-light leading-none tracking-[-0.04em] tabular-nums md:text-[2.75rem]">
         {ready ? <m.span>{shown}</m.span> : '–'}
       </dd>
-    </div>
-  );
-}
-
-/** Lamba ışığında yavaşça yükselen toz zerreleri (konumlar sabit, rastgele değil). */
-const motes = [
-  { left: '58%', size: 3, delay: 0, duration: 7 },
-  { left: '66%', size: 2, delay: 1.6, duration: 8 },
-  { left: '72%', size: 3, delay: 3.1, duration: 6.5 },
-  { left: '79%', size: 2, delay: 0.8, duration: 9 },
-  { left: '85%', size: 2, delay: 2.4, duration: 7.5 },
-  { left: '62%', size: 2, delay: 4.2, duration: 8.5 },
-  { left: '90%', size: 3, delay: 5, duration: 7 },
-];
-
-function Motes() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-      {motes.map((mote, index) => (
-        <m.span
-          key={index}
-          className="absolute bottom-0 rounded-full bg-mb-lamp"
-          style={{ left: mote.left, width: mote.size, height: mote.size }}
-          initial={{ y: 0, opacity: 0 }}
-          animate={{ y: [-4, -150], opacity: [0, 0.8, 0] }}
-          transition={{ duration: mote.duration, delay: mote.delay, repeat: Infinity, ease: 'easeOut' }}
-        />
-      ))}
     </div>
   );
 }

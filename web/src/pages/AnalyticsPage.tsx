@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import { m } from 'framer-motion';
+import { CalendarRange, Clock3, Flame, Sun } from 'lucide-react';
 import { api } from '../lib/api';
 import { unwrapData } from '../lib/apiResponses';
 import { formatMinutes } from '../lib/study';
 import type { DailyAnalytics } from '../lib/types';
-import { StateBlock, Surface } from '../components/ui';
+import { AppPage, Card, CardTitle, CountUp, Rise } from '../components/app/Kit';
 import { useAuthStore } from '../store/authStore';
 import StudyInsights from '../components/analytics/StudyInsights';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 const weekdayShort = new Intl.DateTimeFormat('tr-TR', { weekday: 'short' });
 const weekdayLong = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'short' });
 
@@ -51,57 +54,71 @@ export default function AnalyticsPage() {
     [records],
   );
 
-  if (records === null) return <StateBlock loading title="Analitik yükleniyor" />;
+  if (records === null) return <p className="py-16 text-center text-mb-body">Analitik yükleniyor…</p>;
 
   const weekTotal = days.reduce((sum, day) => sum + day.minutes, 0);
   const today = days[6].minutes;
   const best = days.reduce((top, day) => (day.minutes > top.minutes ? day : top), days[0]);
   const peakHour = hours.reduce((top, value, index) => (value > hours[top] ? index : top), 0);
+  const asDuration = (value: number) => formatMinutes(Math.round(value));
 
   return (
-    <div>
-      <header className="mb-6">
-        <h1 className="text-4xl md:text-5xl">Analitik</h1>
-        <p className="mt-3 max-w-2xl text-lg text-textMuted">Son yedi günde ne kadar odaklandın, hangi saatlerde verimli oldun.</p>
-      </header>
-
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4">
-        <Stat label="Son 7 gün" value={formatMinutes(weekTotal)} note={`Günde ortalama ${formatMinutes(Math.round(weekTotal / 7))}`} />
-        <Stat label="Bugün" value={formatMinutes(today)} note={today ? 'Bugün odaklandın' : 'Henüz odak yok'} />
-        <Stat label="Seri" value={`${user?.currentStreak ?? 0} gün`} note={`En uzun ${user?.bestStreak ?? 0} gün`} />
-        <Stat label="En verimli saat" value={weekTotal ? `${String(peakHour).padStart(2, '0')}:00` : '—'} note={weekTotal && best.minutes ? `En iyi gün ${weekdayShort.format(best.date)}` : 'Veri bekleniyor'} />
+    <AppPage title="Analitik" description="Son yedi günde ne kadar odaklandın, hangi saatlerde verimli oldun.">
+      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Tile index={0} icon={CalendarRange} label="Son 7 gün" note={`Günde ortalama ${formatMinutes(Math.round(weekTotal / 7))}`}>
+          <CountUp value={weekTotal} format={asDuration} />
+        </Tile>
+        <Tile index={1} icon={Sun} label="Bugün" note={today ? 'Bugün odaklandın' : 'Henüz odak yok'}>
+          <CountUp value={today} format={asDuration} />
+        </Tile>
+        <Tile index={2} icon={Flame} label="Seri" note={`En uzun ${user?.bestStreak ?? 0} gün`}>
+          <CountUp value={user?.currentStreak ?? 0} />
+          <span className="ml-1 text-base text-mb-body">gün</span>
+        </Tile>
+        <Tile index={3} icon={Clock3} label="En verimli saat" note={weekTotal && best.minutes ? `En iyi gün ${weekdayShort.format(best.date)}` : 'Veri bekleniyor'}>
+          {weekTotal ? `${String(peakHour).padStart(2, '0')}:00` : '—'}
+        </Tile>
       </dl>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Surface className="p-5">
-          <h2 className="text-lg font-semibold text-textDark">Son 7 gün</h2>
-          <p className="text-sm text-textMuted">Günlük odak süresi</p>
-          <WeekChart days={days} />
-        </Surface>
-
-        <Surface className="p-5">
-          <h2 className="text-lg font-semibold text-textDark">Saatlere göre</h2>
-          <p className="text-sm text-textMuted">Son 7 günde hangi saatte ne kadar odaklandın</p>
-          <HourStrip hours={hours} />
-        </Surface>
+        <Rise delay={0.15}>
+          <Card className="h-full p-5 md:p-6">
+            <CardTitle aside="Günlük odak süresi">Son 7 gün</CardTitle>
+            <WeekChart days={days} />
+          </Card>
+        </Rise>
+        <Rise delay={0.22}>
+          <Card className="h-full p-5 md:p-6">
+            <CardTitle aside="Son 7 gün">Saatlere göre</CardTitle>
+            <HourStrip hours={hours} />
+          </Card>
+        </Rise>
       </div>
 
       <StudyInsights />
-    </div>
+    </AppPage>
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note: string }) {
+function Tile({ index, icon: Icon, label, note, children }: { index: number; icon: typeof Sun; label: string; note: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface px-5 py-4">
-      <dt className="text-sm text-textMuted">{label}</dt>
-      <dd className="mt-1 font-display text-3xl text-textDark">{value}</dd>
-      <dd className="mt-0.5 text-sm text-textMuted">{note}</dd>
-    </div>
+    <m.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: 0.05 + index * 0.06, ease: EASE_OUT }}
+      className="rounded-[18px] border border-mb-line/70 bg-mb-card p-4 shadow-mb-card"
+    >
+      <dt className="flex items-center gap-2 text-[13px] text-mb-body">
+        <Icon className="h-4 w-4 text-mb-action" aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className="mt-2 font-mb-display text-[1.75rem] font-light leading-none tracking-[-0.03em] tabular-nums text-mb-ink">{children}</dd>
+      <dd className="mt-1.5 text-[13px] text-mb-body">{note}</dd>
+    </m.div>
   );
 }
 
-/** Tek seri çubuk grafik: ince çubuklar, sade ızgara ve üzerine gelince değer. */
+/** Tek seri çubuk grafik: çubuklar sırayla yükselir; bugün koyu yeşil, diğer günler açık. */
 function WeekChart({ days }: { days: { date: Date; minutes: number; isToday: boolean }[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const top = niceCeiling(Math.max(30, ...days.map((day) => day.minutes)));
@@ -111,14 +128,14 @@ function WeekChart({ days }: { days: { date: Date; minutes: number; isToday: boo
     <div className="mt-5 grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-2">
       <div className="relative h-52" aria-hidden="true">
         {ticks.map((tick) => (
-          <span key={tick} className="absolute right-0 -translate-y-1/2 text-xs tabular-nums text-textMuted" style={{ top: `${100 - (tick / top) * 100}%` }}>
+          <span key={tick} className="absolute right-0 -translate-y-1/2 text-xs tabular-nums text-mb-body" style={{ top: `${100 - (tick / top) * 100}%` }}>
             {tick ? formatMinutes(tick) : '0'}
           </span>
         ))}
       </div>
       <div className="relative h-52" onMouseLeave={() => setHovered(null)}>
         {ticks.map((tick) => (
-          <span key={tick} className="absolute inset-x-0 border-t border-border" style={{ top: `${100 - (tick / top) * 100}%` }} aria-hidden="true" />
+          <span key={tick} className="absolute inset-x-0 border-t border-mb-line" style={{ top: `${100 - (tick / top) * 100}%` }} aria-hidden="true" />
         ))}
         <ol className="absolute inset-0 grid grid-cols-7 gap-2" aria-label="Son 7 günün odak süreleri">
           {days.map((day, index) => {
@@ -132,12 +149,17 @@ function WeekChart({ days }: { days: { date: Date; minutes: number; isToday: boo
                   onMouseEnter={() => setHovered(index)}
                   onFocus={() => setHovered(index)}
                   onBlur={() => setHovered(null)}
-                  className="flex h-full w-full items-end justify-center rounded focus-visible:outline-2 focus-visible:outline-primary"
+                  className="flex h-full w-full items-end justify-center rounded-[8px] focus-visible:outline-2 focus-visible:outline-mb-action"
                 >
-                  <span className={`block w-3/5 max-w-10 rounded-t ${day.minutes ? 'bg-primary' : 'bg-transparent'} ${hovered === index ? 'opacity-80' : ''}`} style={{ height: `${Math.max(day.minutes ? 2 : 0, height)}%` }} />
+                  <m.span
+                    className={`block w-3/5 max-w-10 rounded-t-[8px] ${day.minutes ? (day.isToday ? 'bg-mb-action' : 'bg-mb-action/45') : 'bg-transparent'} ${hovered === index ? 'brightness-110' : ''}`}
+                    initial={{ height: '0%' }}
+                    animate={{ height: `${Math.max(day.minutes ? 2 : 0, height)}%` }}
+                    transition={{ duration: 0.8, delay: 0.3 + index * 0.06, ease: EASE_OUT }}
+                  />
                 </button>
                 {hovered === index ? (
-                  <span role="tooltip" className="pointer-events-none absolute z-10 mb-1 whitespace-nowrap rounded-md border border-border bg-surface px-2 py-1 text-xs text-textDark shadow" style={{ bottom: `${Math.min(height, 88)}%` }}>
+                  <span role="tooltip" className="pointer-events-none absolute z-10 mb-1 whitespace-nowrap rounded-[8px] border border-mb-line bg-mb-card px-2 py-1 text-xs text-mb-ink shadow-mb-raised" style={{ bottom: `${Math.min(height, 88)}%` }}>
                     {label}
                   </span>
                 ) : null}
@@ -149,7 +171,7 @@ function WeekChart({ days }: { days: { date: Date; minutes: number; isToday: boo
       <span />
       <ol className="mt-2 grid grid-cols-7 gap-2 text-center text-xs" aria-hidden="true">
         {days.map((day, index) => (
-          <li key={index} className={day.isToday ? 'font-semibold text-textDark' : 'text-textMuted'}>
+          <li key={index} className={day.isToday ? 'font-medium text-mb-ink' : 'text-mb-body'}>
             {day.isToday ? 'Bugün' : weekdayShort.format(day.date)}
           </li>
         ))}
@@ -158,18 +180,18 @@ function WeekChart({ days }: { days: { date: Date; minutes: number; isToday: boo
   );
 }
 
-/** 24 saatlik şerit: tek renkli (turkuaz) ölçek, en yoğun saate göre. */
+/** 24 saatlik şerit: tek renkli (yeşil) ölçek, en yoğun saate göre; kareler dalga gibi belirir. */
 function HourStrip({ hours }: { hours: number[] }) {
   const max = Math.max(...hours);
   const level = (value: number) => {
-    if (!value || !max) return 'bg-sunken';
+    if (!value || !max) return 'bg-mb-surface';
     const ratio = value / max;
-    if (ratio > 0.75) return 'bg-primary';
-    if (ratio > 0.5) return 'bg-primary/70';
-    if (ratio > 0.25) return 'bg-primary/45';
-    return 'bg-primary/20';
+    if (ratio > 0.75) return 'bg-mb-action';
+    if (ratio > 0.5) return 'bg-mb-action/70';
+    if (ratio > 0.25) return 'bg-mb-action/45';
+    return 'bg-mb-action/20';
   };
-  if (!max) return <p className="py-10 text-center text-[15px] text-textMuted">Bir odak oturumu tamamladığında saatlerin burada belirir.</p>;
+  if (!max) return <p className="py-10 text-center text-[15px] text-mb-body">Bir odak oturumu tamamladığında saatlerin burada belirir.</p>;
 
   return (
     <div className="mt-5">
@@ -178,13 +200,18 @@ function HourStrip({ hours }: { hours: number[] }) {
           const label = `${String(hour).padStart(2, '0')}:00–${String((hour + 1) % 24).padStart(2, '0')}:00: ${value ? formatMinutes(value) : 'odak yok'}`;
           return (
             <li key={hour} title={label} aria-label={label} className="text-center">
-              <span className={`block h-9 rounded ${level(value)}`} />
-              <span className="mt-1 block text-[11px] tabular-nums text-textMuted" aria-hidden="true">{String(hour).padStart(2, '0')}</span>
+              <m.span
+                className={`block h-9 rounded-[6px] ${level(value)}`}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, delay: 0.3 + hour * 0.02, ease: EASE_OUT }}
+              />
+              <span className="mt-1 block text-[11px] tabular-nums text-mb-body" aria-hidden="true">{String(hour).padStart(2, '0')}</span>
             </li>
           );
         })}
       </ol>
-      <p className="mt-3 text-sm text-textMuted">Koyu kareler en çok odaklandığın saatler.</p>
+      <p className="mt-3 text-sm text-mb-body">Koyu kareler en çok odaklandığın saatler.</p>
     </div>
   );
 }

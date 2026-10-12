@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Award, Camera, Coins, Flame, Info, Mail, Settings, ShieldCheck, ShoppingCart, UserRound } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { m } from 'framer-motion';
+import { Award, BarChart3, Camera, Coins, Crown, Flame, Info, Loader2, Mail, Settings, ShoppingBag, Timer, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
+import { useBadgeCatalog } from '../lib/badges';
 import type { User } from '../lib/types';
-import { Avatar, IconTile, ModalShell, PageHeader, Pill, StateBlock, Surface } from '../components/ui';
+import { ModalShell, Notice } from '../components/ui';
+import { AppPage, Card, CardTitle, Rise, outlineButton } from '../components/app/Kit';
+import { BadgeGrid, HeroChip, ProfileHero, StatGrid } from '../components/profile/ProfileParts';
 import { useAuthStore } from '../store/authStore';
 
 const ranks = [
@@ -16,9 +20,9 @@ const ranks = [
 ];
 
 export default function ProfilePage() {
-  const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const { user, setUser, refreshUser } = useAuthStore();
+  const { badges: catalog, load: loadCatalog } = useBadgeCatalog();
   const [infoOpen, setInfoOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,14 +30,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     void refreshUser();
-  }, [refreshUser]);
+    loadCatalog().catch(() => undefined);
+  }, [refreshUser, loadCatalog]);
 
-
-
-  if (!user) return <StateBlock loading title="Profil yükleniyor" />;
+  if (!user) return <p className="py-16 text-center text-mb-body">Profil yükleniyor…</p>;
 
   const score = user.totalFocusMinutes ?? 0;
-  const rank = getRankInfo(score);
+  const rankIndex = getRankIndex(score);
+  const rank = ranks[rankIndex];
   const progress = getRankProgress(score);
   const badges = (user.badges ?? []).filter((badge) => badge.trim().length > 0);
 
@@ -47,7 +51,7 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setUser(unwrapUser<User>(response.data));
-      setStatus('Avatar güncellendi.');
+      setStatus('Profil fotoğrafın güncellendi.');
     } catch (uploadError) {
       setError(getApiErrorMessage(uploadError));
     } finally {
@@ -56,131 +60,165 @@ export default function ProfilePage() {
     }
   };
 
-
-
   return (
-    <div>
-      <PageHeader
-        eyebrow="Odak kimliğin"
-        title="Profil"
-        description="Rütben, serin ve rozetlerin. Telefondaki hesabınla aynı."
-        action={
-          <div className="flex gap-2">
-            <button onClick={() => setInfoOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-textDark transition hover:bg-softIndigo">
-              <Info className="h-4 w-4" />
-              Puan
-            </button>
-            <button onClick={() => navigate('/app/settings')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-4 text-base font-semibold text-textDark transition hover:bg-softIndigo">
-              <Settings className="h-4 w-4" />
-              Ayarlar
-            </button>
-          </div>
-        }
-      />
+    <AppPage
+      title="Profil"
+      actions={
+        <>
+          <button type="button" onClick={() => setInfoOpen(true)} className={outlineButton}>
+            <Info className="h-4 w-4" />
+            Puan nasıl kazanılır?
+          </button>
+          <Link to="/app/settings" className={outlineButton}>
+            <Settings className="h-4 w-4" />
+            Ayarlar
+          </Link>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error ? <Notice tone="danger" onDismiss={() => setError(null)}>{error}</Notice> : null}
+        {status ? <Notice tone="success" onDismiss={() => setStatus(null)}>{status}</Notice> : null}
 
-      {error ? <Surface className="mb-4 p-4 text-base font-semibold text-danger">{error}</Surface> : null}
-      {status ? <Surface className="mb-4 p-4 text-base font-semibold text-primary">{status}</Surface> : null}
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[330px_minmax(0,1fr)]">
-        <Surface className="overflow-hidden text-center">
-          <div className="h-28 bg-sunken sl-lamp-on" />
-          <div className="-mt-16 px-5 pb-5">
-            <div className="relative mx-auto w-fit">
-              <button onClick={() => avatarInputRef.current?.click()} className="block rounded-full border-4 border-surface">
-                <Avatar name={user.fullName} image={user.avatarUrl} frame={user.equippedProfileFrame} size="xl" premium={user.isPremium} />
-              </button>
-              <button onClick={() => avatarInputRef.current?.click()} disabled={isUploading} className="absolute bottom-1 right-1 grid h-10 w-10 place-items-center rounded-full border-4 border-surface bg-primary text-onPrimary disabled:opacity-70">
-                <Camera className="h-4 w-4" />
+        <ProfileHero
+          name={user.fullName}
+          username={user.username}
+          avatarUrl={user.avatarUrl}
+          frame={user.equippedProfileFrame}
+          premium={user.isPremium}
+          icon={user.equippedIcon}
+          avatarSlot={
+            <>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploading}
+                aria-label="Profil fotoğrafını değiştir"
+                title="Profil fotoğrafını değiştir"
+                className="absolute bottom-1 left-1 grid h-10 w-10 place-items-center rounded-full border-4 border-mb-solid bg-mb-action text-mb-on-action transition hover:bg-mb-action-2 disabled:opacity-70"
+              >
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
               </button>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && void uploadAvatar(event.target.files[0])} />
-            </div>
-            <h2 className="mt-4 text-2xl font-semibold text-textDark">
-              {user.fullName} {user.equippedIcon ?? ''}
-            </h2>
-            <p className="mt-1 text-sm text-textMuted">@{user.username ?? 'ogrenci'}</p>
-            <div className="mt-4 flex justify-center gap-2">
-              {user.isPremium ? <Pill tone="accent">Premium aktif</Pill> : <Pill>Standart hesap</Pill>}
-              {user.equippedProfileFrame && user.equippedProfileFrame !== 'none' ? <Pill tone="primary">Çerçeve aktif</Pill> : null}
-            </div>
-          </div>
-        </Surface>
+            </>
+          }
+          chips={
+            <>
+              <HeroChip>
+                <Award className="h-3.5 w-3.5" aria-hidden="true" />
+                {rank.title}
+              </HeroChip>
+              {user.isPremium ? (
+                <HeroChip>
+                  <Crown className="h-3.5 w-3.5" aria-hidden="true" />
+                  Premium
+                </HeroChip>
+              ) : null}
+            </>
+          }
+        />
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <Metric icon={Award} label="Rütbe" value={rank.title} tone="accent" />
-            <Metric icon={ShieldCheck} label="Odak Dk." value={String(score)} tone="primary" />
-            <Metric icon={Flame} label="Günlük Seri" value={String(user.currentStreak ?? 0)} tone="danger" />
-            <Metric icon={Coins} label="Bakiye" value={String(user.coins ?? 0)} tone="success" />
-          </div>
+        <StatGrid
+          items={[
+            { label: 'Odak dakikası', value: score, icon: Timer },
+            { label: 'Günlük seri', value: user.currentStreak ?? 0, suffix: 'gün', icon: Flame },
+            { label: 'Bakiye', value: user.coins ?? 0, suffix: 'puan', icon: Coins },
+            { label: 'Rozet', value: badges.length, icon: Award },
+          ]}
+        />
 
-          <Surface className="p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-textDark">Sonraki rütbe</h2>
-                <p className="text-sm text-textMuted">{progress.nextRank ?? 'Maksimum rütbe'}</p>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          {/* Rütbe merdiveni */}
+          <Rise delay={0.2}>
+            <Card className="h-full p-5 md:p-6">
+              <CardTitle aside={progress.nextRank ? `${progress.current} / ${progress.total} dk` : 'Tamamlandı'}>
+                {progress.nextRank ? `Sıradaki rütbe: ${progress.nextRank}` : 'En yüksek rütbedesin'}
+              </CardTitle>
+              <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-mb-surface">
+                <m.div
+                  className="h-full rounded-full bg-gradient-to-r from-mb-action to-mb-action-2"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress.percentage}%` }}
+                  transition={{ duration: 1.1, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                />
               </div>
-              <Pill tone="primary">{Math.round(progress.percentage)}%</Pill>
-            </div>
-            <div className="h-5 overflow-hidden rounded-full bg-background ">
-              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress.percentage}%` }} />
-            </div>
-            <p className="mt-2 text-sm text-textMuted">{progress.nextRank ? `${progress.current} / ${progress.total} dakika` : 'Tüm rütbeler tamamlandı.'}</p>
-          </Surface>
+              <ol className="mt-5 grid grid-cols-5 gap-1" aria-label="Rütbeler">
+                {ranks.map((item, index) => {
+                  const reached = index <= rankIndex;
+                  return (
+                    <li key={item.title} className="flex flex-col items-center gap-2 text-center">
+                      <m.span
+                        aria-hidden="true"
+                        className={`grid h-9 w-9 place-items-center rounded-full text-sm font-medium ${
+                          index === rankIndex ? 'bg-mb-action text-mb-on-action shadow-mb-press' : reached ? 'bg-mb-tint text-mb-action' : 'bg-mb-surface text-mb-body'
+                        }`}
+                        initial={{ scale: 0.6, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.3 + index * 0.07 }}
+                      >
+                        {index + 1}
+                      </m.span>
+                      <span className={`text-[12px] leading-tight sm:text-[13px] ${index === rankIndex ? 'font-medium text-mb-ink' : 'text-mb-body'}`}>
+                        {item.title}
+                        <span className="sr-only">{index === rankIndex ? ' (şu anki rütben)' : reached ? ' (geçildi)' : ''}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Card>
+          </Rise>
 
-          <Surface className="p-4">
-            <h2 className="text-lg font-semibold text-textDark">Kazanılan Rozetler</h2>
-            {badges.length ? (
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                {badges.map((badge) => (
-                  <div key={badge} className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
-                    <IconTile icon={ShieldCheck} tone="accent" />
-                    <p className="font-semibold text-textDark">{badge}</p>
-                  </div>
-                ))}
+          {/* Kısayollar ve hesap */}
+          <Rise delay={0.28}>
+            <Card className="h-full p-5 md:p-6">
+              <CardTitle>Hesap</CardTitle>
+              <dl className="mt-4 space-y-3">
+                <InfoRow icon={UserRound} label="Kullanıcı adı" value={`@${user.username ?? 'ogrenci'}`} />
+                <InfoRow icon={Mail} label="E-posta" value={user.email ?? '-'} />
+              </dl>
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <Link to="/app/shop" className={outlineButton}>
+                  <ShoppingBag className="h-4 w-4" />
+                  Mağaza
+                </Link>
+                <Link to="/app/analytics" className={outlineButton}>
+                  <BarChart3 className="h-4 w-4" />
+                  Analitik
+                </Link>
               </div>
-            ) : (
-              <p className="mt-3 rounded-xl border border-border bg-background p-4 text-sm text-textMuted">Henüz rozet kazanılmadı.</p>
-            )}
-          </Surface>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <button onClick={() => navigate('/app/shop')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-primary px-5 text-base font-semibold text-onPrimary transition hover:bg-secondary">
-              <ShoppingCart className="h-5 w-5" />
-              Mağazaya Git
-            </button>
-            <button onClick={() => navigate(user.isPremium ? '/app/analytics' : '/app/premium')} className="flex min-h-14 items-center justify-center gap-3 rounded-xl border border-border bg-surface px-5 text-base font-semibold text-textDark transition hover:bg-softIndigo">
-              {user.isPremium ? 'Analitik paneline git' : 'Analitik için PRO gerekli'}
-            </button>
-          </div>
-
-          <Surface className="p-4">
-            <h2 className="text-lg font-semibold text-textDark">Hesap bilgileri</h2>
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <InfoRow icon={UserRound} label="Kullanıcı adı" value={`@${user.username ?? 'ogrenci'}`} />
-              <InfoRow icon={Mail} label="E-posta" value={user.email ?? '-'} />
-            </div>
-          </Surface>
+            </Card>
+          </Rise>
         </div>
-      </div>
 
+        <Rise delay={0.3}>
+          <Card className="p-5 md:p-6">
+            <CardTitle aside={`${badges.length} / ${Math.max(catalog.length, badges.length)}`}>Rozetler</CardTitle>
+            <div className="mt-4">
+              <BadgeGrid catalog={catalog} earned={badges} />
+            </div>
+          </Card>
+        </Rise>
+      </div>
 
       <ModalShell open={infoOpen} title="Puan nasıl kazanılır?" description="Odak puanın çalışma odalarında masada kaldığın süreye göre artar." onClose={() => setInfoOpen(false)}>
         <div className="space-y-3">
-          <InfoCard title="Pomodoro başlat" text="Bir çalışma odasına girip zamanlayıcıyı çalıştır." />
-          <InfoCard title="Odakta kal" text="Web'de odak modu açık kaldıkça mobile ile aynı presence mantığı çalışır." />
-          <InfoCard title="Elite odalarda x2" text="Elite odalarda aynı süre iki kat puan olarak hesabına işlenir." />
+          <InfoCard title="Sayacı başlat" text="Bir çalışma odasına gir ve Odaklan'a bas; lamban yanar." />
+          <InfoCard title="Odakta kal" text="Masada kaldığın her dakika puanına eklenir." />
+          <InfoCard title="Elite odalarda 2 kat" text="Elite odalarda aynı süre iki kat puan olarak hesabına işlenir." />
         </div>
       </ModalShell>
-    </div>
+    </AppPage>
   );
 }
 
-function getRankInfo(points: number) {
-  return ranks.find((rank) => rank.max === null || (points >= rank.min && points < rank.max)) ?? ranks[0];
+function getRankIndex(points: number) {
+  const index = ranks.findIndex((rank) => rank.max === null || (points >= rank.min && points < rank.max));
+  return index < 0 ? 0 : index;
 }
 
 function getRankProgress(points: number) {
-  const rank = getRankInfo(points);
+  const rank = ranks[getRankIndex(points)];
   if (rank.max === null) return { current: points, total: points || 1, percentage: 100, nextRank: null as string | null };
   const current = Math.max(0, points - rank.min);
   const total = rank.max - rank.min;
@@ -188,24 +226,13 @@ function getRankProgress(points: number) {
   return { current, total, percentage: Math.min(100, (current / total) * 100), nextRank };
 }
 
-function Metric({ icon, label, value, tone }: { icon: typeof Award; label: string; value: string; tone: 'primary' | 'accent' | 'danger' | 'success' }) {
+function InfoRow({ icon: Icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {
   return (
-    <Surface className="p-4">
-      <IconTile icon={icon} tone={tone} />
-      <p className="mt-3 text-xl font-semibold text-textDark">{value}</p>
-      <p className="text-sm text-textMuted">{label}</p>
-    </Surface>
-  );
-}
-
-function InfoRow({ icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {
-  const Icon = icon;
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
-      <Icon className="h-5 w-5 text-primary" />
-      <div>
-        <p className="text-xs font-semibold text-textMuted">{label}</p>
-        <p className="text-sm font-semibold text-textDark">{value}</p>
+    <div className="flex items-center gap-3 rounded-[14px] bg-mb-surface px-4 py-3">
+      <Icon className="h-4 w-4 shrink-0 text-mb-action" aria-hidden="true" />
+      <div className="min-w-0">
+        <dt className="text-xs text-mb-body">{label}</dt>
+        <dd className="truncate text-[15px] font-medium text-mb-ink">{value}</dd>
       </div>
     </div>
   );
@@ -213,7 +240,7 @@ function InfoRow({ icon, label, value }: { icon: typeof UserRound; label: string
 
 function InfoCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-border bg-background p-4">
+    <div className="rounded-[14px] border border-border bg-sunken p-4">
       <p className="text-base font-semibold text-textDark">{title}</p>
       <p className="mt-1 text-sm text-textMuted">{text}</p>
     </div>

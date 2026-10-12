@@ -24,12 +24,18 @@ export function badgeIcon(icon?: string): LucideIcon {
   return (icon && BADGE_ICONS[icon]) || Award;
 }
 
+/**
+ * Web'de artık kazanılamayan rozetler katalogda gösterilmez (hedefler web'den kaldırıldı).
+ * Daha önce kazananların profilinde görünmeye devam eder.
+ */
+const RETIRED_BADGES = new Set(['Hedef Avcısı']);
+
 /** Rozet kataloğu bir kez yüklenir ve sayfalar arasında paylaşılır. */
 export const useBadgeCatalog = create<{ badges: BadgeDefinition[]; load: () => Promise<void> }>((set, get) => ({
   badges: [],
   load: async () => {
     if (get().badges.length) return;
     const response = await api.get<BadgeDefinition[]>('/users/badges/catalog');
-    set({ badges: response.data });
+    set({ badges: response.data.filter((badge) => !RETIRED_BADGES.has(badge.name)) });
   },
 }));

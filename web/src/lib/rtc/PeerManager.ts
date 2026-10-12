@@ -6,13 +6,19 @@
  * gönderirse "kibar" (polite) taraf geri çekilir, böylece çakışma olmaz.
  * Sinyal mesajları (SDP / ICE / meta) backend'deki Socket.IO gateway'i
  * üzerinden taşınır; medya doğrudan tarayıcılar arasında akar.
+ *
+ * Ekran paylaşımı isteğe bağlıdır (Discord'daki "Yayını izle" gibi): paylaşan kişi
+ * ekranını yalnızca `meta.watch` ile izlemek istediğini bildiren kişilere gönderir.
  */
 
 export interface SignalData {
   description?: RTCSessionDescriptionInit | null;
   candidate?: RTCIceCandidateInit | null;
-  /** Gönderenin ekran paylaşımı stream kimliği; kamera ile ekranı ayırt etmek için. */
-  meta?: { screenStreamId: string | null };
+  /**
+   * `screenStreamId`: gönderenin ekran paylaşımı stream kimliği; kamera ile ekranı ayırt etmek için.
+   * `watch`: gönderen, alıcının ekran paylaşımını izlemek istiyor mu (eski istemciler göndermez).
+   */
+  meta?: { screenStreamId: string | null; watch?: boolean };
 }
 
 /** Bağlantı kalitesi; `getStats()` ile birkaç saniyede bir ölçülür. */
@@ -45,6 +51,8 @@ export function qualityLevel(rttMs: number | null, lossPct: number, state: RTCPe
 
 interface Peer {
   pc: RTCPeerConnection;
+  /** Karşı taraf ekran paylaşımımızı izlemek istiyor mu; istemiyorsa ekran ona gönderilmez. */
+  watchingMe: boolean;
   polite: boolean;
   makingOffer: boolean;
   ignoreOffer: boolean;
@@ -66,6 +74,8 @@ export class PeerManager {
   private peers = new Map<number, Peer>();
   private cameraStream: MediaStream | null = null;
   private screenStream: MediaStream | null = null;
+  /** Ekranını izlemek istediğimiz kişiler. */
+  private watching = new Set<number>();
   private readonly opts: PeerManagerOptions;
   private closed = false;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
@@ -83,6 +93,7 @@ export class PeerManager {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers });
     const peer: Peer = {
       pc,
+      watchingMe: false,
       // Kimliği küçük olan taraf kibar davranır; iki tarafta da aynı sonucu verir.
       polite: this.opts.selfId < userId,
       makingOffer: false,
@@ -131,7 +142,7 @@ export class PeerManager {
     };
 
     this.syncSenders(peer);
-    this.opts.sendSignal(userId, { meta: { screenStreamId: this.screenStream?.id ?? null } });
+    this.opts.sendSignal(userId, { meta: { screenStreamId: this.screenStream?.id ?? null, watch: this.watching.has(userId) } });
     this.opts.onChange();
     return peer;
   }
@@ -143,6 +154,13 @@ export class PeerManager {
 
     if (data.meta) {
       peer.remoteScreenStreamId = data.meta.screenStreamId;
+      // Paylaşım bittiyse izleme isteği de düşer; yeni paylaşımı yeniden izlemek gerekir.
+      if (!data.meta.screenStreamId) this.watching.delete(fromUserId);
+      const watchingMe = Boolean(data.meta.watch);
+      if (watchingMe !== peer.watchingMe) {
+        peer.watchingMe = watchingMe;
+        this.syncSenders(peer);
+      }
       this.opts.onChange();
       return;
     }
@@ -172,6 +190,7 @@ export class PeerManager {
 
   removePeer(userId: number) {
     const peer = this.peers.get(userId);
+    this.watching.delete(userId);
     if (!peer) return;
     peer.pc.close();
     this.peers.delete(userId);
@@ -185,9 +204,21 @@ export class PeerManager {
     this.screenStream = screen;
     for (const [userId, peer] of this.peers) {
       if (screenChanged) {
-        this.opts.sendSignal(userId, { meta: { screenStreamId: screen?.id ?? null } });
+        // Yeni paylaşım herkese bildirilir ama kimseye kendiliğinden gönderilmez.
+        peer.watchingMe = false;
+        this.opts.sendSignal(userId, { meta: { screenStreamId: screen?.id ?? null, watch: this.watching.has(userId) } });
       }
       this.syncSenders(peer);
+    }
+  }
+
+  /** Bir kişinin ekran paylaşımını izlemeye başlar ya da bırakır. */
+  setWatching(userId: number, watch: boolean) {
+    if (watch === this.watching.has(userId)) return;
+    if (watch) this.watching.add(userId);
+    else this.watching.delete(userId);
+    if (this.peers.has(userId)) {
+      this.opts.sendSignal(userId, { meta: { screenStreamId: this.screenStream?.id ?? null, watch } });
     }
   }
 
@@ -276,7 +307,7 @@ export class PeerManager {
   private syncSenders(peer: Peer) {
     const desired = new Map<MediaStreamTrack, MediaStream>();
     this.cameraStream?.getTracks().forEach((track) => desired.set(track, this.cameraStream!));
-    this.screenStream?.getTracks().forEach((track) => desired.set(track, this.screenStream!));
+    if (peer.watchingMe) this.screenStream?.getTracks().forEach((track) => desired.set(track, this.screenStream!));
 
     for (const sender of peer.pc.getSenders()) {
       if (!sender.track) continue;

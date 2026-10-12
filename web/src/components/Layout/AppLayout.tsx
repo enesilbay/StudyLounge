@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { LazyMotion, MotionConfig, domAnimation } from 'framer-motion';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { BarChart3, Bell, Crown, DoorOpen, LogOut, MessageCircle, Moon, PanelLeftClose, PanelLeftOpen, Settings, ShieldCheck, ShoppingBag, Sun, Trophy, UserRound } from 'lucide-react';
 import { Avatar } from '../ui';
@@ -21,12 +22,6 @@ const navItems = [
   { path: '/app/profile', icon: UserRound, label: 'Profil' },
 ];
 
-/**
- * Yeni kimliğe (docs/brand/marka-rehberi.md) geçirilmiş sayfalar. Bunlarda içerik
- * alanı da `.sl-yeni` kapsamına girer; diğer sayfaların içeriği eski renklerinde kalır.
- * Sol menü ve üst çubuk her sayfada yeni tasarımdadır.
- */
-const NEW_DESIGN_PATHS = ['/app/lobbies', '/app/focus/'];
 
 const COLLAPSE_KEY = 'sl-menu-daraltilmis';
 
@@ -49,7 +44,6 @@ export default function AppLayout() {
   const friendsBadge = useInboxStore((state) => state.unreadFrom.length + state.friendRequests.length);
   const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : 0);
   const displayName = user?.fullName ?? 'StudyLounge';
-  const newDesign = NEW_DESIGN_PATHS.some((path) => location.pathname.startsWith(path));
   // Odalar panosu tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
   const wide = location.pathname.startsWith('/app/lobbies');
 
@@ -72,14 +66,16 @@ export default function AppLayout() {
   if (location.pathname.startsWith('/app/focus/')) {
     return (
       <div className="sl-yeni min-h-dvh bg-mb-surface text-mb-ink">
-        <Outlet />
+        <AppMotion>
+          <Outlet />
+        </AppMotion>
         <ToastStack />
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${newDesign ? 'sl-yeni bg-mb-bg text-mb-ink' : 'bg-background text-textDark'}`}>
+    <div className="sl-yeni min-h-screen bg-mb-bg text-mb-ink">
       {/* ── Sol menü (geniş ekran) ── */}
       <aside
         className={`sl-yeni fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-mb-line bg-mb-bg py-5 transition-[width] duration-300 ease-out lg:flex ${
@@ -207,7 +203,9 @@ export default function AppLayout() {
         </header>
 
         <main className={`mx-auto min-h-screen w-full px-4 py-6 pb-24 md:px-8 md:py-8 lg:pb-8 ${wide ? 'max-w-[1600px]' : 'max-w-[1120px]'}`}>
+          <AppMotion>
           <Outlet />
+        </AppMotion>
         </main>
 
         {/* ── Alt menü (telefon) ── */}
@@ -258,5 +256,14 @@ function NavBadge({ count, className = '' }: { count: number; className?: string
     <span aria-label={`${count} yeni`} className={`grid h-5 min-w-5 place-items-center rounded-full bg-mb-action px-1 text-[11px] font-bold text-mb-on-action ${className}`}>
       {count > 9 ? '9+' : count}
     </span>
+  );
+}
+
+/** Sayfa animasyonları: framer-motion'ın küçük paketi bir kez yüklenir; "hareketi azalt" açıkken hepsi durur. */
+function AppMotion({ children }: { children: ReactNode }) {
+  return (
+    <LazyMotion features={domAnimation} strict>
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </LazyMotion>
   );
 }

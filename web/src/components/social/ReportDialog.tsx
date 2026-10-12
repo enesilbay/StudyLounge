@@ -55,26 +55,26 @@ export default function ReportDialog({
     <ModalShell open={Boolean(target)} title={`${target?.fullName ?? ''} kişisini şikayet et`} description="Şikayetler yalnızca yöneticilere görünür; karşı tarafa bildirilmez." onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         {messagePreview ? (
-          <blockquote className="rounded-lg border-l-4 border-border bg-sunken px-3 py-2 text-[15px] text-textDark">{messagePreview}</blockquote>
+          <blockquote className="rounded-[8px] border-l-4 border-mb-line bg-mb-surface px-3 py-2 text-[15px] text-mb-ink">{messagePreview}</blockquote>
         ) : null}
         <fieldset className="space-y-1.5">
-          <legend className="mb-1.5 text-sm font-semibold text-textDark">Sebep</legend>
+          <legend className="mb-1.5 text-sm font-semibold text-mb-ink">Sebep</legend>
           {(Object.keys(REPORT_REASON_LABELS) as ReportReason[]).map((key) => (
-            <label key={key} className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-sunken">
-              <input type="radio" name="report-reason" value={key} checked={reason === key} onChange={() => setReason(key)} className="h-4 w-4 accent-[var(--sl-primary)]" />
-              <span className="text-[15px] text-textDark">{REPORT_REASON_LABELS[key]}</span>
+            <label key={key} className="flex cursor-pointer items-center gap-3 rounded-[8px] px-2 py-1.5 hover:bg-mb-surface">
+              <input type="radio" name="report-reason" value={key} checked={reason === key} onChange={() => setReason(key)} className="h-4 w-4 accent-mb-action" />
+              <span className="text-[15px] text-mb-ink">{REPORT_REASON_LABELS[key]}</span>
             </label>
           ))}
         </fieldset>
         <div>
-          <label htmlFor="report-details" className="mb-1.5 block text-sm font-semibold text-textDark">Ayrıntı (isteğe bağlı)</label>
+          <label htmlFor="report-details" className="mb-1.5 block text-sm font-semibold text-mb-ink">Ayrıntı (isteğe bağlı)</label>
           <textarea
             id="report-details"
             value={details}
             onChange={(event) => setDetails(event.target.value)}
             maxLength={500}
             placeholder="Ne oldu? Kısaca anlat."
-            className="min-h-24 w-full rounded-lg border border-border bg-sunken px-3.5 py-2.5 text-base text-textDark outline-none focus:border-accent"
+            className="min-h-24 w-full rounded-[12px] border border-mb-line bg-mb-surface px-3.5 py-2.5 text-base text-mb-ink outline-none focus:border-mb-action focus:bg-mb-card"
           />
         </div>
         {result ? <Notice tone={result.tone}>{result.text}</Notice> : null}

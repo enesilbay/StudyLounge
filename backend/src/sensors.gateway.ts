@@ -157,12 +157,12 @@ export class SensorsGateway
         secret: getJwtSecret(this.configService),
       });
 
+      (client.data as Record<string, unknown>).user = payload;
+
       // Askıdaki hesap bağlanamaz.
       if (await this.moderationService.isBanned(payload.sub)) {
         throw new Error('Hesap askida');
       }
-
-      (client.data as Record<string, unknown>).user = payload;
 
       const userId = payload.sub;
       if (!this.userSockets.has(userId)) {
