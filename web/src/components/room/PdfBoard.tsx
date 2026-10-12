@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ChevronLeft, ChevronRight, Eraser, Hand, Highlighter, Loader2, PenLine, Plus, Trash2, Undo2, WandSparkles, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eraser, Hand, Highlighter, Loader2, PenLine, Plus, Trash2, Undo2, WandSparkles, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy, type PDFPageProxy, type RenderTask } from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { assetUrl } from '../../lib/api';
@@ -31,6 +31,8 @@ const LASER_SEND_INTERVAL_MS = 30;
 const MIN_POINT_DISTANCE = 0.0012;
 /** Boş tahtanın sanal boyutu; yalnızca en/boy oranı ve nokta ızgarası için. */
 const BLANK_BASE = { width: 1600, height: Math.round(1600 / BLANK_PAGE_ASPECT) };
+/** Genişliğe sığdırırken sayfa bundan geniş olmaz (çok geniş ekranda satırlar okunur kalsın). */
+const MAX_PAGE_WIDTH = 1400;
 
 interface Size {
   w: number;
@@ -61,6 +63,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
   // Avuç içi koruması: kalem algılanınca parmak/avuç dokunuşları çizmez.
   const [penSeen, setPenSeen] = useState(false);
   const [penOnly, setPenOnly] = useState(false);
+  const [fitPage, setFitPage] = useState(false);
 
   const drawingRef = useRef<{ stroke: BoardStroke; sent: number; lastSentAt: number } | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -109,9 +112,12 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
   }, []);
 
   const base = isBlank ? BLANK_BASE : page ? page.getViewport({ scale: 1 }) : null;
+  // Varsayılan: sayfa genişliğe sığar ve aşağı kaydırılır (dikey PDF'ler okunur kalır).
+  // "Sayfaya sığdır" seçilirse sayfanın tamamı görünür.
   const size: Size | null = (() => {
     if (!base || area.w < 40 || area.h < 40) return null;
-    const scale = Math.min(area.w / base.width, area.h / base.height);
+    const widthScale = Math.min(area.w, MAX_PAGE_WIDTH) / base.width;
+    const scale = fitPage ? Math.min(area.w / base.width, area.h / base.height) : widthScale;
     return { w: Math.floor(base.width * scale), h: Math.floor(base.height * scale) };
   })();
   const sizeW = size?.w ?? 0;
@@ -442,12 +448,18 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
             disabled={!pageCount || pageNumber >= lastAllowedPage}
           />
           <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+          <ToolButton
+            label={fitPage ? 'Genişliğe sığdır (büyük göster)' : 'Bütün sayfayı göster'}
+            onClick={() => setFitPage((value) => !value)}
+            icon={fitPage ? ZoomIn : ZoomOut}
+          />
           <ToolButton label="Tahtayı herkes için kapat" onClick={actions.close} icon={X} />
         </div>
       </div>
 
-      {/* Sayfa */}
-      <div ref={areaRef} className="relative grid min-h-0 flex-1 place-items-center overflow-hidden p-3">
+      {/* Sayfa: genişliğe sığdırıldığında dikey kaydırılır */}
+      <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
+      <div ref={areaRef} className={`grid place-items-center p-3 ${fitPage ? 'absolute inset-0' : 'min-h-full'}`}>
         {loadError ? (
           <p className="max-w-sm text-center text-[15px] text-white/80">{loadError}</p>
         ) : !size ? (
@@ -469,6 +481,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
             onPointerCancel={onPointerUp}
           />
         </div>
+      </div>
       </div>
     </div>
   );

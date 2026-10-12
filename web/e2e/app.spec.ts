@@ -74,7 +74,7 @@ test.describe('Elif olarak', () => {
 
   test('odada görev ekleyip bitirir', async ({ page }) => {
     await openRoom(page)
-    await page.getByRole('tab', { name: 'Görevler' }).click()
+    await page.getByRole('button', { name: 'Görevler paneli' }).click()
     const title = `E2E görevi ${Date.now()}`
     await page.getByRole('textbox', { name: 'Yeni görev' }).fill(title)
     await page.getByRole('button', { name: 'Görevi ekle' }).click()

@@ -384,6 +384,8 @@
   --sl-on-blush: #000000;
   --sl-lamp: rgb(255 210 122 / 0.45);
   --sl-shadow: 6px 6px 16px 0 rgb(16 25 24 / 0.06);
+  /* Sahne (tahta, ekran paylaşımı): iki temada da nötr koyu gri */
+  --sl-stage: #1b1c1e;
   --font-display: var(--font-mb-display);
   font-family: var(--font-mb-body);
   color: var(--sl-ink);

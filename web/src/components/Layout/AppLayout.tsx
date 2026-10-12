@@ -27,7 +27,7 @@ const navItems = [
  * alanı da `.sl-yeni` kapsamına girer; diğer sayfaların içeriği eski renklerinde kalır.
  * Sol menü ve üst çubuk her sayfada yeni tasarımdadır.
  */
-const NEW_DESIGN_PATHS = ['/app/lobbies'];
+const NEW_DESIGN_PATHS = ['/app/lobbies', '/app/focus/'];
 
 const COLLAPSE_KEY = 'sl-menu-daraltilmis';
 
@@ -51,8 +51,8 @@ export default function AppLayout() {
   const badgeFor = (path: string) => (path === '/app/dm' ? friendsBadge : 0);
   const displayName = user?.fullName ?? 'StudyLounge';
   const newDesign = NEW_DESIGN_PATHS.some((path) => location.pathname.startsWith(path));
-  // Odak odası ve Odalar panosu tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
-  const wide = location.pathname.startsWith('/app/focus/') || location.pathname.startsWith('/app/lobbies');
+  // Odalar panosu tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
+  const wide = location.pathname.startsWith('/app/lobbies');
 
   useEffect(() => {
     try {
@@ -68,6 +68,16 @@ export default function AppLayout() {
     useStudyStore.getState().reset();
     logout();
   };
+
+  // Odak odası dikkat dağıtmasın: menü ve üst çubuk yok, odadan çıkış düğmesi sayfanın kendisinde.
+  if (location.pathname.startsWith('/app/focus/')) {
+    return (
+      <div className="sl-yeni min-h-dvh bg-mb-surface text-mb-ink">
+        <Outlet />
+        <ToastStack />
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${newDesign ? 'sl-yeni bg-mb-bg text-mb-ink' : 'bg-background text-textDark'}`}>
