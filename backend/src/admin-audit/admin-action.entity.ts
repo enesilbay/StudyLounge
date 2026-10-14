@@ -25,6 +25,9 @@ export const ADMIN_ACTIONS = [
   'room_unlock',
   'room_owner',
   'room_close',
+  'announcement_create',
+  'announcement_update',
+  'announcement_delete',
 ] as const;
 export type AdminActionType = (typeof ADMIN_ACTIONS)[number];
 

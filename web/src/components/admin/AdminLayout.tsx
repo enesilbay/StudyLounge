@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LazyMotion, MotionConfig, domAnimation, m } from 'framer-motion';
-import { ArrowLeft, DoorOpen, LayoutDashboard, ScrollText, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, DoorOpen, LayoutDashboard, Megaphone, ScrollText, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
 import { Avatar, StateBlock, ThemeToggle } from '../ui';
 import { LogoMark } from '../brand/Logo';
 import { useAuthStore } from '../../store/authStore';
@@ -21,6 +21,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   { path: '/admin', label: 'Genel bakış', icon: LayoutDashboard, end: true },
   { path: '/admin/users', label: 'Kullanıcılar', icon: Users },
   { path: '/admin/rooms', label: 'Odalar', icon: DoorOpen },
+  { path: '/admin/announcements', label: 'Duyurular', icon: Megaphone },
   { path: '/admin/moderation', label: 'Moderasyon', icon: ShieldAlert, badge: (p) => p.openReports + p.openFeedback },
   { path: '/admin/actions', label: 'İşlem kaydı', icon: ScrollText },
 ];

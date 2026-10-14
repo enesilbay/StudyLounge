@@ -44,6 +44,8 @@ import { WeeklyResult } from './league/weekly-result.entity';
 import { Feedback } from './feedback/feedback.entity';
 import { Payment } from './payments/payment.entity';
 import { AdminAction } from './admin-audit/admin-action.entity';
+import { Announcement } from './announcements/announcement.entity';
+import { AnnouncementsModule } from './announcements/announcements.module';
 import { Block } from './moderation/block.entity';
 import { Report } from './moderation/report.entity';
 import { Subject } from './study/subject.entity';
@@ -105,6 +107,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
             Feedback,
             Payment,
             AdminAction,
+            Announcement,
           ],
           autoLoadEntities: true,
           // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
@@ -134,6 +137,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     FeedbackModule,
     AdminModule,
     AdminAuditModule,
+    AnnouncementsModule,
     RoomTimerModule,
     ScheduleModule.forRoot(),
     StudyModule,
