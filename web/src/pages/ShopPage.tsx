@@ -126,6 +126,7 @@ export default function ShopPage() {
         <div className="min-w-0">
           <div className="max-w-xl">
             <SegmentedTabs
+              panelId="shop-items"
               label="Ürün türü"
               value={category}
               onChange={(next) => {
@@ -143,6 +144,7 @@ export default function ShopPage() {
             </div>
           ) : null}
 
+          <div role="tabpanel" id="shop-items" aria-labelledby={`shop-items-tab-${category}`}>
           <ul key={category} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {items.map((item, index) => {
               const owned = isOwned(user, item);
@@ -192,6 +194,7 @@ export default function ShopPage() {
               );
             })}
           </ul>
+          </div>
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start" aria-labelledby="preview-title">
