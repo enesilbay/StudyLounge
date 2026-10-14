@@ -44,16 +44,19 @@ StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir gör
 | Yardımcı renk | `#FFC107` *(Amber)* |
 | Tipografi | `Montserrat` |
 
-**Web** istemcisi "kütüphane lambası" temasıyla yeniden tasarlandı (`web/src/index.css`):
+**Web** için projenin ana renkleri ve yazı tipleri aşağıdadır. Ayrıntılar (tipografi ölçeği, köşe, gölge, hareket, kontrast) [`docs/brand/marka-rehberi.md`](docs/brand/marka-rehberi.md) dosyasında; kod karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
 
 | Eleman | Seçim | Açıklama |
 | :--- | :--- | :--- |
-| Zemin | `#101A16` koyu / `#E7EBE2` açık | Gece kütüphanesi ve gündüz okuma salonu; açık/koyu tema sistem tercihine uyar |
-| Cam yeşili | `#3A8264` | Banker lambasının yeşil camı, birincil eylemler |
-| Pirinç / lamba ışığı | `#D9A748` | Sadece "odakta" durumu ve ana eylem için kullanılır |
-| Başlık fontu | `Literata` | E-kitap okuma için tasarlanmış serif |
-| Arayüz fontu | `Atkinson Hyperlegible Next` | Okunabilirlik odaklı sans-serif; sayaçta `Atkinson Hyperlegible Mono` |
+| Zemin | `#FFFFFF` beyaz, `#F7F7F7` yüzey, `#ECECEC` bant | Sade, nötr ve aydınlık zemin |
+| Yazı | `#000000` başlık, `#5C5C5C` gövde metni | Yüksek kontrast (gövde metni beyazda 6.7:1) |
+| Ana renk (orman yeşili) | `#055049`, üzerine gelince `#1A746C` | Ana eylem ve "odakta" durumu; açık tonu `#E3EFED` |
+| Başlık fontu | `Geist` (300) | İnce, sıkı harf aralıklı büyük başlıklar |
+| Arayüz fontu | `Poppins` | Gövde metni ve arayüz |
+| Biçim | Yuvarlak köşeler (kart 24px, düğme 14px), yumuşak gölgeler | |
 | İmza öğe | Masa lambası | Odaklanan kullanıcının masa kartında lamba yanar |
+
+Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu renk ve yazı tiplerini kullanır.
 
 ---
 
@@ -229,10 +232,9 @@ sequenceDiagram
 7. 📝 **Ortak PDF Tahtası ve Pomodoro (Web):**
    - Odadakiler aynı PDF ya da boş tahta üzerinde birlikte çizer; ortak Pomodoro sayacı herkesi aynı tura sokar.
 
-8. 📚 **Ders, Hedef ve Görevler:**
+8. 📚 **Ders ve Görevler:**
    - Her odak oturumu ders, oda ve süreyle kaydedilir; analitikte ders dağılımı, 30 günlük takvim ve oturum geçmişi görünür.
-   - Günlük/haftalık hedef; günlük hedef ilk tutulduğunda bonus Odak Puanı.
-   - Odada kişisel görev listesi ("bu turda" işaretleme, odada paylaşma) ve arkadaşlarla planlı oturumlar (10 dk kala hatırlatma).
+   - Odada kişisel görev listesi ("bu turda" işaretleme, odada paylaşma).
 
 9. 🏆 **Haftalık Lig ve Rozetler:**
    - Sıralama her pazartesi 00:00'da (Türkiye saati) sıfırlanır; ilk üç 100, 60 ve 30 puan alır.

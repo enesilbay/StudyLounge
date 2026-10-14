@@ -52,25 +52,67 @@
 
 /*
  * Açılış sayfası: uygulamanın açık/koyu temasından bağımsız, sabit bir dünya.
- * Gece turkuazı bir çalışma odası, masalarda pembe lamba ışığı; açıklama
- * bölümleri soğuk beyaz kâğıt üzerinde. Yalnızca LandingPage ve
- * components/landing kullanır.
+ * Neobrütalist kâğıt masa (referans: docs/brand/referans-didasko.md): 2px siyah
+ * kenarlık, sivri köşe, bulanıksız kaydırılmış mürekkep gölge, açık tonlu yüzeyler.
+ * Turuncu eylem rengi (lp-action) yalnızca tıklanabilir öğelerde ve "yanan lamba" vurgusunda.
+ * Palet: docs/brand/palet-denemeleri (B varyantı seçildi).
+ * Yalnızca LandingPage ve components/landing kullanır.
  */
 @theme {
-  --color-lp-night: #0e2b2c;
-  --color-lp-night-2: #143738;
-  --color-lp-desk: #1d4547;
-  --color-lp-sea: #4fc3b4;
-  --color-lp-lamp: #ff9dbb;
-  --color-lp-lamp-ink: #a3285a;
-  --color-lp-paper: #f6f8f7;
-  --color-lp-paper-2: #e8efed;
-  --color-lp-ink: #122221;
-  --color-lp-graphite: #556563;
-  --color-lp-line: #d3dedb;
-  --color-lp-on-night: #e8f1ef;
-  --color-lp-on-night-muted: #9db9b5;
-  --font-lp-display: "Familjen Grotesk", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  /* Renkler */
+  --color-lp-paper: #f4f1ea;
+  --color-lp-ink: #121212;
+  /* Soluk metin: bütün yüzeylerde 4.5:1'in üstünde (en düşük: lp-tint-cool üstünde 5.8:1). Eylem renginin üstünde kullanılmaz. */
+  --color-lp-muted: #545454;
+  --color-lp-card: #ffffff;
+  --color-lp-tint-warm: #ffe1cc;
+  --color-lp-tint-cool: #e4ddf7;
+  --color-lp-tint-green: #d6ece2;
+  --color-lp-action: #ff6b3d;
+  /* Süs çizgileri (metin değil): kâğıt ızgarası ve çizimlerdeki satır izleri */
+  --color-lp-grid: #0000000a;
+  --color-lp-line: #00000024;
+
+  /* Yazı tipleri */
+  --font-lp-sans: "Epilogue", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-lp-label: "Lexend Mega", "Epilogue", system-ui, sans-serif;
+
+  /* Yazı ölçeği: başlıklar 900, satır yüksekliği 1.2; gövde 1.5 */
+  --tracking-lp: -0.04em;
+  --text-lp-h1: 3.75rem;
+  --text-lp-h1--line-height: 4.5rem;
+  --text-lp-h1-sm: 2.25rem;
+  --text-lp-h1-sm--line-height: 2.7rem;
+  --text-lp-h2: 2.5rem;
+  --text-lp-h2--line-height: 3rem;
+  --text-lp-h2-sm: 1.625rem;
+  --text-lp-h2-sm--line-height: 1.95rem;
+  --text-lp-h3: 1.75rem;
+  --text-lp-h3--line-height: 2.1rem;
+  --text-lp-h3-sm: 1.375rem;
+  --text-lp-h3-sm--line-height: 1.65rem;
+  --text-lp-h4: 1.25rem;
+  --text-lp-h4--line-height: 1.5rem;
+  --text-lp-lg: 1.125rem;
+  --text-lp-lg--line-height: 1.6875rem;
+  --text-lp-base: 1rem;
+  --text-lp-base--line-height: 1.5rem;
+  --text-lp-sm: 0.875rem;
+  --text-lp-sm--line-height: 1.3125rem;
+  --text-lp-label: 0.75rem;
+  --text-lp-label--line-height: 1rem;
+
+  /* Gölge ölçeği: üzerine gelince · düğme/etiket · kart · büyük panel · giriş görseli */
+  --shadow-lp-xs: 2px 2px 0 0 var(--color-lp-ink);
+  --shadow-lp-sm: 4px 4px 0 0 var(--color-lp-ink);
+  --shadow-lp-md: 6px 6px 0 0 var(--color-lp-ink);
+  --shadow-lp-lg: 8px 8px 0 0 var(--color-lp-ink);
+  --shadow-lp-xl: 10px 10px 0 0 var(--color-lp-ink);
+
+  /* Yerleşim: 1200px içerik + iki yanda 40px boşluk */
+  --container-lp: 80rem;
+  --container-lp-narrow: 37.5rem;
+  --spacing-lp-section: 100px;
 }
 
 /* Açık tema: krem kağıt (varsayılan) */
@@ -274,6 +316,275 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/*
+ * Açılış sayfası, Mobilo denemesi (ozellik/acilis-mobilo): sakin, aydınlık,
+ * yuvarlak köşeli ve yumuşak gölgeli dil (referans: docs/brand/referans-mobilo.md).
+ * Renkler Mobilo'nun kendi paleti: siyah mürekkep, açık griler, orman yeşili eylem.
+ * Yalnızca LandingPage ve components/landing-mobilo kullanır.
+ */
+@theme {
+  /* Mobilo paleti (docs/brand/referans-mobilo.md): beyaz zemin, açık griler, orman yeşili vurgu. */
+  --color-mb-bg: #ffffff;
+  --color-mb-surface: #f7f7f7;
+  --color-mb-band: #ececec;
+  --color-mb-ink: #000000;
+  --color-mb-body: #5c5c5c;
+  /* Süs çizgileri ve kenarlıklar (metin değil) */
+  --color-mb-line: #e2e2e2;
+  --color-mb-grid: #0000000a;
+  --color-mb-action: #055049;
+  --color-mb-action-2: #1a746c;
+  --color-mb-on-action: #ffffff;
+  --color-mb-tint: #e3efed;
+  /* Lamba ışığı: yalnızca logodaki ışık ve lamba ışıması için. */
+  --color-mb-lamp: #ffd27a;
+  /* Uygulama katmanları: kart yüzeyi, koyu (dolu) düğme ve doluluk çubuğu. Koyu temada .sl-yeni içinde değişir. */
+  --color-mb-card: #ffffff;
+  --color-mb-solid: #000000;
+  --color-mb-on-solid: #ffffff;
+  --color-mb-meter: #000000;
+  /* Odak odası: zemin ve kişi kutularının renkleri (kişiye göre sabit, bkz. lib/room/tileColors.ts) */
+  --color-mb-room: #eef1ef;
+  --color-mb-tile-1: #d9e8df;
+  --color-mb-tile-2: #d6e4f2;
+  --color-mb-tile-3: #f2dfd2;
+  --color-mb-tile-4: #e3ddf2;
+  --color-mb-tile-5: #efe5c9;
+  --color-mb-tile-6: #f1d9df;
+  --color-mb-tile-7: #cfe7e4;
+  --color-mb-tile-8: #dfe3ea;
+  /* Canlı yayın rozeti, kırmızı uyarı ve kapalı mikrofon. Yeşil "odakta" içindir; kırmızı canlı ve uyarı içindir. */
+  --color-mb-live: #e5484d;
+  /* Kırmızı metin ve simge (açık zeminde 4.5:1'in üstünde), yumuşak kırmızı zemin ve kırmızı zeminin üstündeki yazı */
+  --color-mb-live-ink: #c42f34;
+  --color-mb-live-soft: #fdecec;
+  --color-mb-on-live: #ffffff;
+  /* Durum tonları: başarı (yeşil), bilgi (sakin mavi). Eski --sl-success ve --sl-info bunlara bağlanır. */
+  --color-mb-success: #055049;
+  --color-mb-success-soft: #e3efed;
+  --color-mb-info: #2a6b94;
+  --color-mb-info-soft: #e8f1f7;
+
+  --font-mb-display: "Geist", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-mb-body: "Poppins", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+
+  --shadow-mb-card: 6px 6px 16px 0 rgb(16 25 24 / 0.06);
+  --shadow-mb-raised: 0 1px 1px -0.3px rgb(0 0 0 / 0.07), 0 2px 2px -0.6px rgb(0 0 0 / 0.07), 0 4px 4px -1px rgb(0 0 0 / 0.08), 0 10px 18px -3px rgb(0 0 0 / 0.1);
+  --shadow-mb-shot: 0 30px 60px -20px rgb(5 80 73 / 0.22), 0 12px 24px -12px rgb(16 25 24 / 0.15);
+  /* Yeşil düğmenin içe doğru kabartması (Mobilo'daki gibi) */
+  --shadow-mb-press: inset 0 -2px 7.6px -2px rgb(0 0 0 / 0.35), 0 1px 1px -0.3px rgb(0 0 0 / 0.07), 0 4px 4px -1px rgb(0 0 0 / 0.08), 0 10px 18px -3px rgb(5 80 73 / 0.25);
+
+  --container-mb: 82.5rem;
+}
+
+/*
+ * Yeni kimliğe (docs/brand/marka-rehberi.md) geçirilmiş uygulama alanları:
+ * sol menü, üst çubuk ve geçirilen sayfalar bu sınıfı taşır. Eski bileşenler
+ * (ui.tsx) --sl-* değişkenlerinden boyandığı için burada yeni paletle ezilir;
+ * sınıfın dışındaki sayfalar eski renklerinde kalır. Koyu tema da kapsama dahildir.
+ */
+.sl-yeni {
+  --sl-bg: #ffffff;
+  --sl-surface: #ffffff;
+  --sl-sunken: #f4f4f4;
+  --sl-border: #e2e2e2;
+  --sl-ink: #000000;
+  --sl-muted: #5c5c5c;
+  --sl-primary: #055049;
+  --sl-primary-strong: #1a746c;
+  --sl-primary-soft: #e3efed;
+  --sl-on-primary: #ffffff;
+  --sl-sea: #1a746c;
+  /* Lamba ışığı: "odakta" durumu ve Premium vurgusu */
+  --sl-blush: #ffd27a;
+  --sl-blush-ink: #7a4f00;
+  --sl-blush-soft: #fff3d6;
+  --sl-on-blush: #000000;
+  --sl-lamp: rgb(255 210 122 / 0.45);
+  --sl-shadow: 6px 6px 16px 0 rgb(16 25 24 / 0.06);
+  /*
+   * Durum renkleri mb-* token'larına bağlıdır. Koyu tema blokları aynı öğede --color-mb-*
+   * değerlerini değiştirdiği için bunlar koyuda da kendiliğinden koyu tonu alır.
+   */
+  --sl-danger: var(--color-mb-live-ink);
+  --sl-danger-soft: var(--color-mb-live-soft);
+  --sl-success: var(--color-mb-success);
+  --sl-success-soft: var(--color-mb-success-soft);
+  --sl-info: var(--color-mb-info);
+  --sl-info-soft: var(--color-mb-info-soft);
+  /* Sahne (tahta, ekran paylaşımı): iki temada da nötr koyu gri */
+  --sl-stage: #1b1c1e;
+  --font-display: var(--font-mb-display);
+  font-family: var(--font-mb-body);
+  color: var(--sl-ink);
+}
+
+.sl-yeni :where(h1, h2, h3) {
+  letter-spacing: -0.03em;
+}
+
+.sl-yeni :focus-visible {
+  outline-color: var(--sl-primary);
+}
+
+/* Eski bileşenlerdeki serif başlık yazı tipi (font-display) de yeni başlık yazı tipine geçer. */
+.sl-yeni .font-display {
+  font-family: var(--font-mb-display);
+}
+
+/* Premium rozeti yeni kimlikte sarı değil, sade koyu bir rozet. */
+.sl-yeni [data-premium-rozet] {
+  background: var(--color-mb-solid);
+  color: var(--color-mb-on-solid);
+  border-color: var(--color-mb-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sl-yeni {
+    color-scheme: dark;
+    --sl-bg: #0c0d0d;
+    --sl-surface: #141516;
+    --sl-sunken: #1d1f21;
+    --sl-border: #26282a;
+    --sl-ink: #ededec;
+    --sl-muted: #9c9fa1;
+    --sl-primary: #1f7f73;
+    --sl-primary-strong: #248c7f;
+    --sl-primary-soft: rgb(31 127 115 / 0.18);
+    --sl-on-primary: #ffffff;
+    --sl-sea: #3fae9f;
+    --sl-blush: #ffd27a;
+    --sl-blush-ink: #e9c27a;
+    --sl-blush-soft: rgb(255 210 122 / 0.12);
+    --sl-on-blush: #1a1200;
+    --sl-lamp: rgb(255 210 122 / 0.16);
+    --sl-shadow: 0 0 0 1px #26282a;
+    --color-mb-bg: #0c0d0d;
+    --color-mb-surface: #111213;
+    --color-mb-band: #161719;
+    --color-mb-card: #1d1f21;
+    --color-mb-ink: #ededec;
+    --color-mb-body: #9c9fa1;
+    --color-mb-line: #26282a;
+    --color-mb-grid: #ffffff08;
+    --color-mb-action: #1f7f73;
+    --color-mb-action-2: #248c7f;
+    --color-mb-on-action: #ffffff;
+    --color-mb-tint: rgb(31 127 115 / 0.18);
+    --color-mb-solid: #232527;
+    --color-mb-on-solid: #ededec;
+    --color-mb-meter: #3fae9f;
+    --color-mb-room: #161b19;
+    --color-mb-tile-1: #23342b;
+    --color-mb-tile-2: #222e3e;
+    --color-mb-tile-3: #3d2e24;
+    --color-mb-tile-4: #312a43;
+    --color-mb-tile-5: #383221;
+    --color-mb-tile-6: #3d2833;
+    --color-mb-tile-7: #1b3934;
+    --color-mb-tile-8: #2a2f38;
+    --color-mb-live: #f0585d;
+    --color-mb-live-ink: #f47f83;
+    --color-mb-live-soft: rgb(240 88 93 / 0.16);
+    --color-mb-on-live: #2a0708;
+    --color-mb-success: #3fae9f;
+    --color-mb-success-soft: rgb(63 174 159 / 0.14);
+    --color-mb-info: #8db8d6;
+    --color-mb-info-soft: rgb(141 184 214 / 0.14);
+    --shadow-mb-card: 0 0 0 1px #26282a;
+    --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
+    --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+}
+
+:root[data-theme="dark"] .sl-yeni {
+  color-scheme: dark;
+  --sl-bg: #0c0d0d;
+  --sl-surface: #141516;
+  --sl-sunken: #1d1f21;
+  --sl-border: #26282a;
+  --sl-ink: #ededec;
+  --sl-muted: #9c9fa1;
+  --sl-primary: #1f7f73;
+  --sl-primary-strong: #248c7f;
+  --sl-primary-soft: rgb(31 127 115 / 0.18);
+  --sl-on-primary: #ffffff;
+  --sl-sea: #3fae9f;
+  --sl-blush: #ffd27a;
+  --sl-blush-ink: #e9c27a;
+  --sl-blush-soft: rgb(255 210 122 / 0.12);
+  --sl-on-blush: #1a1200;
+  --sl-lamp: rgb(255 210 122 / 0.16);
+  --sl-shadow: 0 0 0 1px #26282a;
+  --color-mb-bg: #0c0d0d;
+  --color-mb-surface: #111213;
+  --color-mb-band: #161719;
+  --color-mb-card: #1d1f21;
+  --color-mb-ink: #ededec;
+  --color-mb-body: #9c9fa1;
+  --color-mb-line: #26282a;
+  --color-mb-grid: #ffffff08;
+  --color-mb-action: #1f7f73;
+  --color-mb-action-2: #248c7f;
+  --color-mb-on-action: #ffffff;
+  --color-mb-tint: rgb(31 127 115 / 0.18);
+  --color-mb-solid: #232527;
+  --color-mb-on-solid: #ededec;
+  --color-mb-meter: #3fae9f;
+  --color-mb-room: #161b19;
+  --color-mb-tile-1: #23342b;
+  --color-mb-tile-2: #222e3e;
+  --color-mb-tile-3: #3d2e24;
+  --color-mb-tile-4: #312a43;
+  --color-mb-tile-5: #383221;
+  --color-mb-tile-6: #3d2833;
+  --color-mb-tile-7: #1b3934;
+  --color-mb-tile-8: #2a2f38;
+  --color-mb-live: #f0585d;
+  --color-mb-live-ink: #f47f83;
+  --color-mb-live-soft: rgb(240 88 93 / 0.16);
+  --color-mb-on-live: #2a0708;
+  --color-mb-success: #3fae9f;
+  --color-mb-success-soft: rgb(63 174 159 / 0.14);
+  --color-mb-info: #8db8d6;
+  --color-mb-info-soft: rgb(141 184 214 / 0.14);
+  --shadow-mb-card: 0 0 0 1px #26282a;
+  --shadow-mb-raised: 0 0 0 1px #2e3133, 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-mb-press: inset 0 -2px 6px -2px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* Giriş ekranı: zemindeki ışıkların yavaş kayması ve sahnedeki nesnelerin süzülmesi. */
+@keyframes sl-suzul {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4rem, 2rem) scale(1.08);
+  }
+}
+
+@keyframes sl-yuz {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Uygulama: yanan lambanın yavaş nefesi (Odalar kartları ve canlı şerit). */
+@keyframes sl-lamba {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
   }
 }
 

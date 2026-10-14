@@ -1,15 +1,14 @@
 /** İlk giriş yönlendirmesinin adımları; her biri kullanıcının gerçek verisinden hesaplanır. */
-export type OnboardingStepId = 'subject' | 'goal' | 'focus';
+export type OnboardingStepId = 'subject' | 'focus';
 
 export interface OnboardingStep {
   id: OnboardingStepId;
   done: boolean;
 }
 
-export function onboardingSteps(input: { subjectCount: number; dailyGoalMinutes: number; totalFocusMinutes: number }): OnboardingStep[] {
+export function onboardingSteps(input: { subjectCount: number; totalFocusMinutes: number }): OnboardingStep[] {
   return [
     { id: 'subject', done: input.subjectCount > 0 },
-    { id: 'goal', done: input.dailyGoalMinutes > 0 },
     { id: 'focus', done: input.totalFocusMinutes > 0 },
   ];
 }

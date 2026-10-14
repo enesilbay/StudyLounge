@@ -59,9 +59,9 @@ Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı co
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Yüksek | Çalışma oturumu geçmişi + dersler | Kullanıcı kendi derslerini (ad + renk) oluşturur (`Subject`). Her odak oturumu ayrı kaydedilir (`StudySession`: başlangıç, bitiş, süre, oda, ders). Analitik sayfasına ders dağılımı, oturum geçmişi ve aylık ısı haritası eklenir. Mobilin kullandığı `DailyAnalytics` aynen güncellenmeye devam eder. |
-| Yüksek | Günlük/haftalık hedefler | Kullanıcı ayarlarda hedef belirler (`dailyGoalMinutes`, `weeklyGoalMinutes`, varsayılan kapalı). İlerleme halkası gösterilir; hedef tutulunca günde bir kez bonus coin verilir. |
+| Yüksek | Günlük/haftalık hedefler | Web'den kaldırıldı (kullanıcı kararı, Ekim 2026): sol menüdeki hedef kutusu, Ayarlar'daki hedef formu, Analitik'teki hedef çizgisi, ilk giriş adımı ve hedef bildirimi çıkarıldı. Backend'deki `dailyGoalMinutes`/`weeklyGoalMinutes` kolonları ve günlük hedef bonusu henüz duruyor; tamamen silinmesi ayrı bir iş. |
 | Orta | Odada görev listesi | Kişisel yapılacaklar listesi (`Task`). Odada yan panelde "bu turda ne yapacağım" yazılır; istenirse odada sohbet mesajı olarak paylaşılır. |
-| Orta | Planlı çalışma oturumları | Arkadaşlarla ileri tarihli oturum planlama ve davet (`ScheduledSession`). Başlamadan 10 dk önce hatırlatma gider (`@nestjs/schedule`); mobil için mevcut push altyapısı kullanılır. |
+| Orta | Planlı çalışma oturumları | Web'den kaldırıldı (kullanıcı kararı, Ekim 2026): arayüz, bildirimler ve rozet çıkarıldı. Backend'deki `ScheduledSession` uç noktaları, tablo ve hatırlatma görevi henüz duruyor; tamamen silinmesi ayrı bir iş (migration gerekir). |
 
 ### Faz 3: Sosyal özellikler ve görsel yenileme ✅ (tamamlandı, `faz-3` dalı)
 
@@ -123,11 +123,11 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Kapalı beta başlamadan önce kurulacak (Sentry hesabı gerekiyor). |
+| Sıra: Faz 5'in son adımı | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Karar (14 Ekim 2026): Faz 5'in son adımı olarak, kapalı betadan ve Faz 6'dan önce kurulur (Sentry hesabı gerekiyor). |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
-| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → günlük hedef seç → odada ilk lambanı yak. Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
+| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → odada ilk lambanı yak (günlük hedef adımı hedefler kaldırılınca çıkarıldı). Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
 
 **Görsel kimlik: daha az yazı, daha çok görsel**
 
@@ -135,7 +135,7 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Görsel stil rehberi | Önce tek bir stil belirlenir: mevcut lamba metaforu ve marka renkleri (turkuaz, açık pembe, krem) temel alınır. Tek bir prompt şablonu ve 2–3 referans görsel `docs/brand/` altında saklanır; sonraki bütün görseller bu şablonla üretilir, böylece hepsi aynı elden çıkmış gibi görünür. Kullanılan aracın ticari kullanım koşulları kontrol edilir. |
+| Yüksek | Görsel stil rehberi | Stil belirlendi: 3B nesne tarzı, lamba metaforu ve yeni marka renkleri (beyaz/açık gri, siyah, orman yeşili; bkz. `docs/brand/marka-rehberi.md`). Tek bir prompt şablonu ve 2–3 referans görsel `docs/brand/` altında saklanır; sonraki bütün görseller bu şablonla üretilir, böylece hepsi aynı elden çıkmış gibi görünür. Kullanılan aracın ticari kullanım koşulları kontrol edilir. |
 | Yüksek | Logo ve uygulama simgeleri | Logo (yatay ve yalnız işaret), favicon, PWA simgeleri (192/512 ve maskable), mobil uygulama simgesi ve açılış ekranı (splash), sosyal medya paylaşım görseli (Open Graph). Logo son halinde SVG olarak temizlenir; açık ve koyu temada denenir. Mobilde yalnızca simge ve splash değişir (`mobile/` kodu değişmez). |
 | Orta | İllüstrasyonlar ve metin sadeleştirme | Yazı yoğun yerler görselle desteklenir ve yazıları kısaltılır: açılış sayfası, boş durumlar (oda yok, arkadaş yok, geçmiş yok), "Masanı hazırla" kartı, Premium sayfası, 404/hata sayfaları, e-posta şablonları. Görseller WebP/SVG olarak optimize edilir, her birine açıklayıcı alt metin yazılır. |
 
@@ -147,8 +147,8 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 | :--- | :--- | :--- |
 | ✅ | Genel bakış | Tamamlandı: panel uygulamadan ayrı `/admin` düzenine taşındı (sol menü: Genel bakış, Moderasyon; diğer bölümler kendi aşamalarında eklenir). Dönem seçimi (7/30/90 gün, Türkiye takvim günleri), önceki döneme göre değişim, bekleyenler şeridi, aktif kullanıcı (`users.lastSeenAt`), günlük eğilim grafiği, onboarding hunisi, elde tutma (1/7/30. gün) ve yoğun saatler ısı haritası. Kayıt tarihi (`users.createdAt`) bu sürümle tutulmaya başladı; eski hesaplar migration gününde kaydolmuş görünür. |
 | ✅ | Kullanıcı yönetimi | Tamamlandı: `/admin/users` arama (ad, kullanıcı adı, e-posta), birleştirilebilir filtreler, sıralama, sayfalama ve CSV dışa aktarma (Excel uyumlu, formül kaçışlı; dışa aktarma da kayda yazılır). Sağda açılan ayrıntı paneli: hesap, son 30 gün odak, son oturumlar, şikayetler, ödemeler ve kişiye ait işlem kaydı. Onaylı işlemler: susturma, yasak, rol, Premium verme/uzatma/geri alma, e-postayı doğrulanmış sayma, hesap silme (kullanıcı adı + gerekçe). Yönetici kendine rol değiştiremez ve kendini silemez; başka yöneticiye susturma, yasak ve silme uygulanamaz. Ctrl+K ile genel arama. |
-| Orta | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
-| Orta | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
+| 🔜 Sıradaki (1. adım) | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
+| Sonra (2. adım) | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
 | ✅ | İşlem kaydı | Tamamlandı: `admin_actions` tablosu ve `/admin/actions` sayfası; susturma, yasak, rol, Premium, e-posta onayı, hesap silme, şikayet kapatma ve liste indirme kaydedilir. Kayıtlar düzenlenemez; hedef silinse de kullanıcı adı kayıtta kalır. |
 | Sonra | Ödeme kayıtları | Ödeme akışı kurulunca: işlem listesi, iade ve abonelik durumu. |
 
@@ -159,13 +159,15 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
 | Yüksek | Tasarım eleştirisi ve denetim | Impeccable `critique` ve `audit` ile ana akışlar taranır: giriş/kayıt, odalar, oda içi (kamera, PDF tahtası), Premium, ayarlar, yönetim paneli, açılış sayfası. Bulgular önem sırasıyla listelenir; hata ve erişilebilirlik sorunları (kontrast, klavye, odak halkası, alt metin) önce düzeltilir. |
-| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; pembe yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
+| Orta | Tema ve bileşen tutarlılığı | `web/src/index.css` token'ları ve `ui.tsx` bileşenleri dışında sabit renk ya da tek seferlik stil kalmış mı kontrol edilir; vurgu rengi (orman yeşili) yalnızca "odakta" ve ana eylemde kullanılır. Gerekirse `polish` ile ince ayar yapılır. |
 | Orta | Mobil genişlik ve duyarlılık | Web'in telefon genişliğinde (360–430 px) kırılma, taşma ve dokunma hedeflerine göre gözden geçirilmesi. |
 | Düşük | Performans ve boş/hata durumları | Yükleme, boş ve hata durumları ile ilk yükleme boyutu denetlenir. |
 
 Çıktı: kısa bir bulgu raporu (`docs/` altında) ve kapatılan/ertelenen maddelerin listesi. Görsel kimlik işleriyle çakışan bulgular (logo, illüstrasyon) o başlıklara aktarılır.
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → Impeccable ile proje analizi → arkadaş çevresiyle kapalı beta → Faz 6. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
+
+**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi → (2) duyurular → (3) erişilebilirlik düzeltmeleri (kontrast, klavye, odak halkası) → (4) Neon/Render panel temizliği → (5) **Sentry hata takibi, Faz 5'in son adımı** → kapalı beta → Faz 6.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 
@@ -192,3 +194,14 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 - **Mobilde kameralı odalara katılım:** Şu an mobil kullanıcılar kameralı odalarda kamerasız masa olarak görünür. `react-native-webrtc` ile izleme veya katılım eklenebilir.
 - **Ölçeklenebilir durum:** Gateway'deki oturum, düello, arama, ortak tahta ve ortak sayaç durumu bellekte tutuluyor. Tek sunucuda sorun değil; ikinci bir sunucu açılmadan önce Redis adapter gerekir.
 - **Kayıt yok politikası:** Görüntülü odalarda kayıt özelliği bilinçli olarak eklenmeyecek; bu karar Faz 6'daki gizlilik politikasında belgelenir.
+
+## ⏸️ Ertelenen: web ön yüz yeniden tasarımı (Ekranlar v3)
+
+Kullanıcı kararı (14 Ekim 2026): web arayüzünün yeniden tasarımı şimdilik rafa kalktı; arka uç, ödeme, beta hazırlığı ve yayın işleri önce gelir. Yeniden başlanınca plan ve durum tablosu `docs/brand/yeniden-tasarim-plani.md` içinde (özellikle "Ekranlar v3" bölümü), dal `ozellik/ekranlar-v3`.
+
+| Durum | Başlık | Not |
+| :--- | :--- | :--- |
+| ✅ | Ortak kurallar, odak odası 3. sürüm (Meet/Discord düzeni), Ekranlar v3 adım 0 | Yapıldı: mb token'ları, Kit'e `OverflowMenu`/`LiveBadge`/`CountBadge`/`AvatarStack`/`Skeleton`/`ErrorState`, ikonlu `EmptyState`, açılış sayfası görselleri yeni oda düzeniyle güncel. |
+| Ertelendi | Ekranlar v3 adım 1–6 | Uygulama kabuğu + Odalar; Arkadaşlar + Sıralama; Profil; Analitik + Ayarlar; Mağaza + Premium; 404 + oda yan pencereleri. |
+| Ertelendi | Yeniden tasarım planının 3–10. adımları | Landing page, giriş ekranı, profil, analitik, sıralama, premium, mağaza, arkadaşlar, ayarlar (bkz. plan belgesi). |
+| Ertelendi | Impeccable ile proje analizi | Faz 5'teki tasarım eleştirisi/denetimi, tema tutarlılığı ve telefon genişliği taramaları tasarım çalışmasıyla birlikte yapılır; erişilebilirlik hataları (kontrast, klavye, odak halkası) kapalı betadan önce yine de düzeltilmelidir. |

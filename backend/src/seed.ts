@@ -1,7 +1,7 @@
 /**
  * Demo verisi: `npm run seed`
  *
- * Sunum ve uçtan uca testler için dört doğrulanmış kullanıcı, odalar, arkadaşlıklar,
+ * Sunum ve uçtan uca testler için altı doğrulanmış kullanıcı, odalar, arkadaşlıklar,
  * son 14 günün odak geçmişi, dersler, görevler ve bir planlı oturum oluşturur.
  * Yalnızca kendi kayıtlarını (e-postası @demo.studylounge ile bitenler ve adı "Demo:"
  * ile başlayan odalar) silip yeniden yazar; başka veriye dokunmaz. Tekrar çalıştırmak güvenlidir.
@@ -42,6 +42,9 @@ const DEMO_USERS = [
   { key: 'elif', username: 'demo_elif', fullName: 'Elif Kaya', role: 'user', isPremium: true, coins: 860, frame: 'emerald' },
   { key: 'ali', username: 'demo_ali', fullName: 'Ali Demir', role: 'user', isPremium: false, coins: 140, frame: 'none' },
   { key: 'zeynep', username: 'demo_zeynep', fullName: 'Zeynep Ak', role: 'user', isPremium: false, coins: 260, frame: 'ruby' },
+  // Sonradan eklenenler sonda durur: önceki dört hesabın "rastgele" geçmişi değişmesin.
+  { key: 'mert', username: 'demo_mert', fullName: 'Mert Çelik', role: 'user', isPremium: false, coins: 90, frame: 'none' },
+  { key: 'selin', username: 'demo_selin', fullName: 'Selin Arslan', role: 'user', isPremium: true, coins: 310, frame: 'gold' },
 ] as const;
 
 type DemoKey = (typeof DEMO_USERS)[number]['key'];
@@ -89,6 +92,8 @@ async function main() {
     friendships.create({ sender: created.zeynep, receiver: created.elif, status: 'accepted' }),
     friendships.create({ sender: created.admin, receiver: created.elif, status: 'accepted' }),
     friendships.create({ sender: created.ali, receiver: created.admin, status: 'pending' }),
+    friendships.create({ sender: created.mert, receiver: created.elif, status: 'accepted' }),
+    friendships.create({ sender: created.elif, receiver: created.selin, status: 'accepted' }),
   ]);
 
   // 4. Odalar (24 saat açık kalır; seed her çalıştığında yenilenir)
@@ -116,7 +121,7 @@ async function main() {
 
   for (const demo of DEMO_USERS) {
     const user = created[demo.key];
-    const intensity = { admin: 0.6, elif: 1.3, ali: 0.8, zeynep: 1 }[demo.key];
+    const intensity = { admin: 0.6, elif: 1.3, ali: 0.8, zeynep: 1, mert: 0.7, selin: 0.9 }[demo.key];
     for (let offset = 13; offset >= 0; offset -= 1) {
       // Bazı günler boş kalsın; son iki gün herkes çalışmış olsun (seri görünsün).
       if (offset > 1 && random() < 0.25) continue;

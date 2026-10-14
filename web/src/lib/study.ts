@@ -1,5 +1,3 @@
-import type { User } from './types';
-
 export type SubjectColor = 'blue' | 'orange' | 'aqua' | 'yellow' | 'magenta' | 'green' | 'violet' | 'red';
 
 /** Yeni derslere bu sırayla renk verilir; sıra renk körlüğü ayrımı için doğrulandı (dataviz referans paleti). */
@@ -47,15 +45,6 @@ export interface StudySummary {
   daily: { date: string; minutes: number }[];
 }
 
-export interface GoalProgress {
-  dailyGoalMinutes: number;
-  weeklyGoalMinutes: number;
-  todayMinutes: number;
-  weekMinutes: number;
-  rewardedToday: boolean;
-  dailyGoalBonus: number;
-}
-
 export interface Task {
   id: number;
   title: string;
@@ -64,18 +53,6 @@ export interface Task {
   subject: Subject | null;
   createdAt: string;
   doneAt: string | null;
-}
-
-type PublicUser = Pick<User, 'id' | 'username' | 'fullName' | 'avatarUrl' | 'equippedProfileFrame'>;
-
-export interface ScheduledSession {
-  id: number;
-  title: string;
-  startsAt: string;
-  durationMinutes: number;
-  owner: PublicUser;
-  lobby: { id: number; name: string } | null;
-  invites: { id: number; status: 'pending' | 'accepted' | 'declined'; user: PublicUser }[];
 }
 
 /** "1 sa 25 dk" / "40 dk" */

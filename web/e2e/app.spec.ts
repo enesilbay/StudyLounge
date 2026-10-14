@@ -39,7 +39,7 @@ test.describe('giriş', () => {
     await page.getByRole('button', { name: 'Giriş yap' }).click()
     await expect(page).toHaveURL(/\/app\/lobbies/)
     await expect(page.getByText(ROOM)).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Planlı oturumlar' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Pano' })).toBeVisible()
   })
 
   test('kullanıcı adıyla da giriş yapılır', async ({ page }) => {
@@ -74,7 +74,7 @@ test.describe('Elif olarak', () => {
 
   test('odada görev ekleyip bitirir', async ({ page }) => {
     await openRoom(page)
-    await page.getByRole('tab', { name: 'Görevler' }).click()
+    await page.getByRole('button', { name: 'Görevler paneli' }).click()
     const title = `E2E görevi ${Date.now()}`
     await page.getByRole('textbox', { name: 'Yeni görev' }).fill(title)
     await page.getByRole('button', { name: 'Görevi ekle' }).click()

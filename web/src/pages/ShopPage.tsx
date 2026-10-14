@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Coins, Lock } from 'lucide-react';
+import { m } from 'framer-motion';
+import { Check, Coins, Loader2, Lock } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
 import type { ShopItem, User } from '../lib/types';
-import { Avatar, Button, Notice, StateBlock } from '../components/ui';
+import { Avatar, Notice } from '../components/ui';
+import { AppPage, Card, CountUp, Rise, SegmentedTabs } from '../components/app/Kit';
 import { useAuthStore } from '../store/authStore';
 
 type Category = 'profileFrame' | 'color' | 'icon';
@@ -66,8 +68,7 @@ export default function ShopPage() {
     [category, serverPrices],
   );
 
-  if (loading || !user) return <StateBlock loading title="Mağaza yükleniyor" />;
-
+  if (loading || !user) return <p className="py-16 text-center text-mb-body">Mağaza yükleniyor…</p>;
   const act = async (item: ShopItem) => {
     const owned = isOwned(user, item);
     if (!owned && item.price > (user.coins ?? 0)) {
@@ -101,115 +102,132 @@ export default function ShopPage() {
   };
 
   return (
-    <div>
-      <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-4xl md:text-5xl">Mağaza</h1>
-          <p className="mt-3 max-w-xl text-lg text-textMuted">Odaklandıkça kazandığın puanlarla görünümünü değiştir. Aldıkların telefonda da görünür.</p>
-        </div>
-        <p className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-surface px-4 py-2.5 md:self-auto">
-          <Coins className="h-5 w-5 text-primary" />
-          <span className="font-display text-2xl text-textDark">{user.coins ?? 0}</span>
-          <span className="text-[15px] text-textMuted">Odak Puanı</span>
+    <AppPage
+      title="Mağaza"
+      description="Odaklandıkça kazandığın puanlarla görünümünü değiştir. Aldıkların telefonda da görünür."
+      actions={
+        <p className="inline-flex items-center gap-2.5 rounded-[14px] border border-mb-line bg-mb-card px-4 py-2 shadow-mb-card">
+          <m.span
+            aria-hidden="true"
+            className="grid h-8 w-8 place-items-center rounded-full bg-mb-tint text-mb-action"
+            animate={{ rotateY: [0, 360] }}
+            transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <Coins className="h-4 w-4" />
+          </m.span>
+          <span className="font-mb-display text-2xl font-light tabular-nums text-mb-ink">
+            <CountUp value={user.coins ?? 0} />
+          </span>
+          <span className="text-sm text-mb-body">Odak Puanı</span>
         </p>
-      </header>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      }
+    >
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="min-w-0">
-          <div className="mb-4 inline-flex flex-wrap rounded-lg bg-sunken p-1" role="tablist" aria-label="Ürün türü">
-            {CATEGORIES.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={category === key}
-                onClick={() => {
-                  setCategory(key);
-                  setPreview(null);
-                }}
-                className={`min-h-10 rounded-md px-4 text-[15px] font-semibold transition ${category === key ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="max-w-xl">
+            <SegmentedTabs
+              label="Ürün türü"
+              value={category}
+              onChange={(next) => {
+                setCategory(next);
+                setPreview(null);
+              }}
+              options={CATEGORIES.map(([key, label]) => ({ value: key, label }))}
+            />
           </div>
-          <p className="mb-4 text-[15px] text-textMuted">{CATEGORIES.find(([key]) => key === category)?.[2]}</p>
+          <p className="mt-3 text-sm text-mb-body">{CATEGORIES.find(([key]) => key === category)?.[2]}</p>
 
           {message ? (
-            <div className="mb-4">
+            <div className="mt-4">
               <Notice tone={message.tone} onDismiss={() => setMessage(null)}>{message.text}</Notice>
             </div>
           ) : null}
 
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {items.map((item) => {
+          <ul key={category} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {items.map((item, index) => {
               const owned = isOwned(user, item);
               const active = isActive(user, item);
               const affordable = owned || item.price <= (user.coins ?? 0);
               const key = `${item.type}:${item.id}`;
+              const previewing = preview?.id === item.id && preview.type === item.type;
               return (
-                <li key={key}>
+                <m.li
+                  key={key}
+                  initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.35, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div
                     onMouseEnter={() => setPreview(item)}
                     onFocus={() => setPreview(item)}
-                    className={`flex h-full flex-col items-center rounded-xl border bg-surface p-4 text-center transition ${active ? 'border-primary' : preview?.id === item.id && preview.type === item.type ? 'border-textMuted/40' : 'border-border'}`}
+                    className={`flex h-full flex-col items-center rounded-[18px] border bg-mb-card p-4 text-center shadow-mb-card transition-colors ${
+                      active ? 'border-mb-action ring-1 ring-mb-action' : previewing ? 'border-mb-action/40' : 'border-mb-line/70'
+                    }`}
                   >
                     <ItemSwatch item={item} user={user} />
-                    <p className="mt-3 text-[15px] font-semibold text-textDark">{item.name}</p>
-                    <p className="text-sm text-textMuted">{active ? 'Kuşanıldı' : owned ? 'Sende var' : `${item.price} puan`}</p>
+                    <p className="mt-3 text-[15px] font-medium text-mb-ink">{item.name}</p>
+                    <p className="text-[13px] text-mb-body">{active ? 'Kuşanıldı' : owned ? 'Sende var' : `${item.price} puan`}</p>
                     <div className="mt-3 w-full">
                       {active ? (
-                        <p className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-primary">
+                        <p className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-mb-action">
                           <Check className="h-4 w-4" /> Kullanılıyor
                         </p>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant={owned || !affordable ? 'secondary' : 'primary'}
-                          icon={!affordable ? Lock : undefined}
-                          loading={busyKey === key}
-                          disabled={!affordable}
+                        <button
+                          type="button"
+                          disabled={!affordable || busyKey === key}
                           onClick={() => void act(item)}
-                          className="w-full"
+                          className={`inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55 ${
+                            owned || !affordable ? 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface' : 'bg-mb-action text-mb-on-action shadow-mb-press hover:bg-mb-action-2'
+                          }`}
                         >
+                          {busyKey === key ? <Loader2 className="h-4 w-4 animate-spin" /> : !affordable ? <Lock className="h-4 w-4" /> : null}
                           {owned ? 'Kuşan' : affordable ? 'Satın al' : 'Puan yetmiyor'}
-                        </Button>
+                        </button>
                       )}
                     </div>
                   </div>
-                </li>
+                </m.li>
               );
             })}
           </ul>
         </div>
 
-        <aside className="lg:sticky lg:top-6 lg:self-start" aria-labelledby="preview-title">
-          <div className="sl-panel p-5">
-            <h2 id="preview-title" className="text-xl text-textDark">Odada seni böyle görürler</h2>
-            <p className="mt-1 text-sm text-textMuted">{preview ? `${preview.name} önizleniyor.` : 'Bir ürünün üstüne gel ya da seç.'}</p>
+        <aside className="lg:sticky lg:top-24 lg:self-start" aria-labelledby="preview-title">
+          <Rise delay={0.15}>
+            <Card className="p-5">
+              <h2 id="preview-title" className="font-mb-display text-lg font-medium tracking-[-0.02em] text-mb-ink">Odada seni böyle görürler</h2>
+              <p className="mt-1 text-sm text-mb-body">{preview ? `${preview.name} önizleniyor.` : 'Bir ürünün üstüne gel ya da seç.'}</p>
 
-            <div className="mt-5 flex items-center gap-3">
-              <Avatar name={user.fullName} image={user.avatarUrl} frame={look.frame} premium={user.isPremium} size="lg" />
-              <div className="min-w-0">
-                <p className="truncate text-lg font-semibold text-textDark">
-                  {user.fullName} {look.icon}
-                </p>
-                <p className="text-sm text-textMuted">@{user.username}</p>
+              <div className="mt-5 flex items-center gap-3">
+                <m.span key={look.frame} initial={{ scale: 0.8, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 16 }}>
+                  <Avatar name={user.fullName} image={user.avatarUrl} frame={look.frame} premium={user.isPremium} size="lg" />
+                </m.span>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-medium text-mb-ink">
+                    {user.fullName}{' '}
+                    <m.span key={look.icon} className="inline-block" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 14 }}>
+                      {look.icon}
+                    </m.span>
+                  </p>
+                  <p className="text-[13px] text-mb-body">@{user.username}</p>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-5 space-y-2 rounded-lg bg-sunken p-3">
-              <p className="max-w-[85%] rounded-xl rounded-bl-sm bg-surface px-3 py-2 text-[15px] text-textDark">Bu turda hangi üniteye bakıyorsun?</p>
-              {/* Balon rengi kullanıcının satın aldığı renk; veri olduğu için satır içi verilir. */}
-              <p className="ml-auto max-w-[85%] rounded-xl rounded-br-sm px-3 py-2 text-[15px] text-white" style={{ backgroundColor: look.bubble }}>
-                Türev, 3. bölüm. Molada konuşuruz.
-              </p>
-            </div>
-            <p className="mt-2 text-xs text-textMuted">Mesaj balonu rengi telefondaki oda sohbetinde görünür.</p>
-          </div>
+              <div className="mt-5 space-y-2 rounded-[14px] bg-mb-surface p-3">
+                <p className="max-w-[85%] rounded-[14px] rounded-bl-[4px] bg-mb-card px-3 py-2 text-[15px] text-mb-ink">Bu turda hangi üniteye bakıyorsun?</p>
+                {/* Balon rengi kullanıcının satın aldığı renk; veri olduğu için satır içi verilir. */}
+                <p className="ml-auto max-w-[85%] rounded-[14px] rounded-br-[4px] px-3 py-2 text-[15px] text-white transition-colors duration-500" style={{ backgroundColor: look.bubble }}>
+                  Türev, 3. bölüm. Molada konuşuruz.
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-mb-body">Mesaj balonu rengi telefondaki oda sohbetinde görünür.</p>
+            </Card>
+          </Rise>
         </aside>
       </div>
-    </div>
+    </AppPage>
   );
 }
 
@@ -221,7 +239,7 @@ function ItemSwatch({ item, user }: { item: ShopItem; user: User }) {
   if (item.type === 'color') {
     return (
       <span className="grid h-16 w-full place-items-center">
-        <span className="rounded-xl rounded-br-sm px-3 py-1.5 text-sm text-white" style={{ backgroundColor: item.color }}>
+        <span className="rounded-[12px] rounded-br-[4px] px-3 py-1.5 text-sm text-white" style={{ backgroundColor: item.color }}>
           Merhaba
         </span>
       </span>
@@ -229,7 +247,7 @@ function ItemSwatch({ item, user }: { item: ShopItem; user: User }) {
   }
   return (
     <span className="grid h-16 w-full place-items-center">
-      <span className="text-sm font-semibold text-textDark">
+      <span className="text-sm font-medium text-mb-ink">
         {user.fullName.split(' ')[0]} <span className="text-xl">{item.text || '—'}</span>
       </span>
     </span>
