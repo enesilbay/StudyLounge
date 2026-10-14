@@ -315,6 +315,8 @@ export function ModalShell({ open, title, description, children, onClose }: { op
   useEffect(() => {
     if (!open) return;
     const el = document.createElement('div');
+    // Eski bileşenlerin renk token'ları .sl-yeni kapsamında tanımlı; portal onun dışına çıktığı için kapsam burada verilir.
+    el.className = 'sl-yeni';
     document.body.appendChild(el);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- portal kökü yalnızca tarayıcıda, açılışta oluşur
     setHost(el);
