@@ -335,7 +335,7 @@
   /* Süs çizgileri ve kenarlıklar (metin değil) */
   --color-mb-line: #e2e2e2;
   /* Form alanı kenarlığı: bileşen sınırı olarak 3:1 (WCAG 1.4.11); süs çizgisi için mb-line kalır */
-  --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 50%, var(--color-mb-bg));
+  --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 45%, var(--color-mb-bg));
   --color-mb-grid: #0000000a;
   --color-mb-action: #055049;
   --color-mb-action-2: #1a746c;
@@ -475,7 +475,7 @@
     --color-mb-ink: #ededec;
     --color-mb-body: #9c9fa1;
     --color-mb-line: #26282a;
-    --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 45%, var(--color-mb-bg));
+    --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 42%, var(--color-mb-bg));
     --color-mb-grid: #ffffff08;
     --color-mb-action: #1f7f73;
     --color-mb-action-2: #248c7f;
@@ -536,7 +536,7 @@
   --color-mb-ink: #ededec;
   --color-mb-body: #9c9fa1;
   --color-mb-line: #26282a;
-  --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 45%, var(--color-mb-bg));
+  --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 42%, var(--color-mb-bg));
   --color-mb-grid: #ffffff08;
   --color-mb-action: #1f7f73;
   --color-mb-action-2: #248c7f;

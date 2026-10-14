@@ -43,3 +43,12 @@ describe('ModalShell', () => {
     expect(trigger.closest('[inert]')).toBeNull();
   });
 });
+
+describe('ModalShell kapsamı', () => {
+  it('portal kökü .sl-yeni kapsamını taşır (koyu tema renkleri için)', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByText('Aç'));
+    expect(screen.getByRole('dialog').closest('.sl-yeni')).not.toBeNull();
+  });
+});
