@@ -944,6 +944,27 @@ export class SensorsGateway
     await this.lobbiesService.close(roomName, owner.userId);
   }
 
+  // ── YONETICI (AdminRoomsService cagirir) ──
+
+  /** Odada o an bagli olan kullanici kimlikleri. */
+  roomMemberIds(roomName: string): number[] {
+    return this.socketsInRoom(roomName).map(([, u]) => u.userId);
+  }
+
+  /** Kilit durumunu odadakilere bildirir. */
+  announceRoomLock(roomName: string, locked: boolean) {
+    this.server.to(roomName).emit('lobby_updated', { roomName, isLocked: locked });
+  }
+
+  /** Yonetici odayi kapatir: herkes cikarilir (oda kaydini silmek cagiranin isidir). */
+  async evictRoom(roomName: string, message: string) {
+    this.server.to(roomName).emit('lobby_closed', { roomName, message });
+    for (const [socketId, roomUser] of this.socketsInRoom(roomName)) {
+      const roomSocket = this.server.sockets.sockets.get(socketId);
+      if (roomSocket) await this.leaveLobby(roomSocket, roomUser);
+    }
+  }
+
   // ── WEB: P2P WEBRTC SINYALLESMESI (kamera + ekran paylasimi) ──
   private leaveCall(userId: number, socketId?: string) {
     const roomName = socketId
