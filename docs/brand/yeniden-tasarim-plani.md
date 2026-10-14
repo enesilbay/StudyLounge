@@ -89,6 +89,8 @@ Her adım ayrı commit'tir; her adımdan sonra gerçek ekranlar açık/koyu tema
 | 2. Odak odası | Yapıldı (3. sürüm: Meet/Discord düzeni, isteğe bağlı yayın izleme, gizlenen kontrol çubuğu) |
 | 3–10 | Bekliyor |
 
+> **Durum: ertelendi (14 Ekim 2026).** Web ön yüz tasarımı şimdilik rafa kalktı; `ROADMAP.md` sonunda "Ertelenen" başlığında duruyor.
+
 ## Ekranlar v3 (odadaki dilin bütün ekranlara yayılması)
 
 Odak odasının 3. sürümündeki ilkeler (gerçek ürün kalıpları, kaydırmasız yerleşim, kişi renkleri `mb-tile-*`, CANLI ve sayı rozetleri, eylemli bildirimler, telefonda "Diğer" menüsü, iskelet/boş/hata durumları, süs görseli yok) ikişer ekranlık adımlarla bütün uygulamaya yayılıyor. Landing page, giriş ekranı ve yönetim paneli kapsam dışı. Ortak parçalar `web/src/components/app/Kit.tsx`: `OverflowMenu`, `LiveBadge`, `CountBadge`, `AvatarStack`, `Skeleton`, `SkeletonRows`, `ErrorState`, ikonlu `EmptyState`; dışarı tıklama `web/src/lib/useClickOutside.ts`.

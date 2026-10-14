@@ -123,7 +123,7 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Yüksek | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Kapalı beta başlamadan önce kurulacak (Sentry hesabı gerekiyor). |
+| Sıra: Faz 5'in son adımı | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Karar (14 Ekim 2026): Faz 5'in son adımı olarak, kapalı betadan ve Faz 6'dan önce kurulur (Sentry hesabı gerekiyor). |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
@@ -147,8 +147,8 @@ Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üret
 | :--- | :--- | :--- |
 | ✅ | Genel bakış | Tamamlandı: panel uygulamadan ayrı `/admin` düzenine taşındı (sol menü: Genel bakış, Moderasyon; diğer bölümler kendi aşamalarında eklenir). Dönem seçimi (7/30/90 gün, Türkiye takvim günleri), önceki döneme göre değişim, bekleyenler şeridi, aktif kullanıcı (`users.lastSeenAt`), günlük eğilim grafiği, onboarding hunisi, elde tutma (1/7/30. gün) ve yoğun saatler ısı haritası. Kayıt tarihi (`users.createdAt`) bu sürümle tutulmaya başladı; eski hesaplar migration gününde kaydolmuş görünür. |
 | ✅ | Kullanıcı yönetimi | Tamamlandı: `/admin/users` arama (ad, kullanıcı adı, e-posta), birleştirilebilir filtreler, sıralama, sayfalama ve CSV dışa aktarma (Excel uyumlu, formül kaçışlı; dışa aktarma da kayda yazılır). Sağda açılan ayrıntı paneli: hesap, son 30 gün odak, son oturumlar, şikayetler, ödemeler ve kişiye ait işlem kaydı. Onaylı işlemler: susturma, yasak, rol, Premium verme/uzatma/geri alma, e-postayı doğrulanmış sayma, hesap silme (kullanıcı adı + gerekçe). Yönetici kendine rol değiştiremez ve kendini silemez; başka yöneticiye susturma, yasak ve silme uygulanamaz. Ctrl+K ile genel arama. |
-| Orta | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
-| Orta | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
+| 🔜 Sıradaki (1. adım) | Oda yönetimi | Bütün odaların listesi (kişi sayısı, sahibi, kilitli mi); odayı silme, kilitleme ve sahibini değiştirme. |
+| Sonra (2. adım) | Duyurular | Uygulamanın üstünde görünen kısa duyuru (bakım, yeni özellik); başlangıç ve bitiş zamanıyla. |
 | ✅ | İşlem kaydı | Tamamlandı: `admin_actions` tablosu ve `/admin/actions` sayfası; susturma, yasak, rol, Premium, e-posta onayı, hesap silme, şikayet kapatma ve liste indirme kaydedilir. Kayıtlar düzenlenemez; hedef silinse de kullanıcı adı kayıtta kalır. |
 | Sonra | Ödeme kayıtları | Ödeme akışı kurulunca: işlem listesi, iade ve abonelik durumu. |
 
@@ -166,6 +166,8 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 Çıktı: kısa bir bulgu raporu (`docs/` altında) ve kapatılan/ertelenen maddelerin listesi. Görsel kimlik işleriyle çakışan bulgular (logo, illüstrasyon) o başlıklara aktarılır.
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → Impeccable ile proje analizi → arkadaş çevresiyle kapalı beta → Faz 6. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
+
+**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi → (2) duyurular → (3) erişilebilirlik düzeltmeleri (kontrast, klavye, odak halkası) → (4) Neon/Render panel temizliği → (5) **Sentry hata takibi, Faz 5'in son adımı** → kapalı beta → Faz 6.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 
@@ -192,3 +194,14 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 - **Mobilde kameralı odalara katılım:** Şu an mobil kullanıcılar kameralı odalarda kamerasız masa olarak görünür. `react-native-webrtc` ile izleme veya katılım eklenebilir.
 - **Ölçeklenebilir durum:** Gateway'deki oturum, düello, arama, ortak tahta ve ortak sayaç durumu bellekte tutuluyor. Tek sunucuda sorun değil; ikinci bir sunucu açılmadan önce Redis adapter gerekir.
 - **Kayıt yok politikası:** Görüntülü odalarda kayıt özelliği bilinçli olarak eklenmeyecek; bu karar Faz 6'daki gizlilik politikasında belgelenir.
+
+## ⏸️ Ertelenen: web ön yüz yeniden tasarımı (Ekranlar v3)
+
+Kullanıcı kararı (14 Ekim 2026): web arayüzünün yeniden tasarımı şimdilik rafa kalktı; arka uç, ödeme, beta hazırlığı ve yayın işleri önce gelir. Yeniden başlanınca plan ve durum tablosu `docs/brand/yeniden-tasarim-plani.md` içinde (özellikle "Ekranlar v3" bölümü), dal `ozellik/ekranlar-v3`.
+
+| Durum | Başlık | Not |
+| :--- | :--- | :--- |
+| ✅ | Ortak kurallar, odak odası 3. sürüm (Meet/Discord düzeni), Ekranlar v3 adım 0 | Yapıldı: mb token'ları, Kit'e `OverflowMenu`/`LiveBadge`/`CountBadge`/`AvatarStack`/`Skeleton`/`ErrorState`, ikonlu `EmptyState`, açılış sayfası görselleri yeni oda düzeniyle güncel. |
+| Ertelendi | Ekranlar v3 adım 1–6 | Uygulama kabuğu + Odalar; Arkadaşlar + Sıralama; Profil; Analitik + Ayarlar; Mağaza + Premium; 404 + oda yan pencereleri. |
+| Ertelendi | Yeniden tasarım planının 3–10. adımları | Landing page, giriş ekranı, profil, analitik, sıralama, premium, mağaza, arkadaşlar, ayarlar (bkz. plan belgesi). |
+| Ertelendi | Impeccable ile proje analizi | Faz 5'teki tasarım eleştirisi/denetimi, tema tutarlılığı ve telefon genişliği taramaları tasarım çalışmasıyla birlikte yapılır; erişilebilirlik hataları (kontrast, klavye, odak halkası) kapalı betadan önce yine de düzeltilmelidir. |
