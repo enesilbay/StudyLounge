@@ -311,7 +311,7 @@ function RankRow({ row, leaderMinutes, isMe, index }: { row: Row; leaderMinutes:
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[15px] font-medium text-mb-ink">
               {row.user.fullName}
-              {isMe ? <span className="ml-1.5 text-sm font-normal text-mb-action">(sen)</span> : null}
+              {isMe ? <span className="ml-1.5 text-sm font-normal text-mb-action-ink">(sen)</span> : null}
             </span>
             <span className="mt-1.5 block h-1.5 max-w-56 overflow-hidden rounded-full bg-mb-surface" aria-hidden="true">
               <m.span

@@ -66,7 +66,7 @@ export function Surface({ children, className = '' }: { children: ReactNode; cla
 type Tone = 'primary' | 'accent' | 'success' | 'danger' | 'info' | 'violet';
 
 const toneSoft: Record<Tone, string> = {
-  primary: 'bg-mb-tint text-mb-action',
+  primary: 'bg-mb-tint text-mb-action-ink',
   accent: 'bg-mb-lamp/25 text-mb-ink',
   success: 'bg-mb-success-soft text-mb-success',
   danger: 'bg-mb-live-soft text-mb-live-ink',
@@ -194,7 +194,7 @@ export function TextField({
   multiline?: boolean;
 }) {
   const id = useId();
-  const cls = 'w-full rounded-[12px] border border-mb-line bg-mb-surface px-3.5 text-base text-mb-ink outline-none transition focus:border-mb-action focus:bg-mb-card';
+  const cls = 'w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none transition focus:border-mb-action focus:bg-mb-card';
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-mb-ink">{label}</label>

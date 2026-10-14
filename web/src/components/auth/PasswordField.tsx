@@ -34,7 +34,7 @@ export function PasswordField({
         {label}
       </label>
       {/* Hap biçimli alan: kilit solda, göster/gizle sağda kendi bölmesinde. */}
-      <span className="flex items-stretch overflow-hidden rounded-full border border-mb-line bg-mb-surface transition focus-within:border-mb-action focus-within:bg-mb-card">
+      <span className="flex items-stretch overflow-hidden rounded-full border border-mb-field bg-mb-surface transition focus-within:border-mb-action focus-within:bg-mb-card">
         <span className="grid w-12 shrink-0 place-items-center border-r border-mb-line text-mb-body">
           <LockKeyhole className="h-4 w-4" />
         </span>
@@ -65,7 +65,7 @@ export function PasswordField({
       {showRules ? (
         <ul id={rulesId} className="mt-2.5 space-y-1 pl-1 text-[13px]" aria-live="polite">
           {rules.map((rule) => (
-            <li key={rule.id} className={`flex items-center gap-2 ${rule.met ? 'text-mb-action' : 'text-mb-body'}`}>
+            <li key={rule.id} className={`flex items-center gap-2 ${rule.met ? 'text-mb-action-ink' : 'text-mb-body'}`}>
               {rule.met ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Circle className="h-3.5 w-3.5" aria-hidden="true" />}
               {rule.label}
               <span className="sr-only">{rule.met ? ' (tamam)' : ' (eksik)'}</span>

@@ -391,7 +391,7 @@ function Field({ label, icon: Icon, children }: { label: string; icon: LucideIco
   return (
     <label className="block">
       <span className="mb-1.5 block pl-1 text-[13px] font-medium text-mb-ink">{label}</span>
-      <span className="flex items-stretch overflow-hidden rounded-full border border-mb-line bg-mb-surface transition focus-within:border-mb-action focus-within:bg-mb-card">
+      <span className="flex items-stretch overflow-hidden rounded-full border border-mb-field bg-mb-surface transition focus-within:border-mb-action focus-within:bg-mb-card">
         <span className="grid w-12 shrink-0 place-items-center border-r border-mb-line text-mb-body">
           <Icon className="h-4 w-4" />
         </span>

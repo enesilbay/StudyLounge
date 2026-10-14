@@ -192,7 +192,7 @@ function SessionHistory({ sessions }: { sessions: StudySession[] }) {
                   <td className="py-2.5 pr-3 text-mb-ink">{formatter.format(new Date(session.startedAt))}</td>
                   <td className="py-2.5 pr-3 text-sm tabular-nums text-mb-ink">
                     {formatMinutes(session.minutes)}
-                    {session.creditedMinutes > session.minutes ? <span className="ml-1 rounded-[4px] bg-mb-tint px-1 text-xs text-mb-action">×2</span> : null}
+                    {session.creditedMinutes > session.minutes ? <span className="ml-1 rounded-[4px] bg-mb-tint px-1 text-xs text-mb-action-ink">×2</span> : null}
                   </td>
                   <td className="py-2.5 pr-3">
                     {session.subject ? (

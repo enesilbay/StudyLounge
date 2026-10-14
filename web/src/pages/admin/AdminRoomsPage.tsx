@@ -101,7 +101,7 @@ export default function AdminRoomsPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Oda adı ya da sahibin kullanıcı adı"
-            className="min-h-11 w-full rounded-[12px] border border-mb-line bg-mb-surface pl-10 pr-3.5 text-base text-mb-ink outline-none transition focus:border-mb-action focus:bg-mb-card"
+            className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface pl-10 pr-3.5 text-base text-mb-ink outline-none transition focus:border-mb-action focus:bg-mb-card"
           />
         </label>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtreler">
