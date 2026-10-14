@@ -10,6 +10,7 @@ import { useTheme } from '../../lib/theme';
 import { useInboxStore } from '../../store/inboxStore';
 import ToastStack from './ToastStack';
 import { FeedbackButton } from './FeedbackButton';
+import { AnnouncementBanner } from './AnnouncementBanner';
 import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
 
@@ -76,6 +77,9 @@ export default function AppLayout() {
 
   return (
     <div className="sl-yeni min-h-screen bg-mb-bg text-mb-ink">
+      <a href="#icerik" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[12px] focus:bg-mb-action focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-mb-on-action">
+        İçeriğe geç
+      </a>
       {/* ── Sol menü (geniş ekran) ── */}
       <aside
         className={`sl-yeni fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-mb-line bg-mb-bg py-5 transition-[width] duration-300 ease-out lg:flex ${
@@ -202,7 +206,9 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main className={`mx-auto min-h-screen w-full px-4 py-6 pb-24 md:px-8 md:py-8 lg:pb-8 ${wide ? 'max-w-[1600px]' : 'max-w-[1120px]'}`}>
+        <AnnouncementBanner />
+
+        <main id="icerik" tabIndex={-1} className={`outline-none mx-auto min-h-screen w-full px-4 py-6 pb-24 md:px-8 md:py-8 lg:pb-8 ${wide ? 'max-w-[1600px]' : 'max-w-[1120px]'}`}>
           <AppMotion>
           <Outlet />
         </AppMotion>
@@ -214,7 +220,7 @@ export default function AppLayout() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-[11px] font-medium ${isActive ? 'text-mb-action' : 'text-mb-body'}`}
+              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-[11px] font-medium ${isActive ? 'text-mb-action-ink' : 'text-mb-body'}`}
             >
               <span className="relative">
                 <item.icon className="h-5 w-5" />

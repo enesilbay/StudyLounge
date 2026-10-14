@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle2, Crown, Info, Loader2, Moon, Sun, X } from 'lucide-react';
 import type { FrameId } from '../lib/types';
 import { useTheme } from '../lib/theme';
@@ -65,7 +66,7 @@ export function Surface({ children, className = '' }: { children: ReactNode; cla
 type Tone = 'primary' | 'accent' | 'success' | 'danger' | 'info' | 'violet';
 
 const toneSoft: Record<Tone, string> = {
-  primary: 'bg-mb-tint text-mb-action',
+  primary: 'bg-mb-tint text-mb-action-ink',
   accent: 'bg-mb-lamp/25 text-mb-ink',
   success: 'bg-mb-success-soft text-mb-success',
   danger: 'bg-mb-live-soft text-mb-live-ink',
@@ -147,7 +148,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   primary: 'bg-mb-action text-mb-on-action hover:bg-mb-action-2',
   secondary: 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface',
   ghost: 'text-mb-body hover:bg-mb-surface hover:text-mb-ink',
-  danger: 'bg-mb-live text-mb-on-live hover:opacity-90',
+  danger: 'bg-mb-live-solid text-mb-on-live hover:opacity-90',
   lamp: 'bg-mb-lamp text-mb-solid hover:brightness-110',
 };
 
@@ -193,7 +194,7 @@ export function TextField({
   multiline?: boolean;
 }) {
   const id = useId();
-  const cls = 'w-full rounded-[12px] border border-mb-line bg-mb-surface px-3.5 text-base text-mb-ink outline-none transition focus:border-mb-action focus:bg-mb-card';
+  const cls = 'w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none transition focus:border-mb-action focus:bg-mb-card';
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-mb-ink">{label}</label>
@@ -290,24 +291,103 @@ export function StateBlock({
   );
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Açık pencereler (en üstteki sonda). Esc ve Tab yalnızca en üsttekine etki eder. */
+const modalStack: symbol[] = [];
+
+function focusablesIn(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest('[hidden], [inert]'));
+}
+
 export function ModalShell({ open, title, description, children, onClose }: { open: boolean; title: string; description?: string; children: ReactNode; onClose: () => void }) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Pencere body'nin altında ayrı bir kökte çizilir; böylece geri kalan sayfa `inert` yapılabilir.
+  useEffect(() => {
     if (!open) return;
+    const el = document.createElement('div');
+    // Eski bileşenlerin renk token'ları .sl-yeni kapsamında tanımlı; portal onun dışına çıktığı için kapsam burada verilir.
+    el.className = 'sl-yeni';
+    document.body.appendChild(el);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portal kökü yalnızca tarayıcıda, açılışta oluşur
+    setHost(el);
+    return () => {
+      el.remove();
+      setHost(null);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !host) return;
+    const id = Symbol('modal');
+    modalStack.push(id);
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    // Arka planı erişilemez yap (zaten inert olanlara dokunma).
+    const inerted: HTMLElement[] = [];
+    for (const child of Array.from(document.body.children)) {
+      if (child === host || !(child instanceof HTMLElement) || child.hasAttribute('inert')) continue;
+      child.setAttribute('inert', '');
+      inerted.push(child);
+    }
+
+    // Odak: içerideki autoFocus zaten odak aldıysa dokunma; yoksa ilk öğe, o da yoksa pencere kabı.
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const first = bodyRef.current ? focusablesIn(bodyRef.current)[0] : undefined;
+      (first ?? dialog).focus();
+    }
+
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (modalStack[modalStack.length - 1] !== id) return;
+      if (event.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const items = focusablesIn(dialog);
+      if (items.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const firstEl = items[0];
+      const lastEl = items[items.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === firstEl || active === dialog || !dialog.contains(active))) {
+        event.preventDefault();
+        lastEl.focus();
+      } else if (!event.shiftKey && (active === lastEl || !dialog.contains(active))) {
+        event.preventDefault();
+        firstEl.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
 
-  if (!open) return null;
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      const index = modalStack.indexOf(id);
+      if (index >= 0) modalStack.splice(index, 1);
+      for (const child of inerted) child.removeAttribute('inert');
+      if (previous && previous.isConnected) previous.focus();
+    };
+  }, [open, host]);
 
-  return (
+  if (!open || !host) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/55 backdrop-blur-[2px]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div className="flex min-h-full items-center justify-center p-4 py-10" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-        <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-full max-w-lg rounded-[16px] border border-mb-line/70 bg-mb-card p-6 shadow-mb-raised">
+        <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-full max-w-lg rounded-[16px] border border-mb-line/70 bg-mb-card p-6 shadow-mb-raised outline-none">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <h2 id={titleId} className="text-2xl text-mb-ink">{title}</h2>
@@ -317,9 +397,10 @@ export function ModalShell({ open, title, description, children, onClose }: { op
               <X className="h-5 w-5" />
             </button>
           </div>
-          {children}
+          <div ref={bodyRef}>{children}</div>
         </div>
       </div>
-    </div>
+    </div>,
+    host,
   );
 }

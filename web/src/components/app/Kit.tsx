@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { animate, m, useMotionValue, useTransform } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { AlertCircle, MoreHorizontal, RotateCcw } from 'lucide-react';
@@ -23,7 +23,7 @@ export const outlineButton =
 export const ghostButton =
   'inline-flex min-h-10 items-center justify-center gap-2 rounded-[10px] px-3 text-sm font-medium text-mb-body transition hover:bg-mb-surface hover:text-mb-ink disabled:opacity-50';
 export const inputClass =
-  'min-h-11 w-full rounded-[12px] border border-mb-line bg-mb-surface px-4 text-[15px] text-mb-ink outline-none transition placeholder:text-mb-body/70 focus:border-mb-action focus:bg-mb-card';
+  'min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-4 text-[15px] text-mb-ink outline-none transition placeholder:text-mb-body/70 focus:border-mb-action focus:bg-mb-card';
 
 /** Sayfa başlığı: ince büyük başlık, isteğe bağlı kısa açıklama ve sağda eylemler. */
 export function AppPage({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
@@ -117,19 +117,38 @@ export function Rise({
   );
 }
 
-/** Eşit genişlikli sekmeler; seçili olanın altında kayan bir gösterge vardır. */
+/**
+ * Eşit genişlikli sekmeler; seçili olanın altında kayan bir gösterge vardır.
+ * Ok tuşları, Home ve End sekmeler arasında gezer (seçim odakla birlikte değişir); yalnızca seçili sekme Tab ile erişilir.
+ * `panelId` verilirse içeriği saran öğe `role="tabpanel" id={panelId} aria-labelledby={`${panelId}-tab-${value}`}` taşımalıdır.
+ */
 export function SegmentedTabs<T extends string>({
   options,
   value,
   onChange,
   label,
+  panelId,
 }: {
   options: Array<{ value: T; label: string; badge?: number }>;
   value: T;
   onChange: (value: T) => void;
   label: string;
+  panelId?: string;
 }) {
   const index = Math.max(0, options.findIndex((option) => option.value === value));
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const fallbackId = useId();
+  const baseId = panelId ?? fallbackId;
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, current: number) => {
+    const last = options.length - 1;
+    const next = { ArrowRight: current === last ? 0 : current + 1, ArrowLeft: current === 0 ? last : current - 1, Home: 0, End: last }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    onChange(options[next].value);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
     <div role="tablist" aria-label={label} className="relative grid rounded-[14px] bg-mb-surface p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
       <m.span
@@ -140,13 +159,20 @@ export function SegmentedTabs<T extends string>({
         animate={{ x: `${index * 100}%` }}
         transition={{ type: 'spring', stiffness: 420, damping: 34 }}
       />
-      {options.map((option) => (
+      {options.map((option, position) => (
         <button
           key={option.value}
+          ref={(node) => {
+            tabRefs.current[position] = node;
+          }}
+          id={`${baseId}-tab-${option.value}`}
           type="button"
           role="tab"
           aria-selected={option.value === value}
+          aria-controls={panelId}
+          tabIndex={option.value === value ? 0 : -1}
           onClick={() => onChange(option.value)}
+          onKeyDown={(event) => onKeyDown(event, position)}
           className={`relative flex min-h-10 items-center justify-center gap-2 rounded-[11px] px-3 text-sm font-medium transition-colors ${option.value === value ? 'text-mb-ink' : 'text-mb-body hover:text-mb-ink'}`}
         >
           {option.label}
@@ -228,7 +254,7 @@ export function SkeletonRows({ rows = 3, className = '' }: { rows?: number; clas
 /** Kırmızı "CANLI" rozeti (ekran paylaşımı gibi canlı yayınlar); konumu `className` ile verilir. */
 export function LiveBadge({ className = '' }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-[6px] bg-mb-live px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-mb-on-live ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-[6px] bg-mb-live-solid px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-mb-on-live ${className}`}>
       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-mb-on-live motion-safe:animate-pulse" />
       CANLI
     </span>
@@ -239,7 +265,7 @@ export function LiveBadge({ className = '' }: { className?: string }) {
 export function CountBadge({ count, max = 9, className = '' }: { count: number; max?: number; className?: string }) {
   if (count <= 0) return null;
   return (
-    <span className={`grid h-5 min-w-5 place-items-center rounded-full bg-mb-live px-1 text-[11px] font-semibold leading-none tabular-nums text-mb-on-live ${className}`}>
+    <span className={`grid h-5 min-w-5 place-items-center rounded-full bg-mb-live-solid px-1 text-[11px] font-semibold leading-none tabular-nums text-mb-on-live ${className}`}>
       {count > max ? `${max}+` : count}
     </span>
   );
@@ -312,7 +338,42 @@ export function OverflowMenu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuId = useId();
   useClickOutside(ref, () => setOpen(false), open);
+
+  const enabledItems = () => Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
+
+  // Menü açılınca odak ilk etkin öğeye geçer; kapanışta `closeMenu` odağı tetikleyiciye döndürür.
+  useEffect(() => {
+    if (open) enabledItems()[0]?.focus();
+  }, [open]);
+
+  const closeMenu = (restoreFocus = true) => {
+    setOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  };
+
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+      return;
+    }
+    if (event.key === 'Tab') {
+      closeMenu(false);
+      return;
+    }
+    const list = enabledItems();
+    if (list.length === 0) return;
+    const current = list.indexOf(document.activeElement as HTMLButtonElement);
+    const next = { ArrowDown: (current + 1) % list.length, ArrowUp: (current - 1 + list.length) % list.length, Home: 0, End: list.length - 1 }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    list[next].focus();
+  };
 
   const side = placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2';
   const horizontal = align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2';
@@ -320,9 +381,17 @@ export function OverflowMenu({
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' && !open) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         aria-haspopup="menu"
         aria-label={label}
         title={label}
@@ -331,15 +400,16 @@ export function OverflowMenu({
         <Icon className="h-[18px] w-[18px]" />
       </button>
       {open ? (
-        <div role="menu" aria-label={label} className={`absolute z-50 w-64 rounded-[16px] border border-mb-line bg-mb-card p-1.5 shadow-mb-raised ${side} ${horizontal}`}>
+        <div ref={menuRef} id={menuId} role="menu" aria-label={label} onKeyDown={onMenuKeyDown} className={`absolute z-50 w-64 rounded-[16px] border border-mb-line bg-mb-card p-1.5 shadow-mb-raised ${side} ${horizontal}`}>
           {items.map((item) => (
             <button
               key={item.label}
               type="button"
               role="menuitem"
               disabled={item.disabled}
+              tabIndex={-1}
               onClick={() => {
-                setOpen(false);
+                closeMenu();
                 item.onClick();
               }}
               className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium transition hover:bg-mb-surface disabled:opacity-45 ${item.danger ? 'text-mb-live-ink' : 'text-mb-ink'}`}

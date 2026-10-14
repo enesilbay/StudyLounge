@@ -14,6 +14,7 @@ import { WeeklyResult } from './league/weekly-result.entity';
 import { Feedback } from './feedback/feedback.entity';
 import { Payment } from './payments/payment.entity';
 import { AdminAction } from './admin-audit/admin-action.entity';
+import { Announcement } from './announcements/announcement.entity';
 import { Message } from './messages/message.entity';
 import { DirectMessage } from './messages/direct-message.entity';
 import { DailyAnalytics } from './users/daily-analytics.entity';
@@ -75,6 +76,7 @@ export default new DataSource({
     Feedback,
     Payment,
     AdminAction,
+    Announcement,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

@@ -334,9 +334,13 @@
   --color-mb-body: #5c5c5c;
   /* Süs çizgileri ve kenarlıklar (metin değil) */
   --color-mb-line: #e2e2e2;
+  /* Form alanı kenarlığı: bileşen sınırı olarak 3:1 (WCAG 1.4.11); süs çizgisi için mb-line kalır */
+  --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 45%, var(--color-mb-bg));
   --color-mb-grid: #0000000a;
   --color-mb-action: #055049;
   --color-mb-action-2: #1a746c;
+  /* Yeşil metin: koyu temada action metin olarak 4.5:1 vermez, bu token verir (simgeler için action yeterli) */
+  --color-mb-action-ink: var(--color-mb-action);
   --color-mb-on-action: #ffffff;
   --color-mb-tint: #e3efed;
   /* Lamba ışığı: yalnızca logodaki ışık ve lamba ışıması için. */
@@ -362,6 +366,8 @@
   --color-mb-live-ink: #c42f34;
   --color-mb-live-soft: #fdecec;
   --color-mb-on-live: #ffffff;
+  /* Yazı taşıyan kırmızı dolgu (yıkıcı düğme, rozet): açıkta live-ink ile beyaz ≈5.5:1; koyuda live ile on-live zaten 5.5:1 */
+  --color-mb-live-solid: var(--color-mb-live-ink);
   /* Durum tonları: başarı (yeşil), bilgi (sakin mavi). Eski --sl-success ve --sl-info bunlara bağlanır. */
   --color-mb-success: #055049;
   --color-mb-success-soft: #e3efed;
@@ -469,9 +475,12 @@
     --color-mb-ink: #ededec;
     --color-mb-body: #9c9fa1;
     --color-mb-line: #26282a;
+    --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 42%, var(--color-mb-bg));
     --color-mb-grid: #ffffff08;
     --color-mb-action: #1f7f73;
     --color-mb-action-2: #248c7f;
+  --color-mb-action-ink: color-mix(in srgb, var(--color-mb-action) 70%, var(--color-mb-ink));
+    --color-mb-action-ink: color-mix(in srgb, var(--color-mb-action) 70%, var(--color-mb-ink));
     --color-mb-on-action: #ffffff;
     --color-mb-tint: rgb(31 127 115 / 0.18);
     --color-mb-solid: #232527;
@@ -490,6 +499,7 @@
     --color-mb-live-ink: #f47f83;
     --color-mb-live-soft: rgb(240 88 93 / 0.16);
     --color-mb-on-live: #2a0708;
+    --color-mb-live-solid: var(--color-mb-live);
     --color-mb-success: #3fae9f;
     --color-mb-success-soft: rgb(63 174 159 / 0.14);
     --color-mb-info: #8db8d6;
@@ -526,6 +536,7 @@
   --color-mb-ink: #ededec;
   --color-mb-body: #9c9fa1;
   --color-mb-line: #26282a;
+  --color-mb-field: color-mix(in srgb, var(--color-mb-ink) 42%, var(--color-mb-bg));
   --color-mb-grid: #ffffff08;
   --color-mb-action: #1f7f73;
   --color-mb-action-2: #248c7f;
@@ -547,6 +558,7 @@
   --color-mb-live-ink: #f47f83;
   --color-mb-live-soft: rgb(240 88 93 / 0.16);
   --color-mb-on-live: #2a0708;
+  --color-mb-live-solid: var(--color-mb-live);
   --color-mb-success: #3fae9f;
   --color-mb-success-soft: rgb(63 174 159 / 0.14);
   --color-mb-info: #8db8d6;
@@ -624,6 +636,27 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Yükleme göstergeleri donmasın: dönme yerine yavaş solma, nabız zaten yalnızca saydamlık */
+  .animate-spin {
+    animation: sl-busy 1.6s ease-in-out infinite !important;
+  }
+
+  .animate-pulse {
+    animation-duration: 2s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@keyframes sl-busy {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
   }
 }
 

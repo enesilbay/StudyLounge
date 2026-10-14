@@ -137,7 +137,14 @@ export type AdminActionType =
   | 'delete_user'
   | 'report_resolve'
   | 'report_dismiss'
-  | 'export_users';
+  | 'export_users'
+  | 'room_lock'
+  | 'room_unlock'
+  | 'room_owner'
+  | 'room_close'
+  | 'announcement_create'
+  | 'announcement_update'
+  | 'announcement_delete';
 
 export const ACTION_LABELS: Record<AdminActionType, { label: string; tone: 'neutral' | 'danger' | 'info' | 'success' | 'primary' }> = {
   mute: { label: 'Susturma', tone: 'info' },
@@ -152,7 +159,54 @@ export const ACTION_LABELS: Record<AdminActionType, { label: string; tone: 'neut
   report_resolve: { label: 'Şikayet çözüldü', tone: 'neutral' },
   report_dismiss: { label: 'Şikayet kapatıldı', tone: 'neutral' },
   export_users: { label: 'Liste indirildi', tone: 'neutral' },
+  room_lock: { label: 'Oda kilitlendi', tone: 'info' },
+  room_unlock: { label: 'Oda kilidi açıldı', tone: 'neutral' },
+  room_owner: { label: 'Oda sahibi değişti', tone: 'primary' },
+  room_close: { label: 'Oda kapatıldı', tone: 'danger' },
+  announcement_create: { label: 'Duyuru yayınlandı', tone: 'success' },
+  announcement_update: { label: 'Duyuru düzenlendi', tone: 'primary' },
+  announcement_delete: { label: 'Duyuru silindi', tone: 'neutral' },
 };
+
+export type AnnouncementTone = 'info' | 'warning';
+export type AnnouncementStatus = 'scheduled' | 'live' | 'ended';
+
+/** `GET /announcements/active` satırı. */
+export interface ActiveAnnouncement {
+  id: number;
+  message: string;
+  tone: AnnouncementTone;
+  endsAt: string;
+}
+
+/** `GET /admin/announcements` satırı. */
+export interface AdminAnnouncementRow {
+  id: number;
+  message: string;
+  tone: AnnouncementTone;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+  status: AnnouncementStatus;
+  createdBy: { id: number; username: string } | null;
+}
+
+/** `GET /admin/rooms` satırı (backend `LobbiesService.adminList`). */
+export interface AdminRoomRow {
+  id: number;
+  name: string;
+  icon: string;
+  category: string | null;
+  description: string | null;
+  isPrivate: boolean;
+  isPremiumOnly: boolean;
+  allowVideo: boolean;
+  isLocked: boolean;
+  maxUsers: number;
+  memberCount: number;
+  createdAt: string;
+  owner: { id: number; username: string; fullName: string } | null;
+}
 
 export interface AdminActionRow {
   id: number;

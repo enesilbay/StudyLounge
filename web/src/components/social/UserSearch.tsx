@@ -37,7 +37,7 @@ export default function UserSearch({ placeholder = 'Kullanıcı ara', onPick }: 
 
   return (
     <div className="relative">
-      <label className="flex min-h-11 items-center gap-2.5 rounded-[12px] border border-mb-line bg-mb-surface px-3.5 focus-within:border-mb-action focus-within:bg-mb-card">
+      <label className="flex min-h-11 items-center gap-2.5 rounded-[12px] border border-mb-field bg-mb-surface px-3.5 focus-within:border-mb-action focus-within:bg-mb-card">
         {loading ? <Loader2 className="h-[18px] w-[18px] shrink-0 animate-spin text-mb-body" /> : <Search className="h-[18px] w-[18px] shrink-0 text-mb-body" />}
         <span className="sr-only">{placeholder}</span>
         <input

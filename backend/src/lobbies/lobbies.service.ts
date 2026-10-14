@@ -120,6 +120,56 @@ export class LobbiesService {
     return lobby;
   }
 
+  // ── YÖNETİCİ: sahiplik kontrolü yapılmaz; çağıran uç RolesGuard ile korunur ──
+
+  /** Yönetim listesi: sahibin kullanıcı adı, kişi sayısı ve kilit durumu. */
+  async adminList() {
+    const lobbies = await this.lobbiesRepository
+      .createQueryBuilder('lobby')
+      .leftJoin('lobby.owner', 'owner')
+      .addSelect(['owner.id', 'owner.username', 'owner.fullName'])
+      .orderBy('lobby.id', 'DESC')
+      .getMany();
+    const memberCounts = await this.usersService.getRoomMemberCounts(lobbies.map((lobby) => lobby.name));
+    return lobbies.map(({ owner, ...lobby }) => ({
+      ...lobby,
+      owner: owner ? { id: owner.id, username: owner.username, fullName: owner.fullName } : null,
+      isLocked: this.locks.has(lobby.id),
+      memberCount: memberCounts.get(lobby.name) ?? 0,
+    }));
+  }
+
+  async adminGet(id: number): Promise<Lobby> {
+    const lobby = await this.lobbiesRepository.findOne({ where: { id }, relations: { owner: true } });
+    if (!lobby) throw new NotFoundException('Oda bulunamadi.');
+    return lobby;
+  }
+
+  /** `memberIds`: o an odada olanlar (kilitliyken de geri girebilirler). */
+  async adminSetLocked(id: number, locked: boolean, memberIds: number[]) {
+    const lobby = await this.adminGet(id);
+    if (locked) this.locks.set(lobby.id, new Set([...memberIds, ...(lobby.owner ? [lobby.owner.id] : [])]));
+    else this.locks.delete(lobby.id);
+    return lobby;
+  }
+
+  async adminTransferOwner(id: number, newOwnerId: number) {
+    const lobby = await this.adminGet(id);
+    const newOwner = await this.usersService.findById(newOwnerId);
+    if (!newOwner) throw new NotFoundException('Kullanici bulunamadi.');
+    const previous = lobby.owner ?? null;
+    lobby.owner = newOwner;
+    await this.lobbiesRepository.save(lobby);
+    return { lobby, previous, newOwner };
+  }
+
+  async adminClose(id: number) {
+    const lobby = await this.adminGet(id);
+    this.locks.delete(lobby.id);
+    await this.lobbiesRepository.delete(lobby.id);
+    return lobby;
+  }
+
   private kickedUntil(lobbyId: number, userId: number): number | null {
     const key = `${lobbyId}:${userId}`;
     const until = this.kicks.get(key);

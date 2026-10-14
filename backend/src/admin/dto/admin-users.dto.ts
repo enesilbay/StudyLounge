@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -120,4 +121,16 @@ export class ActionsQueryDto {
   @Min(1)
   @Max(100000)
   page?: number;
+}
+
+export class RoomLockDto extends ReasonDto {
+  @IsBoolean()
+  locked: boolean;
+}
+
+export class RoomOwnerDto extends ReasonDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  userId: number;
 }

@@ -74,7 +74,7 @@ export default function ReportDialog({
             onChange={(event) => setDetails(event.target.value)}
             maxLength={500}
             placeholder="Ne oldu? Kısaca anlat."
-            className="min-h-24 w-full rounded-[12px] border border-mb-line bg-mb-surface px-3.5 py-2.5 text-base text-mb-ink outline-none focus:border-mb-action focus:bg-mb-card"
+            className="min-h-24 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 py-2.5 text-base text-mb-ink outline-none focus:border-mb-action focus:bg-mb-card"
           />
         </div>
         {result ? <Notice tone={result.tone}>{result.text}</Notice> : null}

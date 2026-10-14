@@ -36,6 +36,17 @@ function describe(item: AdminActionRow): string | null {
     case 'report_resolve':
     case 'report_dismiss':
       return d.reportId ? `Şikayet #${word(d.reportId)}` : null;
+    case 'room_owner':
+      return `${String(d.roomName ?? '')}: ${word(d.from)} → ${word(d.to)}`;
+    case 'room_lock':
+    case 'room_unlock':
+      return d.roomName ? String(d.roomName) : null;
+    case 'room_close':
+      return `${String(d.roomName ?? '')} · ${word(d.memberCount)} kişi vardı`;
+    case 'announcement_create':
+    case 'announcement_update':
+    case 'announcement_delete':
+      return d.message ? `“${String(d.message)}”` : null;
     default:
       return null;
   }

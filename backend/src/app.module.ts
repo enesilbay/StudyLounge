@@ -31,6 +31,10 @@ import { WhiteboardModule } from './whiteboard/whiteboard.module';
 import { StorageModule } from './storage/storage.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AdminModule } from './admin/admin.module';
+import { AdminRoomsController } from './admin/admin-rooms.controller';
+import { AdminRoomsService } from './admin/admin-rooms.service';
+import { AdminAuditModule } from './admin-audit/admin-audit.module';
+import { RolesGuard } from './moderation/roles.guard';
 import { RoomTimerModule } from './room-timer/room-timer.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StudyModule } from './study/study.module';
@@ -40,6 +44,8 @@ import { WeeklyResult } from './league/weekly-result.entity';
 import { Feedback } from './feedback/feedback.entity';
 import { Payment } from './payments/payment.entity';
 import { AdminAction } from './admin-audit/admin-action.entity';
+import { Announcement } from './announcements/announcement.entity';
+import { AnnouncementsModule } from './announcements/announcements.module';
 import { Block } from './moderation/block.entity';
 import { Report } from './moderation/report.entity';
 import { Subject } from './study/subject.entity';
@@ -101,6 +107,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
             Feedback,
             Payment,
             AdminAction,
+            Announcement,
           ],
           autoLoadEntities: true,
           // Bos bir veritabaninda (or. yeni Render PostgreSQL) tablolari kurmak
@@ -129,6 +136,8 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
     StorageModule,
     FeedbackModule,
     AdminModule,
+    AdminAuditModule,
+    AnnouncementsModule,
     RoomTimerModule,
     ScheduleModule.forRoot(),
     StudyModule,
@@ -141,10 +150,12 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
       skipIf: () => process.env.THROTTLE_DISABLED === 'true' && process.env.NODE_ENV !== 'production',
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, AdminRoomsController],
   providers: [
     AppService,
     SensorsGateway,
+    AdminRoomsService,
+    RolesGuard,
     NotificationsService,
     // Tum HTTP uclari icin IP basina genel sinir; auth uclari kendi siki sinirlarini kullanir.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

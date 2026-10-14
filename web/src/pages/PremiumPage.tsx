@@ -227,7 +227,7 @@ export default function PremiumPage() {
                           <span className="block text-[13px] text-mb-body">{shortDate.format(new Date(payment.createdAt))}</span>
                         </span>
                         <span className="tabular-nums text-mb-ink">{formatTry(payment.amount)}</span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${payment.status === 'success' ? 'bg-mb-tint text-mb-action' : 'bg-softDanger text-danger'}`}>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${payment.status === 'success' ? 'bg-mb-tint text-mb-action-ink' : 'bg-softDanger text-danger'}`}>
                           {payment.status === 'success' ? 'Ödendi' : 'Başarısız'}
                         </span>
                       </li>

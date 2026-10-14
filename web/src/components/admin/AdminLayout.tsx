@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LazyMotion, MotionConfig, domAnimation, m } from 'framer-motion';
-import { ArrowLeft, LayoutDashboard, ScrollText, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, DoorOpen, LayoutDashboard, Megaphone, ScrollText, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
 import { Avatar, StateBlock, ThemeToggle } from '../ui';
 import { LogoMark } from '../brand/Logo';
 import { useAuthStore } from '../../store/authStore';
@@ -16,10 +16,12 @@ interface AdminNavItem {
   badge?: (pending: AdminPending) => number;
 }
 
-// Menüde yalnızca çalışan bölümler görünür; Odalar ve Ödemeler kendi aşamalarında eklenir.
+// Menüde yalnızca çalışan bölümler görünür; Ödemeler kendi aşamalarında eklenir.
 const NAV_ITEMS: AdminNavItem[] = [
   { path: '/admin', label: 'Genel bakış', icon: LayoutDashboard, end: true },
   { path: '/admin/users', label: 'Kullanıcılar', icon: Users },
+  { path: '/admin/rooms', label: 'Odalar', icon: DoorOpen },
+  { path: '/admin/announcements', label: 'Duyurular', icon: Megaphone },
   { path: '/admin/moderation', label: 'Moderasyon', icon: ShieldAlert, badge: (p) => p.openReports + p.openFeedback },
   { path: '/admin/actions', label: 'İşlem kaydı', icon: ScrollText },
 ];
@@ -75,6 +77,9 @@ export default function AdminLayout() {
   return (
     // Yönetim paneli de yeni kimliktedir (.sl-yeni): içerikteki eski bileşenler yeni renk ve yazı tiplerini alır.
     <div className="sl-yeni min-h-screen bg-mb-surface text-mb-ink">
+      <a href="#icerik" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[12px] focus:bg-mb-action focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-mb-on-action">
+        İçeriğe geç
+      </a>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-mb-line bg-mb-bg px-4 py-5 lg:flex">
         <Link to="/admin" className="mb-7 flex items-center gap-2.5 px-2" aria-label="Yönetim, genel bakış">
           <LogoMark className="h-9 w-9 shrink-0 text-mb-action" />
@@ -171,7 +176,7 @@ export default function AdminLayout() {
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-[1200px] px-4 py-6 md:px-8 md:py-8">
+        <main id="icerik" tabIndex={-1} className="outline-none mx-auto w-full max-w-[1200px] px-4 py-6 md:px-8 md:py-8">
           {/* Sayfa değişince içerik yumuşakça belirir */}
           <LazyMotion features={domAnimation} strict>
             <MotionConfig reducedMotion="user">
