@@ -21,6 +21,10 @@ export const ADMIN_ACTIONS = [
   'report_resolve',
   'report_dismiss',
   'export_users',
+  'room_lock',
+  'room_unlock',
+  'room_owner',
+  'room_close',
 ] as const;
 export type AdminActionType = (typeof ADMIN_ACTIONS)[number];
 
