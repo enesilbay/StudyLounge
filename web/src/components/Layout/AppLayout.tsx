@@ -10,6 +10,7 @@ import { useTheme } from '../../lib/theme';
 import { useInboxStore } from '../../store/inboxStore';
 import ToastStack from './ToastStack';
 import { FeedbackButton } from './FeedbackButton';
+import { AnnouncementBanner } from './AnnouncementBanner';
 import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
 
@@ -201,6 +202,8 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
+
+        <AnnouncementBanner />
 
         <main className={`mx-auto min-h-screen w-full px-4 py-6 pb-24 md:px-8 md:py-8 lg:pb-8 ${wide ? 'max-w-[1600px]' : 'max-w-[1120px]'}`}>
           <AppMotion>
