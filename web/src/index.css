@@ -362,6 +362,8 @@
   --color-mb-live-ink: #c42f34;
   --color-mb-live-soft: #fdecec;
   --color-mb-on-live: #ffffff;
+  /* Yazı taşıyan kırmızı dolgu (yıkıcı düğme, rozet): açıkta live-ink ile beyaz ≈5.5:1; koyuda live ile on-live zaten 5.5:1 */
+  --color-mb-live-solid: var(--color-mb-live-ink);
   /* Durum tonları: başarı (yeşil), bilgi (sakin mavi). Eski --sl-success ve --sl-info bunlara bağlanır. */
   --color-mb-success: #055049;
   --color-mb-success-soft: #e3efed;
@@ -490,6 +492,7 @@
     --color-mb-live-ink: #f47f83;
     --color-mb-live-soft: rgb(240 88 93 / 0.16);
     --color-mb-on-live: #2a0708;
+    --color-mb-live-solid: var(--color-mb-live);
     --color-mb-success: #3fae9f;
     --color-mb-success-soft: rgb(63 174 159 / 0.14);
     --color-mb-info: #8db8d6;
@@ -547,6 +550,7 @@
   --color-mb-live-ink: #f47f83;
   --color-mb-live-soft: rgb(240 88 93 / 0.16);
   --color-mb-on-live: #2a0708;
+  --color-mb-live-solid: var(--color-mb-live);
   --color-mb-success: #3fae9f;
   --color-mb-success-soft: rgb(63 174 159 / 0.14);
   --color-mb-info: #8db8d6;

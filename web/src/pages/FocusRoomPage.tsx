@@ -1154,7 +1154,7 @@ export default function FocusRoomPage() {
                     }`}
                   >
                     {item.label}
-                    {item.badge ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-mb-live px-1 text-[11px] font-semibold text-mb-on-live">{item.badge}</span> : null}
+                    {item.badge ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-mb-live-solid px-1 text-[11px] font-semibold text-mb-on-live">{item.badge}</span> : null}
                   </button>
                 ))}
               </div>
@@ -1349,7 +1349,7 @@ export default function FocusRoomPage() {
               >
                 <item.icon className="h-[18px] w-[18px]" />
                 {item.badge ? (
-                  <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-mb-live px-1 text-[10px] font-semibold text-mb-on-live">
+                  <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-mb-live-solid px-1 text-[10px] font-semibold text-mb-on-live">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 ) : null}
@@ -1390,7 +1390,7 @@ export default function FocusRoomPage() {
               onClick={leaveRoom}
               aria-label="Odadan çık"
               title="Odadan çık"
-              className="ml-1 inline-flex h-10 shrink-0 items-center gap-2 rounded-[12px] bg-mb-live px-3 text-sm font-medium text-mb-on-live transition hover:brightness-110"
+              className="ml-1 inline-flex h-10 shrink-0 items-center gap-2 rounded-[12px] bg-mb-live-solid px-3 text-sm font-medium text-mb-on-live transition hover:brightness-110"
             >
               <LogOut className="h-[18px] w-[18px]" />
               <span className="hidden sm:inline">Ayrıl</span>
