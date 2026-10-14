@@ -1165,7 +1165,7 @@ export default function FocusRoomPage() {
 
             {sidePanel === 'chat' ? (
               <div className="flex min-h-0 flex-1 flex-col">
-                <div ref={messagesRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+                <div ref={messagesRef} role="log" aria-label="Oda sohbeti" className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
                   {messages.map((message, index) => {
                     const senderId = message.user?.id ?? message.userId;
                     const mine = senderId === user?.id;

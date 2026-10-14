@@ -182,6 +182,7 @@ export default function DMPage() {
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Arkadaş ara" className={`${inputClass} pl-11`} />
             </label>
             <SegmentedTabs
+              panelId="dm-list"
               label="Arkadaş listesi"
               value={tab}
               onChange={setTab}
@@ -192,7 +193,7 @@ export default function DMPage() {
             />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+          <div role="tabpanel" id="dm-list" aria-labelledby={`dm-list-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
             {tab === 'requests' ? (
               <div className="space-y-2 px-2">
                 {requestError ? <Notice tone="danger" onDismiss={() => setRequestError(null)}>{requestError}</Notice> : null}
@@ -299,7 +300,7 @@ export default function DMPage() {
                 </button>
               </div>
 
-              <div ref={messagesRef} className="min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-mb-surface/50 px-4 py-5 md:px-6">
+              <div ref={messagesRef} role="log" aria-label="Mesajlar" aria-live={isLoadingMessages ? 'off' : 'polite'} className="min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-mb-surface/50 px-4 py-5 md:px-6">
                 {isLoadingMessages ? <p className="py-10 text-center text-sm text-mb-body">Mesajlar yükleniyor…</p> : null}
                 <AnimatePresence initial={false}>
                   {!isLoadingMessages &&
