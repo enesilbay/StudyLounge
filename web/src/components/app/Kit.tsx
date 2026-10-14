@@ -228,7 +228,7 @@ export function SkeletonRows({ rows = 3, className = '' }: { rows?: number; clas
 /** Kırmızı "CANLI" rozeti (ekran paylaşımı gibi canlı yayınlar); konumu `className` ile verilir. */
 export function LiveBadge({ className = '' }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-[6px] bg-mb-live px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-mb-on-live ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-[6px] bg-mb-live-solid px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-mb-on-live ${className}`}>
       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-mb-on-live motion-safe:animate-pulse" />
       CANLI
     </span>
@@ -239,7 +239,7 @@ export function LiveBadge({ className = '' }: { className?: string }) {
 export function CountBadge({ count, max = 9, className = '' }: { count: number; max?: number; className?: string }) {
   if (count <= 0) return null;
   return (
-    <span className={`grid h-5 min-w-5 place-items-center rounded-full bg-mb-live px-1 text-[11px] font-semibold leading-none tabular-nums text-mb-on-live ${className}`}>
+    <span className={`grid h-5 min-w-5 place-items-center rounded-full bg-mb-live-solid px-1 text-[11px] font-semibold leading-none tabular-nums text-mb-on-live ${className}`}>
       {count > max ? `${max}+` : count}
     </span>
   );
