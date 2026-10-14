@@ -1243,7 +1243,7 @@ export default function FocusRoomPage() {
                     onChange={(event) => setChatText(event.target.value)}
                     placeholder="Mesaj yaz"
                     aria-label="Mesaj"
-                    className="min-h-10 min-w-0 flex-1 rounded-[10px] border border-transparent bg-mb-surface px-3 text-[15px] text-mb-ink outline-none focus:border-mb-action"
+                    className="min-h-10 min-w-0 flex-1 rounded-[10px] border border-mb-field bg-mb-surface px-3 text-[15px] text-mb-ink outline-none focus:border-mb-action"
                   />
                   <button disabled={!chatText.trim()} aria-label="Gönder" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-mb-action text-mb-on-action disabled:opacity-40">
                     <Send className="h-4 w-4" />

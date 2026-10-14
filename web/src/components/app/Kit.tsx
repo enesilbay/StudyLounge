@@ -23,7 +23,7 @@ export const outlineButton =
 export const ghostButton =
   'inline-flex min-h-10 items-center justify-center gap-2 rounded-[10px] px-3 text-sm font-medium text-mb-body transition hover:bg-mb-surface hover:text-mb-ink disabled:opacity-50';
 export const inputClass =
-  'min-h-11 w-full rounded-[12px] border border-mb-line bg-mb-surface px-4 text-[15px] text-mb-ink outline-none transition placeholder:text-mb-body/70 focus:border-mb-action focus:bg-mb-card';
+  'min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-4 text-[15px] text-mb-ink outline-none transition placeholder:text-mb-body/70 focus:border-mb-action focus:bg-mb-card';
 
 /** Sayfa başlığı: ince büyük başlık, isteğe bağlı kısa açıklama ve sağda eylemler. */
 export function AppPage({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {

@@ -162,7 +162,7 @@ export default function AdminAnnouncementsPage() {
               type="datetime-local"
               value={startsAt}
               onChange={(event) => setStartsAt(event.target.value)}
-              className="min-h-11 w-full rounded-[12px] border border-mb-line bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action"
+              className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action"
             />
             <p className="mt-1.5 text-sm text-mb-body">Boş bırakırsan hemen başlar.</p>
           </div>
@@ -174,7 +174,7 @@ export default function AdminAnnouncementsPage() {
               value={endsAt}
               onChange={(event) => setEndsAt(event.target.value)}
               required
-              className="min-h-11 w-full rounded-[12px] border border-mb-line bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action"
+              className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action"
             />
             <div className="mt-2 flex flex-wrap gap-1.5">
               {DURATIONS.map((item) => (

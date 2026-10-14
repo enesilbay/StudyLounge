@@ -226,7 +226,7 @@ export default function LobbiesPage() {
             <span className="sr-only">Oda ara</span>
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Oda adı ya da konu ara" className="w-full bg-transparent text-[15px] text-mb-ink outline-none placeholder:text-mb-body" />
           </label>
-          <label className="flex min-h-12 items-center gap-2 rounded-[14px] border border-mb-line bg-mb-card pl-4 pr-2 transition focus-within:border-mb-action">
+          <label className="flex min-h-12 items-center gap-2 rounded-[14px] border border-mb-field bg-mb-card pl-4 pr-2 transition focus-within:border-mb-action">
             <span className="text-sm text-mb-body">Kategori</span>
             <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="min-h-10 bg-transparent pr-1 text-[15px] font-medium text-mb-ink outline-none [&>option]:bg-mb-card">
               {categories.map((category) => (

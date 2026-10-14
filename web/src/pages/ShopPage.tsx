@@ -172,7 +172,7 @@ export default function ShopPage() {
                     <p className="text-[13px] text-mb-body">{active ? 'Kuşanıldı' : owned ? 'Sende var' : `${item.price} puan`}</p>
                     <div className="mt-3 w-full">
                       {active ? (
-                        <p className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-mb-action">
+                        <p className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-mb-action-ink">
                           <Check className="h-4 w-4" /> Kullanılıyor
                         </p>
                       ) : (
