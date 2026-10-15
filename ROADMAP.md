@@ -122,7 +122,7 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Sıra: Faz 5'in son adımı | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Karar (14 Ekim 2026): Faz 5'in son adımı olarak, kapalı betadan ve Faz 6'dan önce kurulur (Sentry hesabı gerekiyor). |
+| ✅ | Hata takibi | Tamamlandı (15 Ekim 2026, PR #45–#47): Sentry (ücretsiz plan, EU bölgesi), org `enes-ilbay`, projeler `studylounge-backend` ve `studylounge-web`. Yalnızca hata takibi yapılır (tracing ve Replay kapalı). Backend'de `SENTRY_DSN` ve `SENTRY_ENVIRONMENT` (Render) kullanılır; 4xx hataları gönderilmez, socket, ödeme, e-posta ve push hataları bildirilir. Web'de DSN `netlify.toml`'da (PR ön izlemelerinde kapalı); SDK ayrı parça olarak sonradan yüklenir; kaynak haritaları `SENTRY_AUTH_TOKEN` (Netlify) ile yüklenip yayından silinir. Kullanıcı yalnızca numarasıyla görünür; çerez, gövde, sorgu ve IP gönderilmez (Sentry il düzeyinde yaklaşık konumu yine de bağlantıdan çıkarır). Yönetim paneli → Genel bakış → "Hata takibini dene". Test ortamında backend ve web, canlıda web doğrulandı; canlı backend testi, canlıda yönetici hesabı olmadığı için yapılmadı. |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
@@ -166,7 +166,7 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → Impeccable ile proje analizi → arkadaş çevresiyle kapalı beta → Faz 6. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
 
-**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi ✅ → (2) duyurular ✅ → (3) erişilebilirlik düzeltmeleri ✅ (modal odak yönetimi, menü/sekme klavye erişimi, sohbet canlı bölgeleri, kontrast, "İçeriğe geç"; PR #39–#42) → (4) **Sentry hata takibi, Faz 5'in son adımı (sıradaki)** → kapalı beta → Faz 6.
+**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi ✅ → (2) duyurular ✅ → (3) erişilebilirlik düzeltmeleri ✅ (modal odak yönetimi, menü/sekme klavye erişimi, sohbet canlı bölgeleri, kontrast, "İçeriğe geç"; PR #39–#42) → (4) Sentry hata takibi ✅ (PR #45–#47) → **kapalı beta (sıradaki)** → Faz 6.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 
@@ -175,7 +175,7 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 | Alan | Başlık | Not |
 | :--- | :--- | :--- |
 | Hukuk | Şirket ve fatura | Şahıs şirketi yeterli; fatura için e-Arşiv. |
-| Hukuk | KVKK ve sözleşmeler | KVKK aydınlatma metni ve açık rıza (kamera, mesajlar ve çalışma verisi kişisel veri). Gizlilik politikası (görüntülü odalarda kayıt yok politikası dahil) ve kullanım koşulları. Web'de `/legal/...` sayfaları ve kayıt ekranında onay kutusu. |
+| Hukuk | KVKK ve sözleşmeler | KVKK aydınlatma metni ve açık rıza (kamera, mesajlar ve çalışma verisi kişisel veri). Gizlilik politikası (görüntülü odalarda kayıt yok politikası dahil; hata takibi için Sentry'nin (AB) teknik hata bilgisi ve yaklaşık konum işlediği belirtilir) ve kullanım koşulları. Web'de `/legal/...` sayfaları ve kayıt ekranında onay kutusu. |
 | Hukuk | Satış metinleri | Mesafeli satış sözleşmesi, ön bilgilendirme formu ve iptal/iade politikası (dijital içerikte cayma hakkı istisnası açıkça bildirilir); ödeme sayfasında onay kutusuyla gösterilir. |
 | Hukuk | Yaş sınırı | Öğrenci kitlesi nedeniyle 18 yaş altı kullanıcılar için veli onayı konusu netleştirilir. |
 | Ödeme | Canlıya taşıma ve canlı tahsilat | Ödeme kodu (PR #24) şu an yalnızca `staging`'de; test ortamında sandbox ile doğrulandı. Canlıya (`main`) Faz 6'da taşınır. Not: sonraki `staging` → `main` PR'ları bu kodu da taşır; canlıda `IYZICO_*` tanımlı olmadığı için ödeme düğmesi "Ödeme şu an kapalı" görünür, ama `premiumUntil` ve `payments` migration'ı çalışır. Canlıya geçişte: iyzico canlı anahtarları girilir, gerçek fatura bilgisi toplanır, `ALLOW_DEMO_PREMIUM` kapalı kalır. İsteğe bağlı: coin paketi satışı (mağaza zaten coin ile çalışıyor). |
