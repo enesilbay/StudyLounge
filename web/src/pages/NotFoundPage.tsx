@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router-dom';
 import { ArrowLeft, RotateCw } from 'lucide-react';
+import { reportError } from '../lib/sentry';
 
 /** Bilinmeyen adres. `inApp` iken uygulama düzeninin içinde, değilse tam sayfa gösterilir. */
 export default function NotFoundPage({ inApp = false }: { inApp?: boolean }) {
@@ -22,11 +24,17 @@ export default function NotFoundPage({ inApp = false }: { inApp?: boolean }) {
 /** Rota yüklenirken ya da çizilirken oluşan hatalar (react-router `errorElement`). */
 export function RouteErrorPage() {
   const error = useRouteError();
-  if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
 
   // Yeni sürüm yayınlandıktan sonra eski sayfa parçaları bulunamayabilir; yenilemek çözer.
   const message = error instanceof Error ? error.message : '';
   const staleChunk = /dynamically imported module|Failed to fetch|Importing a module script failed/i.test(message);
+
+  // Beklenmeyen hata Sentry'ye bildirilir; 404 ve yeni sürümden kaynaklanan parça hatası beklenen durumlardır.
+  useEffect(() => {
+    if (!staleChunk && !isRouteErrorResponse(error)) reportError(error);
+  }, [error, staleChunk]);
+
+  if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
 
   if (import.meta.env.DEV) console.error(error);
 

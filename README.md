@@ -367,6 +367,8 @@ https://deploy-preview-\d+--cozy-melba-59db2a\.netlify\.app
 | `IYZICO_*` | boş (ödeme kapalı) | iyzico **sandbox** anahtarları | canlı anahtarlar (şirket kurulunca, Faz 6) |
 | `SENTRY_DSN` | boş (Sentry kapalı) | `studylounge-backend` projesinin DSN'i | aynı DSN |
 | `SENTRY_ENVIRONMENT` | boş | `staging` | `production` |
+| `VITE_SENTRY_DSN` (web) | boş (Sentry kapalı) | `web/netlify.toml` | `web/netlify.toml` |
+| `SENTRY_AUTH_TOKEN` (Netlify, gizli) | boş (kaynak haritası yüklenmez) | Netlify paneli | Netlify paneli |
 
 Test ortamı da `NODE_ENV=production` ile çalışır; böylece "test'te çalıştı, canlıda bozuldu" durumu yaşanmaz. Aradaki tek fark adresler, veritabanı ve gizli anahtarlardır. `JWT_SECRET` ortamlar arasında paylaşılmaz; paylaşılırsa test ortamında alınan oturum canlıda da geçerli olur.
 
