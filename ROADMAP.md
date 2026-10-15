@@ -31,7 +31,6 @@
 | :--- | :--- | :--- |
 | ✅ | E-posta gönderimi | Çözüldü: Render'ın ücretsiz planı SMTP portlarını engelliyordu (`Connection timeout`). E-posta artık Brevo HTTPS API ile gidiyor (`BREVO_API_KEY`, `BREVO_FROM`); test ve canlıda denendi, gelen kutusuna düşüyor. |
 | ✅ | Ortam ayrımı: son kontrol | Doğrulandı: test sitesinden açılan hesaplar yalnızca Neon `staging` dalında, `production`'da yok. Test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
-| Yüksek | Ortam ayrımı: temizlik | Yapıldı: taşıma yedeği, `backend/.env.migration` ve test veritabanındaki deneme hesapları silindi. Kalan (panelden): `.env.migration` OneDrive'a da yüklendiği için Neon `neondb_owner` şifresi yenilenir ve iki Render servisindeki `DATABASE_URL` güncellenir; OneDrive geri dönüşüm kutusundaki kopya silinir; Render'daki eski veritabanı silinir (zaten ~2 Kasım 2026'da silinecek); Neon'un geri yükleme süresi kontrol edilir. |
 
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
 
@@ -167,7 +166,7 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → Impeccable ile proje analizi → arkadaş çevresiyle kapalı beta → Faz 6. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
 
-**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi ✅ → (2) duyurular ✅ → (3) erişilebilirlik düzeltmeleri ✅ (modal odak yönetimi, menü/sekme klavye erişimi, sohbet canlı bölgeleri, kontrast, "İçeriğe geç"; PR #39–#42) → (4) **Neon/Render panel temizliği (sıradaki)** → (5) **Sentry hata takibi, Faz 5'in son adımı** → kapalı beta → Faz 6.
+**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi ✅ → (2) duyurular ✅ → (3) erişilebilirlik düzeltmeleri ✅ (modal odak yönetimi, menü/sekme klavye erişimi, sohbet canlı bölgeleri, kontrast, "İçeriğe geç"; PR #39–#42) → (4) **Sentry hata takibi, Faz 5'in son adımı (sıradaki)** → kapalı beta → Faz 6.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 
