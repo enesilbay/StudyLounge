@@ -5,6 +5,7 @@ import { UsersModule } from '../users/users.module';
 import { AdminOverviewService } from './admin-overview.service';
 import { AdminUsersService } from './admin-users.service';
 import { AdminOverviewController } from './admin.controller';
+import { AdminDiagnosticsController } from './admin-diagnostics.controller';
 import {
   AdminActionsController,
   AdminUsersController,
@@ -17,6 +18,7 @@ import {
     AdminOverviewController,
     AdminUsersController,
     AdminActionsController,
+    AdminDiagnosticsController,
   ],
   providers: [AdminOverviewService, AdminUsersService, RolesGuard],
 })

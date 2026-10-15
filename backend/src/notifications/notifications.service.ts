@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import type { Expo as ExpoType, ExpoPushMessage } from 'expo-server-sdk';
 
 @Injectable()
@@ -44,6 +45,7 @@ export class NotificationsService {
       console.log(`Bildirim başarıyla gönderildi: ${title}`);
     } catch (error) {
       console.error('Bildirim gönderilirken hata:', error);
+      Sentry.captureException(error, { tags: { context: 'push_notification' } });
     }
   }
 }
