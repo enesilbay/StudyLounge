@@ -11,8 +11,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LobbiesModule } from './lobbies/lobbies.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { Lobby } from './lobbies/lobby.entity';
 import { LobbyAccess } from './lobbies/lobby-access.entity';
 import { MailModule } from './mail/mail.module';
@@ -55,6 +56,7 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -152,6 +154,8 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
   ],
   controllers: [AppController, AdminRoomsController],
   providers: [
+    // Beklenmeyen hatalari (HttpException olmayanlar) Sentry'ye bildirir; 4xx yanitlar gonderilmez.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
     AppService,
     SensorsGateway,
     AdminRoomsService,

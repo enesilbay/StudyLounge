@@ -1,5 +1,8 @@
+// Sentry hata takibi her seyden once yuklenmeli (bkz. instrument.ts).
+import './instrument';
 // Saat dilimsiz tarihleri her ortamda UTC oku/yaz (bkz. config/pg-utc.ts).
 import './config/pg-utc';
+import * as Sentry from '@sentry/nestjs';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -91,7 +94,9 @@ async function bootstrap() {
   console.log(`📁 Statik Dosyalar: http://${localIp}:${port}/uploads/`);
   console.log(`---`);
 }
-bootstrap().catch((err) => {
+bootstrap().catch(async (err) => {
   console.error('Uygulama başlatılamadı:', err);
+  Sentry.captureException(err);
+  await Sentry.flush(2000);
 });
 // test

@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
@@ -156,6 +157,9 @@ export class MailService implements OnModuleInit {
         );
       }
     }
+
+    // Hicbir saglayici gonderemedi: kullanici dogrulama/sifirlama kodunu alamaz. Adres gonderilmez.
+    Sentry.captureMessage('E-posta hicbir saglayiciyla gonderilemedi', { level: 'error', tags: { context: 'mail' } });
 
     // Gelistirmede e-posta ayari olmadan da test edilebilsin diye kod loga yazilir.
     if (this.configService.get<string>('NODE_ENV') !== 'production') {
