@@ -7,6 +7,8 @@ import {
   OnGatewayDisconnect,
   OnGatewayConnection,
 } from '@nestjs/websockets';
+import { UseFilters } from '@nestjs/common';
+import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -23,6 +25,7 @@ import { RoomTimerService } from './room-timer/room-timer.service';
 import { DAILY_GOAL_BONUS, StudyService } from './study/study.service';
 import { ModerationService } from './moderation/moderation.service';
 import { BADGE_NAMES } from './users/badges';
+import { reportUnexpected } from './common/report-error';
 
 interface JoinLobbyDto {
   roomName: string;
@@ -110,6 +113,8 @@ const MAX_DUEL_BET = 100;
 /** Kabul edilmeyen duello daveti bu sureden sonra duser. */
 const DUEL_INVITE_TTL_MS = 60_000;
 
+// Global filtreler gateway'lere uygulanmaz; beklenmeyen socket hatalari da Sentry'ye gitsin.
+@UseFilters(new SentryGlobalFilter())
 @WebSocketGateway({
   cors: {
     origin:
@@ -306,6 +311,7 @@ export class SensorsGateway
         }
       } catch (error) {
         console.error('[Oturum kaydi] Hata:', error);
+        reportUnexpected(error, 'session_record');
       }
     }
   }
@@ -434,6 +440,7 @@ export class SensorsGateway
         client.emit('room_timer', { timer, action: 'sync' });
       }
     } catch (error) {
+      reportUnexpected(error, 'socket');
       const message =
         error instanceof Error ? error.message : 'Lobiye giris reddedildi.';
       client.emit('join_lobby_error', { message });
@@ -483,6 +490,7 @@ export class SensorsGateway
     try {
       await this.moderationService.assertCanChat(socketUser.sub);
     } catch (error) {
+      reportUnexpected(error, 'socket');
       client.emit('error', { message: error instanceof Error ? error.message : 'Mesaj gonderilemedi.' });
       return;
     }
@@ -531,6 +539,7 @@ export class SensorsGateway
         await this.moderationService.assertCanChat(socketUser.sub);
         await this.moderationService.assertNotBlocked(socketUser.sub, data.targetUserId, 'Bu kullaniciya mesaj gonderemezsin.');
       } catch (error) {
+        reportUnexpected(error, 'socket');
         client.emit('error', { message: error instanceof Error ? error.message : 'Mesaj gonderilemedi.' });
         return;
       }
@@ -591,6 +600,7 @@ export class SensorsGateway
       });
     } catch (error) {
       console.error('DM Gönderim Hatası:', error);
+      reportUnexpected(error, 'dm_send');
     }
   }
 
@@ -724,6 +734,7 @@ export class SensorsGateway
       });
     } catch (e) {
       console.error('[Nudge] Push bildirimi gonderilemedi:', e);
+      reportUnexpected(e, 'nudge_push');
     }
   }
 
@@ -893,6 +904,7 @@ export class SensorsGateway
     try {
       await this.lobbiesService.kick(owner.roomName, owner.userId, Number(data?.targetUserId));
     } catch (error) {
+      reportUnexpected(error, 'socket');
       client.emit('error', { message: error instanceof Error ? error.message : 'Kisi odadan cikarilamadi.' });
       return;
     }
@@ -918,6 +930,7 @@ export class SensorsGateway
       const members = this.socketsInRoom(owner.roomName).map(([, u]) => u.userId);
       await this.lobbiesService.setLocked(owner.roomName, owner.userId, locked, members);
     } catch (error) {
+      reportUnexpected(error, 'socket');
       client.emit('error', { message: error instanceof Error ? error.message : 'Oda kilitlenemedi.' });
       return;
     }
@@ -932,6 +945,7 @@ export class SensorsGateway
     try {
       await this.lobbiesService.findOwnedLobby({ name: owner.roomName }, owner.userId);
     } catch (error) {
+      reportUnexpected(error, 'socket');
       client.emit('error', { message: error instanceof Error ? error.message : 'Oda kapatilamadi.' });
       return;
     }
@@ -1014,6 +1028,7 @@ export class SensorsGateway
         .emit('rtc_peer_joined', { userId: socketUser.sub });
       this.broadcastRoomUsers(data.roomName);
     } catch (error) {
+      reportUnexpected(error, 'socket');
       const message =
         error instanceof Error ? error.message : 'Aramaya katilinamadi.';
       client.emit('rtc_error', { message });
@@ -1108,6 +1123,7 @@ export class SensorsGateway
             );
       this.server.to(user.roomName).emit('board_state', { board });
     } catch (error) {
+      reportUnexpected(error, 'socket');
       const message =
         error instanceof Error ? error.message : 'PDF tahtada acilamadi.';
       client.emit('board_error', { message });
@@ -1247,6 +1263,7 @@ export class SensorsGateway
       );
       this.broadcastRoomTimer(user.roomName, 'start', user.fullName);
     } catch (error) {
+      reportUnexpected(error, 'socket');
       const message =
         error instanceof Error ? error.message : 'Ortak sayac baslatilamadi.';
       client.emit('room_timer_error', { message });

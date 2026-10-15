@@ -7,11 +7,15 @@
   to = "/index.html"
   status = 200
 
+# Sentry hata takibi (web): DSN gizli degildir, sayfa kaynaginda gorunur. Yalnizca canli ve test
+# sitesinde tanimli; PR on izlemelerinde Sentry kapali kalir (kota harcanmaz). Kaynak haritasi
+# yuklemesi icin SENTRY_AUTH_TOKEN gizlidir ve yalnizca Netlify panelinde tutulur.
 # Google ile giris: istemci kimligi gizli degildir (sayfa kaynaginda gorunur).
 # Yalnizca canli ve test sitesinde tanimli; PR on izleme adresleri Google'da izinli
 # olamadigi (adres her PR'da degisir) icin orada dugme gosterilmez.
 [context.production.environment]
   VITE_GOOGLE_CLIENT_ID = "278825121829-df7j29ma998b0nrrrouk8buk5b3g2n8h.apps.googleusercontent.com"
+  VITE_SENTRY_DSN = "https://84ee31747c62e9913ee37d9778f59751@o4512261264834560.ingest.de.sentry.io/4512261297274960"
 
 # Test ortami: "staging" dalinin dal deploy'u test backend'ine baglanir.
 # Canli site (main) VITE_BACKEND_URL degerini Netlify panelinden alir.
@@ -19,6 +23,7 @@
   VITE_BACKEND_URL = "https://studylounge-backend-staging.onrender.com"
   VITE_APP_ENV = "staging"
   VITE_GOOGLE_CLIENT_ID = "278825121829-df7j29ma998b0nrrrouk8buk5b3g2n8h.apps.googleusercontent.com"
+  VITE_SENTRY_DSN = "https://84ee31747c62e9913ee37d9778f59751@o4512261264834560.ingest.de.sentry.io/4512261297274960"
 
 # PR on izlemeleri de test backend'ine baglanir; canli veriye hic dokunmaz.
 # Test backend'inin CORS_ORIGIN_PATTERN degiskeni deploy-preview-<N>-- adreslerine izin verir.

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as Sentry from '@sentry/nestjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
@@ -150,6 +151,9 @@ export class PaymentsService {
         },
       );
     } catch (error) {
+      if (!(error instanceof BadRequestException)) {
+        Sentry.captureException(error, { tags: { context: 'iyzico_checkout' } });
+      }
       await this.markFailed(payment.id, 'iyzico isteği başarısız');
       throw error instanceof BadRequestException
         ? error

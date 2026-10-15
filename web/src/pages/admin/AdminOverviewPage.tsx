@@ -7,6 +7,7 @@ import { OVERVIEW_PERIODS, TREND_SERIES, formatMinutes, numberFormatter, parseDa
 import type { AdminOverview, Comparison, OverviewPeriod, TrendSeries } from '../../lib/admin';
 import { Button, Notice, PageHeader, StateBlock, Surface } from '../../components/ui';
 import { Heatmap, OnboardingFunnel, Retention, TrendChart } from '../../components/admin/OverviewCharts';
+import SentryTestPanel from '../../components/admin/SentryTestPanel';
 
 const dayShort = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long' });
 const timeShort = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -167,6 +168,8 @@ export default function AdminOverviewPage() {
               <li>Şu an odalarda: çevrimiçi olup bir odada görünen kişi sayısı.</li>
             </ul>
           </details>
+
+          <SentryTestPanel />
         </div>
       ) : null}
     </div>
