@@ -14,6 +14,12 @@ export interface User {
   equippedBubbleColor?: string;
   equippedIcon?: string | null;
   equippedSoundPack?: string;
+  equippedProfileCover?: string;
+  equippedLampColor?: string;
+  ownedProfileCovers?: string[];
+  ownedLampColors?: string[];
+  /** Elde tutulan seri koruma sayısı. */
+  streakFreezes?: number;
   bestStreak?: number;
   currentStreak?: number;
   ownedColors?: string[];
@@ -36,7 +42,7 @@ export interface PublicProfile {
   fullName: string;
   avatarUrl?: string | null;
   equippedProfileFrame?: FrameId;
-  equippedIcon?: string | null;
+  equippedProfileCover?: string;
   isPremium?: boolean;
   isOnline?: boolean;
   currentRoom?: string | null;
@@ -135,6 +141,8 @@ export interface Message {
   sender?: User;
   receiver?: User;
   isRead?: boolean;
+  /** Oda sohbetinde gönderenin balon rengi (socket mesajlarında gelir). */
+  equippedBubbleColor?: string | null;
 }
 
 export interface RoomUser {
@@ -144,6 +152,7 @@ export interface RoomUser {
   equippedProfileFrame?: FrameId | null;
   equippedBubbleColor?: string | null;
   equippedIcon?: string | null;
+  equippedLampColor?: string | null;
   roomName: string;
   isAtDesk: boolean;
   isEliteRoom: boolean;
@@ -182,10 +191,10 @@ export interface DailyAnalytics {
 
 export interface ShopItem {
   id: string;
-  type: 'color' | 'icon' | 'soundPack' | 'profileFrame';
+  type: ShopItemType;
   name: string;
   price: number;
-  color?: string;
-  text?: string;
 }
+
+export type ShopItemType = 'color' | 'icon' | 'soundPack' | 'profileFrame' | 'profileCover' | 'lampColor' | 'streakFreeze';
 

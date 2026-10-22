@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m } from 'framer-motion';
-import { ArrowLeft, Check, Flag, MessageCircle, MessagesSquare, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, DoorOpen, Flag, Hand, MessageCircle, MessagesSquare, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
 import { Avatar, Notice, ModalShell } from '../components/ui';
 import { AppPage, Card, EmptyState, SegmentedTabs, actionButton, ghostButton, inputClass, solidButton } from '../components/app/Kit';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Message, User } from '../lib/types';
+import { purchasedBubbleColor } from '../lib/cosmetics';
+import { formatMinutes } from '../lib/study';
 import { useAuthStore } from '../store/authStore';
 import { useInboxStore } from '../store/inboxStore';
 import ReportDialog from '../components/social/ReportDialog';
@@ -148,6 +150,12 @@ export default function DMPage() {
       .sort((a, b) => Number(unreadFrom.includes(b.id)) - Number(unreadFrom.includes(a.id)) || Number(Boolean(b.isOnline)) - Number(Boolean(a.isOnline)));
   }, [friends, query, unreadFrom]);
 
+  // "Şu an aktif" şeridi: çevrim içi arkadaşlar, odada olanlar önce.
+  const onlineFriends = useMemo(
+    () => friends.filter((friend) => friend.isOnline).sort((a, b) => Number(Boolean(b.currentRoom)) - Number(Boolean(a.currentRoom))),
+    [friends],
+  );
+
   const handleSend = () => {
     if (!activeFriend?.id || !messageText.trim()) return;
     getSocket().emit('send_dm', {
@@ -191,6 +199,38 @@ export default function DMPage() {
                 { value: 'requests', label: 'İstekler', badge: friendRequests.length },
               ]}
             />
+            {tab === 'chats' && onlineFriends.length ? (
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-mb-body">
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-mb-action motion-safe:animate-pulse" />
+                  Şu an aktif · {onlineFriends.length}
+                </p>
+                <ul className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Çevrim içi arkadaşlar">
+                  {onlineFriends.map((friend, index) => (
+                    <m.li key={friend.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: index * 0.04 }}>
+                      <button
+                        type="button"
+                        onClick={() => openChat(friend.id)}
+                        title={friend.currentRoom ? `${friend.fullName}: ${friend.currentRoom} odasında` : `${friend.fullName}: çevrim içi`}
+                        className="flex w-16 flex-col items-center gap-1 rounded-[12px] p-1 transition hover:bg-mb-surface"
+                      >
+                        <span className={`relative rounded-full p-[2px] ${friend.currentRoom ? 'bg-gradient-to-tr from-mb-action to-mb-lamp' : 'bg-mb-action'}`}>
+                          <span className="block rounded-full bg-mb-card p-[2px]">
+                            <Avatar name={friend.fullName} image={friend.avatarUrl} frame={friend.equippedProfileFrame} size="sm" />
+                          </span>
+                          {friend.currentRoom ? (
+                            <span aria-hidden="true" className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-mb-tile-5 text-mb-ink ring-2 ring-mb-card">
+                              <DoorOpen className="h-3 w-3" />
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="w-full truncate text-center text-[11px] text-mb-ink">{friend.fullName.split(' ')[0]}</span>
+                      </button>
+                    </m.li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
 
           <div role="tabpanel" id="dm-list" aria-labelledby={`dm-list-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
@@ -207,13 +247,13 @@ export default function DMPage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -24 }}
                       transition={{ duration: 0.3, delay: index * 0.04 }}
-                      className="rounded-[16px] border border-mb-line bg-mb-surface/60 p-3"
+                      className="rounded-[16px] bg-mb-tile-2 p-3 shadow-mb-card"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar name={request.sender.fullName} image={request.sender.avatarUrl} frame={request.sender.equippedProfileFrame} size="sm" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-mb-ink">{request.sender.fullName}</p>
-                          <p className="truncate text-sm text-mb-body">@{request.sender.username ?? 'kullanici'}</p>
+                          <p className="truncate text-sm text-mb-ink/70">@{request.sender.username ?? 'kullanici'} · seni eklemek istiyor</p>
                         </div>
                       </div>
                       <div className="mt-3 flex justify-end gap-2">
@@ -243,7 +283,7 @@ export default function DMPage() {
                           type="button"
                           onClick={() => openChat(friend.id)}
                           aria-current={active ? 'true' : undefined}
-                          className={`relative flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors ${active ? 'bg-mb-surface' : 'hover:bg-mb-surface/60'}`}
+                          className={`relative flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors ${active ? 'bg-mb-surface' : unread ? 'bg-mb-tile-1/60 hover:bg-mb-tile-1' : 'hover:bg-mb-surface/60'}`}
                         >
                           {active ? <span aria-hidden="true" className="absolute inset-y-3 left-0 w-1 rounded-full bg-mb-action" /> : null}
                           <span className="relative shrink-0">
@@ -252,9 +292,16 @@ export default function DMPage() {
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className={`block truncate text-[15px] ${unread ? 'font-semibold text-mb-ink' : 'font-medium text-mb-ink'}`}>{friend.fullName}</span>
-                            <span className="block truncate text-[13px] text-mb-body">{friend.isOnline ? 'Çevrim içi' : `${friend.totalFocusMinutes ?? 0} dk odak`}</span>
+                            {friend.isOnline && friend.currentRoom ? (
+                              <span className="mt-0.5 inline-flex max-w-full items-center gap-1 rounded-full bg-mb-tile-5 px-2 py-0.5 text-[12px] text-mb-ink">
+                                <DoorOpen className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{friend.currentRoom}</span>
+                              </span>
+                            ) : (
+                              <span className="block truncate text-[13px] text-mb-body">{friend.isOnline ? 'Çevrim içi' : `${formatMinutes(friend.totalFocusMinutes ?? 0)} odak`}</span>
+                            )}
                           </span>
-                          {unread ? <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-mb-action" aria-label="Okunmamış mesaj" /> : null}
+                          {unread ? <span className="shrink-0 rounded-full bg-mb-action px-2 py-0.5 text-[11px] font-semibold text-mb-on-action" aria-label="Okunmamış mesaj">Yeni</span> : null}
                         </button>
                       </m.li>
                     );
@@ -293,8 +340,16 @@ export default function DMPage() {
                 </span>
                 <Link to={`/app/u/${activeFriend.id}`} className="min-w-0 flex-1 rounded-[8px] hover:underline">
                   <h2 className="truncate font-mb-display text-[17px] font-medium tracking-[-0.02em] text-mb-ink">{activeFriend.fullName}</h2>
-                  <p className="truncate text-[13px] text-mb-body">{activeFriend.isOnline ? 'Çevrim içi' : `@${activeFriend.username ?? 'kullanici'}`}</p>
+                  <p className="truncate text-[13px] text-mb-body">
+                    {activeFriend.isOnline ? (activeFriend.currentRoom ? `${activeFriend.currentRoom} odasında çalışıyor` : 'Çevrim içi') : `@${activeFriend.username ?? 'kullanici'}`}
+                  </p>
                 </Link>
+                {activeFriend.isOnline && activeFriend.currentRoom ? (
+                  <Link to="/app/lobbies" className="hidden shrink-0 items-center gap-1.5 rounded-[10px] bg-mb-tile-5 px-3 py-2 text-sm font-medium text-mb-ink transition hover:brightness-95 sm:inline-flex">
+                    <DoorOpen className="h-4 w-4" aria-hidden="true" />
+                    Odaya katıl
+                  </Link>
+                ) : null}
                 <button type="button" onClick={() => setReportOpen(true)} title="Şikayet et" aria-label={`${activeFriend.fullName} kişisini şikayet et`} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-mb-body hover:bg-mb-surface hover:text-danger">
                   <Flag className="h-4 w-4" />
                 </button>
@@ -304,26 +359,55 @@ export default function DMPage() {
                 {isLoadingMessages ? <p className="py-10 text-center text-sm text-mb-body">Mesajlar yükleniyor…</p> : null}
                 <AnimatePresence initial={false}>
                   {!isLoadingMessages &&
-                    messages.map((message) => {
+                    messages.map((message, index) => {
                       const senderId = message.senderId ?? message.sender?.id;
                       const mine = senderId === user?.id;
+                      // Mağazadan alınmış balon rengi: kendi mesajında senin, gelenlerde gönderenin rengi.
+                      const bubble = purchasedBubbleColor(mine ? user?.equippedBubbleColor : message.sender?.equippedBubbleColor);
+                      const day = dayKey(message.createdAt);
+                      const newDay = day && day !== dayKey(messages[index - 1]?.createdAt);
                       return (
+                        <div key={message.id}>
+                        {newDay ? (
+                          <p className="my-3 flex items-center gap-3 text-xs font-medium text-mb-body" role="separator">
+                            <span className="h-px flex-1 bg-mb-line" aria-hidden="true" />
+                            {dayLabel(message.createdAt!)}
+                            <span className="h-px flex-1 bg-mb-line" aria-hidden="true" />
+                          </p>
+                        ) : null}
                         <m.div
-                          key={message.id}
                           initial={{ opacity: 0, y: 10, scale: 0.98 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           transition={{ duration: 0.25 }}
                           className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div className={`max-w-[80%] rounded-[16px] px-3.5 py-2 md:max-w-lg ${mine ? 'rounded-br-[4px] bg-mb-action text-mb-on-action' : 'rounded-bl-[4px] border border-mb-line bg-mb-card text-mb-ink'}`}>
+                          <div
+                            className={`max-w-[80%] rounded-[18px] px-3.5 py-2 shadow-mb-card md:max-w-lg ${mine ? 'rounded-br-[4px]' : 'rounded-bl-[4px]'} ${
+                              bubble ? 'text-white' : mine ? 'bg-mb-action text-mb-on-action' : 'border border-mb-line bg-mb-card text-mb-ink'
+                            }`}
+                            style={bubble ? { backgroundColor: bubble } : undefined}
+                          >
                             <p className="whitespace-pre-wrap break-words text-[15px] leading-6">{message.text}</p>
-                            <p className={`mt-0.5 text-right text-[11px] ${mine ? 'text-mb-on-action/70' : 'text-mb-body'}`}>{formatTime(message.createdAt)}</p>
+                            <p className={`mt-0.5 text-right text-[11px] ${bubble || mine ? 'opacity-70' : 'text-mb-body'}`}>{formatTime(message.createdAt)}</p>
                           </div>
                         </m.div>
+                        </div>
                       );
                     })}
                 </AnimatePresence>
-                {!isLoadingMessages && messages.length === 0 ? <EmptyState icon={MessageCircle} title="Henüz mesaj yok" text="Bir merhaba yaz; birlikte çalışmak için bir odada buluşun." /> : null}
+                {!isLoadingMessages && messages.length === 0 ? (
+                  <EmptyState
+                    icon={MessageCircle}
+                    title="Henüz mesaj yok"
+                    text="Bir merhaba yaz; birlikte çalışmak için bir odada buluşun."
+                    action={
+                      <button type="button" onClick={() => setMessageText('Merhaba! Birlikte çalışalım mı? 📚')} className={`${actionButton} min-h-10 text-sm`}>
+                        <Hand className="h-4 w-4" />
+                        Selam ver
+                      </button>
+                    }
+                  />
+                ) : null}
               </div>
 
               <form
@@ -373,6 +457,22 @@ function FriendSkeleton() {
       ))}
     </>
   );
+}
+
+function dayKey(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+/** Sohbetteki gün ayracı: Bugün, Dün ya da tarih. */
+function dayLabel(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (dayKey(value) === dayKey(today.toISOString())) return 'Bugün';
+  if (dayKey(value) === dayKey(yesterday.toISOString())) return 'Dün';
+  return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }).format(date);
 }
 
 function formatTime(value?: string) {

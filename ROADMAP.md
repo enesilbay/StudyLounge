@@ -122,11 +122,18 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 
 | Öncelik | Başlık | Not |
 | :--- | :--- | :--- |
-| Sıra: Faz 5'in son adımı | Hata takibi | Sentry (ücretsiz plan) backend ve web'e eklenir; başkaları kullanmaya başladığında hatalar ancak böyle görülür. Karar (14 Ekim 2026): Faz 5'in son adımı olarak, kapalı betadan ve Faz 6'dan önce kurulur (Sentry hesabı gerekiyor). |
+| ✅ | Hata takibi | Tamamlandı (15 Ekim 2026, PR #45–#47): Sentry (ücretsiz plan, EU bölgesi), org `enes-ilbay`, projeler `studylounge-backend` ve `studylounge-web`. Yalnızca hata takibi yapılır (tracing ve Replay kapalı). Backend'de `SENTRY_DSN` ve `SENTRY_ENVIRONMENT` (Render) kullanılır; 4xx hataları gönderilmez, socket, ödeme, e-posta ve push hataları bildirilir. Web'de DSN `netlify.toml`'da (PR ön izlemelerinde kapalı); SDK ayrı parça olarak sonradan yüklenir; kaynak haritaları `SENTRY_AUTH_TOKEN` (Netlify) ile yüklenip yayından silinir. Kullanıcı yalnızca numarasıyla görünür; çerez, gövde, sorgu ve IP gönderilmez (Sentry il düzeyinde yaklaşık konumu yine de bağlantıdan çıkarır). Yönetim paneli → Genel bakış → "Hata takibini dene". Test ortamında backend ve web, canlıda web doğrulandı; canlı backend testi, canlıda yönetici hesabı olmadığı için yapılmadı. |
 | ✅ | Staging ortamı | Tamamlandı: `staging` dalı → Render `studylounge-backend-staging` + Netlify dal deploy'u + Neon `staging` dalı. Test sitesinde "Test ortamı" etiketi görünür. Ayrıntılar README'deki "Ortamlar" bölümünde. |
 | ✅ | Geri bildirim / hata bildir | Tamamlandı: menüdeki geri bildirim düğmesi (Hata / Öneri / Diğer; sayfa ve tarayıcı bilgisi otomatik eklenir, 10 dakikada 5 gönderim). Yöneticiler "Yönetim → Geri bildirimler"de görür ve tamamlandı olarak işaretler. |
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
-| ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → odada ilk lambanı yak (günlük hedef adımı hedefler kaldırılınca çıkarıldı). Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
+| ✅ | Onboarding | Web'den kaldırıldı (kullanıcı kararı, 22 Ekim 2026): Odalar sayfasındaki "Masanı hazırla" kartı çıkarıldı. Yönetim panelindeki onboarding hunisi (backend verisi) duruyor. |
+
+**Mağaza ve avatar (22 Ekim 2026)**
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| ✅ | Avatar seçimi | Profilde 10 hazır karakterden seçim ya da fotoğraf yükleme (`PUT /users/me/avatar-character`). Kayıtta isteğe bağlı Kadın / Erkek seçimi; o gruptan rastgele karakter atanır, cinsiyet kaydedilmez. Karakterler `avatarUrl`'de `/avatars/avatar-NN.webp` olarak tutulur ve backend tarafından da sunulur (mobil de gösterir). Yüklenen fotoğrafın web'de yalnızca odada görünmesi hatası düzeltildi. |
+| ✅ | Mağaza yenilemesi | İsim ikonları web'den kaldırıldı (mobil uyumluluk için katalogda duruyor). Degrade çerçeveler (9 çerçeve; Aurora ve Gökkuşağı döner), profil kapağı, lamba rengi (odada odaklanınca kutunun ışığı), web'de de görünen mesaj balonu rengi ve seri koruma (en fazla 2; kaçırılan her gün için biri kendiliğinden harcanır). Migration `1780200000000`. Ürün renkleri `web/src/lib/cosmetics.ts`'te veri olarak tutulur (marka token'ı değildir). |
 
 **Görsel kimlik: daha az yazı, daha çok görsel**
 
@@ -166,7 +173,7 @@ Kapalı betadan önce, web arayüzü Impeccable ile baştan sona taranır; böyl
 
 Önerilen sıra: güvenlik ve veri kaybı → ödeme akışı (sandbox) → beta deneyimi → yönetim paneli (genel bakış ve kullanıcı yönetimi) → görsel kimlik (stil rehberi ve logo) → Impeccable ile proje analizi → arkadaş çevresiyle kapalı beta → Faz 6. İllüstrasyonlar, duyurular ve işlem kaydı beta sırasında tamamlanır.
 
-**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi ✅ → (2) duyurular ✅ → (3) erişilebilirlik düzeltmeleri ✅ (modal odak yönetimi, menü/sekme klavye erişimi, sohbet canlı bölgeleri, kontrast, "İçeriğe geç"; PR #39–#42) → (4) **Sentry hata takibi, Faz 5'in son adımı (sıradaki)** → kapalı beta → Faz 6.
+**Güncel sıra (14 Ekim 2026):** web tasarımı ertelendi (en sonda). Faz 5'in kalanı şu sırayla yapılır: (1) yönetim paneli: oda yönetimi ✅ → (2) duyurular ✅ → (3) erişilebilirlik düzeltmeleri ✅ (modal odak yönetimi, menü/sekme klavye erişimi, sohbet canlı bölgeleri, kontrast, "İçeriğe geç"; PR #39–#42) → (4) Sentry hata takibi ✅ (PR #45–#47) → **kapalı beta (sıradaki)** → Faz 6.
 
 ### Faz 6: Yayına çıkış (gerçek kullanıcı ve gerçek para)
 
@@ -175,7 +182,7 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 | Alan | Başlık | Not |
 | :--- | :--- | :--- |
 | Hukuk | Şirket ve fatura | Şahıs şirketi yeterli; fatura için e-Arşiv. |
-| Hukuk | KVKK ve sözleşmeler | KVKK aydınlatma metni ve açık rıza (kamera, mesajlar ve çalışma verisi kişisel veri). Gizlilik politikası (görüntülü odalarda kayıt yok politikası dahil) ve kullanım koşulları. Web'de `/legal/...` sayfaları ve kayıt ekranında onay kutusu. |
+| Hukuk | KVKK ve sözleşmeler | KVKK aydınlatma metni ve açık rıza (kamera, mesajlar ve çalışma verisi kişisel veri). Gizlilik politikası (görüntülü odalarda kayıt yok politikası dahil; hata takibi için Sentry'nin (AB) teknik hata bilgisi ve yaklaşık konum işlediği belirtilir) ve kullanım koşulları. Web'de `/legal/...` sayfaları ve kayıt ekranında onay kutusu. |
 | Hukuk | Satış metinleri | Mesafeli satış sözleşmesi, ön bilgilendirme formu ve iptal/iade politikası (dijital içerikte cayma hakkı istisnası açıkça bildirilir); ödeme sayfasında onay kutusuyla gösterilir. |
 | Hukuk | Yaş sınırı | Öğrenci kitlesi nedeniyle 18 yaş altı kullanıcılar için veli onayı konusu netleştirilir. |
 | Ödeme | Canlıya taşıma ve canlı tahsilat | Ödeme kodu (PR #24) şu an yalnızca `staging`'de; test ortamında sandbox ile doğrulandı. Canlıya (`main`) Faz 6'da taşınır. Not: sonraki `staging` → `main` PR'ları bu kodu da taşır; canlıda `IYZICO_*` tanımlı olmadığı için ödeme düğmesi "Ödeme şu an kapalı" görünür, ama `premiumUntil` ve `payments` migration'ı çalışır. Canlıya geçişte: iyzico canlı anahtarları girilir, gerçek fatura bilgisi toplanır, `ALLOW_DEMO_PREMIUM` kapalı kalır. İsteğe bağlı: coin paketi satışı (mağaza zaten coin ile çalışıyor). |
@@ -201,6 +208,8 @@ Kullanıcı kararı (14 Ekim 2026): web arayüzünün yeniden tasarımı şimdil
 | Durum | Başlık | Not |
 | :--- | :--- | :--- |
 | ✅ | Ortak kurallar, odak odası 3. sürüm (Meet/Discord düzeni), Ekranlar v3 adım 0 | Yapıldı: mb token'ları, Kit'e `OverflowMenu`/`LiveBadge`/`CountBadge`/`AvatarStack`/`Skeleton`/`ErrorState`, ikonlu `EmptyState`, açılış sayfası görselleri yeni oda düzeniyle güncel. |
+| ✅ | Analitik sayfası (22 Ekim 2026) | Dönem seçimi (7/30/90 gün) ve önceki döneme göre değişim, koyu özet bandı, renkli özet kutuları, ortalama çizgili günlük grafik, ders halka grafiği, gün × saat çalışma ritmi, 12 haftalık takvim ve güne göre gruplu oturum listesi. Backend değişmedi (`/study/summary`, `/study/sessions`). |
+| ✅ | Sıralama, Arkadaşlar, Profil ve sol menü (22 Ekim 2026) | Sıralama: canlı geri sayım, "senin sıran" ve bir üst sıraya kalan süre, altın/gümüş/bronz kürsü. Arkadaşlar: "Şu an aktif" şeridi, odadaki arkadaşa oda etiketi ve "Odaya katıl", sohbette gün ayraçları ve satın alınmış balon renkleri. Profil: renkli özet kutuları, ikonlu rütbe merdiveni (herkese açık profilde de), son 7 gün grafiği, renkli rozetler. Menüde her sayfanın kendi pastel rengi. |
 | Ertelendi | Ekranlar v3 adım 1–6 | Uygulama kabuğu + Odalar; Arkadaşlar + Sıralama; Profil; Analitik + Ayarlar; Mağaza + Premium; 404 + oda yan pencereleri. |
 | Ertelendi | Yeniden tasarım planının 3–10. adımları | Landing page, giriş ekranı, profil, analitik, sıralama, premium, mağaza, arkadaşlar, ayarlar (bkz. plan belgesi). |
 | Ertelendi | Impeccable ile proje analizi | Faz 5'teki tasarım eleştirisi/denetimi, tema tutarlılığı ve telefon genişliği taramaları tasarım çalışmasıyla birlikte yapılır; erişilebilirlik hataları (kontrast, klavye, odak halkası) kapalı betadan önce yine de düzeltilmelidir. |

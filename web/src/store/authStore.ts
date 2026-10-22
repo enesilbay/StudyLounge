@@ -4,8 +4,12 @@ import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
 import { api } from '../lib/api';
 import type { User } from '../lib/types';
 
+export type AvatarGroup = 'female' | 'male';
+
 interface RegisterPayload {
   username: string;
+  /** İsteğe bağlı: başlangıç avatarının seçileceği grup (kaydedilmez). */
+  avatarGroup?: AvatarGroup;
   fullName: string;
   email: string;
   password: string;

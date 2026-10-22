@@ -112,6 +112,22 @@ export class User {
   @Column({ default: 'none' })
   equippedProfileFrame: string;
 
+  @Column('simple-array', { default: 'none' })
+  ownedProfileCovers: string[];
+
+  @Column({ default: 'none' })
+  equippedProfileCover: string;
+
+  @Column('simple-array', { default: 'classic' })
+  ownedLampColors: string[];
+
+  @Column({ default: 'classic' })
+  equippedLampColor: string;
+
+  /** Elde tutulan seri koruma sayisi (en fazla MAX_STREAK_FREEZES). */
+  @Column({ default: 0 })
+  streakFreezes: number;
+
   // ── HEDEFLER (0 = kapalı) ──
   @Column({ default: 0 })
   dailyGoalMinutes: number;

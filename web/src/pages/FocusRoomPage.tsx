@@ -62,6 +62,7 @@ import DeviceSettingsModal from '../components/room/DeviceSettingsModal';
 import ReportDialog from '../components/social/ReportDialog';
 import { ROOM_CATEGORIES } from '../lib/roomCategories';
 import { useInboxStore } from '../store/inboxStore';
+import { purchasedBubbleColor } from '../lib/cosmetics';
 import fireSound from '../assets/sounds/fire.mp3';
 import librarySound from '../assets/sounds/library.mp3';
 import natureSound from '../assets/sounds/nature.mp3';
@@ -636,8 +637,9 @@ export default function FocusRoomPage() {
       list.push({
         userId: user.id,
         name: user.fullName,
-        avatarUrl: assetUrl(user.avatarUrl),
+        avatarUrl: user.avatarUrl,
         frame: user.equippedProfileFrame,
+        lamp: user.equippedLampColor,
         isPremium: user.isPremium,
         isAtDesk: focusing,
         isSelf: true,
@@ -655,8 +657,9 @@ export default function FocusRoomPage() {
         list.push({
           userId: roomUser.userId,
           name: roomUser.fullName,
-          avatarUrl: assetUrl(roomUser.avatarUrl),
+          avatarUrl: roomUser.avatarUrl,
           frame: roomUser.equippedProfileFrame,
+          lamp: roomUser.equippedLampColor,
           isPremium: roomUser.isPremium,
           isAtDesk: roomUser.isAtDesk,
           isSelf: false,
@@ -1171,6 +1174,8 @@ export default function FocusRoomPage() {
                     const mine = senderId === user?.id;
                     const fileHref = assetUrl(message.fileUrl);
                     const imageMessage = isImageMessage(message);
+                    // Mağazadan alınmış balon rengi (gönderenin); yoksa varsayılan görünüm.
+                    const bubble = purchasedBubbleColor(message.user?.equippedBubbleColor ?? message.equippedBubbleColor);
                     return (
                       <div key={message.id ?? `${message.text}-${index}`} className={`group/msg flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                         {!mine ? (
@@ -1189,7 +1194,12 @@ export default function FocusRoomPage() {
                             ) : null}
                           </p>
                         ) : null}
-                        <div className={`max-w-[88%] rounded-[14px] px-3 py-2 ${mine ? 'rounded-br-[4px] bg-mb-action text-mb-on-action' : 'rounded-bl-[4px] bg-mb-surface text-mb-ink'}`}>
+                        <div
+                          className={`max-w-[88%] rounded-[14px] px-3 py-2 ${mine ? 'rounded-br-[4px]' : 'rounded-bl-[4px]'} ${
+                            bubble ? 'text-white' : mine ? 'bg-mb-action text-mb-on-action' : 'bg-mb-surface text-mb-ink'
+                          }`}
+                          style={bubble ? { backgroundColor: bubble } : undefined}
+                        >
                           {fileHref && imageMessage ? (
                             <a href={fileHref} target="_blank" rel="noreferrer" className="block">
                               <img src={fileHref} alt={message.text} className="mb-1 max-h-56 rounded-[10px] object-cover" />

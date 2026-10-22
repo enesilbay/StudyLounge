@@ -11,6 +11,8 @@ import { LogoMark } from '../components/brand/Logo';
 import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 import { PasswordField } from '../components/auth/PasswordField';
 import { useAuthStore } from '../store/authStore';
+import type { AvatarGroup } from '../store/authStore';
+import { characterAvatarPath } from '../lib/avatars';
 
 type AuthMode = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
 
@@ -26,6 +28,7 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarGroup, setAvatarGroup] = useState<AvatarGroup | null>(null);
   /** Giriş formunda e-posta ya da kullanıcı adı. */
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -86,7 +89,7 @@ export default function AuthPage() {
         }
         navigate('/app/lobbies');
       } else if (mode === 'register') {
-        const result = await registerWithCredentials({ fullName: fullName.trim(), username: username.trim(), email: email.trim(), password });
+        const result = await registerWithCredentials({ fullName: fullName.trim(), username: username.trim(), email: email.trim(), password, ...(avatarGroup ? { avatarGroup } : {}) });
         setMode('verify');
         showMailStatus(
           result.mailSent ? `${email.trim()} adresine 6 haneli bir doğrulama kodu gönderdik.` : result.message ?? 'Doğrulama e-postası gönderilemedi.',
@@ -257,6 +260,7 @@ export default function AuthPage() {
                         required
                       />
                     </Field>
+                    <AvatarGroupChoice value={avatarGroup} onChange={setAvatarGroup} />
                   </>
                 ) : null}
                 {mode === 'register' || mode === 'forgot' || mode === 'reset' ? (
@@ -387,6 +391,41 @@ function ctaForMode(mode: AuthMode) {
 }
 
 /** Hap biçimli alan: ikon solda kendi bölmesinde (referanstaki gibi). */
+/** İsteğe bağlı başlangıç avatarı: seçilen gruptan rastgele bir karakter atanır; tekrar tıklayınca seçim kalkar. */
+function AvatarGroupChoice({ value, onChange }: { value: AvatarGroup | null; onChange: (next: AvatarGroup | null) => void }) {
+  const options: [AvatarGroup, string, number][] = [
+    ['female', 'Kadın', 2],
+    ['male', 'Erkek', 1],
+  ];
+  return (
+    <fieldset>
+      <legend className="mb-1.5 block pl-1 text-[13px] font-medium text-mb-ink">
+        Avatarın <span className="font-normal text-mb-body">(isteğe bağlı)</span>
+      </legend>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map(([group, label, character]) => {
+          const selected = value === group;
+          return (
+            <button
+              key={group}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(selected ? null : group)}
+              className={`flex min-h-12 items-center gap-2.5 rounded-full border px-2 text-[15px] transition ${
+                selected ? 'border-mb-action bg-mb-tint font-medium text-mb-ink' : 'border-mb-field bg-mb-surface text-mb-body hover:border-mb-action/50'
+              }`}
+            >
+              <img src={characterAvatarPath(character)} alt="" className="h-8 w-8 rounded-full object-cover" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-1.5 pl-1 text-xs text-mb-body">Bu gruptan rastgele bir karakter alırsın; profilinden değiştirebilirsin. Seçimin kaydedilmez.</p>
+    </fieldset>
+  );
+}
+
 function Field({ label, icon: Icon, children }: { label: string; icon: LucideIcon; children: ReactNode }) {
   return (
     <label className="block">

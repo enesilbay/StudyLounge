@@ -12,7 +12,8 @@ import { DailyAnalytics } from './daily-analytics.entity';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
-import { SHOP_CATALOG, findShopItem } from './shop-catalog';
+import { MAX_STREAK_FREEZES, SHOP_CATALOG, findShopItem } from './shop-catalog';
+import { advanceStreak } from './streak';
 import { BADGES, focusBadges } from './badges';
 import {
   addDaysToKey,
@@ -394,7 +395,14 @@ export class UsersService implements OnModuleInit {
           todayString,
         );
         if (gap >= 1) {
-          user.currentStreak = gap === 1 ? (user.currentStreak || 0) + 1 : 1;
+          // Arada bos gun varsa seri koruma harcanir (bkz. streak.ts).
+          const next = advanceStreak(
+            user.currentStreak || 0,
+            gap,
+            user.streakFreezes || 0,
+          );
+          user.currentStreak = next.streak;
+          user.streakFreezes = (user.streakFreezes || 0) - next.freezesUsed;
           user.lastFocusDate = now;
         }
       } else {
@@ -538,6 +546,7 @@ export class UsersService implements OnModuleInit {
         fullName: true,
         avatarUrl: true,
         equippedProfileFrame: true,
+        equippedProfileCover: true,
         equippedIcon: true,
         isPremium: true,
         isOnline: true,
@@ -925,24 +934,17 @@ export class UsersService implements OnModuleInit {
       throw new BadRequestException('Yetersiz Odak Puanı (Coin)');
     }
 
-    if (itemType === 'color') {
-      if (user.ownedColors.includes(itemId))
-        throw new BadRequestException('Bu renge zaten sahipsiniz');
-      user.ownedColors.push(itemId);
-    } else if (itemType === 'icon') {
-      if (user.ownedIcons.includes(itemId))
-        throw new BadRequestException('Bu ikona zaten sahipsiniz');
-      user.ownedIcons.push(itemId);
-    } else if (itemType === 'soundPack') {
-      user.ownedSoundPacks = user.ownedSoundPacks || ['classic'];
-      if (user.ownedSoundPacks.includes(itemId))
-        throw new BadRequestException('Bu ses paketine zaten sahipsiniz');
-      user.ownedSoundPacks.push(itemId);
+    if (itemType === 'streakFreeze') {
+      if ((user.streakFreezes || 0) >= MAX_STREAK_FREEZES)
+        throw new BadRequestException(
+          `En fazla ${MAX_STREAK_FREEZES} seri koruma tutabilirsin`,
+        );
+      user.streakFreezes = (user.streakFreezes || 0) + 1;
     } else {
-      user.ownedProfileFrames = user.ownedProfileFrames || ['none'];
-      if (user.ownedProfileFrames.includes(itemId))
-        throw new BadRequestException('Bu profil çerçevesine zaten sahipsiniz');
-      user.ownedProfileFrames.push(itemId);
+      const owned = ownedList(user, itemType);
+      if (owned.includes(itemId))
+        throw new BadRequestException('Bu ürüne zaten sahipsiniz');
+      owned.push(itemId);
     }
 
     user.coins -= price;
@@ -957,30 +959,57 @@ export class UsersService implements OnModuleInit {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    if (itemType === 'color') {
-      if (!user.ownedColors.includes(itemId) && itemId !== '#4F46E5') {
-        throw new BadRequestException('Bu renge sahip değilsiniz');
-      }
-      user.equippedBubbleColor = itemId;
-    } else if (itemType === 'icon') {
-      if (!user.ownedIcons.includes(itemId) && itemId !== '') {
-        throw new BadRequestException('Bu ikona sahip değilsiniz');
-      }
-      user.equippedIcon = itemId;
-    } else if (itemType === 'soundPack') {
-      user.ownedSoundPacks = user.ownedSoundPacks || ['classic'];
-      if (!user.ownedSoundPacks.includes(itemId) && itemId !== 'classic') {
-        throw new BadRequestException('Bu ses paketine sahip değilsiniz');
-      }
-      user.equippedSoundPack = itemId;
-    } else {
-      user.ownedProfileFrames = user.ownedProfileFrames || ['none'];
-      if (!user.ownedProfileFrames.includes(itemId) && itemId !== 'none') {
-        throw new BadRequestException('Bu profil çerçevesine sahip değilsiniz');
-      }
-      user.equippedProfileFrame = itemId;
+    if (itemType === 'streakFreeze') {
+      throw new BadRequestException('Seri koruma kuşanılmaz; kendiliğinden kullanılır');
     }
+    // Ücretsiz ürünler herkese açıktır; diğerleri satın alınmış olmalı.
+    const item = findShopItem(itemType, itemId);
+    if (!item) throw new BadRequestException('Mağazada böyle bir ürün yok');
+    if (item.price > 0 && !ownedList(user, itemType).includes(itemId)) {
+      throw new BadRequestException('Bu ürüne sahip değilsiniz');
+    }
+    setEquipped(user, itemType, itemId);
 
     return await this.usersRepository.save(user);
+  }
+}
+
+/** Kullanıcının bu türde sahip olduğu ürünler (dizi yerinde değiştirilebilir). */
+function ownedList(user: User, type: ShopItemType): string[] {
+  switch (type) {
+    case 'color':
+      return (user.ownedColors = user.ownedColors || []);
+    case 'icon':
+      return (user.ownedIcons = user.ownedIcons || []);
+    case 'soundPack':
+      return (user.ownedSoundPacks = user.ownedSoundPacks || ['classic']);
+    case 'profileCover':
+      return (user.ownedProfileCovers = user.ownedProfileCovers || ['none']);
+    case 'lampColor':
+      return (user.ownedLampColors = user.ownedLampColors || ['classic']);
+    default:
+      return (user.ownedProfileFrames = user.ownedProfileFrames || ['none']);
+  }
+}
+
+function setEquipped(user: User, type: ShopItemType, id: string) {
+  switch (type) {
+    case 'color':
+      user.equippedBubbleColor = id;
+      break;
+    case 'icon':
+      user.equippedIcon = id;
+      break;
+    case 'soundPack':
+      user.equippedSoundPack = id;
+      break;
+    case 'profileCover':
+      user.equippedProfileCover = id;
+      break;
+    case 'lampColor':
+      user.equippedLampColor = id;
+      break;
+    default:
+      user.equippedProfileFrame = id;
   }
 }

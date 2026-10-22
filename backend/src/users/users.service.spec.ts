@@ -223,9 +223,9 @@ describe('UsersService', () => {
   });
 
   describe('streaks', () => {
-    const run = async (lastFocusDate: string, now: string, currentStreak = 4) => {
+    const run = async (lastFocusDate: string, now: string, currentStreak = 4, streakFreezes = 0) => {
       jest.useFakeTimers().setSystemTime(new Date(now));
-      const user = { id: 1, fullName: 'Ada', totalFocusMinutes: 0, currentStreak, bestStreak: 4, lastFocusDate: new Date(lastFocusDate) } as User;
+      const user = { id: 1, fullName: 'Ada', totalFocusMinutes: 0, currentStreak, bestStreak: 4, streakFreezes, lastFocusDate: new Date(lastFocusDate) } as User;
       usersRepository.findOneBy.mockResolvedValue(user);
       usersRepository.save.mockImplementation((input: User) => Promise.resolve(input));
       dailyAnalyticsRepository.findOne.mockResolvedValue(null);
@@ -252,6 +252,12 @@ describe('UsersService', () => {
       const result = await run('2026-05-10T12:00:00Z', '2026-05-12T12:00:00Z');
       expect(result.currentStreak).toBe(1);
       expect(result.bestStreak).toBe(4);
+    });
+
+    it('spends a streak freeze for a skipped day', async () => {
+      const result = await run('2026-05-10T12:00:00Z', '2026-05-12T12:00:00Z', 4, 1);
+      expect(result.currentStreak).toBe(5);
+      expect(result.streakFreezes).toBe(0);
     });
   });
 
@@ -325,6 +331,43 @@ describe('UsersService', () => {
 
       await expect(service.buyItem(7, 'icon', '🚀')).rejects.toThrow('Yetersiz Odak Puanı');
       expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('buys a profile cover and a lamp color', async () => {
+      usersRepository.findOne.mockResolvedValue(shopper());
+      usersRepository.save.mockImplementation((user: User) => Promise.resolve(user));
+
+      const cover = await service.buyItem(7, 'profileCover', 'forest');
+      expect(cover.ownedProfileCovers).toEqual(['none', 'forest']);
+      expect(cover.coins).toBe(280);
+
+      usersRepository.findOne.mockResolvedValue(shopper());
+      const lamp = await service.buyItem(7, 'lampColor', 'mint');
+      expect(lamp.ownedLampColors).toEqual(['classic', 'mint']);
+    });
+
+    it('stacks streak freezes up to the limit', async () => {
+      usersRepository.findOne.mockResolvedValue({ ...shopper(), streakFreezes: 1 });
+      usersRepository.save.mockImplementation((user: User) => Promise.resolve(user));
+      const result = await service.buyItem(7, 'streakFreeze', 'freeze');
+      expect(result.streakFreezes).toBe(2);
+      expect(result.coins).toBe(300);
+
+      usersRepository.findOne.mockResolvedValue({ ...shopper(), streakFreezes: 2 });
+      await expect(service.buyItem(7, 'streakFreeze', 'freeze')).rejects.toThrow('En fazla 2 seri koruma');
+    });
+  });
+
+  describe('equipItem', () => {
+    it('equips free items and owned items, rejects the rest', async () => {
+      const user = { id: 7, ownedLampColors: ['classic', 'mint'], ownedProfileCovers: ['none'] } as unknown as User;
+      usersRepository.findOne.mockResolvedValue(user);
+      usersRepository.save.mockImplementation((input: User) => Promise.resolve(input));
+
+      expect((await service.equipItem(7, 'lampColor', 'mint')).equippedLampColor).toBe('mint');
+      expect((await service.equipItem(7, 'profileCover', 'none')).equippedProfileCover).toBe('none');
+      await expect(service.equipItem(7, 'profileCover', 'galaxy')).rejects.toThrow('Bu ürüne sahip değilsiniz');
+      await expect(service.equipItem(7, 'streakFreeze', 'freeze')).rejects.toThrow('kuşanılmaz');
     });
   });
 });
