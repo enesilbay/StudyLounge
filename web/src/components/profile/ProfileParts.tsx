@@ -4,6 +4,7 @@ import { m } from 'framer-motion';
 import { Avatar } from '../ui';
 import { CountUp } from '../app/Kit';
 import { badgeIcon } from '../../lib/badges';
+import { coverStyle } from '../../lib/cosmetics';
 import type { BadgeDefinition, FrameId } from '../../lib/types';
 
 /*
@@ -18,7 +19,7 @@ export function ProfileHero({
   avatarUrl,
   frame,
   premium,
-  icon,
+  cover,
   chips,
   avatarSlot,
   children,
@@ -28,14 +29,21 @@ export function ProfileHero({
   avatarUrl?: string | null;
   frame?: FrameId;
   premium?: boolean;
-  icon?: string | null;
+  /** Mağazadan alınan profil kapağı (yoksa sade koyu zemin). */
+  cover?: string | null;
   chips?: ReactNode;
   /** Profil fotoğrafının üstüne konan düğme (ör. fotoğraf değiştir). */
   avatarSlot?: ReactNode;
   children?: ReactNode;
 }) {
+  const coverBackground = coverStyle(cover);
   return (
-    <section className="relative overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
+    <section
+      data-cover={coverBackground ? cover : undefined}
+      className="relative overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised"
+      // Kapak kullanıcının satın aldığı görsel; veri olduğu için satır içi verilir.
+      style={coverBackground ? { background: coverBackground, color: '#fff' } : undefined}
+    >
       <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-center md:p-8">
         <m.div className="relative w-fit shrink-0" initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
           <div className="rounded-full ring-4 ring-mb-on-solid/10">
@@ -45,7 +53,7 @@ export function ProfileHero({
         </m.div>
         <div className="min-w-0 flex-1">
           <h1 className="font-mb-display text-[2rem] font-light leading-tight tracking-[-0.04em] md:text-[2.5rem]">
-            {name} {icon ?? ''}
+            {name}
           </h1>
           {username ? <p className="mt-1 text-[15px] text-mb-on-solid/70">@{username}</p> : null}
           {chips ? <div className="mt-3 flex flex-wrap gap-2">{chips}</div> : null}

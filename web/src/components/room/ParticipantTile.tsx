@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, MicOff, MonitorUp, Swords, UserRound, UserX, WifiLow, WifiOff } from 'lucide-react';
 import { Avatar } from '../ui';
@@ -8,12 +8,15 @@ import { hasLiveVideo } from '../../lib/rtc/media';
 import type { PeerQuality } from '../../lib/rtc/PeerManager';
 import { tileColorFor } from '../../lib/room/tileColors';
 import { LiveBadge } from '../app/Kit';
+import { lampColor } from '../../lib/cosmetics';
 
 export interface RoomPerson {
   userId: number;
   name: string;
   avatarUrl?: string | null;
   frame?: FrameId | null;
+  /** Mağazadan alınan lamba ışığı (odaklanınca kutunun etrafında). */
+  lamp?: string | null;
   isPremium?: boolean;
   isAtDesk: boolean;
   isSelf: boolean;
@@ -59,13 +62,14 @@ export function ParticipantTile({
   const ring = speaking
     ? 'ring-[3px] ring-mb-action'
     : person.isAtDesk
-      ? 'ring-2 ring-mb-lamp shadow-[0_0_32px_-8px_var(--color-mb-lamp)]'
+      ? 'ring-2 ring-[var(--tile-lamp)] shadow-[0_0_32px_-8px_var(--tile-lamp)]'
       : 'ring-1 ring-mb-line/60';
   const plate = showVideo ? 'bg-black/55 text-white' : 'bg-mb-card/85 text-mb-ink';
 
   return (
     <article
       aria-label={`${person.name}${person.isSelf ? ' (sen)' : ''}: ${status}${speaking ? ', konuşuyor' : ''}`}
+      style={{ '--tile-lamp': lampColor(person.lamp) } as CSSProperties}
       className={`group relative h-full w-full overflow-hidden rounded-[16px] transition-[box-shadow] duration-500 ${showVideo ? 'bg-black' : tileColorFor(person.userId)} ${ring} ${
         selected ? 'outline-2 outline-offset-2 outline-mb-action' : ''
       }`}
@@ -98,7 +102,7 @@ export function ParticipantTile({
       {/* Durum: odakta / molada */}
       {!small ? (
         <span className={`pointer-events-none absolute left-2.5 top-2.5 z-[2] inline-flex items-center gap-1.5 rounded-[8px] px-2 py-0.5 text-xs font-medium ${plate}`}>
-          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${person.isAtDesk ? 'bg-mb-lamp shadow-[0_0_8px_var(--color-mb-lamp)]' : 'bg-current opacity-40'}`} />
+          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${person.isAtDesk ? 'bg-[var(--tile-lamp)] shadow-[0_0_8px_var(--tile-lamp)]' : 'bg-current opacity-40'}`} />
           {status}
         </span>
       ) : null}
@@ -107,7 +111,7 @@ export function ParticipantTile({
       <p
         className={`pointer-events-none absolute bottom-2 left-2 z-[2] flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-[8px] font-medium ${plate} ${small ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-1 text-[13px]'}`}
       >
-        {small ? <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${person.isAtDesk ? 'bg-mb-lamp' : 'bg-current opacity-40'}`} /> : null}
+        {small ? <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${person.isAtDesk ? 'bg-[var(--tile-lamp)]' : 'bg-current opacity-40'}`} /> : null}
         <span className="truncate">
           {person.name}
           {person.isSelf ? <span className="opacity-70"> (sen)</span> : null}

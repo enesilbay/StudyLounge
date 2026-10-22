@@ -128,6 +128,13 @@ Karar: **dönemlik satın alma** (otomatik yenileme yok). Aylık ₺49, yıllık
 | ✅ | Google ile giriş ve giriş ekranı | Tamamlandı: Google ile giriş (`POST /auth/google`, `googleId` kolonu), e-posta ya da kullanıcı adıyla giriş, kayıtta canlı şifre kuralları ve Chrome otomatik doldurma düzeltmesi. Google uygulaması şimdilik "Testing" modunda: yalnızca Google Cloud'da **Test users** listesine eklenen hesaplar Google ile girebilir (en fazla 100). Herkese açmak Faz 6'da. |
 | ✅ | Onboarding | Tamamlandı: Odalar sayfasında "Masanı hazırla" kartı: ders ekle → odada ilk lambanı yak (günlük hedef adımı hedefler kaldırılınca çıkarıldı). Adımlar gerçek veriden işaretlenir; hepsi bitince ya da kapatılınca görünmez. |
 
+**Mağaza ve avatar (22 Ekim 2026)**
+
+| Öncelik | Başlık | Not |
+| :--- | :--- | :--- |
+| ✅ | Avatar seçimi | Profilde 10 hazır karakterden seçim ya da fotoğraf yükleme (`PUT /users/me/avatar-character`). Kayıtta isteğe bağlı Kadın / Erkek seçimi; o gruptan rastgele karakter atanır, cinsiyet kaydedilmez. Karakterler `avatarUrl`'de `/avatars/avatar-NN.webp` olarak tutulur ve backend tarafından da sunulur (mobil de gösterir). Yüklenen fotoğrafın web'de yalnızca odada görünmesi hatası düzeltildi. |
+| ✅ | Mağaza yenilemesi | İsim ikonları web'den kaldırıldı (mobil uyumluluk için katalogda duruyor). Degrade çerçeveler (9 çerçeve; Aurora ve Gökkuşağı döner), profil kapağı, lamba rengi (odada odaklanınca kutunun ışığı), web'de de görünen mesaj balonu rengi ve seri koruma (en fazla 2; kaçırılan her gün için biri kendiliğinden harcanır). Migration `1780200000000`. Ürün renkleri `web/src/lib/cosmetics.ts`'te veri olarak tutulur (marka token'ı değildir). |
+
 **Görsel kimlik: daha az yazı, daha çok görsel**
 
 Uygulama ve açılış sayfası şu an yazı ağırlıklı. Yapay zekâyla üretilen, tek bir stile bağlı görsellerle anlatım sadeleşir ve marka tanınır hale gelir.

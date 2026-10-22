@@ -87,7 +87,7 @@ export default function UserProfilePage() {
         avatarUrl={profile.avatarUrl}
         frame={profile.equippedProfileFrame}
         premium={profile.isPremium}
-        icon={profile.equippedIcon}
+        cover={profile.equippedProfileCover}
         chips={
           <>
             {profile.isOnline ? (
