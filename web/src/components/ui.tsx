@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, Crown, Info, Loader2, Moon, Sun, X } from 'l
 import type { FrameId } from '../lib/types';
 import { useTheme } from '../lib/theme';
 import { avatarSrc, characterAvatarFor } from '../lib/avatars';
+import { frameStyle } from '../lib/cosmetics';
 
 /* ───────────────────────── Marka ───────────────────────── */
 
@@ -84,13 +85,8 @@ export function IconTile({ icon: Icon, tone = 'primary' }: { icon: LucideIcon; t
 
 /* ───────────────────────── Avatar ───────────────────────── */
 
-const frameColors: Record<string, string> = {
-  none: 'var(--color-mb-line)',
-  gold: '#d9a748',
-  emerald: '#3a8264',
-  ruby: '#c0533f',
-  cosmic: '#8b7fd0',
-};
+/** Çerçeve halkasının kalınlığı (px), avatar boyuna göre. */
+const framePadding = { xs: 2, sm: 3, md: 3.5, lg: 4.5, xl: 7 } as const;
 
 export function Avatar({
   name,
@@ -114,19 +110,31 @@ export function Avatar({
     lg: 'h-16 w-16 text-2xl',
     xl: 'h-28 w-28 text-5xl',
   };
-  const border = frame === 'none' ? 1.5 : 3;
+  const ring = frameStyle(frame);
 
   return (
     <div
-      className={`relative grid shrink-0 place-items-center rounded-full bg-mb-surface font-mb-display text-mb-ink ${sizes[size]}`}
-      style={{ border: `${border}px solid ${frameColors[frame] ?? frameColors.none}` }}
+      data-frame={ring ? frame : undefined}
+      className={`relative grid shrink-0 place-items-center rounded-full font-mb-display text-mb-ink ${ring ? '' : 'border-[1.5px] border-mb-line bg-mb-surface'} ${sizes[size]}`}
+      style={ring ? { padding: framePadding[size] } : undefined}
     >
-      {src && src !== failedSrc ? (
-        <img src={src} alt={name} onError={() => setFailedSrc(src)} className="h-full w-full rounded-full object-cover" />
-      ) : (
-        // Fotoğraf yoksa addan seçilen 3B karakter (her yerde aynı kişi aynı karakter).
-        <img src={characterAvatarFor(name)} alt={name} draggable={false} className="h-full w-full select-none rounded-full object-cover" />
-      )}
+      {ring ? (
+        // Satın alınan çerçeve: degrade halka; nadir olanlar yavaşça döner.
+        <span aria-hidden="true" className="absolute inset-0 overflow-hidden rounded-full">
+          <span
+            className={`absolute inset-[-25%] ${ring.spin ? 'motion-safe:animate-[spin_7s_linear_infinite]' : ''}`}
+            style={{ background: ring.ring }}
+          />
+        </span>
+      ) : null}
+      <span className={`relative block h-full w-full overflow-hidden rounded-full bg-mb-surface ${ring ? 'ring-2 ring-mb-card' : ''}`}>
+        {src && src !== failedSrc ? (
+          <img src={src} alt={name} onError={() => setFailedSrc(src)} className="h-full w-full object-cover" />
+        ) : (
+          // Fotoğraf yoksa addan seçilen 3B karakter (her yerde aynı kişi aynı karakter).
+          <img src={characterAvatarFor(name)} alt={name} draggable={false} className="h-full w-full select-none object-cover" />
+        )}
+      </span>
       {premium ? (
         <span data-premium-rozet className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2 border-mb-card bg-mb-lamp text-mb-solid" title="Premium">
           <Crown className="h-2.5 w-2.5" />

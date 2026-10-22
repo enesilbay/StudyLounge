@@ -70,6 +70,7 @@ interface ConnectedRoomUser {
   equippedProfileFrame?: string | null;
   equippedBubbleColor?: string | null;
   equippedIcon?: string | null;
+  equippedLampColor?: string | null;
   roomName: string;
   isAtDesk: boolean;
   isEliteRoom: boolean;
@@ -411,6 +412,7 @@ export class SensorsGateway
         equippedProfileFrame: currentUser.equippedProfileFrame,
         equippedBubbleColor: currentUser.equippedBubbleColor,
         equippedIcon: currentUser.equippedIcon,
+        equippedLampColor: currentUser.equippedLampColor,
         roomName,
         isAtDesk: false,
         isEliteRoom: lobby.isPremiumOnly,

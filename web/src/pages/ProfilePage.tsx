@@ -62,7 +62,7 @@ export default function ProfilePage() {
           avatarUrl={user.avatarUrl}
           frame={user.equippedProfileFrame}
           premium={user.isPremium}
-          icon={user.equippedIcon}
+          cover={user.equippedProfileCover}
           avatarSlot={
             <button
               type="button"
