@@ -1,11 +1,15 @@
 import {
   IsEmail,
+  IsIn,
+  IsOptional,
   IsNotEmpty,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { AVATAR_GROUPS } from '../../users/avatar-characters';
+import type { AvatarGroup } from '../../users/avatar-characters';
 
 export class RegisterDto {
   @IsString()
@@ -30,4 +34,12 @@ export class RegisterDto {
   @IsNotEmpty()
   @MaxLength(80)
   fullName: string;
+
+  /**
+   * Istege bagli: baslangic avatarinin secilecegi grup. Kaydedilmez; yalnizca
+   * bu gruptan rastgele bir karakter avatarUrl'e yazilir.
+   */
+  @IsOptional()
+  @IsIn(AVATAR_GROUPS)
+  avatarGroup?: AvatarGroup;
 }

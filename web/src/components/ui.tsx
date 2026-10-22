@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle2, Crown, Info, Loader2, Moon, Sun, X } from 'lucide-react';
 import type { FrameId } from '../lib/types';
 import { useTheme } from '../lib/theme';
-import { characterAvatarFor } from '../lib/avatars';
+import { avatarSrc, characterAvatarFor } from '../lib/avatars';
 
 /* ───────────────────────── Marka ───────────────────────── */
 
@@ -105,7 +105,8 @@ export function Avatar({
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   premium?: boolean;
 }) {
-  const [imgError, setImgError] = useState(false);
+  const src = avatarSrc(image);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const sizes = {
     xs: 'h-8 w-8 text-sm',
     sm: 'h-10 w-10 text-base',
@@ -120,8 +121,8 @@ export function Avatar({
       className={`relative grid shrink-0 place-items-center rounded-full bg-mb-surface font-mb-display text-mb-ink ${sizes[size]}`}
       style={{ border: `${border}px solid ${frameColors[frame] ?? frameColors.none}` }}
     >
-      {image && !imgError ? (
-        <img src={image} alt={name} onError={() => setImgError(true)} className="h-full w-full rounded-full object-cover" />
+      {src && src !== failedSrc ? (
+        <img src={src} alt={name} onError={() => setFailedSrc(src)} className="h-full w-full rounded-full object-cover" />
       ) : (
         // Fotoğraf yoksa addan seçilen 3B karakter (her yerde aynı kişi aynı karakter).
         <img src={characterAvatarFor(name)} alt={name} draggable={false} className="h-full w-full select-none rounded-full object-cover" />

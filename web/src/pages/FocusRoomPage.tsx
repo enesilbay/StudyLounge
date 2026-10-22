@@ -636,7 +636,7 @@ export default function FocusRoomPage() {
       list.push({
         userId: user.id,
         name: user.fullName,
-        avatarUrl: assetUrl(user.avatarUrl),
+        avatarUrl: user.avatarUrl,
         frame: user.equippedProfileFrame,
         isPremium: user.isPremium,
         isAtDesk: focusing,
@@ -655,7 +655,7 @@ export default function FocusRoomPage() {
         list.push({
           userId: roomUser.userId,
           name: roomUser.fullName,
-          avatarUrl: assetUrl(roomUser.avatarUrl),
+          avatarUrl: roomUser.avatarUrl,
           frame: roomUser.equippedProfileFrame,
           isPremium: roomUser.isPremium,
           isAtDesk: roomUser.isAtDesk,

@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { SignOptions } from 'jsonwebtoken';
 import { getConfigString, getJwtSecret } from '../config/env';
+import { AvatarsController } from './avatars.controller';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './user.entity';
@@ -34,7 +35,7 @@ import { ModerationModule } from '../moderation/moderation.module';
     }),
   ],
   providers: [UsersService, NotificationsService],
-  controllers: [UsersController],
+  controllers: [UsersController, AvatarsController],
   exports: [UsersService],
 })
 export class UsersModule {}
