@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, CalendarDays, Check, DoorOpen, Flag, Flame, MessageCircle, Mountain, Timer, UserPlus, UserX } from 'lucide-react';
+import { ArrowLeft, Award, Ban, CalendarDays, Check, DoorOpen, Flag, Flame, MessageCircle, Mountain, Timer, UserPlus, UserX } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage } from '../lib/apiResponses';
 import { useBadgeCatalog } from '../lib/badges';
 import type { PublicProfile } from '../lib/types';
 import { Notice } from '../components/ui';
-import { Card, CardTitle, EmptyState, Rise, actionButton, ghostButton, outlineButton } from '../components/app/Kit';
-import { BadgeGrid, HeroChip, ProfileHero, StatGrid } from '../components/profile/ProfileParts';
+import { Card, EmptyState, IconHeading, Rise, actionButton, ghostButton, outlineButton } from '../components/app/Kit';
+import { BadgeGrid, HeroChip, ProfileHero, RankLadder, StatGrid } from '../components/profile/ProfileParts';
+import { formatMinutes } from '../lib/study';
 import ReportDialog from '../components/social/ReportDialog';
 import { useInboxStore } from '../store/inboxStore';
 
@@ -177,16 +178,22 @@ export default function UserProfilePage() {
 
       <StatGrid
         items={[
-          { label: 'Bu hafta', value: profile.weekMinutes, suffix: 'dk', icon: CalendarDays },
-          { label: 'Toplam odak', value: profile.totalFocusMinutes, suffix: 'dk', icon: Timer },
-          { label: 'Seri', value: profile.currentStreak ?? 0, suffix: 'gün', icon: Flame },
-          { label: 'En uzun seri', value: profile.bestStreak ?? 0, suffix: 'gün', icon: Mountain },
+          { label: 'Bu hafta', value: profile.weekMinutes, format: (value) => formatMinutes(Math.round(value)), icon: CalendarDays, tile: 'bg-mb-tile-2' },
+          { label: 'Toplam odak', value: profile.totalFocusMinutes, format: (value) => formatMinutes(Math.round(value)), icon: Timer, tile: 'bg-mb-tile-1' },
+          { label: 'Seri', value: profile.currentStreak ?? 0, suffix: 'gün', icon: Flame, tile: 'bg-mb-tile-6' },
+          { label: 'En uzun seri', value: profile.bestStreak ?? 0, suffix: 'gün', icon: Mountain, tile: 'bg-mb-tile-5' },
         ]}
       />
 
+      <Rise delay={0.2}>
+        <Card className="p-5 md:p-6">
+          <RankLadder minutes={profile.totalFocusMinutes} self={isSelf} />
+        </Card>
+      </Rise>
+
       <Rise delay={0.25}>
         <Card className="p-5 md:p-6">
-          <CardTitle aside={`${profile.badges.length} / ${Math.max(catalog.length, profile.badges.length)}`}>Rozetler</CardTitle>
+          <IconHeading icon={Award} tile="bg-mb-tile-3" title="Rozetler" text={`${profile.badges.length} / ${Math.max(catalog.length, profile.badges.length)} kazanıldı`} />
           <div className="mt-4">
             <BadgeGrid catalog={catalog} earned={profile.badges} />
           </div>

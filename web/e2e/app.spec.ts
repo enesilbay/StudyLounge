@@ -84,7 +84,8 @@ test.describe('Elif olarak', () => {
 
   test('haftalık ligde demo kullanıcıları sıralanır', async ({ page }) => {
     await page.goto('/app/leaderboard')
-    await expect(page.getByText(/haftası\. Lig pazartesi 00:00/)).toBeVisible()
+    await expect(page.getByText(/Pazartesi 00:00'da sıfırlanıyor/)).toBeVisible()
+    await expect(page.getByRole('timer')).toBeVisible()
     await expect(page.getByRole('list', { name: 'İlk üç' })).toContainText('Elif Kaya')
   })
 
