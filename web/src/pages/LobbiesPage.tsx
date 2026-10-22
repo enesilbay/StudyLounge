@@ -8,7 +8,6 @@ import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Lobby } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import { OnboardingCard } from '../components/onboarding/OnboardingCard';
 import { ROOM_CATEGORIES, ROOM_FILTER_CATEGORIES } from '../lib/roomCategories';
 
 const categories = ROOM_FILTER_CATEGORIES;
@@ -193,12 +192,9 @@ export default function LobbiesPage() {
 
       <LiveBanner rooms={lobbies.length} people={totalInRooms} lit={Math.min(totalFocused, totalInRooms)} ready={!isLoading} />
 
-      <div className="mt-6">
-        <OnboardingCard roomListId="oda-listesi" />
-      </div>
 
       {/* Görünüm sekmeleri */}
-      <div className="mt-2 flex items-end justify-between gap-4 border-b border-mb-line">
+      <div className="mt-6 flex items-end justify-between gap-4 border-b border-mb-line">
         <div role="tablist" aria-label="Oda görünümü" className="flex gap-1">
           {views.map((option) => (
             <button
