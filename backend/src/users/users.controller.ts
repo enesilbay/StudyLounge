@@ -27,6 +27,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { AVATAR_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Throttle } from '@nestjs/throttler';
+import { AvatarCharacterDto } from './dto/avatar-character.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { RespondRequestDto } from './dto/respond-request.dto';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
@@ -34,6 +35,7 @@ import { ShopItemDto } from './dto/shop-item.dto';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdatePushTokenDto } from './dto/update-push-token.dto';
+import { characterAvatarPath } from './avatar-characters';
 import { User } from './user.entity';
 import { UsersService } from './users.service';
 import type { Express } from 'express';
@@ -164,6 +166,20 @@ export class UsersController {
     if (user.avatarUrl && user.avatarUrl !== avatarUrl) {
       await this.storageService.removeByUrl(user.avatarUrl);
     }
+    return { success: true, user: updatedUser };
+  }
+
+  /** Hazir karakterlerden birini profil fotografi yapar; yuklenmis fotograf varsa silinir. */
+  @Put('me/avatar-character')
+  async setAvatarCharacter(
+    @CurrentUser() user: User,
+    @Body() body: AvatarCharacterDto,
+  ) {
+    const updatedUser = await this.usersService.updateAvatar(
+      user.id,
+      characterAvatarPath(body.character),
+    );
+    await this.storageService.removeByUrl(user.avatarUrl);
     return { success: true, user: updatedUser };
   }
 

@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { JwtPayload } from './jwt-payload.interface';
+import { randomCharacterAvatar } from '../users/avatar-characters';
 import { RegisterDto } from './dto/register.dto';
 import { GoogleTokenService } from './google-token.service';
 import { User } from '../users/user.entity';
@@ -112,7 +113,11 @@ export class AuthService {
   }
 
   async register(body: RegisterDto) {
-    const user = await this.usersService.create(body);
+    const { avatarGroup, ...data } = body;
+    const user = await this.usersService.create({
+      ...data,
+      ...(avatarGroup ? { avatarUrl: randomCharacterAvatar(avatarGroup) } : {}),
+    });
     const token = user.emailVerificationToken || generateCode();
 
     if (!user.emailVerificationToken) {

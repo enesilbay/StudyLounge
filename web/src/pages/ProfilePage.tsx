@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { m } from 'framer-motion';
-import { Award, BarChart3, Camera, Coins, Crown, Flame, Info, Loader2, Mail, Settings, ShoppingBag, Timer, UserRound } from 'lucide-react';
-import { api } from '../lib/api';
-import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
+import { Award, BarChart3, Camera, Coins, Crown, Flame, Info, Mail, Settings, ShoppingBag, Timer, UserRound } from 'lucide-react';
 import { useBadgeCatalog } from '../lib/badges';
-import type { User } from '../lib/types';
 import { ModalShell, Notice } from '../components/ui';
 import { AppPage, Card, CardTitle, Rise, outlineButton } from '../components/app/Kit';
+import { AvatarPicker } from '../components/profile/AvatarPicker';
 import { BadgeGrid, HeroChip, ProfileHero, StatGrid } from '../components/profile/ProfileParts';
 import { useAuthStore } from '../store/authStore';
 
@@ -20,12 +18,10 @@ const ranks = [
 ];
 
 export default function ProfilePage() {
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const { user, setUser, refreshUser } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
   const { badges: catalog, load: loadCatalog } = useBadgeCatalog();
   const [infoOpen, setInfoOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,25 +36,6 @@ export default function ProfilePage() {
   const rank = ranks[rankIndex];
   const progress = getRankProgress(score);
   const badges = (user.badges ?? []).filter((badge) => badge.trim().length > 0);
-
-  const uploadAvatar = async (file: File) => {
-    setIsUploading(true);
-    setError(null);
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const response = await api.post(`/users/avatar/${user.id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setUser(unwrapUser<User>(response.data));
-      setStatus('Profil fotoğrafın güncellendi.');
-    } catch (uploadError) {
-      setError(getApiErrorMessage(uploadError));
-    } finally {
-      setIsUploading(false);
-      if (avatarInputRef.current) avatarInputRef.current.value = '';
-    }
-  };
 
   return (
     <AppPage
@@ -77,7 +54,6 @@ export default function ProfilePage() {
       }
     >
       <div className="space-y-4">
-        {error ? <Notice tone="danger" onDismiss={() => setError(null)}>{error}</Notice> : null}
         {status ? <Notice tone="success" onDismiss={() => setStatus(null)}>{status}</Notice> : null}
 
         <ProfileHero
@@ -88,19 +64,15 @@ export default function ProfilePage() {
           premium={user.isPremium}
           icon={user.equippedIcon}
           avatarSlot={
-            <>
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={isUploading}
-                aria-label="Profil fotoğrafını değiştir"
-                title="Profil fotoğrafını değiştir"
-                className="absolute bottom-1 left-1 grid h-10 w-10 place-items-center rounded-full border-4 border-mb-solid bg-mb-action text-mb-on-action transition hover:bg-mb-action-2 disabled:opacity-70"
-              >
-                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              </button>
-              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && void uploadAvatar(event.target.files[0])} />
-            </>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              aria-label="Profil fotoğrafını değiştir"
+              title="Profil fotoğrafını değiştir"
+              className="absolute bottom-1 left-1 grid h-10 w-10 place-items-center rounded-full border-4 border-mb-solid bg-mb-action text-mb-on-action transition hover:bg-mb-action-2"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
           }
           chips={
             <>
@@ -200,6 +172,8 @@ export default function ProfilePage() {
           </Card>
         </Rise>
       </div>
+
+      <AvatarPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSaved={setStatus} />
 
       <ModalShell open={infoOpen} title="Puan nasıl kazanılır?" description="Odak puanın çalışma odalarında masada kaldığın süreye göre artar." onClose={() => setInfoOpen(false)}>
         <div className="space-y-3">
