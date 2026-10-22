@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { m } from 'framer-motion';
-import type { LucideIcon } from 'lucide-react';
 import { BarChart3, BookOpen, CalendarDays, Clock3, Flame, History, Snowflake, Sun, Timer, TrendingDown, TrendingUp, Waves } from 'lucide-react';
 import { api } from '../lib/api';
 import { bestSlot, calendarWeeks, changePercent, lastDays, longestRun, peakHour, periodTotals, rhythmGrid, WEEKDAYS } from '../lib/analytics';
 import { formatMinutes } from '../lib/study';
 import type { StudySession, StudySummary } from '../lib/study';
-import { AppPage, Card, CountUp, EmptyState, ErrorState, Rise, SegmentedTabs, Skeleton, actionButton } from '../components/app/Kit';
+import { AppPage, Card, CountUp, EmptyState, ErrorState, IconHeading, Rise, SegmentedTabs, Skeleton, TileStat, actionButton } from '../components/app/Kit';
 import { CalendarMap, DailyChart, RhythmMap, SubjectDonut } from '../components/analytics/AnalyticsCharts';
 import { SessionTimeline } from '../components/analytics/SessionTimeline';
 import { useAuthStore } from '../store/authStore';
@@ -171,10 +169,10 @@ export default function AnalyticsPage() {
           />
 
           <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatTile index={0} tile="bg-mb-tile-5" icon={Sun} label="Bugün" note={todayNote(view.today, view.yesterday)}>
+            <TileStat index={0} tile="bg-mb-tile-5" icon={Sun} label="Bugün" note={todayNote(view.today, view.yesterday)}>
               <CountUp value={view.today} format={asDuration} />
-            </StatTile>
-            <StatTile
+            </TileStat>
+            <TileStat
               index={1}
               tile="bg-mb-tile-6"
               icon={Flame}
@@ -192,8 +190,8 @@ export default function AnalyticsPage() {
             >
               <CountUp value={user?.currentStreak ?? 0} />
               <span className="ml-1 text-base text-mb-ink/70">gün</span>
-            </StatTile>
-            <StatTile
+            </TileStat>
+            <TileStat
               index={2}
               tile="bg-mb-tile-2"
               icon={Timer}
@@ -201,8 +199,8 @@ export default function AnalyticsPage() {
               note={view.longest ? `${shortDate.format(new Date(view.longest.startedAt))}${view.longest.subject ? ` · ${view.longest.subject.name}` : ''}` : 'Bu dönemde oturum yok'}
             >
               {view.longest ? <CountUp value={view.longest.minutes} format={asDuration} /> : '—'}
-            </StatTile>
-            <StatTile
+            </TileStat>
+            <TileStat
               index={3}
               tile="bg-mb-tile-4"
               icon={Clock3}
@@ -210,12 +208,12 @@ export default function AnalyticsPage() {
               note={view.peak !== null ? `En yoğun saat ${String(view.peak).padStart(2, '0')}:00` : 'Veri bekleniyor'}
             >
               <span className="text-[1.35rem] leading-tight">{view.slot ? `${WEEKDAYS[view.slot.weekday]} ${view.slot.part.label}` : '—'}</span>
-            </StatTile>
+            </TileStat>
           </dl>
 
           <Rise delay={0.15}>
             <Card className="p-5 md:p-6">
-              <SectionHead icon={BarChart3} tile="bg-mb-tile-1" title="Günlük odak" text={`Son ${days} gün · ${view.activeDays} gün odaklandın${view.run > 1 ? ` · en uzun ${view.run} gün aralıksız` : ''}`} />
+              <IconHeading icon={BarChart3} tile="bg-mb-tile-1" title="Günlük odak" text={`Son ${days} gün · ${view.activeDays} gün odaklandın${view.run > 1 ? ` · en uzun ${view.run} gün aralıksız` : ''}`} />
               <DailyChart days={view.range} />
             </Card>
           </Rise>
@@ -223,7 +221,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Rise delay={0.2}>
               <Card className="h-full p-5 md:p-6">
-                <SectionHead icon={BookOpen} tile="bg-mb-tile-3" title="Ders dağılımı" text={`Son ${days} gün · ${summary.sessionCount} oturum`} />
+                <IconHeading icon={BookOpen} tile="bg-mb-tile-3" title="Ders dağılımı" text={`Son ${days} gün · ${summary.sessionCount} oturum`} />
                 {summary.bySubject.length ? (
                   <SubjectDonut rows={summary.bySubject} />
                 ) : (
@@ -233,7 +231,7 @@ export default function AnalyticsPage() {
             </Rise>
             <Rise delay={0.26}>
               <Card className="h-full p-5 md:p-6">
-                <SectionHead
+                <IconHeading
                   icon={Waves}
                   tile="bg-mb-tile-7"
                   title="Çalışma ritmin"
@@ -247,13 +245,13 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
             <Rise delay={0.3}>
               <Card className="p-5 md:p-6">
-                <SectionHead icon={CalendarDays} tile="bg-mb-tile-8" title="Son 12 hafta" text={`${view.weeks.flat().filter((cell) => cell.minutes > 0).length} gün odaklandın`} />
+                <IconHeading icon={CalendarDays} tile="bg-mb-tile-8" title="Son 12 hafta" text={`${view.weeks.flat().filter((cell) => cell.minutes > 0).length} gün odaklandın`} />
                 <CalendarMap weeks={view.weeks} />
               </Card>
             </Rise>
             <Rise delay={0.34}>
               <Card className="p-5 md:p-6">
-                <SectionHead icon={History} tile="bg-mb-tile-6" title="Oturumların" text={`Son ${days} gün · güne göre`} />
+                <IconHeading icon={History} tile="bg-mb-tile-6" title="Oturumların" text={`Son ${days} gün · güne göre`} />
                 {sessions.length ? (
                   <SessionTimeline sessions={sessions} />
                 ) : (
@@ -374,42 +372,5 @@ function Sparkline({ values }: { values: number[] }) {
         transition={{ duration: 1.2, delay: 0.3, ease: EASE_OUT }}
       />
     </svg>
-  );
-}
-
-/* ───────────────────────── Parçalar ───────────────────────── */
-
-function StatTile({ index, tile, icon: Icon, label, note, children }: { index: number; tile: string; icon: LucideIcon; label: string; note: ReactNode; children: ReactNode }) {
-  return (
-    <m.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -3 }}
-      transition={{ duration: 0.45, delay: 0.08 + index * 0.06, ease: EASE_OUT }}
-      className={`rounded-[18px] p-4 shadow-mb-card ${tile}`}
-    >
-      <dt className="flex items-center gap-2 text-[13px] font-medium text-mb-ink/80">
-        <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-mb-card/80 text-mb-ink">
-          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-        </span>
-        {label}
-      </dt>
-      <dd className="mt-3 font-mb-display text-[1.75rem] font-light leading-none tracking-[-0.03em] tabular-nums text-mb-ink">{children}</dd>
-      <dd className="mt-2 text-[13px] text-mb-ink/70">{note}</dd>
-    </m.div>
-  );
-}
-
-function SectionHead({ icon: Icon, tile, title, text }: { icon: LucideIcon; tile: string; title: string; text: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] text-mb-ink ${tile}`}>
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <h2 className="font-mb-display text-lg font-medium tracking-[-0.02em] text-mb-ink">{title}</h2>
-        <p className="text-sm text-mb-body">{text}</p>
-      </div>
-    </div>
   );
 }

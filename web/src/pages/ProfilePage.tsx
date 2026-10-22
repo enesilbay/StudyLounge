@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { m } from 'framer-motion';
-import { Award, BarChart3, Camera, Coins, Crown, Flame, Info, Mail, Settings, ShoppingBag, Timer, UserRound } from 'lucide-react';
+import { AtSign, Award, Camera, Coins, Crown, Flame, Info, Mail, Settings, Timer, UserRound } from 'lucide-react';
 import { useBadgeCatalog } from '../lib/badges';
 import { ModalShell, Notice } from '../components/ui';
-import { AppPage, Card, CardTitle, Rise, outlineButton } from '../components/app/Kit';
+import { AppPage, Card, IconHeading, Rise, outlineButton } from '../components/app/Kit';
 import { AvatarPicker } from '../components/profile/AvatarPicker';
-import { BadgeGrid, HeroChip, ProfileHero, StatGrid } from '../components/profile/ProfileParts';
+import { BadgeGrid, HeroChip, ProfileHero, RankLadder, StatGrid } from '../components/profile/ProfileParts';
+import { WeekMini } from '../components/profile/WeekMini';
+import { RANKS, rankIndexFor } from '../lib/ranks';
+import { formatMinutes } from '../lib/study';
 import { useAuthStore } from '../store/authStore';
-
-const ranks = [
-  { title: 'Çaylak', min: 0, max: 50 },
-  { title: 'Odaklı', min: 50, max: 200 },
-  { title: 'Akademisyen', min: 200, max: 500 },
-  { title: 'Usta', min: 500, max: 1000 },
-  { title: 'Efsane', min: 1000, max: null },
-];
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuthStore();
@@ -32,9 +26,7 @@ export default function ProfilePage() {
   if (!user) return <p className="py-16 text-center text-mb-body">Profil yükleniyor…</p>;
 
   const score = user.totalFocusMinutes ?? 0;
-  const rankIndex = getRankIndex(score);
-  const rank = ranks[rankIndex];
-  const progress = getRankProgress(score);
+  const rank = RANKS[rankIndexFor(score)];
   const badges = (user.badges ?? []).filter((badge) => badge.trim().length > 0);
 
   return (
@@ -92,83 +84,42 @@ export default function ProfilePage() {
 
         <StatGrid
           items={[
-            { label: 'Odak dakikası', value: score, icon: Timer },
-            { label: 'Günlük seri', value: user.currentStreak ?? 0, suffix: 'gün', icon: Flame },
-            { label: 'Bakiye', value: user.coins ?? 0, suffix: 'puan', icon: Coins },
-            { label: 'Rozet', value: badges.length, icon: Award },
+            { label: 'Toplam odak', value: score, format: (value) => formatMinutes(Math.round(value)), icon: Timer, tile: 'bg-mb-tile-1', note: `${rank.title} rütbesi` },
+            { label: 'Günlük seri', value: user.currentStreak ?? 0, suffix: 'gün', icon: Flame, tile: 'bg-mb-tile-6', note: `En uzun ${user.bestStreak ?? 0} gün` },
+            { label: 'Bakiye', value: user.coins ?? 0, suffix: 'puan', icon: Coins, tile: 'bg-mb-tile-5', note: <Link to="/app/shop" className="underline-offset-2 hover:underline">Mağazada harca</Link> },
+            { label: 'Rozet', value: badges.length, icon: Award, tile: 'bg-mb-tile-4', note: `Toplam ${Math.max(catalog.length, badges.length)} rozet` },
           ]}
         />
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          {/* Rütbe merdiveni */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <Rise delay={0.2}>
             <Card className="h-full p-5 md:p-6">
-              <CardTitle aside={progress.nextRank ? `${progress.current} / ${progress.total} dk` : 'Tamamlandı'}>
-                {progress.nextRank ? `Sıradaki rütbe: ${progress.nextRank}` : 'En yüksek rütbedesin'}
-              </CardTitle>
-              <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-mb-surface">
-                <m.div
-                  className="h-full rounded-full bg-gradient-to-r from-mb-action to-mb-action-2"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress.percentage}%` }}
-                  transition={{ duration: 1.1, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                />
-              </div>
-              <ol className="mt-5 grid grid-cols-5 gap-1" aria-label="Rütbeler">
-                {ranks.map((item, index) => {
-                  const reached = index <= rankIndex;
-                  return (
-                    <li key={item.title} className="flex flex-col items-center gap-2 text-center">
-                      <m.span
-                        aria-hidden="true"
-                        className={`grid h-9 w-9 place-items-center rounded-full text-sm font-medium ${
-                          index === rankIndex ? 'bg-mb-action text-mb-on-action shadow-mb-press' : reached ? 'bg-mb-tint text-mb-action' : 'bg-mb-surface text-mb-body'
-                        }`}
-                        initial={{ scale: 0.6, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.3 + index * 0.07 }}
-                      >
-                        {index + 1}
-                      </m.span>
-                      <span className={`text-[12px] leading-tight sm:text-[13px] ${index === rankIndex ? 'font-medium text-mb-ink' : 'text-mb-body'}`}>
-                        {item.title}
-                        <span className="sr-only">{index === rankIndex ? ' (şu anki rütben)' : reached ? ' (geçildi)' : ''}</span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
+              <RankLadder minutes={score} />
             </Card>
           </Rise>
-
-          {/* Kısayollar ve hesap */}
-          <Rise delay={0.28}>
+          <Rise delay={0.26}>
             <Card className="h-full p-5 md:p-6">
-              <CardTitle>Hesap</CardTitle>
-              <dl className="mt-4 space-y-3">
-                <InfoRow icon={UserRound} label="Kullanıcı adı" value={`@${user.username ?? 'ogrenci'}`} />
-                <InfoRow icon={Mail} label="E-posta" value={user.email ?? '-'} />
-              </dl>
-              <div className="mt-5 grid grid-cols-2 gap-2">
-                <Link to="/app/shop" className={outlineButton}>
-                  <ShoppingBag className="h-4 w-4" />
-                  Mağaza
-                </Link>
-                <Link to="/app/analytics" className={outlineButton}>
-                  <BarChart3 className="h-4 w-4" />
-                  Analitik
-                </Link>
-              </div>
+              <WeekMini />
             </Card>
           </Rise>
         </div>
 
         <Rise delay={0.3}>
           <Card className="p-5 md:p-6">
-            <CardTitle aside={`${badges.length} / ${Math.max(catalog.length, badges.length)}`}>Rozetler</CardTitle>
+            <IconHeading icon={Award} tile="bg-mb-tile-3" title="Rozetler" text={`${badges.length} / ${Math.max(catalog.length, badges.length)} kazanıldı`} />
             <div className="mt-4">
               <BadgeGrid catalog={catalog} earned={badges} />
             </div>
+          </Card>
+        </Rise>
+
+        <Rise delay={0.34}>
+          <Card className="p-5 md:p-6">
+            <IconHeading icon={UserRound} tile="bg-mb-tile-8" title="Hesap" />
+            <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <InfoRow icon={AtSign} label="Kullanıcı adı" value={`@${user.username ?? 'ogrenci'}`} />
+              <InfoRow icon={Mail} label="E-posta" value={user.email ?? '-'} />
+            </dl>
           </Card>
         </Rise>
       </div>
@@ -184,20 +135,6 @@ export default function ProfilePage() {
       </ModalShell>
     </AppPage>
   );
-}
-
-function getRankIndex(points: number) {
-  const index = ranks.findIndex((rank) => rank.max === null || (points >= rank.min && points < rank.max));
-  return index < 0 ? 0 : index;
-}
-
-function getRankProgress(points: number) {
-  const rank = ranks[getRankIndex(points)];
-  if (rank.max === null) return { current: points, total: points || 1, percentage: 100, nextRank: null as string | null };
-  const current = Math.max(0, points - rank.min);
-  const total = rank.max - rank.min;
-  const nextRank = ranks[ranks.findIndex((item) => item.title === rank.title) + 1]?.title ?? null;
-  return { current, total, percentage: Math.min(100, (current / total) * 100), nextRank };
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {

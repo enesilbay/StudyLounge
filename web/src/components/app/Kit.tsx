@@ -195,6 +195,47 @@ export function CountUp({ value, format = (n) => Math.round(n).toLocaleString('t
 }
 
 
+/** Pastel kutu zeminleri (mb-tile-*); sayfalarda renkli özet kutuları ve bölüm ikonları için. */
+export type Tile = 'bg-mb-tile-1' | 'bg-mb-tile-2' | 'bg-mb-tile-3' | 'bg-mb-tile-4' | 'bg-mb-tile-5' | 'bg-mb-tile-6' | 'bg-mb-tile-7' | 'bg-mb-tile-8';
+
+/** Renkli özet kutusu: pastel zemin, ikon rozeti, büyük değer ve kısa not. Bir `dl` içinde kullanılır. */
+export function TileStat({ index = 0, tile, icon: Icon, label, note, children }: { index?: number; tile: Tile; icon: LucideIcon; label: string; note?: ReactNode; children: ReactNode }) {
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.45, delay: 0.08 + index * 0.06, ease: EASE_OUT }}
+      className={`rounded-[18px] p-4 shadow-mb-card ${tile}`}
+    >
+      <dt className="flex items-center gap-2 text-[13px] font-medium text-mb-ink/80">
+        <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-mb-card/80 text-mb-ink">
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
+        {label}
+      </dt>
+      <dd className="mt-3 font-mb-display text-[1.75rem] font-light leading-none tracking-[-0.03em] tabular-nums text-mb-ink">{children}</dd>
+      {note ? <dd className="mt-2 text-[13px] text-mb-ink/70">{note}</dd> : null}
+    </m.div>
+  );
+}
+
+/** Kart içi bölüm başlığı: renkli ikon rozeti, başlık, kısa açıklama ve isteğe bağlı sağ öğe. */
+export function IconHeading({ icon: Icon, tile, title, text, aside, as: Tag = 'h2' }: { icon: LucideIcon; tile: Tile; title: string; text?: string; aside?: ReactNode; as?: 'h2' | 'h3' }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] text-mb-ink ${tile}`}>
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <Tag className="font-mb-display text-lg font-medium tracking-[-0.02em] text-mb-ink">{title}</Tag>
+        {text ? <p className="text-sm text-mb-body">{text}</p> : null}
+      </div>
+      {aside ? <div className="shrink-0">{aside}</div> : null}
+    </div>
+  );
+}
+
 /** Boş durum: ikon (yuvarlak yüzeyde), kısa başlık ve isteğe bağlı eylem. */
 export function EmptyState({ icon: Icon, title, text, action, className = '' }: { icon: LucideIcon; title: string; text?: string; action?: ReactNode; className?: string }) {
   return (

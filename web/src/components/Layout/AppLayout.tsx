@@ -14,13 +14,14 @@ import { AnnouncementBanner } from './AnnouncementBanner';
 import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
 
+// Her sayfanın kendi pastel rengi (mb-tile-*); menüde ikon rozeti, seçiliyken satırın zemini olur.
 const navItems = [
-  { path: '/app/lobbies', icon: DoorOpen, label: 'Odalar' },
-  { path: '/app/dm', icon: MessageCircle, label: 'Arkadaşlar' },
-  { path: '/app/leaderboard', icon: Trophy, label: 'Sıralama' },
-  { path: '/app/analytics', icon: BarChart3, label: 'Analitik' },
-  { path: '/app/shop', icon: ShoppingBag, label: 'Mağaza' },
-  { path: '/app/profile', icon: UserRound, label: 'Profil' },
+  { path: '/app/lobbies', icon: DoorOpen, label: 'Odalar', tile: 'bg-mb-tile-7' },
+  { path: '/app/dm', icon: MessageCircle, label: 'Arkadaşlar', tile: 'bg-mb-tile-2' },
+  { path: '/app/leaderboard', icon: Trophy, label: 'Sıralama', tile: 'bg-mb-tile-5' },
+  { path: '/app/analytics', icon: BarChart3, label: 'Analitik', tile: 'bg-mb-tile-1' },
+  { path: '/app/shop', icon: ShoppingBag, label: 'Mağaza', tile: 'bg-mb-tile-4' },
+  { path: '/app/profile', icon: UserRound, label: 'Profil', tile: 'bg-mb-tile-6' },
 ];
 
 
@@ -99,14 +100,22 @@ export default function AppLayout() {
               to={item.path}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `relative flex min-h-11 items-center gap-3 rounded-[12px] text-[15px] font-medium transition ${collapsed ? 'justify-center' : 'px-3'} ${
-                  isActive ? 'bg-mb-solid text-mb-on-solid shadow-mb-raised' : 'text-mb-body hover:bg-mb-surface hover:text-mb-ink'
+                `group relative flex min-h-11 items-center gap-3 rounded-[14px] text-[15px] font-medium transition ${collapsed ? 'justify-center' : 'px-2'} ${
+                  isActive ? `${item.tile} text-mb-ink shadow-mb-card` : 'text-mb-body hover:bg-mb-surface hover:text-mb-ink'
                 }`
               }
             >
-              <item.icon className="h-[18px] w-[18px] shrink-0" />
-              <span className={collapsed ? 'sr-only' : ''}>{item.label}</span>
-              <NavBadge count={badgeFor(item.path)} className={collapsed ? 'absolute -right-1 -top-1' : 'ml-auto'} />
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-mb-ink transition-transform group-hover:scale-110 ${isActive ? 'bg-mb-card/85 shadow-mb-card' : item.tile}`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                  </span>
+                  <span className={collapsed ? 'sr-only' : ''}>{item.label}</span>
+                  <NavBadge count={badgeFor(item.path)} className={collapsed ? 'absolute -right-1 -top-1' : 'ml-auto'} />
+                </>
+              )}
             </NavLink>
           ))}
 
@@ -114,9 +123,11 @@ export default function AppLayout() {
             <NavLink
               to="/admin"
               title={collapsed ? 'Yönetim' : undefined}
-              className={`mt-4 flex min-h-11 items-center gap-3 rounded-[12px] text-[15px] font-medium text-mb-body transition hover:bg-mb-surface hover:text-mb-ink ${collapsed ? 'justify-center' : 'px-3'}`}
+              className={`mt-4 flex min-h-11 items-center gap-3 rounded-[14px] text-[15px] font-medium text-mb-body transition hover:bg-mb-surface hover:text-mb-ink ${collapsed ? 'justify-center' : 'px-2'}`}
             >
-              <ShieldCheck className="h-[18px] w-[18px] shrink-0" />
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-mb-tile-8 text-mb-ink">
+                <ShieldCheck className="h-4 w-4" />
+              </span>
               <span className={collapsed ? 'sr-only' : ''}>Yönetim</span>
             </NavLink>
           ) : null}
@@ -125,10 +136,13 @@ export default function AppLayout() {
             <NavLink
               to="/app/premium"
               title={collapsed ? "Premium'a geç" : undefined}
-              className={`mt-4 flex min-h-11 items-center gap-3 rounded-[12px] border border-mb-line bg-mb-surface text-[15px] font-medium text-mb-ink transition hover:border-mb-action ${collapsed ? 'justify-center' : 'px-3'}`}
+              className={`relative mt-4 flex min-h-11 items-center gap-3 overflow-hidden rounded-[14px] bg-mb-solid text-[15px] font-medium text-mb-on-solid shadow-mb-raised transition hover:-translate-y-0.5 ${collapsed ? 'justify-center' : 'px-2'}`}
             >
-              <Crown className="h-[18px] w-[18px] shrink-0 text-mb-action" />
-              <span className={collapsed ? 'sr-only' : ''}>Premium'a geç</span>
+              <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-mb-lamp opacity-30 blur-2xl" />
+              <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-mb-lamp text-mb-solid">
+                <Crown className="h-4 w-4" />
+              </span>
+              <span className={`relative ${collapsed ? 'sr-only' : ''}`}>Premium'a geç</span>
             </NavLink>
           ) : null}
         </nav>
@@ -220,13 +234,17 @@ export default function AppLayout() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-[11px] font-medium ${isActive ? 'text-mb-action-ink' : 'text-mb-body'}`}
+              className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${isActive ? 'text-mb-ink' : 'text-mb-body'}`}
             >
-              <span className="relative">
-                <item.icon className="h-5 w-5" />
-                <NavBadge count={badgeFor(item.path)} className="absolute -right-2.5 -top-1.5" />
-              </span>
-              <span className="max-w-full truncate px-0.5">{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <span className={`relative grid h-7 w-11 place-items-center rounded-full transition ${isActive ? item.tile : ''}`}>
+                    <item.icon className="h-5 w-5" />
+                    <NavBadge count={badgeFor(item.path)} className="absolute -right-1.5 -top-1.5" />
+                  </span>
+                  <span className="max-w-full truncate px-0.5">{item.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
