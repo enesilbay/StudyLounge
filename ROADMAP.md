@@ -208,6 +208,7 @@ Kullanıcı kararı (14 Ekim 2026): web arayüzünün yeniden tasarımı şimdil
 | Durum | Başlık | Not |
 | :--- | :--- | :--- |
 | ✅ | Ortak kurallar, odak odası 3. sürüm (Meet/Discord düzeni), Ekranlar v3 adım 0 | Yapıldı: mb token'ları, Kit'e `OverflowMenu`/`LiveBadge`/`CountBadge`/`AvatarStack`/`Skeleton`/`ErrorState`, ikonlu `EmptyState`, açılış sayfası görselleri yeni oda düzeniyle güncel. |
+| ✅ | Analitik sayfası (22 Ekim 2026) | Dönem seçimi (7/30/90 gün) ve önceki döneme göre değişim, koyu özet bandı, renkli özet kutuları, ortalama çizgili günlük grafik, ders halka grafiği, gün × saat çalışma ritmi, 12 haftalık takvim ve güne göre gruplu oturum listesi. Backend değişmedi (`/study/summary`, `/study/sessions`). |
 | Ertelendi | Ekranlar v3 adım 1–6 | Uygulama kabuğu + Odalar; Arkadaşlar + Sıralama; Profil; Analitik + Ayarlar; Mağaza + Premium; 404 + oda yan pencereleri. |
 | Ertelendi | Yeniden tasarım planının 3–10. adımları | Landing page, giriş ekranı, profil, analitik, sıralama, premium, mağaza, arkadaşlar, ayarlar (bkz. plan belgesi). |
 | Ertelendi | Impeccable ile proje analizi | Faz 5'teki tasarım eleştirisi/denetimi, tema tutarlılığı ve telefon genişliği taramaları tasarım çalışmasıyla birlikte yapılır; erişilebilirlik hataları (kontrast, klavye, odak halkası) kapalı betadan önce yine de düzeltilmelidir. |
