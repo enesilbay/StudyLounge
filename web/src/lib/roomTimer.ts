@@ -33,7 +33,11 @@ export function timerPhase(state: RoomTimerSnapshot, now: number): Omit<TimerVie
     : { phase: 'break', remainingSeconds: Math.ceil(cycle - inCycle), round };
 }
 
-/** Uzun odakta uzun mola, kısa odakta kısa mola. */
+/** Sunucunun kabul ettiği aralıklar (backend/src/room-timer/room-timer.service.ts). */
+export const FOCUS_MINUTES_RANGE = { min: 5, max: 120 } as const;
+export const BREAK_MINUTES_RANGE = { min: 1, max: 30 } as const;
+
+/** Uzun odakta uzun mola, kısa odakta kısa mola (kullanıcı kendi molasını seçmediyse). */
 export function breakMinutesFor(focusMinutes: number) {
   return focusMinutes >= 45 ? 10 : 5;
 }
@@ -84,9 +88,9 @@ export function useRoomTimer({ roomName, enabled }: { roomName: string | null; e
 
   const view: TimerView | null = timer ? { ...timerPhase(timer, now + clockOffset), paused: timer.pausedAt !== null } : null;
 
-  const start = useCallback((focusMinutes: number) => {
+  const start = useCallback((focusMinutes: number, breakMinutes = breakMinutesFor(focusMinutes)) => {
     setError(null);
-    getSocket().emit('room_timer_start', { focusMinutes, breakMinutes: breakMinutesFor(focusMinutes) });
+    getSocket().emit('room_timer_start', { focusMinutes, breakMinutes });
   }, []);
   const pause = useCallback(() => getSocket().emit('room_timer_pause'), []);
   const resume = useCallback(() => getSocket().emit('room_timer_resume'), []);

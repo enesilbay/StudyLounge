@@ -51,7 +51,7 @@ import { useSpeaking } from '../lib/rtc/useSpeaking';
 import { hasLiveVideo } from '../lib/rtc/media';
 import { useRoomBoard } from '../lib/board/useRoomBoard';
 import { isPdfUrl, MAX_PDF_BYTES } from '../lib/board/types';
-import { playChime, useRoomTimer } from '../lib/roomTimer';
+import { BREAK_MINUTES_RANGE, FOCUS_MINUTES_RANGE, breakMinutesFor, playChime, useRoomTimer } from '../lib/roomTimer';
 import type { DuelRequest, DuelResult, Lobby, Message, RoomUser } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 import { useStudyStore } from '../store/studyStore';
@@ -72,6 +72,61 @@ import rainSound from '../assets/sounds/rain.mp3';
 const PdfBoard = lazy(() => import('../components/room/PdfBoard').then((module) => ({ default: module.PdfBoard })));
 
 const durationOptions = [15, 25, 45, 60].map((minutes) => ({ label: `${minutes} dk`, seconds: minutes * 60 }));
+
+const FOCUS_STORAGE_KEY = 'sl:focus-minutes';
+const BREAK_STORAGE_KEY = 'sl:break-minutes';
+
+function readStoredMinutes(key: string, range: { min: number; max: number }, fallback: number) {
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isInteger(value) && value >= range.min && value <= range.max ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function storeMinutes(key: string, value: number | null) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, String(value));
+  } catch {
+    /* depolama kapalıysa süre yalnızca bu oturumda geçerli */
+  }
+}
+
+/** Dakika girişi: yazarken serbest, geçerli aralıktaki değer anında uygulanır, odak kaybında aralığa çekilir. */
+function MinutesField({ label, value, range, onCommit }: { label: string; value: number; range: { min: number; max: number }; onCommit: (minutes: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = (raw: string) => {
+    const parsed = Math.round(Number(raw));
+    if (!raw || !Number.isFinite(parsed)) return;
+    const clamped = Math.min(range.max, Math.max(range.min, parsed));
+    if (clamped !== value) onCommit(clamped);
+  };
+  return (
+    <label className="flex items-center gap-1.5 text-xs font-medium text-mb-body">
+      {label}
+      <input
+        type="number"
+        inputMode="numeric"
+        min={range.min}
+        max={range.max}
+        value={draft ?? value}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          const typed = Number(event.target.value);
+          if (Number.isInteger(typed) && typed >= range.min && typed <= range.max) commit(event.target.value);
+        }}
+        onBlur={(event) => {
+          commit(event.target.value);
+          setDraft(null);
+        }}
+        className="h-8 w-14 rounded-[8px] border border-mb-line bg-mb-card px-2 text-center text-sm text-mb-ink outline-none focus:border-mb-action"
+      />
+      dk
+    </label>
+  );
+}
 
 const soundTracks = [
   { key: 'forest', name: 'Orman', src: natureSound, defaultVolume: 65 },
@@ -146,8 +201,14 @@ export default function FocusRoomPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [roomUsers, setRoomUsers] = useState<RoomUser[]>([]);
   const [running, setRunning] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState(25 * 60);
-  const [remainingSeconds, setRemainingSeconds] = useState(25 * 60);
+  const [selectedDuration, setSelectedDuration] = useState(() => readStoredMinutes(FOCUS_STORAGE_KEY, FOCUS_MINUTES_RANGE, 25) * 60);
+  const [remainingSeconds, setRemainingSeconds] = useState(selectedDuration);
+  // Kullanıcı mola süresini seçmediyse odak süresine göre otomatik (null).
+  const [customBreak, setCustomBreak] = useState<number | null>(() => {
+    const stored = readStoredMinutes(BREAK_STORAGE_KEY, BREAK_MINUTES_RANGE, 0);
+    return stored || null;
+  });
+  const breakMinutes = customBreak ?? breakMinutesFor(Math.round(selectedDuration / 60));
   const [volumes, setVolumes] = useState<VolumeMap>(() => Object.fromEntries(soundTracks.map((track) => [track.key, track.defaultVolume])));
   const [chatText, setChatText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -478,7 +539,7 @@ export default function FocusRoomPage() {
   const leaveShared = () => setFollowShared(false);
 
   const startShared = () => {
-    roomTimer.start(Math.round(selectedDuration / 60));
+    roomTimer.start(Math.round(selectedDuration / 60), breakMinutes);
     joinShared();
   };
 
@@ -521,7 +582,13 @@ export default function FocusRoomPage() {
   const selectDuration = (seconds: number) => {
     setSelectedDuration(seconds);
     setRemainingSeconds(seconds);
+    storeMinutes(FOCUS_STORAGE_KEY, Math.round(seconds / 60));
     if (running) stopFocus();
+  };
+
+  const selectBreak = (minutes: number) => {
+    setCustomBreak(minutes);
+    storeMinutes(BREAK_STORAGE_KEY, minutes);
   };
 
   // Görev paneli: görevi odaya sohbet mesajı olarak paylaşır.
@@ -798,6 +865,11 @@ export default function FocusRoomPage() {
               </button>
             ))}
           </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2" role="group" aria-label="Özel süre">
+            <MinutesField label="Odak" value={Math.round(selectedDuration / 60)} range={FOCUS_MINUTES_RANGE} onCommit={(minutes) => selectDuration(minutes * 60)} />
+            <MinutesField label="Mola" value={breakMinutes} range={BREAK_MINUTES_RANGE} onCommit={selectBreak} />
+          </div>
+          <p className="mt-1.5 text-[11px] text-mb-body">Mola süresi “Odayla” ortak sayacında uygulanır.</p>
           <div className="mt-4 flex items-center gap-2">
             <button
               type="button"
