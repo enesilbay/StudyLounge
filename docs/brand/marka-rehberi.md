@@ -2,7 +2,7 @@
 
 Projenin ana renkleri, yazı tipleri ve tipografisi açılış sayfasınınkilerdir; bu dosya onların tek kaynağıdır. Köşe, gölge ve hareket kuralları da burada tanımlanır.
 
-Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır. Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu kimliği kullanır. Mobil uygulama (`mobile/`) değişmez.
+Kod tarafındaki karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır. Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu kimliği kullanır.
 
 ## Uygulama sayfaları
 

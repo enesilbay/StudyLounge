@@ -163,33 +163,6 @@ export function RoomListFigure() {
   );
 }
 
-/** 2. adım: masada ters duran telefon ve yanan lamba; kamera olmadan odak. */
-export function PhoneOnDesk() {
-  return (
-    <Screen label="Yukarıdan bakılan bir masa: açık defter, ekranı masaya dönük telefon ve yanan masa lambası. Telefon masada durdukça odak süresi işler." className="p-0!">
-      <div className="relative aspect-[5/4] w-full overflow-hidden bg-lp-paper bg-[linear-gradient(var(--color-lp-grid)_1px,transparent_1px),linear-gradient(90deg,var(--color-lp-grid)_1px,transparent_1px)] bg-[size:24px_24px]">
-        <div
-          className="absolute right-[2%] top-[0%] h-[64%] w-[52%] rounded-full"
-          style={{ background: 'radial-gradient(closest-side, color-mix(in srgb, var(--color-lp-action) 75%, transparent), transparent 80%)' }}
-        />
-        {/* Lamba */}
-        <span className="absolute right-[22%] top-[22%] aspect-square w-[11%] rounded-full border-2 border-lp-ink bg-lp-action" />
-        {/* Defter */}
-        <div className="absolute left-[12%] top-[18%] h-[50%] w-[40%] -rotate-6 border-2 border-lp-ink bg-lp-card p-[4%] shadow-lp-xs">
-          {[80, 64, 72, 50, 68].map((width, line) => (
-            <div key={line} className="mb-[9%] h-[4%] min-h-[2px] bg-lp-line" style={{ width: `${width}%` }} />
-          ))}
-        </div>
-        {/* Ekranı masaya dönük telefon */}
-        <div className="absolute bottom-[12%] right-[24%] h-[42%] w-[20%] rotate-12 rounded-[10px] border-2 border-lp-ink bg-lp-ink">
-          <span className="absolute left-[12%] top-[6%] h-[16%] w-[38%] rounded-[4px] border-2 border-lp-card/40" />
-        </div>
-        <span className="absolute bottom-[6%] left-[8%] border-2 border-lp-ink bg-lp-card px-2 py-1 text-lp-sm font-black">Odakta · 24:13</span>
-      </div>
-    </Screen>
-  );
-}
-
 /** 3. adım: ortak mola. Sayaç herkes için aynı anda molaya geçer, sohbet molaya kalır. */
 export function BreakFigure() {
   return (

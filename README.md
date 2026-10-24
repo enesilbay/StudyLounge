@@ -1,9 +1,9 @@
-# 🎓 StudyLounge — Sosyal Odaklanma Platformu (Mobil + Web)
+# 🎓 StudyLounge — Sosyal Odaklanma Platformu
 
 > **"Ayrı Masalarda, Aynı Lobide."**
 
+
 [![NestJS](https://img.shields.io/badge/Backend-NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
-[![React Native](https://img.shields.io/badge/Mobile-React%20Native%20%2F%20Expo-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://expo.dev/)
 [![React](https://img.shields.io/badge/Web-React%20%2B%20Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 [![WebRTC](https://img.shields.io/badge/Video-WebRTC%20P2P-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -16,15 +16,10 @@
 
 ## 📌 Proje Hakkında
 
-**StudyLounge**, evde veya kütüphanede tek başına ders çalışırken yaşanan yalnızlık, motivasyon kaybı ve dikkat dağılması sorunlarına yenilikçi bir çözüm sunan bir **sosyal odaklanma platformudur**. Web, mobil ve backend aynı depoda geliştirilir; proje şu an **kapalı beta hazırlığı** aşamasındadır (ödeme akışı yalnızca test/sandbox modunda).
+**StudyLounge**, evde veya kütüphanede tek başına ders çalışırken yaşanan yalnızlık, motivasyon kaybı ve dikkat dağılması sorunlarına yenilikçi bir çözüm sunan bir **sosyal odaklanma platformudur**. Web ve backend aynı depoda geliştirilir; proje şu an **kapalı beta hazırlığı** aşamasındadır (ödeme akışı yalnızca test/sandbox modunda).
 
 ### 💡 Temel Çözüm ve Felsefe
-Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet endişesi yaratmaktadır. StudyLounge iki istemciyle iki farklı çalışma biçimi sunar:
-
-| İstemci | Çalışma biçimi |
-| :--- | :--- |
-| 📱 **Mobil** (Expo) | Telefonun **ivmeölçeri (accelerometer)** ile telefonun masada düz durup durmadığı algılanır. Telefon masaya bırakılınca odak süresi başlar, ele alınınca mola verilir. Kamera ve mikrofon **hiç** kullanılmaz. |
-| 💻 **Web** (React) | Normal odalar mobildeki gibi kamerasızdır. Ek olarak Premium kullanıcıların kurduğu **kameralı odalarda** katılımcılar isteğe bağlı olarak **kamera, mikrofon ve ekran paylaşımı** açabilir. |
+Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet endişesi yaratmaktadır. StudyLounge, web üzerinde **kamerası isteğe bağlı** ortak çalışma odaları sunar: normal odalar kamerasızdır ve masada kimin odakta, kimin molada olduğu görünür. Ek olarak Premium kullanıcıların kurduğu **kameralı odalarda** katılımcılar isteğe bağlı olarak **kamera, mikrofon ve ekran paylaşımı** açabilir.
 
 - 🔕 **Varsayılan mahremiyet:** Kamera hiçbir odada zorunlu değildir; kameralı odalarda da kamera ve mikrofon kullanıcı açana kadar kapalıdır.
 - 🔗 **Doğrudan bağlantı:** Görüntü ve ses sunucudan geçmez, tarayıcılar arasında **P2P WebRTC** ile akar ve kaydedilmez.
@@ -36,15 +31,7 @@ Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet end
 
 StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir görsel dille tasarlanmıştır.
 
-**Mobil** uygulama mevcut kimliğini korur (`mobile/app/(tabs)/sensor.tsx` içindeki `C` renk sabitleri):
-
-| Eleman | Seçim |
-| :--- | :--- |
-| Ana renk | `#1A237E` *(Deep Indigo)* |
-| Yardımcı renk | `#FFC107` *(Amber)* |
-| Tipografi | `Montserrat` |
-
-**Web** için projenin ana renkleri ve yazı tipleri aşağıdadır. Ayrıntılar (tipografi ölçeği, köşe, gölge, hareket, kontrast) [`docs/brand/marka-rehberi.md`](docs/brand/marka-rehberi.md) dosyasında; kod karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
+Projenin ana renkleri ve yazı tipleri aşağıdadır. Ayrıntılar (tipografi ölçeği, köşe, gölge, hareket, kontrast) [`docs/brand/marka-rehberi.md`](docs/brand/marka-rehberi.md) dosyasında; kod karşılıkları `web/src/index.css` içindeki `mb-*` token'larıdır.
 
 | Eleman | Seçim | Açıklama |
 | :--- | :--- | :--- |
@@ -68,12 +55,6 @@ Uygulama; katmanlı mimari, mikro ölçekli WebSocket event'leri ve TypeORM veri
 
 ```mermaid
 graph TD
-    subgraph Mobile Client [Expo / React Native]
-        Sensors[Expo Sensors: Accelerometer]
-        UI[React Native UI / Screens]
-        SocketClient[Socket.IO Client]
-    end
-
     subgraph Web Client [React + Vite]
         WebUI[React Sayfaları]
         Media[getUserMedia / getDisplayMedia]
@@ -82,7 +63,7 @@ graph TD
     end
 
     subgraph Backend Core [NestJS Engine]
-        Gateway[Sensors & Lobby WebSocket Gateway]
+        Gateway[Lobby WebSocket Gateway]
         Rtc[RtcService: WebRTC Sinyalleşme]
         AuthModule[JWT Auth Module]
         LobbyModule[Lobbies Service & Controller]
@@ -93,11 +74,6 @@ graph TD
         Postgres[(PostgreSQL DB)]
         StaticStorage[Uploads Folder / S3 Storage]
     end
-
-    Sensors -->|Hareket Verisi| UI
-    UI -->|Auth / HTTP REST| AuthModule
-    UI <-->|Real-time Events| Gateway
-    SocketClient <-->|WebSocket Connection| Gateway
 
     WebUI -->|HTTP REST| LobbyModule
     WebSocket <-->|Presence, sohbet, rtc_signal| Gateway
@@ -110,29 +86,6 @@ graph TD
     UserModule --> Postgres
     LobbyModule --> Postgres
     Gateway --> StaticStorage
-```
-
-### 🔄 Sensör Tabanlı Odak Takip Akışı
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Öğrenci (Mobil App)
-    participant Sensor as Expo Sensor Engine
-    participant WS as NestJS WebSocket Gateway
-    participant DB as PostgreSQL Database
-    participant Lobby as Lobideki Diğer Kullanıcılar
-
-    User->>Sensor: Telefonu Masaya Bırakır
-    Sensor->>Sensor: İvme / Durgunluk Eşik Değerini Doğrular
-    Sensor->>WS: `sensor_state_change` (status: FOCUSING)
-    WS->>DB: Odaklanma Seansını Başlat / Logla
-    WS-->>Lobby: Broadcast: "Ahmet Masada Odaklanıyor 🟢"
-    
-    User->>Sensor: Telefonu Elini Alır / Hareket Ettirir
-    Sensor->>WS: `sensor_state_change` (status: IDLE)
-    WS->>DB: Odaklanma Seansını Duraklat & Süreyi Kaydet
-    WS-->>Lobby: Broadcast: "Ahmet Mola Verdi 🟡"
 ```
 
 ### 🎥 Web: Kamera ve Ekran Paylaşımı (P2P WebRTC)
@@ -164,7 +117,7 @@ sequenceDiagram
 - **Ekran paylaşımı** ayrı bir `MediaStream` olarak gönderilir. Karşı taraf hangi stream'in ekran olduğunu bir `meta` sinyaliyle öğrenir ve onu büyük sahnede gösterir.
 - **NAT geçişi:** Varsayılan olarak Google STUN kullanılır. Kurumsal ve okul ağlarında bağlantı kurulamazsa `TURN_URL`, `TURN_USERNAME` ve `TURN_CREDENTIAL` ile bir TURN sunucusu eklenebilir. İstemci bu listeyi `GET /rtc/ice-servers` ile alır.
 - **Yetki:** Kameralı oda yalnızca **Premium** kullanıcılar tarafından kurulabilir (backend `403` döner). Odaya katılan herkes kamera açabilir.
-- **Web'de odak takibi:** Tarayıcıda sensör olmadığı için odaklanma "Odaklan" düğmesiyle başlar. Sekme 60 saniyeden uzun gizli kalırsa odak otomatik duraklatılır (Page Visibility API).
+- **Web'de odak takibi:** Odaklanma "Odaklan" düğmesiyle başlar. Sekme 60 saniyeden uzun gizli kalırsa odak otomatik duraklatılır (Page Visibility API).
 
 ---
 
@@ -183,14 +136,6 @@ sequenceDiagram
 - **Dosya depolama:** Backblaze B2 (S3 uyumlu, `@aws-sdk/client-s3`); ayarlanmazsa yerel `./uploads`
 - **Hata takibi:** Sentry (`@sentry/nestjs`, yalnızca hata; kişisel veri temizlenir)
 - **Test:** Jest (Unit Tests & E2E Integration Tests)
-
-### 📱 Mobile (`/mobile`)
-- **Framework:** React Native (Expo SDK)
-- **Dil:** TypeScript
-- **Sensör Entegrasyonu:** `expo-sensors` (`Accelerometer`)
-- **Durum Yönetimi & HTTP:** React Hooks, Axios / Custom Fetch Wrapper
-- **Stil & Arayüz:** Custom Color Tokens (`#1A237E`, `#FFC107`), Custom Components
-- **Durum:** Mobil mevcut haliyle korunur; yeni özellikler web'e gelir (backend değişiklikleri mobili bozmaz: yeni kolonlar varsayılan değerli, yeni socket event'leri isteğe bağlıdır)
 
 ### 💻 Web (`/web`)
 - **Framework:** React 19 + Vite, TypeScript
@@ -218,7 +163,6 @@ sequenceDiagram
 StudyLounge/
 ├── backend/   NestJS API + Socket.IO gateway (auth, users, lobbies, study, league, payments, admin, rtc, whiteboard…)
 ├── web/       React 19 + Vite web uygulaması (açılış, uygulama, yönetim paneli)
-├── mobile/    Expo / React Native uygulaması (sensörle odak takibi)
 ├── docs/      Marka rehberi ve tasarım belgeleri
 ├── .github/   CI iş akışı (ci.yml)
 └── ROADMAP.md Yol haritası ve proje durumu
@@ -228,9 +172,9 @@ StudyLounge/
 
 ## ✨ Temel Özellikler
 
-1. 🎯 **Sensör Tabanlı Otomatik Çalışma Algılama:**
-   - Telefon masaya bırakıldığında odaklanma sayacı kendiliğinden çalışır.
-   - Telefonla oynamaya başlandığında veya hareket ettirildiğinde oturum otomatik duraklatılır.
+1. 🎯 **Odak Takibi:**
+   - "Odaklan" düğmesiyle süre başlar; odaklananın masasında lamba yanar.
+   - Sekme uzun süre arka planda kalırsa odak otomatik duraklatılır.
 
 2. 🚪 **Canlı Çalışma Lobileri (Study Lobbies):**
    - Genel, Özel ve Elite lobiler oluşturma ve katılma.
@@ -343,12 +287,11 @@ services:
 ```
 
 ### 3. ⚙️ GitHub Actions CI/CD Pipeline (`.github/workflows/ci.yml`)
-Her `push` ve `pull_request` adımlarında otomatik test ve doğrulama süreçleri tetiklenir. Dört iş yeşil olmadan PR birleştirilmez: `backend-test`, `web-verify`, `web-e2e`, `mobile-verify`.
+Her `push` ve `pull_request` adımlarında otomatik test ve doğrulama süreçleri tetiklenir. Üç iş yeşil olmadan PR birleştirilmez: `backend-test`, `web-verify`, `web-e2e`.
 
 - **Backend Job (`backend-test`):** `npm ci` ➔ `npm run build` ➔ Jest birim testleri ➔ E2E testleri (`npm run test:e2e`; REST uçları ve gerçek socket.io bağlantılarıyla gateway testleri).
 - **Web Job (`web-verify`):** `npm ci` ➔ ESLint ➔ `npm run build` (tip kontrolü + Vite) ➔ Vitest birim testleri.
 - **Web E2E Job (`web-e2e`):** Postgres servisi ➔ backend derlenip başlatılır ➔ `npm run seed` ➔ Playwright (Chromium) uçtan uca testleri. Hata olursa rapor artifact olarak saklanır.
-- **Mobile Job (`mobile-verify`):** `npm ci` ➔ TypeScript Tip Kontrolü (`tsc --noEmit`) ➔ ESLint Statik Kod Analizi.
 
 ### 4. 🌐 Cloud Deployment (Render Web Service)
 Projenin canlı sunucu dağıtımı **Render** platformu üzerinde Docker runtime kullanılarak gerçekleştirilmiştir:
@@ -412,7 +355,6 @@ Test ortamı da `NODE_ENV=production` ile çalışır; böylece "test'te çalı�
 ### 📋 Ön Gereksinimler
 - **Node.js**: `v20.x` veya üzeri
 - **Docker & Docker Compose** (Opsiyonel: Yerel PostgreSQL de kullanılabilir)
-- **Expo Go App** (Mobil testler için Android/iOS cihaz)
 
 ---
 
@@ -471,20 +413,6 @@ cp .env.example .env      # VITE_BACKEND_URL backend adresini gösterir
 npm run dev
 ```
 Tarayıcıda `http://localhost:5173` adresini açın.
-
----
-
-### 5️⃣ Mobil Uygulamayı Çalıştırın (Expo)
-
-Telefonun bilgisayardaki backend'e erişebilmesi için yerel ağ IP adresinizi yazın:
-
-```bash
-cd mobile
-npm install
-cp .env.example .env      # EXPO_PUBLIC_BACKEND_URL=http://192.168.x.x:3000
-npx expo start
-```
-*Not: `192.168.x.x` yerine bilgisayarınızın yerel IP adresini yazın; telefon ve bilgisayar aynı ağda olmalı.*
 
 ---
 

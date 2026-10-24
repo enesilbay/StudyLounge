@@ -137,7 +137,7 @@ Sitenin kendi token'ları altı renk:
 | Yorumlar | **Yok** (gerçek yorum yok). |
 | Entegrasyonlar | **Yok.** |
 | SSS | Aynı |
-| Kapanış (mağaza düğmeleri) | "Bu akşam bir masa boş." + hesap aç düğmesi. Mobil uygulama mağazada olmadığı için mağaza düğmeleri yok. |
+| Kapanış (mağaza düğmeleri) | "Bu akşam bir masa boş." + hesap aç düğmesi. Mağaza düğmeleri yok. |
 | Koyu yeşil alt bilgi | Alt bilgi |
 
 ### Dikkat edilmesi gerekenler
