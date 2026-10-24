@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m } from 'framer-motion';
 import { ArrowLeft, Check, DoorOpen, Flag, Hand, MessageCircle, MessagesSquare, Radio, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
 import { Avatar, Notice, ModalShell } from '../components/ui';
-import { AppPage, Card, CountUp, EmptyState, SegmentedTabs, TileStat, actionButton, ghostButton, inputClass, solidButton } from '../components/app/Kit';
+import { AppPage, Card, CountUp, EmptyState, SegmentedTabs, TileStat, actionButton, ghostButton, inputClass } from '../components/app/Kit';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
@@ -171,15 +171,7 @@ export default function DMPage() {
   };
 
   return (
-    <AppPage
-      title="Arkadaşlar"
-      actions={
-        <button type="button" onClick={() => setAddFriendOpen(true)} className={solidButton}>
-          <UserPlus className="h-4 w-4" />
-          Arkadaş ekle
-        </button>
-      }
-    >
+    <AppPage title="Arkadaşlar">
       {/* ── Özet kutuları (telefonda sohbet açıkken gizli) ── */}
       <dl className={`mb-4 grid grid-cols-3 gap-3 ${mobileChatOpen ? 'hidden lg:grid' : ''}`}>
         <TileStat index={0} tile="bg-mb-tile-1" icon={Users} label="Arkadaş">
@@ -197,11 +189,17 @@ export default function DMPage() {
         {/* ── Liste ── */}
         <Card className={`flex min-h-0 flex-col overflow-hidden ${mobileChatOpen ? 'hidden lg:flex' : 'flex'}`}>
           <div className="space-y-3 p-4">
-            <label className="relative block">
-              <span className="sr-only">Arkadaş ara</span>
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mb-body" aria-hidden="true" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Arkadaş ara" className={`${inputClass} pl-11`} />
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="relative block min-w-0 flex-1">
+                <span className="sr-only">Arkadaş ara</span>
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mb-body" aria-hidden="true" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Arkadaş ara" className={`${inputClass} pl-11`} />
+              </label>
+              <button type="button" onClick={() => setAddFriendOpen(true)} className="grid h-11 shrink-0 place-items-center gap-1.5 rounded-[12px] bg-mb-ink px-3.5 text-sm font-medium text-mb-bg shadow-mb-raised transition hover:-translate-y-0.5 sm:grid-flow-col" aria-label="Arkadaş ekle">
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Ekle</span>
+              </button>
+            </div>
             <SegmentedTabs
               panelId="dm-list"
               label="Arkadaş listesi"
