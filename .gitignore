@@ -12,9 +12,15 @@ web/.env
 web/.env.*
 !web/.env.example
 
-# Claude / agent local settings
-.claude/settings.json
+# Yapay zekâ asistanı ve tasarım aracı dosyaları: yalnızca yerelde tutulur, GitHub'a gitmez
+.claude/
 .agents/
+.impeccable/
+.playwright-mcp/
+.mcp.json
+AGENTS.md
+CLAUDE.md
+PRODUCT.md
 
 # Node modules
 node_modules/
