@@ -145,27 +145,3 @@ jobs:
             web/playwright-report
             backend/backend.log
           retention-days: 7
-
-  mobile-verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'mobile/package-lock.json'
-
-      - name: Install Mobile Dependencies
-        working-directory: ./mobile
-        run: npm ci
-
-      - name: Run Mobile Typecheck
-        working-directory: ./mobile
-        run: npm run typecheck
-
-      - name: Run Mobile Lint
-        working-directory: ./mobile
-        run: npm run lint

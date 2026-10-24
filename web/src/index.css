@@ -590,6 +590,14 @@
 }
 
 /* Uygulama: yanan lambanın yavaş nefesi (Odalar kartları ve canlı şerit). */
+/* Üst çubuk sayfa başlığı: sayfa değişince yumuşakça yukarı kayarak belirir. Bitiş hâli görünür olduğu için animasyon çalışmasa da yazı kaybolmaz. */
+@keyframes sl-baslik {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 @keyframes sl-lamba {
   0%,
   100% {

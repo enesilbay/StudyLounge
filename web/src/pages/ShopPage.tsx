@@ -18,7 +18,7 @@ const CATEGORIES: { key: Category; label: string; hint: string; icon: LucideIcon
   { key: 'profileFrame', label: 'Çerçeve', hint: 'Avatarının etrafındaki halka; odada, sıralamada ve profilinde görünür.', icon: Sparkles, tile: 'bg-mb-tile-4' },
   { key: 'profileCover', label: 'Kapak', hint: 'Profilinin üst bandı; profiline bakan herkes görür.', icon: ImageIcon, tile: 'bg-mb-tile-2' },
   { key: 'lampColor', label: 'Lamba', hint: 'Odada odaklanınca kutunun etrafında yanan ışığın rengi.', icon: Lamp, tile: 'bg-mb-tile-5' },
-  { key: 'color', label: 'Balon', hint: 'Oda sohbetindeki mesaj balonlarının rengi; web’de ve telefonda görünür.', icon: MessageCircle, tile: 'bg-mb-tile-6' },
+  { key: 'color', label: 'Balon', hint: 'Oda sohbetindeki mesaj balonlarının rengi; odada ve sohbette görünür.', icon: MessageCircle, tile: 'bg-mb-tile-6' },
   { key: 'streakFreeze', label: 'Seri koruma', hint: 'Bir gün çalışamazsan serin bozulmaz.', icon: Snowflake, tile: 'bg-mb-tile-7' },
 ];
 
@@ -139,7 +139,7 @@ export default function ShopPage() {
   return (
     <AppPage
       title="Mağaza"
-      description="Odaklandıkça kazandığın puanlarla tarzını yansıt. Aldıkların odada, profilinde ve telefonda görünür."
+      description="Odaklandıkça kazandığın puanlarla tarzını yansıt. Aldıkların odada ve profilinde görünür."
       actions={
         <p className="inline-flex items-center gap-2.5 rounded-full bg-mb-tile-5 py-1.5 pl-1.5 pr-4 shadow-mb-card">
           <m.span

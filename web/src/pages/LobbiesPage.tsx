@@ -176,25 +176,13 @@ export default function LobbiesPage() {
     <LazyMotion features={domAnimation} strict>
     <MotionConfig reducedMotion="user">
     <div>
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-mb-display text-[1.5rem] font-light leading-tight tracking-[-0.03em] text-mb-ink md:text-[1.75rem]">Odalar</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={openCreate} className={user?.isPremium ? darkButton : outlineButton}>
-            {user?.isPremium ? <Plus className="h-4 w-4" /> : <Crown className="h-4 w-4 text-mb-action" />}
-            {user?.isPremium ? 'Oda kur' : 'Oda kurmak için Premium'}
-          </button>
-          <Link to="/app/dm" className={outlineButton}>
-            <UserPlus className="h-4 w-4" />
-            Arkadaş ekle
-          </Link>
-        </div>
-      </header>
+      <h1 className="sr-only">Odalar</h1>
 
       <LiveBanner rooms={lobbies.length} people={totalInRooms} lit={Math.min(totalFocused, totalInRooms)} ready={!isLoading} />
 
 
       {/* Görünüm sekmeleri */}
-      <div className="mt-4 flex items-end justify-between gap-4 border-b border-mb-line">
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-mb-line">
         <div role="tablist" aria-label="Oda görünümü" className="flex gap-1">
           {views.map((option) => (
             <button
@@ -211,6 +199,16 @@ export default function LobbiesPage() {
               {option.label}
             </button>
           ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 pb-1.5">
+          <button type="button" onClick={openCreate} className={user?.isPremium ? darkButton : outlineButton}>
+            {user?.isPremium ? <Plus className="h-4 w-4" /> : <Crown className="h-4 w-4 text-mb-action" />}
+            {user?.isPremium ? 'Oda kur' : 'Oda kurmak için Premium'}
+          </button>
+          <Link to="/app/dm" className={outlineButton}>
+            <UserPlus className="h-4 w-4" />
+            Arkadaş ekle
+          </Link>
         </div>
       </div>
 
@@ -602,7 +600,7 @@ function LampRow({ total, lit }: { total: number; lit: number }) {
 function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: number; lit: number; ready: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <section aria-label="Şu an odalarda" className="relative mt-3 overflow-hidden rounded-[18px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
+    <section aria-label="Şu an odalarda" className="relative overflow-hidden rounded-[18px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
       {/* Lamba ışığı: yanan lamba varsa daha güçlü, yavaşça nefes alır */}
       <m.div
         aria-hidden="true"

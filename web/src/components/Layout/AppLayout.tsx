@@ -25,6 +25,14 @@ const navItems = [
 ];
 
 
+/** Üst çubuktaki sayfa başlığı: adresten bulunur (Odalar, Arkadaşlar, …); bilinmeyen sayfada başlık gösterilmez. */
+const pageTitles = [
+  ...navItems.map((item) => ({ path: item.path, title: item.label, icon: item.icon, tile: item.tile })),
+  { path: '/app/settings', title: 'Ayarlar', icon: Settings, tile: 'bg-mb-tile-8' },
+  { path: '/app/premium', title: 'Premium', icon: Crown, tile: 'bg-mb-tile-5' },
+  { path: '/app/u/', title: 'Profil', icon: UserRound, tile: 'bg-mb-tile-6' },
+];
+
 const COLLAPSE_KEY = 'sl-menu-daraltilmis';
 
 function readCollapsed() {
@@ -48,6 +56,7 @@ export default function AppLayout() {
   const displayName = user?.fullName ?? 'StudyLounge';
   // Odalar panosu tüm genişliği kullanır; diğer sayfalar okunabilir bir sütunda kalır.
   const wide = location.pathname.startsWith('/app/lobbies');
+  const pageTitle = pageTitles.find((item) => location.pathname.startsWith(item.path));
 
   useEffect(() => {
     try {
@@ -179,8 +188,12 @@ export default function AppLayout() {
       <div className={`transition-[padding] duration-300 ease-out ${collapsed ? 'lg:pl-[76px]' : 'lg:pl-64'}`}>
         {/* ── Üst çubuk (her sayfada) ── */}
         {/* Bulanık zemin (backdrop-filter) içindeki modalı çubuğa hapsettiği için düz zemin. */}
-        <header className="sl-yeni sticky top-0 z-20 border-b border-mb-line bg-mb-bg">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
+        <header className="sl-yeni sticky top-0 z-20 overflow-hidden border-b border-mb-line bg-mb-bg">
+          {/* Saydam site adı: dekor, tıklanmaz; başlığın arkasında yumuşak bir imza */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-80 hidden select-none items-center whitespace-nowrap font-mb-display text-[3.25rem] font-semibold leading-none tracking-[-0.06em] text-mb-ink/[0.05] xl:flex">
+            StudyLounge
+          </span>
+          <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:px-6">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -194,8 +207,17 @@ export default function AppLayout() {
               </button>
               <Link to="/app/lobbies" className="flex items-center gap-2 lg:hidden" aria-label="StudyLounge, Odalar">
                 <LogoMark className="h-8 w-8 text-mb-action" />
-                <span className="font-mb-display text-lg font-medium tracking-[-0.03em]">StudyLounge</span>
+                {pageTitle ? null : <span className="font-mb-display text-lg font-medium tracking-[-0.03em]">StudyLounge</span>}
               </Link>
+              {/* Sayfa başlığı: sayfa değişince yumuşakça kayarak yenilenir */}
+              {pageTitle ? (
+                <div key={pageTitle.title} className="ml-1 flex items-center gap-3 motion-safe:animate-[sl-baslik_0.35s_cubic-bezier(0.16,1,0.3,1)]" aria-hidden="true">
+                  <span className={`grid h-9 w-9 place-items-center rounded-[11px] text-mb-ink shadow-mb-card ${pageTitle.tile}`}>
+                    <pageTitle.icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className="font-mb-display text-[1.65rem] font-light leading-none tracking-[-0.045em] text-mb-ink md:text-[1.9rem]">{pageTitle.title}</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-1.5">

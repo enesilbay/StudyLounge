@@ -18,7 +18,7 @@ export const hero = {
   title: 'Ayrı masalarda, aynı lobide.',
   intro: 'StudyLounge, tek başına çalışan öğrencileri aynı sanal çalışma odasında buluşturur. Odaklanan herkesin lambası yanar; ortak sayaçla mola da birlikte gelir.',
   secondary: 'Nasıl çalıştığını gör',
-  reassurance: 'Kamera açman gerekmez. Telefonda ve bilgisayarda aynı hesapla çalışır.',
+  reassurance: 'Kamera açman gerekmez. Tarayıcıdan hemen başla.',
 };
 
 export const problemSection = {
@@ -45,7 +45,7 @@ export const problems: Array<{ icon: LucideIcon; title: string; text: string }> 
 ];
 
 /** Görünümün çizeceği şekil; her sürüm bunu kendi görseline eşler. */
-export type FigureKey = 'timer' | 'board' | 'camera' | 'rooms' | 'phone' | 'break';
+export type FigureKey = 'timer' | 'board' | 'camera' | 'rooms' | 'break';
 
 export type Benefit = { title: string; text: string; detail?: string; figure?: FigureKey };
 
@@ -65,7 +65,7 @@ export const benefitRows: Array<[Benefit, Benefit]> = [
     },
     {
       title: 'Kamera zorunlu değil',
-      text: 'Normal odalarda kamera hiç açılmaz. Odak, telefonun masada durmasıyla ya da tarayıcı sekmesinin açık kalmasıyla ölçülür.',
+      text: 'Normal odalarda kamera hiç açılmaz. Odak, "Odaklan" düğmesiyle başlar ve tarayıcı sekmesinin açık kalmasıyla ölçülür.',
     },
   ],
   [
@@ -107,8 +107,8 @@ export const steps: Array<{ title: string; text: string; figure: FigureKey }> = 
   },
   {
     title: 'Lambanı yak',
-    text: 'Telefon uygulamasını açıp telefonu masaya bırakman yeterli; telefon masada durdukça süren işler. Bilgisayarda "Odaklan"a basarsın, sekmeden uzun süre ayrılırsan odak durur.',
-    figure: 'phone',
+    text: 'Bir odaya girip "Odaklan"a basman yeterli; masandaki lamba yanar ve odadakiler odakta olduğunu görür. Sekmeden uzun süre ayrılırsan odak durur.',
+    figure: 'timer',
   },
   {
     title: 'Birlikte mola ver',
@@ -154,11 +154,11 @@ export const faqs = [
   },
   {
     q: 'Kamera açmam gerekiyor mu?',
-    a: 'Hayır. Kamera yalnızca kameralı odalarda ve sen açarsan çalışır. Normal odalarda odak, telefonun masada durmasıyla ya da tarayıcı sekmesinin açık kalmasıyla ölçülür.',
+    a: 'Hayır. Kamera yalnızca kameralı odalarda ve sen açarsan çalışır. Normal odalarda odak, "Odaklan" düğmesiyle başlar ve tarayıcı sekmesinin açık kalmasıyla ölçülür.',
   },
   {
-    q: 'Telefonum yanımda değilse?',
-    a: 'Bilgisayardan da çalışabilirsin. Odağı "Odaklan" düğmesi başlatır; sekmeden bir dakikadan uzun ayrılırsan odak duraklatılır. Aynı hesap telefonda ve bilgisayarda çalışır.',
+    q: 'Sekmeden ayrılırsam ne olur?',
+    a: 'Sekmeden bir dakikadan uzun ayrılırsan odak duraklatılır. Geri dönüp "Odaklan"a basarak kaldığın yerden devam edersin.',
   },
   {
     q: 'Verilerime ne oluyor?',
@@ -176,5 +176,6 @@ export const closing = {
 };
 
 export const footer = {
-  credit: (year: number) => `Enes İlbay tarafından mezuniyet projesi olarak geliştirildi, ${year}.`,
+  author: 'Enes İlbay',
+  credit: 'tarafından geliştirildi',
 };
