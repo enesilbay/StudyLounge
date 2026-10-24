@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AtSign, Award, Camera, Coins, Crown, Flame, Info, Mail, Settings, Timer, UserRound } from 'lucide-react';
+import { m } from 'framer-motion';
+import { AtSign, Award, Camera, Coins, Crown, Flame, Info, Mail, Play, Settings, Timer, UserRound, type LucideIcon } from 'lucide-react';
 import { useBadgeCatalog } from '../lib/badges';
 import { ModalShell, Notice } from '../components/ui';
 import { AppPage, Card, IconHeading, Rise, outlineButton } from '../components/app/Kit';
+import type { Tile } from '../components/app/Kit';
 import { AvatarPicker } from '../components/profile/AvatarPicker';
 import { BadgeGrid, HeroChip, ProfileHero, RankLadder, StatGrid } from '../components/profile/ProfileParts';
 import { WeekMini } from '../components/profile/WeekMini';
@@ -127,11 +129,11 @@ export default function ProfilePage() {
       <AvatarPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSaved={setStatus} />
 
       <ModalShell open={infoOpen} title="Puan nasıl kazanılır?" description="Odak puanın çalışma odalarında masada kaldığın süreye göre artar." onClose={() => setInfoOpen(false)}>
-        <div className="space-y-3">
-          <InfoCard title="Sayacı başlat" text="Bir çalışma odasına gir ve Odaklan'a bas; lamban yanar." />
-          <InfoCard title="Odakta kal" text="Masada kaldığın her dakika puanına eklenir." />
-          <InfoCard title="Elite odalarda 2 kat" text="Elite odalarda aynı süre iki kat puan olarak hesabına işlenir." />
-        </div>
+        <ol className="space-y-3">
+          <InfoCard step={1} icon={Play} tile="bg-mb-tile-2" title="Sayacı başlat" text="Bir çalışma odasına gir ve Odaklan'a bas; lamban yanar." />
+          <InfoCard step={2} icon={Flame} tile="bg-mb-tile-6" title="Odakta kal" text="Masada kaldığın her dakika puanına eklenir." />
+          <InfoCard step={3} icon={Crown} tile="bg-mb-tile-5" title="Elite odalarda 2 kat" text="Elite odalarda aynı süre iki kat puan olarak hesabına işlenir." />
+        </ol>
       </ModalShell>
     </AppPage>
   );
@@ -149,11 +151,22 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof UserRound; label: 
   );
 }
 
-function InfoCard({ title, text }: { title: string; text: string }) {
+function InfoCard({ step, icon: Icon, tile, title, text }: { step: number; icon: LucideIcon; tile: Tile; title: string; text: string }) {
   return (
-    <div className="rounded-[14px] border border-border bg-sunken p-4">
-      <p className="text-base font-semibold text-textDark">{title}</p>
-      <p className="mt-1 text-sm text-textMuted">{text}</p>
-    </div>
+    <m.li
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.35, delay: 0.1 + step * 0.08 }}
+      className={`flex items-start gap-3 rounded-[16px] p-4 ${tile}`}
+    >
+      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-mb-card/85 text-mb-ink shadow-mb-card">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+        <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-mb-ink text-[11px] font-semibold text-mb-bg">{step}</span>
+      </span>
+      <div className="min-w-0">
+        <p className="font-mb-display text-base font-medium tracking-[-0.01em] text-mb-ink">{title}</p>
+        <p className="mt-0.5 text-sm text-mb-ink/70">{text}</p>
+      </div>
+    </m.li>
   );
 }

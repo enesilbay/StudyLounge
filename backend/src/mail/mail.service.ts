@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as Sentry from '@sentry/nestjs';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { codeMailHtml } from './mail-template';
 
 const SMTP_TIMEOUT_MS = 10_000;
 const HTTP_TIMEOUT_MS = 10_000;
@@ -169,25 +170,13 @@ export class MailService implements OnModuleInit {
   }
 
   async sendVerificationEmail(email: string, token: string) {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #E8EAF6; border-radius: 16px; background-color: #ffffff;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #1A237E; margin: 0; font-size: 26px; font-weight: 800;">StudyLounge</h1>
-          <p style="color: #6B7280; font-size: 14px; margin-top: 4px;">Ayrı Masalarda, Aynı Lobide.</p>
-        </div>
-        <div style="padding: 20px; background-color: #F8FAFC; border-radius: 12px; text-align: center;">
-          <p style="color: #1F2937; font-size: 15px; margin-bottom: 16px;">Hoş geldin! Hesabını aktifleştirmek için aşağıdaki 6 haneli doğrulama kodunu uygulamaya girin:</p>
-          <div style="display: inline-block; padding: 14px 28px; background: #1A237E; border-radius: 10px; margin: 10px 0;">
-            <span style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #FFC107;">
-              ${token}
-            </span>
-          </div>
-          <p style="color: #6B7280; font-size: 12px; margin-top: 16px;">Bu kod hesabınızı güvenceye almak içindir. Kimseyle paylaşmayın.</p>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #E5E7EB; margin: 24px 0;">
-        <p style="font-size: 12px; color: #9CA3AF; text-align: center; margin: 0;">StudyLounge Ekibi</p>
-      </div>
-    `;
+    const html = codeMailHtml({
+      preheader: `Doğrulama kodun: ${token}`,
+      title: 'Hoş geldin!',
+      intro: 'Hesabını etkinleştirmek için aşağıdaki 6 haneli doğrulama kodunu uygulamaya gir.',
+      code: token,
+      note: 'Bu kod hesabını güvende tutmak içindir. Kimseyle paylaşma.',
+    });
     return this.sendMailWithFallback(
       email,
       'StudyLounge - E-posta Doğrulama Kodu',
@@ -197,38 +186,24 @@ export class MailService implements OnModuleInit {
   }
 
   async sendResetPasswordEmail(email: string, token: string) {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #1A237E; text-align: center;">StudyLounge</h2>
-        <p>Merhaba,</p>
-        <p>Hesabınız için bir şifre sıfırlama isteği aldık. Şifrenizi sıfırlamak için aşağıdaki 6 haneli kodu uygulamaya girin:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #FFC107; background: #f9f9f9; padding: 10px 20px; border-radius: 5px; border: 1px dashed #1A237E;">
-            ${token}
-          </span>
-        </div>
-        <p>Bu kod 1 saat boyunca geçerlidir. Eğer bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 12px; color: #999; text-align: center;">StudyLounge Ekibi</p>
-      </div>
-    `;
+    const html = codeMailHtml({
+      preheader: `Şifre sıfırlama kodun: ${token}`,
+      title: 'Şifreni sıfırla',
+      intro: 'Hesabın için bir şifre sıfırlama isteği aldık. Devam etmek için aşağıdaki 6 haneli kodu uygulamaya gir.',
+      code: token,
+      note: 'Bu kod 1 saat geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.',
+    });
     return this.sendMailWithFallback(email, 'Şifre Sıfırlama İsteği', html, token);
   }
 
   async sendPasswordChangeCodeEmail(email: string, token: string) {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #1A237E; text-align: center;">StudyLounge</h2>
-        <p>Merhaba,</p>
-        <p>Profil ayarlarınızdan şifre değiştirme talebinde bulundunuz. Onaylamak için aşağıdaki 6 haneli kodu kullanın:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #FFC107; background: #f9f9f9; padding: 10px 20px; border-radius: 5px; border: 1px dashed #1A237E;">
-            ${token}
-          </span>
-        </div>
-        <p>Bu kod 15 dakika geçerlidir.</p>
-      </div>
-    `;
+    const html = codeMailHtml({
+      preheader: `Şifre değişikliği kodun: ${token}`,
+      title: 'Şifre değişikliğini onayla',
+      intro: 'Profil ayarlarından şifre değiştirme talebinde bulundun. Onaylamak için aşağıdaki 6 haneli kodu gir.',
+      code: token,
+      note: 'Bu kod 15 dakika geçerlidir. Bu isteği sen yapmadıysan şifreni hemen değiştir.',
+    });
     return this.sendMailWithFallback(
       email,
       'Şifre Değişikliği Doğrulama Kodu',

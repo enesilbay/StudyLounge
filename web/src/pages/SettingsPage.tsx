@@ -4,11 +4,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Ban, Bell, Crown, KeyRound, LogOut, ShieldAlert, Trash2, UserRound } from 'lucide-react';
 import { Avatar, Button, ModalShell, Notice, TextField, Toggle } from '../components/ui';
 import { AppPage, Card, Rise, actionButton, inputClass, outlineButton } from '../components/app/Kit';
+import type { Tile } from '../components/app/Kit';
 import { browserNotificationPermission, requestBrowserNotifications } from '../lib/browserNotify';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
 import type { User } from '../lib/types';
+
+/** Her bölümün kendi pastel tonu: menüde, kart başlığında ve kart üstündeki ışıltıda aynı ton kullanılır. */
+const SECTION_TONE: Record<string, { tile: Tile; wash: string }> = {
+  hesap: { tile: 'bg-mb-tile-1', wash: 'from-mb-tile-1/60' },
+  guvenlik: { tile: 'bg-mb-tile-2', wash: 'from-mb-tile-2/60' },
+  bildirimler: { tile: 'bg-mb-tile-5', wash: 'from-mb-tile-5/60' },
+  engellenenler: { tile: 'bg-mb-tile-4', wash: 'from-mb-tile-4/60' },
+};
 
 const sections = [
   { id: 'hesap', label: 'Hesap', icon: UserRound },
@@ -32,9 +41,9 @@ function Field({ label, type = 'text', value, onChange, required = false, helper
 function Section({ id, icon: Icon, title, description, delay, children, danger = false }: { id: string; icon: typeof UserRound; title: string; description?: string; delay: number; children: ReactNode; danger?: boolean }) {
   return (
     <Rise delay={delay} as="section">
-      <Card className="scroll-mt-24 p-5 md:p-6">
+      <Card className={`scroll-mt-24 overflow-hidden bg-gradient-to-br to-mb-card to-45% p-5 md:p-6 ${danger ? 'from-softDanger' : (SECTION_TONE[id]?.wash ?? 'from-mb-tint')}`}>
         <div id={id} className="flex items-start gap-3">
-          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] ${danger ? 'bg-softDanger text-danger' : 'bg-mb-tint text-mb-action'}`}>
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-mb-card ${danger ? 'bg-softDanger text-danger' : `${SECTION_TONE[id]?.tile ?? 'bg-mb-tint'} text-mb-ink`}`}>
             <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
           </span>
           <div className="min-w-0">
@@ -115,8 +124,10 @@ export default function SettingsPage() {
         <Rise as="div" className="hidden lg:block">
           <nav aria-label="Ayar bölümleri" className="sticky top-24 space-y-1">
             {sections.map((section) => (
-              <a key={section.id} href={`#${section.id}`} className="flex min-h-10 items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium text-mb-body transition hover:bg-mb-surface hover:text-mb-ink">
-                <section.icon className="h-4 w-4" aria-hidden="true" />
+              <a key={section.id} href={`#${section.id}`} className="group flex min-h-11 items-center gap-2.5 rounded-[12px] px-2 text-sm font-medium text-mb-body transition hover:bg-mb-surface hover:text-mb-ink">
+                <span className={`grid h-8 w-8 place-items-center rounded-[10px] text-mb-ink transition-transform group-hover:scale-110 group-hover:-rotate-6 ${SECTION_TONE[section.id]?.tile ?? 'bg-softDanger text-danger'}`}>
+                  <section.icon className="h-4 w-4" aria-hidden="true" />
+                </span>
                 {section.label}
               </a>
             ))}
@@ -129,7 +140,7 @@ export default function SettingsPage() {
 
           <form onSubmit={saveProfile} className="space-y-4">
             <Section id="hesap" icon={UserRound} title="Hesap" description="Adın, kullanıcı adın ve e-postan." delay={0.05}>
-              <div className="mb-5 flex items-center gap-3 rounded-[14px] bg-mb-surface p-3">
+              <div className="mb-5 flex items-center gap-3 rounded-[14px] bg-mb-card/80 p-3 shadow-mb-card">
                 <Avatar name={user.fullName} image={user.avatarUrl} frame={user.equippedProfileFrame} premium={user.isPremium} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-mb-ink">{editName || user.fullName}</p>

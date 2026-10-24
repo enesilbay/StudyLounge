@@ -309,7 +309,7 @@ function focusablesIn(root: HTMLElement) {
   return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest('[hidden], [inert]'));
 }
 
-export function ModalShell({ open, title, description, children, onClose }: { open: boolean; title: string; description?: string; children: ReactNode; onClose: () => void }) {
+export function ModalShell({ open, title, description, children, footer, wide = false, onClose }: { open: boolean; title: string; description?: string; children: ReactNode; /** Gövde kaysa da altta sabit duran düğme alanı. */ footer?: ReactNode; wide?: boolean; onClose: () => void }) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -395,9 +395,10 @@ export function ModalShell({ open, title, description, children, onClose }: { op
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/55 backdrop-blur-[2px]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="flex min-h-full items-center justify-center p-4 py-10" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-        <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-full max-w-lg rounded-[16px] border border-mb-line/70 bg-mb-card p-6 shadow-mb-raised outline-none">
-          <div className="mb-5 flex items-start justify-between gap-4">
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+        {/* Pencere ekrana sığar; uzun içerik gövdede kayar, başlık ve alt çubuk (düğmeler) yerinde kalır. */}
+        <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className={`flex max-h-[calc(100dvh-1.5rem)] w-full flex-col rounded-[16px] border border-mb-line/70 bg-mb-card shadow-mb-raised outline-none sm:max-h-[calc(100dvh-2rem)] ${wide ? 'max-w-2xl' : 'max-w-lg'}`}>
+          <div className="flex shrink-0 items-start justify-between gap-4 px-6 pb-4 pt-6">
             <div>
               <h2 id={titleId} className="text-2xl text-mb-ink">{title}</h2>
               {description ? <p className="mt-1 text-base text-mb-body">{description}</p> : null}
@@ -406,7 +407,8 @@ export function ModalShell({ open, title, description, children, onClose }: { op
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div ref={bodyRef}>{children}</div>
+          <div ref={bodyRef} className={`min-h-0 flex-1 overflow-y-auto px-6 ${footer ? 'pb-4' : 'pb-6'}`}>{children}</div>
+          {footer ? <div className="flex shrink-0 justify-end gap-2 border-t border-mb-line px-6 py-4">{footer}</div> : null}
         </div>
       </div>
     </div>,
