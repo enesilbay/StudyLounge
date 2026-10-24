@@ -29,14 +29,15 @@ export const inputClass =
 export function AppPage({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <div>
-      <Rise as="header" className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-mb-display text-[2rem] font-light leading-tight tracking-[-0.04em] text-mb-ink md:text-[2.25rem]">{title}</h1>
-          {description ? <p className="mt-1 max-w-2xl text-[15px] text-mb-body">{description}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </Rise>
-      <div className="mt-6">{children}</div>
+      {/* Görünen sayfa başlığı üst çubukta (AppLayout); burada yalnızca ekran okuyucu için. */}
+      <h1 className="sr-only">{title}</h1>
+      {description || actions ? (
+        <Rise as="header" className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">{description ? <p className="max-w-2xl text-[15px] text-mb-body">{description}</p> : null}</div>
+          {actions ? <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div> : null}
+        </Rise>
+      ) : null}
+      <div>{children}</div>
     </div>
   );
 }
