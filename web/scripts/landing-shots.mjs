@@ -1,7 +1,7 @@
 /*
  * Açılış sayfasının oda görsellerini gerçek uygulamadan yeniden çeker.
  *
- *   backend: npm run seed && npm run start:dev
+ *   backend: npm run seed && npm run seed:canli && npm run start:dev
  *   web:     npm run dev            (http://localhost:5173)
  *   sonra:   node scripts/landing-shots.mjs
  *
@@ -224,6 +224,18 @@ async function main() {
   });
   const page = await context.newPage();
   page.on('pageerror', (error) => console.error('Sayfa hatası:', error.message));
+
+  // 0. Odalar sayfası (Nasıl çalışır, 1. adım): arama ve oda panosu. `seed:canli` verisi varsa oda listesi dolu görünür.
+  await page.goto(`${WEB}/app/lobbies`);
+  await page.getByRole('heading', { name: 'Odalar', level: 1 }).waitFor();
+  await page.locator('#oda-listesi article, #oda-listesi li').first().waitFor();
+  await sleep(1200);
+  await page.mouse.move(VIEWPORT.width / 2, 4);
+  const header = await page.getByRole('heading', { name: 'Odalar', level: 1 }).boundingBox();
+  const listTop = await page.locator('#oda-listesi').boundingBox();
+  const lobbyClip = { x: Math.max(0, header.x - 20), y: Math.max(0, header.y - 14), width: Math.min(VIEWPORT.width - header.x + 20, 1060), height: Math.min(VIEWPORT.height - header.y + 14, listTop.y - header.y + 360) };
+  await saveWebp(helper, await page.screenshot({ clip: lobbyClip }), 'oda-kategoriler', 1200);
+
   await page.goto(`${WEB}/app/focus/${lobby.id}`);
   await page.getByRole('main', { name: 'Odadakiler' }).locator('article').nth(5).waitFor();
 

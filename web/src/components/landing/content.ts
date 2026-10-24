@@ -176,5 +176,6 @@ export const closing = {
 };
 
 export const footer = {
-  credit: (year: number) => `Enes İlbay tarafından mezuniyet projesi olarak geliştirildi, ${year}.`,
+  author: 'Enes İlbay',
+  credit: 'tarafından geliştirildi',
 };
