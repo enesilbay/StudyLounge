@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m } from 'framer-motion';
-import { ArrowLeft, Check, DoorOpen, Flag, Hand, MessageCircle, MessagesSquare, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, DoorOpen, Flag, Hand, MessageCircle, MessagesSquare, Radio, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
 import { Avatar, Notice, ModalShell } from '../components/ui';
-import { AppPage, Card, EmptyState, SegmentedTabs, actionButton, ghostButton, inputClass, solidButton } from '../components/app/Kit';
+import { AppPage, Card, CountUp, EmptyState, SegmentedTabs, TileStat, actionButton, ghostButton, inputClass, solidButton } from '../components/app/Kit';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
@@ -180,7 +180,20 @@ export default function DMPage() {
         </button>
       }
     >
-      <div className="grid h-[calc(100dvh-15rem)] min-h-[30rem] grid-cols-1 gap-4 lg:h-[calc(100dvh-12rem)] lg:grid-cols-[22rem_minmax(0,1fr)]">
+      {/* ── Özet kutuları (telefonda sohbet açıkken gizli) ── */}
+      <dl className={`mb-4 grid grid-cols-3 gap-3 ${mobileChatOpen ? 'hidden lg:grid' : ''}`}>
+        <TileStat index={0} tile="bg-mb-tile-1" icon={Users} label="Arkadaş">
+          <CountUp value={friends.length} />
+        </TileStat>
+        <TileStat index={1} tile="bg-mb-tile-2" icon={Radio} label="Çevrim içi">
+          <CountUp value={onlineFriends.length} />
+        </TileStat>
+        <TileStat index={2} tile="bg-mb-tile-5" icon={DoorOpen} label="Odada">
+          <CountUp value={onlineFriends.filter((friend) => friend.currentRoom).length} />
+        </TileStat>
+      </dl>
+
+      <div className="grid h-[calc(100dvh-20rem)] min-h-[30rem] grid-cols-1 gap-4 lg:h-[calc(100dvh-19rem)] lg:grid-cols-[22rem_minmax(0,1fr)]">
         {/* ── Liste ── */}
         <Card className={`flex min-h-0 flex-col overflow-hidden ${mobileChatOpen ? 'hidden lg:flex' : 'flex'}`}>
           <div className="space-y-3 p-4">
@@ -330,7 +343,7 @@ export default function DMPage() {
         <Card className={`min-h-0 flex-col overflow-hidden ${mobileChatOpen ? 'flex' : 'hidden lg:flex'}`}>
           {activeFriend ? (
             <>
-              <div className="flex items-center gap-3 border-b border-mb-line px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-mb-line bg-mb-tile-1/60 px-4 py-3">
                 <button type="button" onClick={() => setMobileChatOpen(false)} aria-label="Arkadaş listesine dön" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-mb-body hover:bg-mb-surface lg:hidden">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
@@ -432,8 +445,23 @@ export default function DMPage() {
       </div>
 
       <ModalShell open={addFriendOpen} title="Arkadaş ekle" description="Adını ya da kullanıcı adını yaz, profiline gidip istek gönder." onClose={() => setAddFriendOpen(false)}>
-        <div className="min-h-64">
+        <div className="min-h-[22rem] space-y-4">
           <UserSearch placeholder="Ad ya da kullanıcı adı" onPick={() => setAddFriendOpen(false)} />
+          <ol className="grid gap-2 sm:grid-cols-3" aria-label="Nasıl çalışır">
+            {[
+              { icon: Search, tile: 'bg-mb-tile-2', title: 'Ara', text: 'Ad ya da kullanıcı adı yaz.' },
+              { icon: UserPlus, tile: 'bg-mb-tile-1', title: 'İstek gönder', text: 'Profiline gidip ekle.' },
+              { icon: MessageCircle, tile: 'bg-mb-tile-5', title: 'Birlikte çalış', text: 'Kabul edince sohbet başlar.' },
+            ].map((step, index) => (
+              <li key={step.title} className={`rounded-[14px] p-3 ${step.tile}`}>
+                <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/85 text-mb-ink">
+                  <step.icon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <p className="mt-2 text-sm font-medium text-mb-ink">{index + 1}. {step.title}</p>
+                <p className="text-[13px] leading-snug text-mb-ink/70">{step.text}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </ModalShell>
 

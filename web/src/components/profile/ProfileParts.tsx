@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { m } from 'framer-motion';
-import { Crown, GraduationCap, Medal, Sprout, Target } from 'lucide-react';
+import { Crown, GraduationCap, Lock, Medal, Sprout, Target } from 'lucide-react';
 import { Avatar } from '../ui';
 import { CountUp, TileStat } from '../app/Kit';
 import type { Tile } from '../app/Kit';
@@ -91,24 +91,32 @@ export function StatGrid({
   );
 }
 
-const BADGE_TILES: Tile[] = ['bg-mb-tile-1', 'bg-mb-tile-2', 'bg-mb-tile-3', 'bg-mb-tile-4', 'bg-mb-tile-5', 'bg-mb-tile-6', 'bg-mb-tile-7', 'bg-mb-tile-8'];
-
-/** Rozetin rengi adından hesaplanır; aynı rozet her profilde aynı renktedir. */
-function badgeTile(name: string): Tile {
-  let hash = 0;
-  for (const char of name) hash = (hash * 31 + char.codePointAt(0)!) >>> 0;
-  return BADGE_TILES[hash % BADGE_TILES.length];
-}
+/**
+ * Rozet renkleri: zemin (pastel) ve köşedeki ışıltı.
+ * Renk katalogdaki sıraya göre verilir; yan yana iki rozet hiçbir zaman aynı renkte olmaz.
+ */
+const BADGE_TONES: Array<{ tile: Tile; glow: string }> = [
+  { tile: 'bg-mb-tile-5', glow: 'bg-mb-lamp' },
+  { tile: 'bg-mb-tile-6', glow: 'bg-mb-tile-3' },
+  { tile: 'bg-mb-tile-2', glow: 'bg-mb-tile-4' },
+  { tile: 'bg-mb-tile-1', glow: 'bg-mb-tile-7' },
+  { tile: 'bg-mb-tile-4', glow: 'bg-mb-tile-6' },
+  { tile: 'bg-mb-tile-3', glow: 'bg-mb-tile-5' },
+  { tile: 'bg-mb-tile-7', glow: 'bg-mb-tile-2' },
+  { tile: 'bg-mb-tile-8', glow: 'bg-mb-tile-1' },
+];
 
 /** Rozet ızgarası: kazanılanlar kendi renginde, kazanılmayanlar kesik çizgili ve soluk. */
 export function BadgeGrid({ catalog, earned }: { catalog: BadgeDefinition[]; earned: string[] }) {
   const has = new Set(earned);
   // Katalogda olmayan eski rozetler de gösterilir.
   const list = [...catalog, ...earned.filter((name) => !catalog.some((badge) => badge.name === name)).map((name) => ({ name, description: '', icon: '' }))];
-  const sorted = [...list].sort((a, b) => Number(has.has(b.name)) - Number(has.has(a.name)));
+  // Renk katalog sırasına bağlıdır (kazanılma durumuna değil); sıralama sonra yapılır.
+  const toned = list.map((badge, position) => ({ badge, tone: BADGE_TONES[position % BADGE_TONES.length] }));
+  const sorted = [...toned].sort((a, b) => Number(has.has(b.badge.name)) - Number(has.has(a.badge.name)));
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {sorted.map((badge, index) => {
+      {sorted.map(({ badge, tone }, index) => {
         const won = has.has(badge.name);
         const Icon = badgeIcon(badge.icon);
         return (
@@ -116,16 +124,25 @@ export function BadgeGrid({ catalog, earned }: { catalog: BadgeDefinition[]; ear
             key={badge.name}
             initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            whileHover={won ? { y: -3 } : undefined}
+            whileHover={won ? { y: -4, rotate: -0.6 } : undefined}
             transition={{ duration: 0.4, delay: Math.min(index, 12) * 0.04, ease: [0.16, 1, 0.3, 1] }}
-            className={`group flex items-start gap-3 rounded-[16px] p-4 ${won ? `${badgeTile(badge.name)} shadow-mb-card` : 'border border-dashed border-mb-line bg-transparent opacity-60'}`}
+            className={`group relative flex items-start gap-3 overflow-hidden rounded-[18px] p-4 ${won ? `${tone.tile} shadow-mb-card transition-shadow hover:shadow-mb-raised` : 'border border-dashed border-mb-line bg-mb-surface/50'}`}
           >
-            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-[14px] transition-transform ${won ? 'bg-mb-card/85 text-mb-ink shadow-mb-card group-hover:-rotate-6 group-hover:scale-110' : 'bg-mb-surface text-mb-body'}`}>
-              <Icon className="h-5 w-5" aria-hidden="true" />
+            {won ? (
+              <>
+                {/* Köşede yumuşak ışıltı ve dev, soluk ikon: kutuyu düz bırakmaz */}
+                <span aria-hidden="true" className={`pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-70 blur-2xl ${tone.glow}`} />
+                <Icon aria-hidden="true" className="pointer-events-none absolute -bottom-4 -right-3 h-24 w-24 -rotate-12 text-mb-ink/[0.06] transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110" />
+                {/* Parlama şeridi: üzerine gelince geçer */}
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/4 -skew-x-12 bg-mb-card/50 opacity-0 blur-md transition-all duration-700 group-hover:left-[110%] group-hover:opacity-100" />
+              </>
+            ) : null}
+            <span className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-full transition-transform ${won ? 'bg-mb-card text-mb-ink shadow-mb-card ring-4 ring-mb-card/50 group-hover:-rotate-12 group-hover:scale-110' : 'bg-mb-surface text-mb-body/60'}`}>
+              {won ? <Icon className="h-5 w-5" aria-hidden="true" /> : <Lock className="h-4 w-4" aria-hidden="true" />}
             </span>
-            <div className="min-w-0">
-              <p className="text-[15px] font-medium text-mb-ink">{badge.name}</p>
-              {badge.description ? <p className={`mt-0.5 text-[13px] leading-snug ${won ? 'text-mb-ink/70' : 'text-mb-body'}`}>{badge.description}</p> : null}
+            <div className="relative min-w-0">
+              <p className={`font-mb-display text-[15px] font-medium tracking-[-0.01em] ${won ? 'text-mb-ink' : 'text-mb-body'}`}>{badge.name}</p>
+              {badge.description ? <p className={`mt-0.5 text-[13px] leading-snug ${won ? 'text-mb-ink/70' : 'text-mb-body/80'}`}>{badge.description}</p> : null}
               <span className="sr-only">{won ? 'Kazanıldı' : 'Henüz kazanılmadı'}</span>
             </div>
           </m.li>

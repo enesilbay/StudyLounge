@@ -177,7 +177,7 @@ export default function LobbiesPage() {
     <MotionConfig reducedMotion="user">
     <div>
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-mb-display text-[2rem] font-light leading-tight tracking-[-0.04em] text-mb-ink md:text-[2.25rem]">Odalar</h1>
+        <h1 className="font-mb-display text-[1.5rem] font-light leading-tight tracking-[-0.03em] text-mb-ink md:text-[1.75rem]">Odalar</h1>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={openCreate} className={user?.isPremium ? darkButton : outlineButton}>
             {user?.isPremium ? <Plus className="h-4 w-4" /> : <Crown className="h-4 w-4 text-mb-action" />}
@@ -194,7 +194,7 @@ export default function LobbiesPage() {
 
 
       {/* Görünüm sekmeleri */}
-      <div className="mt-6 flex items-end justify-between gap-4 border-b border-mb-line">
+      <div className="mt-4 flex items-end justify-between gap-4 border-b border-mb-line">
         <div role="tablist" aria-label="Oda görünümü" className="flex gap-1">
           {views.map((option) => (
             <button
@@ -253,9 +253,9 @@ export default function LobbiesPage() {
               const shown = open ? rooms : rooms.slice(0, COLUMN_LIMIT);
               const hiddenCount = rooms.length - shown.length;
               return (
-                <section key={column.kind} aria-labelledby={`sutun-${column.kind}`} className="flex w-[85%] shrink-0 snap-start flex-col rounded-[18px] bg-mb-band/70 p-2.5 sm:w-[60%] md:w-auto">
+                <section key={column.kind} aria-labelledby={`sutun-${column.kind}`} className={`flex w-[85%] shrink-0 snap-start flex-col rounded-[18px] p-2.5 sm:w-[60%] md:w-auto ${KIND_TILE[column.kind].wash}`}>
                   <header className="flex items-center gap-2.5 px-1.5 pb-3 pt-1">
-                    <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-mb-card text-mb-body shadow-mb-card">
+                    <span className={`grid h-7 w-7 place-items-center rounded-[8px] text-mb-ink shadow-mb-card ${KIND_TILE[column.kind].tile}`}>
                       <column.icon className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <h2 id={`sutun-${column.kind}`} className="font-mb-display text-[15px] font-medium tracking-[-0.01em] text-mb-ink">{column.title}</h2>
@@ -312,14 +312,28 @@ export default function LobbiesPage() {
         ) : null}
       </section>
 
-      <ModalShell open={createOpen} title="Yeni çalışma odası" description="Oda 24 saat açık kalır." onClose={() => setCreateOpen(false)}>
-        <form onSubmit={createLobby} className="space-y-4">
-          <TextField label="Oda adı" value={newName} onChange={setNewName} required placeholder="Örn. Final haftası, sessiz" />
-          <div>
-            <label htmlFor="room-category" className="mb-1.5 block text-sm font-semibold text-textDark">Kategori</label>
-            <select id="room-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="min-h-11 w-full rounded-lg border border-border bg-sunken px-3 text-base text-textDark outline-none focus:border-primary">
-              {roomCategories.map((category) => <option key={category}>{category}</option>)}
-            </select>
+      <ModalShell
+        open={createOpen}
+        wide
+        title="Yeni çalışma odası"
+        description="Oda 24 saat açık kalır."
+        onClose={() => setCreateOpen(false)}
+        footer={
+          <>
+            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Vazgeç</Button>
+            <Button type="submit" form="create-room-form" loading={creating}>Odayı kur</Button>
+          </>
+        }
+      >
+        <form id="create-room-form" onSubmit={createLobby} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField label="Oda adı" value={newName} onChange={setNewName} required placeholder="Örn. Final haftası, sessiz" />
+            <div>
+              <label htmlFor="room-category" className="mb-1.5 block text-sm font-semibold text-textDark">Kategori</label>
+              <select id="room-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="min-h-11 w-full rounded-lg border border-border bg-sunken px-3 text-base text-textDark outline-none focus:border-primary">
+                {roomCategories.map((category) => <option key={category}>{category}</option>)}
+              </select>
+            </div>
           </div>
           <TextField label="Açıklama" value={newDesc} onChange={setNewDesc} multiline placeholder="Ne çalışılıyor, oda kuralları neler?" />
 
@@ -334,10 +348,6 @@ export default function LobbiesPage() {
           {isPrivate ? <TextField label="Oda şifresi" value={roomPassword} onChange={setRoomPassword} type="password" required /> : null}
 
           {formError ? <Notice tone="danger">{formError}</Notice> : null}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Vazgeç</Button>
-            <Button type="submit" loading={creating}>Odayı kur</Button>
-          </div>
         </form>
       </ModalShell>
 
@@ -377,6 +387,14 @@ function roomKind(lobby: Lobby): RoomKind {
   return 'open';
 }
 
+/** Oda türüne göre pastel ton: sütun zemini, ikon rozeti ve kategori etiketi (mb-tile-* token'ları). */
+const KIND_TILE: Record<RoomKind, { tile: string; wash: string }> = {
+  open: { tile: 'bg-mb-tile-2', wash: 'bg-mb-tile-2/35' },
+  video: { tile: 'bg-mb-tile-4', wash: 'bg-mb-tile-4/35' },
+  elite: { tile: 'bg-mb-tile-5', wash: 'bg-mb-tile-5/35' },
+  private: { tile: 'bg-mb-tile-6', wash: 'bg-mb-tile-6/35' },
+};
+
 const views: Array<{ value: 'board' | 'list'; label: string; icon: LucideIcon }> = [
   { value: 'board', label: 'Pano', icon: Columns3 },
   { value: 'list', label: 'Liste', icon: List },
@@ -392,8 +410,8 @@ function readView(): 'board' | 'list' {
   }
 }
 
-const darkButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] bg-mb-solid px-4 text-[15px] font-medium text-mb-on-solid shadow-mb-raised transition hover:-translate-y-0.5 active:translate-y-0';
-const outlineButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] border border-mb-line bg-mb-card px-4 text-[15px] font-medium text-mb-ink transition hover:bg-mb-surface';
+const darkButton = 'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[10px] bg-mb-solid px-3.5 text-sm font-medium text-mb-on-solid shadow-mb-raised transition hover:-translate-y-0.5 active:translate-y-0';
+const outlineButton = 'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[10px] border border-mb-line bg-mb-card px-3.5 text-sm font-medium text-mb-ink transition hover:bg-mb-surface';
 
 type RoomProps = { lobby: Lobby; friends: FriendPresence[]; isPremium: boolean; onEnter: (lobby: Lobby) => void };
 
@@ -413,10 +431,11 @@ function useRoomInfo({ lobby, friends, isPremium }: Omit<RoomProps, 'onEnter'>) 
 
 /** Karttaki küçük etiketler: kategori + sütun dışındaki türler. */
 function RoomTags({ lobby, kind }: { lobby: Lobby; kind?: RoomKind }) {
-  const tag = 'inline-flex items-center gap-1 rounded-[8px] bg-mb-surface px-2.5 py-1 text-[13px] font-medium text-mb-body';
+  const base = 'inline-flex items-center gap-1 rounded-[8px] px-2.5 py-1 text-[13px] font-medium';
+  const tag = `${base} bg-mb-surface text-mb-body`;
   return (
     <div className="flex flex-wrap gap-1.5">
-      <span className={tag}>{lobby.category ?? 'Genel'}</span>
+      <span className={`${base} text-mb-ink ${KIND_TILE[kind ?? roomKind(lobby)].tile}`}>{lobby.category ?? 'Genel'}</span>
       {lobby.allowVideo && kind !== 'video' ? (
         <span className={tag}>
           <Video className="h-3.5 w-3.5" aria-hidden="true" />
@@ -583,7 +602,7 @@ function LampRow({ total, lit }: { total: number; lit: number }) {
 function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: number; lit: number; ready: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <section aria-label="Şu an odalarda" className="relative mt-6 overflow-hidden rounded-[24px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
+    <section aria-label="Şu an odalarda" className="relative mt-3 overflow-hidden rounded-[18px] bg-mb-solid text-mb-on-solid shadow-mb-raised">
       {/* Lamba ışığı: yanan lamba varsa daha güçlü, yavaşça nefes alır */}
       <m.div
         aria-hidden="true"
@@ -594,8 +613,8 @@ function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: numb
         transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <div className="relative flex items-center justify-between gap-4 px-5 py-6 md:px-8 md:py-7">
-        <dl className="grid grid-cols-3 gap-4 sm:gap-10">
+      <div className="relative flex items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-3.5">
+        <dl className="grid grid-cols-3 gap-4 sm:gap-8">
           <Stat value={rooms} label="oda açık" ready={ready} />
           <Stat value={people} label="kişi masada" ready={ready} />
           <Stat value={lit} label="lamba yanıyor" ready={ready} lamp />
@@ -605,7 +624,7 @@ function LiveBanner({ rooms, people, lit, ready }: { rooms: number; people: numb
           alt=""
           aria-hidden="true"
           draggable={false}
-          className="pointer-events-none relative -my-4 hidden w-28 shrink-0 select-none drop-shadow-[0_18px_30px_rgb(0_0_0/0.35)] sm:block md:w-36"
+          className="pointer-events-none relative -my-3 hidden w-16 shrink-0 select-none drop-shadow-[0_12px_20px_rgb(0_0_0/0.35)] sm:block md:w-20"
           animate={{ y: [0, -8, 0], rotate: [-3, -1, -3] }}
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -625,11 +644,11 @@ function Stat({ value, label, ready, lamp = false }: { value: number; label: str
   return (
     // Etiket telefonda iki satıra kırılabilir; sayılar yine de alt çizgide hizalı kalır.
     <div className="flex min-w-0 flex-col justify-between">
-      <dt className="flex items-center gap-1.5 text-[13px] leading-snug text-mb-on-solid/70">
+      <dt className="flex items-center gap-1.5 text-xs leading-snug text-mb-on-solid/70">
         {lamp ? <span aria-hidden="true" className={`h-2 w-2 rounded-full ${value > 0 ? 'bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)] motion-safe:animate-[sl-lamba_2.6s_ease-in-out_infinite]' : 'bg-mb-on-solid/30'}`} /> : null}
         {label}
       </dt>
-      <dd className="mt-2 font-mb-display text-[2rem] font-light leading-none tracking-[-0.04em] tabular-nums md:text-[2.75rem]">
+      <dd className="mt-1 font-mb-display text-[1.5rem] font-light leading-none tracking-[-0.03em] tabular-nums md:text-[1.75rem]">
         {ready ? <m.span>{shown}</m.span> : '–'}
       </dd>
     </div>

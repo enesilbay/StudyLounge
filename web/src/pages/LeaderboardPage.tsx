@@ -147,7 +147,7 @@ export default function LeaderboardPage() {
             {podium.length ? <Podium key={key} rows={podium} rewards={period === 'week' ? league?.rewards : undefined} meId={me?.id} /> : null}
 
             {rest.length ? (
-              <Card className="mt-4 overflow-hidden">
+              <Card className="mt-4 overflow-hidden border-t-4 border-t-mb-tile-2">
                 <ol className="divide-y divide-mb-line" start={4}>
                   {rest.map((row, index) => (
                     <RankRow key={`${key}-${row.user.id}`} row={row} leaderMinutes={leaderMinutes} isMe={row.user.id === me?.id} index={index} />
@@ -169,7 +169,7 @@ export default function LeaderboardPage() {
           </div>
 
           <Rise delay={0.2} as="section">
-            <Card className="p-5">
+            <Card className="overflow-hidden bg-gradient-to-br from-mb-tile-5/70 to-mb-card to-50% p-5">
               <IconHeading icon={Crown} tile="bg-mb-tile-5" title="Şampiyonlar" text="Geçen haftaların birincileri" />
               {champions.length === 0 ? (
                 <p className="mt-3 text-sm text-mb-body">İlk hafta bitince birinci burada yazacak. Her pazartesi ilk üç ödül puanı alır.</p>
@@ -344,6 +344,9 @@ function Podium({ rows, rewards, meId }: { rows: Row[]; rewards?: number[]; meId
   );
 }
 
+/** 4. sıradan sonrası için dönüşümlü pastel rozetler. */
+const RANK_CHIPS = ['bg-mb-tile-2', 'bg-mb-tile-1', 'bg-mb-tile-4', 'bg-mb-tile-6', 'bg-mb-tile-7', 'bg-mb-tile-3'];
+
 function RankRow({ row, leaderMinutes, isMe, index }: { row: Row; leaderMinutes: number; isMe: boolean; index: number }) {
   const share = Math.max(2, Math.round((row.minutes / leaderMinutes) * 100));
   return (
@@ -353,8 +356,8 @@ function RankRow({ row, leaderMinutes, isMe, index }: { row: Row; leaderMinutes:
       transition={{ duration: 0.35, delay: 0.4 + Math.min(index, 12) * 0.04, ease: EASE_OUT }}
       className={isMe ? 'bg-mb-tile-1' : ''}
     >
-      <Link to={`/app/u/${row.user.id}`} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition hover:bg-mb-surface/70">
-        <span className={`grid h-8 min-w-8 place-items-center rounded-full px-1.5 text-sm font-medium tabular-nums ${isMe ? 'bg-mb-ink text-mb-bg' : 'bg-mb-surface text-mb-ink'}`}>{row.rank}</span>
+      <Link to={`/app/u/${row.user.id}`} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition hover:translate-x-0.5 hover:bg-mb-tile-1/40">
+        <span className={`grid h-8 min-w-8 place-items-center rounded-full px-1.5 text-sm font-semibold tabular-nums ${isMe ? 'bg-mb-ink text-mb-bg' : `${RANK_CHIPS[row.rank % RANK_CHIPS.length]} text-mb-ink`}`}>{row.rank}</span>
         <span className="flex min-w-0 items-center gap-3">
           <Avatar name={row.user.fullName} image={row.user.avatarUrl} frame={row.user.equippedProfileFrame} premium={row.user.isPremium} size="sm" />
           <span className="min-w-0 flex-1">
