@@ -51,8 +51,8 @@ const problemImages = ['telefon', 'kum-saati', 'bos-sandalye'];
 const featureStrip = ['Ortak sayaç', 'PDF tahtası', 'Kamera isteğe bağlı', 'Haftalık lig', 'Ders analitiği', 'Oda sohbeti', 'Ortam sesleri'];
 
 const stepShots = [
-  { src: '/landing/oda-kategoriler.webp', width: 1200, height: 168, alt: 'Odalar sayfası: oda arama kutusu ve Bilgisayar Bilimi, Tıp ve Sağlık, Hukuk, Sınav Hazırlık gibi konu filtreleri.' },
-  { src: '/landing/oda-odaklan.webp', width: 752, height: 552, alt: 'Oda içindeki sayaç: süre seçenekleri, Odayla başlat seçeneği ve Odaklan düğmesi.' },
+  { src: '/landing/oda-kategoriler.webp', width: 1200, height: 747, alt: 'Odalar sayfası: kaç oda açık, kaç kişi masada ve kaç lamba yanıyor; oda arama kutusu, kategori seçici ve Herkese açık ile Kameralı oda sütunları.' },
+  { src: '/landing/oda-odaklan.webp', width: 752, height: 678, alt: 'Oda içindeki sayaç: süre seçenekleri, kendi odak ve mola süreni yazma alanları, Odaklan ve Odayla düğmeleri.' },
   { src: '/landing/oda-sohbet.webp', width: 704, height: 940, alt: 'Oda sohbeti: Ali, Zeynep, Deniz, Mert ve Selin çalışma odasında mesajlaşıyor.' },
 ];
 
