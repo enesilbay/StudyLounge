@@ -51,7 +51,7 @@ export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft
                 <span className="h-2.5 w-2.5 rounded-full bg-mb-line" />
                 <span className="h-2.5 w-2.5 rounded-full bg-mb-line" />
               </span>
-              <span className="ml-2 min-w-0 flex-1 truncate rounded-full bg-mb-bg px-3 py-1 text-left font-mb-body text-xs text-mb-body md:max-w-sm">StudyLounge · Demo: Sessiz Kütüphane</span>
+              <span className="ml-2 min-w-0 flex-1 truncate rounded-full bg-mb-bg px-3 py-1 text-left font-mb-body text-xs text-mb-body md:max-w-sm">StudyLounge · Sessiz Kütüphane</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 border-b-2 border-lp-ink bg-lp-paper px-3 py-2 md:px-4">
@@ -75,7 +75,7 @@ export function ProductShot({ variant = 'brutal' }: { variant?: 'brutal' | 'soft
               height={1500}
               fetchPriority="high"
               decoding="async"
-              alt="StudyLounge odak odası: altı kişilik Demo: Sessiz Kütüphane odasında Ali, Zeynep, Mert ve Selin odakta; Elif ve Deniz molada. Üstte ortak sayaç 24:50 gösteriyor; altta tahta, ekran ve ses kontrol çubuğu; sağda oda sohbeti açık."
+              alt="StudyLounge odak odası: altı kişilik Sessiz Kütüphane odasında Ali, Zeynep, Mert ve Selin odakta; Elif ve Deniz molada. Üstte ortak sayaç 24:50 gösteriyor; altta tahta, ekran ve ses kontrol çubuğu; sağda oda sohbeti açık."
               className="block h-auto w-full"
             />
             {reduce

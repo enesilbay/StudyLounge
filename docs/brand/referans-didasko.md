@@ -145,11 +145,11 @@ Bu bölüm benim yorumum; karar senin.
 | Giriş + uygulama ekranı | "Ayrı masalarda, aynı lobide." + çalışma odası ekranı (lambalar, ortak sayaç) |
 | Sorun | Evde tek başına çalışmanın zorlukları: dikkat dağılıyor, motivasyon düşüyor, kimse yok |
 | Faydalar (bento) | Ortak Pomodoro, birlikte çizilen PDF tahtası, kamera zorunlu değil, dersler ve hedefler, haftalık lig |
-| Entegrasyonlar | Bizde karşılığı yok. Kaldırılır ya da "telefonda da, web'de de aynı hesap" anlatımına dönüşür. |
+| Entegrasyonlar | Bizde karşılığı yok. Kaldırılır. |
 | Nasıl çalışır (3 adım) | Oda seç ya da kur → lambanı yak → birlikte mola ver |
 | Yorumlar | **Şimdilik yok.** Gerçek kullanıcı yorumumuz yok, uydurulamaz (PRODUCT.md). Beta sonrasında gerçek yorumlarla eklenir. |
 | Fiyatlar (3 kart) | Ücretsiz + Premium (aylık ₺49 / yıllık ₺499) |
-| SSS | Kamera zorunlu mu, verilerim nerede, mobil var mı, Premium neler katıyor |
+| SSS | Kamera zorunlu mu, verilerim nerede, Premium neler katıyor |
 | Bülten | "Kapalı betaya katıl" ya da kaldırılır |
 
 ### Dikkat edilmesi gerekenler
