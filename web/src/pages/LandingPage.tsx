@@ -317,10 +317,9 @@ export default function LandingPage() {
         </main>
 
         <footer className="relative overflow-hidden bg-mb-ink text-mb-bg">
-          <p aria-hidden="true" className="pointer-events-none absolute inset-x-0 -bottom-[0.18em] select-none whitespace-nowrap text-center font-mb-display text-[16.5vw] font-semibold leading-none tracking-[-0.06em] text-mb-bg/[0.07]">
-            <RiseLetters text="StudyLounge" />
-          </p>
-          <MbContainer className="relative py-16">
+          {/* Işık: altbilgiye derinlik verir, içeriğin arkasında kalır */}
+          <span aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-mb-lamp opacity-[0.12] blur-3xl" />
+          <MbContainer className="relative pb-0 pt-16">
             <div className="grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div>
                 <Link to="/" className={`${mbFocus} inline-flex items-center gap-2.5`} aria-label="StudyLounge ana sayfa">
@@ -348,8 +347,15 @@ export default function LandingPage() {
                 </ul>
               </nav>
             </div>
-            <p className="mt-14 border-t border-mb-bg/15 pt-6 text-sm text-mb-bg/70">{footer.credit(new Date().getFullYear())}</p>
+            <div className="mt-14 flex items-center justify-center gap-2.5 border-t border-mb-bg/15 py-6 text-[15px] text-mb-bg/80">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)]" />
+              <p>{footer.credit}</p>
+            </div>
           </MbContainer>
+          {/* Dev yazı artık içeriğin altında akar; üst kısmı görünür, alt kısmı kesilir (üst üste binmez) */}
+          <p aria-hidden="true" className="pointer-events-none relative -mt-[1.2vw] h-[11vw] select-none overflow-hidden whitespace-nowrap text-center font-mb-display text-[16.5vw] font-semibold leading-[0.9] tracking-[-0.06em] text-mb-bg/[0.07]">
+            <RiseLetters text="StudyLounge" />
+          </p>
         </footer>
       </div>
     </LazyMotion>
