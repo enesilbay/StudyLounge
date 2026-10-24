@@ -16,7 +16,7 @@
 
 ## 📌 Proje Hakkında
 
-**StudyLounge**, evde veya kütüphanede tek başına ders çalışırken yaşanan yalnızlık, motivasyon kaybı ve dikkat dağılması sorunlarına yenilikçi bir çözüm sunan **mezuniyet projesi (portfolyo)** çalışmasıdır.
+**StudyLounge**, evde veya kütüphanede tek başına ders çalışırken yaşanan yalnızlık, motivasyon kaybı ve dikkat dağılması sorunlarına yenilikçi bir çözüm sunan bir **sosyal odaklanma platformudur**. Web, mobil ve backend aynı depoda geliştirilir; proje şu an **kapalı beta hazırlığı** aşamasındadır (ödeme akışı yalnızca test/sandbox modunda).
 
 ### 💡 Temel Çözüm ve Felsefe
 Geleneksel sanal çalışma odalarında kamera açma zorunluluğu mahremiyet endişesi yaratmaktadır. StudyLounge iki istemciyle iki farklı çalışma biçimi sunar:
@@ -55,8 +55,10 @@ StudyLounge, öğrenci dostu, odaklanmayı teşvik eden sakin ve modern bir gör
 | Arayüz fontu | `Poppins` | Gövde metni ve arayüz |
 | Biçim | Yuvarlak köşeler (kart 24px, düğme 14px), yumuşak gölgeler | |
 | İmza öğe | Masa lambası | Odaklanan kullanıcının masa kartında lamba yanar |
+| Pastel tonlar | `mb-tile-1…8` | Özet kutuları, rozetler, sol menü ikonları ve oda türleri kendi pastel renginde; yeşil yalnızca ana eylem ve "odakta" içindir |
+| Üst çubuk | Sayfa başlığı + saydam imza | Hangi sayfadaysan başlığı üst çubukta görünür (renkli ikon rozeti, ince Geist); arkada saydam "StudyLounge" yazısı |
 
-Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu renk ve yazı tiplerini kullanır.
+Bütün web sayfaları (açılış, giriş, uygulama ve yönetim paneli) bu renk ve yazı tiplerini kullanır. Yeni sayfalar `web/src/components/app/Kit.tsx` parçalarıyla (`AppPage`, `Card`, `TileStat`, `IconHeading`, `SegmentedTabs`, `EmptyState`) kurulur.
 
 ---
 
@@ -174,7 +176,12 @@ sequenceDiagram
 - **Gerçek Zamanlı İletişim:** WebSockets via Socket.IO
 - **Kimlik Doğrulama:** JWT (JSON Web Tokens) & Passport.js
 - **WebRTC Sinyalleşme:** `RtcService` + Socket.IO event'leri (`rtc_join`, `rtc_signal`, `rtc_media_state`, `rtc_leave`)
-- **Doğrulama & Güvenlik:** Class-Validator (`ValidationPipe` whitelist), JWT korumalı soketler, CORS politikaları
+- **Doğrulama & Güvenlik:** Class-Validator (`ValidationPipe` whitelist), JWT korumalı soketler, CORS politikaları, `helmet`, `@nestjs/throttler` (istek sınırı)
+- **Giriş:** E-posta/kullanıcı adı + şifre, e-posta doğrulama ve Google ile giriş (`google-auth-library`)
+- **E-posta:** Brevo HTTPS API, Resend ya da SMTP (sırayla denenir); marka renkli ortak şablon (`backend/src/mail/mail-template.ts`)
+- **Ödeme:** iyzico ödeme formu (şu an yalnızca sandbox); fiyatlar ve planlar sunucuda (`payments/plans.ts`)
+- **Dosya depolama:** Backblaze B2 (S3 uyumlu, `@aws-sdk/client-s3`); ayarlanmazsa yerel `./uploads`
+- **Hata takibi:** Sentry (`@sentry/nestjs`, yalnızca hata; kişisel veri temizlenir)
 - **Test:** Jest (Unit Tests & E2E Integration Tests)
 
 ### 📱 Mobile (`/mobile`)
@@ -183,22 +190,39 @@ sequenceDiagram
 - **Sensör Entegrasyonu:** `expo-sensors` (`Accelerometer`)
 - **Durum Yönetimi & HTTP:** React Hooks, Axios / Custom Fetch Wrapper
 - **Stil & Arayüz:** Custom Color Tokens (`#1A237E`, `#FFC107`), Custom Components
+- **Durum:** Mobil mevcut haliyle korunur; yeni özellikler web'e gelir (backend değişiklikleri mobili bozmaz: yeni kolonlar varsayılan değerli, yeni socket event'leri isteğe bağlıdır)
 
 ### 💻 Web (`/web`)
 - **Framework:** React 19 + Vite, TypeScript
 - **Stil:** Tailwind CSS v4 (`@theme` token'ları, açık/koyu tema)
 - **Durum Yönetimi:** Zustand (oturum, bildirimler, dersler), React hook'ları
+- **Animasyon ve ikonlar:** framer-motion (`LazyMotion`, "hareketi azalt" desteği), lucide-react
+- **PDF tahtası:** `pdfjs-dist` (yalnızca tahta açılınca yüklenir)
+- **Hata takibi:** `@sentry/react` (yalnızca hata, kaynak haritalı)
 - **PWA:** `vite-plugin-pwa` (ana ekrana eklenebilir, service worker)
 - **Test:** Vitest + Testing Library (birim), Playwright (uçtan uca)
 - **Gerçek Zamanlı:** Socket.IO Client
 - **Görüntülü İletişim:** Tarayıcı WebRTC API'leri (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`), harici kütüphane yok
 - **Barındırma:** Netlify (`web/netlify.toml`)
+- **Açılış sayfası görselleri:** Gerçek uygulamadan, demo hesaplarla `web/scripts/landing-shots.mjs` ile yeniden çekilir (bkz. "Açılış sayfası görselleri")
 
 ### 🐳 DevOps, CI/CD & Cloud Infrastructure
 - **Containerization:** Multi-stage Dockerfile & Docker Compose Orchestration
 - **CI/CD Pipeline:** GitHub Actions (Jest birim/E2E, socket.io gateway testleri, web Vitest + Playwright, typecheck, lint)
-- **Cloud Hosting:** Render Web Service (Automated Docker Deployment)
+- **Cloud Hosting:** Render Web Service (Docker), Netlify (web), Neon (PostgreSQL), Backblaze B2 (dosyalar)
 - **Versiyon Kontrol:** Git & GitHub
+
+### 📁 Klasör Yapısı
+
+```
+StudyLounge/
+├── backend/   NestJS API + Socket.IO gateway (auth, users, lobbies, study, league, payments, admin, rtc, whiteboard…)
+├── web/       React 19 + Vite web uygulaması (açılış, uygulama, yönetim paneli)
+├── mobile/    Expo / React Native uygulaması (sensörle odak takibi)
+├── docs/      Marka rehberi ve tasarım belgeleri
+├── .github/   CI iş akışı (ci.yml)
+└── ROADMAP.md Yol haritası ve proje durumu
+```
 
 ---
 
@@ -231,6 +255,7 @@ sequenceDiagram
 
 7. 📝 **Ortak PDF Tahtası ve Pomodoro (Web):**
    - Odadakiler aynı PDF ya da boş tahta üzerinde birlikte çizer; ortak Pomodoro sayacı herkesi aynı tura sokar.
+   - **Odak ve mola süresini sen belirlersin:** odak 5–120 dk, mola 1–30 dk; hazır 15/25/45/60 dk seçenekleri de var. Seçimin tarayıcıda hatırlanır; mola süresi "Odayla" ortak sayacında uygulanır.
 
 8. 📚 **Ders ve Görevler:**
    - Her odak oturumu ders, oda ve süreyle kaydedilir; analitikte ders dağılımı, 30 günlük takvim ve oturum geçmişi görünür.
@@ -247,6 +272,20 @@ sequenceDiagram
 
 11. 🔔 **Bildirimler (Web):**
     - Her sayfada DM, dürtme, davet ve rozet bildirimleri; sekme arka plandayken tarayıcı bildirimi.
+
+12. 👑 **Premium ve Ödeme:**
+    - Aylık ₺49, yıllık ₺499 (dönemlik satın alma, otomatik yenileme yok); kameralı ve Elite oda kurma, Elite odalarda 2 kat odak puanı.
+    - iyzico güvenli ödeme sayfası (kart bilgisi sunucuya gelmez); ödeme onayı yalnızca sunucudan doğrulanır, aynı ödeme iki kez işlenmez. **Şu an yalnızca sandbox'ta**; canlı tahsilat Faz 6'da.
+
+13. 🛍️ **Mağaza ve Profil:**
+    - Odak puanıyla degrade profil çerçeveleri, profil kapağı, lamba rengi ve sohbet balonu rengi; 10 hazır avatar karakteri ya da fotoğraf yükleme.
+    - Renkli özet kutuları, rütbe merdiveni ve rozet koleksiyonu (herkese açık profilde de).
+
+14. 🧰 **Yönetim Paneli (`/admin`):**
+    - Genel bakış (dönem karşılaştırmalı), kullanıcı yönetimi (arama, filtre, CSV), oda yönetimi, moderasyon (şikayetler, geri bildirimler), duyurular ve değiştirilemez işlem kaydı.
+
+15. 👤 **Hesap:**
+    - E-posta doğrulama, şifre sıfırlama, Google ile giriş, hesabı kalıcı silme ve menüden geri bildirim gönderme.
 
 ---
 
@@ -277,7 +316,7 @@ CMD [ "npm", "run", "start:prod" ]
 ```
 
 ### 2. 🐙 Docker Compose Yapılandırması (`docker-compose.yml`)
-PostgreSQL veritabanı ile backend servisinin bağımlılıkları `healthcheck` mekanizması ile izole edilmiştir. Veritabanı tamamen hazır olmadan backend başlatılmaz:
+Yerel geliştirmede yalnızca PostgreSQL konteyneri çalışır; backend isteğe bağlı bir profildir. Docker'daki backend, veritabanı `healthcheck`'ten geçmeden başlamaz (özet; tam dosya `docker-compose.yml`):
 
 ```yaml
 services:
@@ -289,38 +328,27 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-studylounge_secret}
       POSTGRES_DB: ${DB_NAME:-studylounge}
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-enes_admin} -d ${DB_NAME:-studylounge}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
+  # Yerelde backend `npm run start:dev` ile çalışır; Docker'da çalıştırmak için
+  # `docker compose --profile docker-backend up -d`
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: studylounge_backend
-    ports:
-      - "3000:3000"
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - JWT_SECRET=docker-secret-key-123
+    profiles: ["docker-backend"]
+    build: { context: ./backend, dockerfile: Dockerfile }
     depends_on:
       postgres:
         condition: service_healthy
 ```
 
 ### 3. ⚙️ GitHub Actions CI/CD Pipeline (`.github/workflows/ci.yml`)
-Her `push` ve `pull_request` adımlarında otomatik test ve doğrulama süreçleri tetiklenir:
+Her `push` ve `pull_request` adımlarında otomatik test ve doğrulama süreçleri tetiklenir. Dört iş yeşil olmadan PR birleştirilmez: `backend-test`, `web-verify`, `web-e2e`, `mobile-verify`.
 
-- **Backend Job:** `npm ci` ➔ `npm run build` ➔ Jest birim testleri ➔ E2E testleri (`npm run test:e2e`; REST uçları ve gerçek socket.io bağlantılarıyla gateway testleri).
-- **Web Job:** `npm ci` ➔ ESLint ➔ `npm run build` (tip kontrolü + Vite) ➔ Vitest birim testleri.
-- **Web E2E Job:** Postgres servisi ➔ backend derlenip başlatılır ➔ `npm run seed` ➔ Playwright (Chromium) uçtan uca testleri. Hata olursa rapor artifact olarak saklanır.
-- **Mobile Job:** `npm ci` ➔ TypeScript Tip Kontrolü (`tsc --noEmit`) ➔ ESLint Statik Kod Analizi.
+- **Backend Job (`backend-test`):** `npm ci` ➔ `npm run build` ➔ Jest birim testleri ➔ E2E testleri (`npm run test:e2e`; REST uçları ve gerçek socket.io bağlantılarıyla gateway testleri).
+- **Web Job (`web-verify`):** `npm ci` ➔ ESLint ➔ `npm run build` (tip kontrolü + Vite) ➔ Vitest birim testleri.
+- **Web E2E Job (`web-e2e`):** Postgres servisi ➔ backend derlenip başlatılır ➔ `npm run seed` ➔ Playwright (Chromium) uçtan uca testleri. Hata olursa rapor artifact olarak saklanır.
+- **Mobile Job (`mobile-verify`):** `npm ci` ➔ TypeScript Tip Kontrolü (`tsc --noEmit`) ➔ ESLint Statik Kod Analizi.
 
 ### 4. 🌐 Cloud Deployment (Render Web Service)
 Projenin canlı sunucu dağıtımı **Render** platformu üzerinde Docker runtime kullanılarak gerçekleştirilmiştir:
@@ -422,7 +450,13 @@ Backend hazır olunca `http://localhost:3000/health` 200 döner. İlk açılış
 ```bash
 npm run seed
 ```
-Dört doğrulanmış hesap (`demo_admin`, `demo_elif`, `demo_ali`, `demo_zeynep` @demo.studylounge, şifre `Demo12345!`), odalar, son 14 günün odak geçmişi, dersler, görevler ve bir planlı oturum oluşturur. Yalnızca kendi demo kayıtlarını yeniler; tekrar çalıştırmak güvenlidir.
+Altı doğrulanmış hesap (`demo_admin`, `demo_elif`, `demo_ali`, `demo_zeynep`, `demo_mert`, `demo_selin` @demo.studylounge, şifre `Demo12345!`), odalar, son 14 günün odak geçmişi, dersler, görevler ve bir planlı oturum oluşturur. Yalnızca kendi demo kayıtlarını yeniler; tekrar çalıştırmak güvenlidir.
+
+**Dolu bir arayüz için (yalnızca yerel):**
+```bash
+SEED_ME_EMAIL=senin@epostan npm run seed:canli
+```
+11 oda (herkese açık, kameralı, Elite, şifreli), odalara yerleşmiş ve odakta 60'tan fazla sahte kullanıcı (`canli_01…@demo.studylounge`), bu haftanın odak geçmişi ve rozetler yazar. `SEED_ME_EMAIL` verirsen sahte kullanıcıların bir kısmı seninle arkadaş olur. Üretim veritabanında çalışmaz. `npm run seed` bu kullanıcıları ve odaları temizler. Odadaki kişi sayısı kullanıcıların "çevrim içi" olmasına bağlıdır; odalar boşalırsa betiği yeniden çalıştırın.
 
 > **Port çakışması:** 3000 ya da 5432 başka bir projede kullanılıyorsa `backend/.env`'de `PORT=3100` ve `DB_PORT=5433`, proje kökündeki `.env`'de `DB_PORT=5433`, `web/.env`'de `VITE_BACKEND_URL=http://127.0.0.1:3100` yazın.
 
@@ -472,6 +506,16 @@ cd web && npx playwright install chromium && npm run test:e2e
 ```
 Uçtan uca testler kısa sürede çok giriş yapar. Arka arkaya çalıştırırken giriş sınırına takılırsanız backend'i `THROTTLE_DISABLED=true` ile başlatın (yalnızca üretim dışında etkilidir).
 
+### 🖼️ Açılış sayfası görselleri
+
+Açılış sayfasındaki uygulama görselleri gerçek uygulamadan çekilir; arayüz değişince yenilenmelidir:
+```bash
+# backend: npm run seed && npm run seed:canli && npm run start:dev
+# web:     npm run dev
+cd web && node scripts/landing-shots.mjs
+```
+Betik demo hesaplarla "Demo: Sessiz Kütüphane" odasına girer; Odalar sayfasını, sayaç panelini, ortak sayacı, sohbeti, masaları ve PDF tahtasını çekip `web/public/landing/` altına webp olarak yazar.
+
 ---
 
 ## 👮 Yönetici Hesabı
@@ -498,7 +542,7 @@ Demo verisindeki `demo_admin` hesabı zaten yöneticidir.
 
 - 👤 **Geliştirici:** Enes İlbay
 - 📧 **E-Posta:** enesilbayy@gmail.com
-- 🔗 **LinkedIn:** [https://www.linkedin.com/in/enes-ilbay/]
+- 🔗 **LinkedIn:** [linkedin.com/in/enes-ilbay](https://www.linkedin.com/in/enes-ilbay/)
 - 🐙 **GitHub:** [@enesilbay](https://github.com/enesilbay)
 
 ---
