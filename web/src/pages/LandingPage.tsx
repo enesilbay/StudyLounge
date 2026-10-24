@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Check, Menu, X } from 'lucide-react';
+import { ArrowUpRight, Check, CircleHelp, LayoutGrid, LogIn, Menu, Route, Tag, X } from 'lucide-react';
 import { ProductShot } from '../components/landing/ProductShot';
 import { FadeIn, Reveal, WordReveal } from '../components/landing/Motion';
 import { LogoMark } from '../components/brand/Logo';
@@ -55,6 +55,10 @@ const stepShots = [
   { src: '/landing/oda-odaklan.webp', width: 752, height: 678, alt: 'Oda içindeki sayaç: süre seçenekleri, kendi odak ve mola süreni yazma alanları, Odaklan ve Odayla düğmeleri.' },
   { src: '/landing/oda-sohbet.webp', width: 704, height: 940, alt: 'Oda sohbeti: Ali, Zeynep, Deniz, Mert ve Selin çalışma odasında mesajlaşıyor.' },
 ];
+
+/** Altbilgi bağlantılarının ikon ve pastel tonları (navLinks sırasıyla, sonuncusu Giriş yap). */
+const footerIcons = [LayoutGrid, Route, Tag, CircleHelp];
+const footerTiles = ['bg-mb-tile-2', 'bg-mb-tile-1', 'bg-mb-tile-5', 'bg-mb-tile-4', 'bg-mb-tile-6'];
 
 export default function LandingPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -316,46 +320,71 @@ export default function LandingPage() {
           </section>
         </main>
 
-        <footer className="relative overflow-hidden bg-mb-ink text-mb-bg">
-          {/* Işık: altbilgiye derinlik verir, içeriğin arkasında kalır */}
-          <span aria-hidden="true" className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-mb-lamp opacity-[0.12] blur-3xl" />
-          <MbContainer className="relative pb-0 pt-16">
-            <div className="grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-              <div>
-                <Link to="/" className={`${mbFocus} inline-flex items-center gap-2.5`} aria-label="StudyLounge ana sayfa">
-                  <LogoMark className="h-10 w-10" />
-                  <span className="font-mb-display text-2xl font-medium tracking-[-0.03em]">StudyLounge</span>
-                </Link>
-                <p className="mt-4 max-w-[28rem] leading-[1.8] text-mb-bg/70">{hero.intro}</p>
+        <footer className="relative overflow-hidden bg-mb-surface px-4 pb-6 pt-6 md:px-6">
+          <MbContainer>
+            <div className="relative overflow-hidden rounded-[32px] border border-mb-line/70 bg-mb-bg shadow-mb-card">
+              {/* Pastel ışımalar: kartı düz bırakmaz */}
+              <span aria-hidden="true" className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-mb-tile-1 opacity-80 blur-3xl" />
+              <span aria-hidden="true" className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-mb-tile-5 opacity-70 blur-3xl" />
+              <span aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-96 rounded-full bg-mb-tile-2 opacity-70 blur-3xl" />
+
+              <div className="relative grid gap-10 px-6 pb-10 pt-10 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:px-12 md:pt-14">
+                <div>
+                  <Link to="/" className={`${mbFocus} inline-flex items-center gap-3`} aria-label="StudyLounge ana sayfa">
+                    <span className="grid h-12 w-12 place-items-center rounded-[16px] bg-mb-action shadow-mb-card">
+                      <LogoMark className="h-7 w-7" />
+                    </span>
+                    <span className={`${mbDisplay} text-[1.75rem] leading-none`}>StudyLounge</span>
+                  </Link>
+                  <p className="mt-5 max-w-[26rem] leading-[1.8] text-mb-body">{hero.intro}</p>
+                  <Link to={primary.to} className={`${mbButton} group mt-7 pr-2`}>
+                    {primary.label}
+                    <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-[10px] bg-mb-bg text-mb-action">
+                      <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    </span>
+                  </Link>
+                </div>
+
+                <nav aria-label="Alt bilgi">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {[...navLinks.map((link, index) => ({ ...link, icon: footerIcons[index], tile: footerTiles[index] })), ...(!isAuthenticated ? [{ href: '/auth', label: 'Giriş yap', icon: LogIn, tile: footerTiles[4] }] : [])].map((link) => {
+                      const inner = (
+                        <>
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-[12px] text-mb-ink transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${link.tile}`}>
+                            <link.icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                          </span>
+                          <span className="font-medium text-mb-ink">{link.label}</span>
+                          <ArrowUpRight aria-hidden="true" className="ml-auto h-4 w-4 text-mb-body opacity-0 transition group-hover:opacity-100" />
+                        </>
+                      );
+                      const className = `${mbFocus} group flex min-h-14 items-center gap-3 rounded-[16px] border border-mb-line/70 bg-mb-bg/80 px-3 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-mb-card`;
+                      return (
+                        <li key={link.href}>
+                          {link.href.startsWith('#') ? (
+                            <a href={link.href} className={className}>{inner}</a>
+                          ) : (
+                            <Link to={link.href} className={className}>{inner}</Link>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
               </div>
-              <nav aria-label="Alt bilgi">
-                <ul className="grid grid-cols-2 gap-x-6 gap-y-2">
-                  {navLinks.map((link) => (
-                    <li key={link.href}>
-                      <a href={link.href} className={`${mbFocus} inline-flex min-h-11 items-center text-mb-bg/85 hover:text-mb-bg`}>
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
-                  {!isAuthenticated ? (
-                    <li>
-                      <Link to="/auth" className={`${mbFocus} inline-flex min-h-11 items-center text-mb-bg/85 hover:text-mb-bg`}>
-                        Giriş yap
-                      </Link>
-                    </li>
-                  ) : null}
-                </ul>
-              </nav>
+
+              {/* Dev yazı: içeriğin altında akar, alt kısmı kesilir; üst üste binmez */}
+              <p aria-hidden="true" className="pointer-events-none relative h-[9vw] select-none overflow-hidden whitespace-nowrap bg-gradient-to-b from-mb-action/25 to-transparent bg-clip-text text-center font-mb-display text-[14vw] font-semibold leading-[0.9] tracking-[-0.06em] text-transparent">
+                <RiseLetters text="StudyLounge" />
+              </p>
             </div>
-            <div className="mt-14 flex items-center justify-center gap-2.5 border-t border-mb-bg/15 py-6 text-[15px] text-mb-bg/80">
-              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-mb-lamp shadow-[0_0_10px_var(--color-mb-lamp)]" />
-              <p>{footer.credit}</p>
-            </div>
+
+            <p className="mt-5 flex items-center justify-center gap-2.5 text-[15px] text-mb-body">
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-mb-lamp shadow-[0_0_12px_var(--color-mb-lamp)]" />
+              <span>
+                <span className="font-medium text-mb-ink">{footer.author}</span> {footer.credit}
+              </span>
+            </p>
           </MbContainer>
-          {/* Dev yazı artık içeriğin altında akar; üst kısmı görünür, alt kısmı kesilir (üst üste binmez) */}
-          <p aria-hidden="true" className="pointer-events-none relative -mt-[1.2vw] h-[11vw] select-none overflow-hidden whitespace-nowrap text-center font-mb-display text-[16.5vw] font-semibold leading-[0.9] tracking-[-0.06em] text-mb-bg/[0.07]">
-            <RiseLetters text="StudyLounge" />
-          </p>
         </footer>
       </div>
     </LazyMotion>

@@ -176,5 +176,6 @@ export const closing = {
 };
 
 export const footer = {
-  credit: 'Enes İlbay tarafından geliştirildi',
+  author: 'Enes İlbay',
+  credit: 'tarafından geliştirildi',
 };
