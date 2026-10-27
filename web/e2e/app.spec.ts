@@ -192,8 +192,9 @@ test.describe('birden fazla kişi', () => {
       await admin.page.goto('/admin/actions')
       await expect(admin.page.getByRole('heading', { name: 'İşlem kaydı', exact: true })).toBeVisible()
 
+      // Yönetici olmayan kullanıcı paneli hiç yüklemeden odalara döner.
       await ali.page.goto('/admin')
-      await expect(ali.page.getByText('Bu sayfa yöneticilere açık')).toBeVisible()
+      await expect(ali.page).toHaveURL(/\/app\/lobbies$/)
     } finally {
       await admin.context.close()
       await ali.context.close()
