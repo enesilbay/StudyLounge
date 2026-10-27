@@ -149,11 +149,11 @@ export default function AdminLayout() {
               <span className="font-mb-display text-lg font-medium tracking-[-0.03em]">Yönetim</span>
             </div>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Ara" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-textDark">
+              <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Ara" className="grid h-10 w-10 place-items-center rounded-lg text-mb-body hover:bg-mb-surface hover:text-mb-ink">
                 <Search className="h-[18px] w-[18px]" />
               </button>
               <ThemeToggle />
-              <Link to="/app/lobbies" aria-label="Uygulamaya dön" title="Uygulamaya dön" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-textDark">
+              <Link to="/app/lobbies" aria-label="Uygulamaya dön" title="Uygulamaya dön" className="grid h-10 w-10 place-items-center rounded-lg text-mb-body hover:bg-mb-surface hover:text-mb-ink">
                 <ArrowLeft className="h-[18px] w-[18px]" />
               </Link>
             </div>
@@ -196,7 +196,7 @@ export default function AdminLayout() {
 function CountBadge({ count, className = '' }: { count: number; className?: string }) {
   if (!count) return null;
   return (
-    <span className={`min-w-6 rounded-full bg-softDanger px-1.5 py-0.5 text-center text-xs font-bold tabular-nums text-danger ${className}`} aria-label={`${count} bekleyen`}>
+    <span className={`min-w-6 rounded-full bg-mb-live-soft px-1.5 py-0.5 text-center text-xs font-bold tabular-nums text-mb-live-ink ${className}`} aria-label={`${count} bekleyen`}>
       {count > 99 ? '99+' : count}
     </span>
   );

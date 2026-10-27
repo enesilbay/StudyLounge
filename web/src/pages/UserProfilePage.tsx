@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Award, Ban, CalendarDays, Check, DoorOpen, Flag, Flame, MessageCircle, Mountain, Timer, UserPlus, UserX } from 'lucide-react';
+import { ArrowLeft, Award, Ban, CalendarDays, Check, DoorOpen, Flag, Flame, MessageCircle, Mountain, Timer, UserMinus, UserPlus, UserX } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage } from '../lib/apiResponses';
 import { useBadgeCatalog } from '../lib/badges';
 import type { PublicProfile } from '../lib/types';
-import { Notice } from '../components/ui';
-import { Card, EmptyState, IconHeading, Rise, actionButton, ghostButton, outlineButton } from '../components/app/Kit';
+import { Button, ModalShell, Notice } from '../components/ui';
+import { resolveFriendRoomPath } from '../lib/friendRoom';
+import { Card, EmptyState, ErrorState, IconHeading, Skeleton, Rise, actionButton, ghostButton, outlineButton } from '../components/app/Kit';
 import { BadgeGrid, HeroChip, ProfileHero, RankLadder, StatGrid } from '../components/profile/ProfileParts';
 import { formatMinutes } from '../lib/study';
 import ReportDialog from '../components/social/ReportDialog';
@@ -17,28 +18,47 @@ export default function UserProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  // 'notfound': profil yok ya da görülemiyor; 'error': ağ/sunucu hatası (tekrar denenebilir).
+  const [loadState, setLoadState] = useState<'ok' | 'notfound' | 'error'>('ok');
+  const [confirm, setConfirm] = useState<'unfriend' | 'block' | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const { badges: catalog, load: loadCatalog } = useBadgeCatalog();
 
-  const load = useCallback(async () => {
-    try {
-      const response = await api.get<PublicProfile>(`/users/${userId}/public`);
-      setProfile(response.data);
-      setNotFound(false);
-    } catch {
-      setNotFound(true);
-    }
-  }, [userId]);
+  const load = useCallback(
+    async (isCancelled: () => boolean = () => false) => {
+      try {
+        const response = await api.get<PublicProfile>(`/users/${userId}/public`);
+        if (isCancelled()) return;
+        setProfile(response.data);
+        setLoadState('ok');
+      } catch (error) {
+        if (isCancelled()) return;
+        const status = (error as { response?: { status?: number } }).response?.status;
+        // Yalnızca sunucu "yok/yasak" derse bulunamadı; ağ ve sunucu hatası ayrı gösterilir.
+        setLoadState(status === 404 || status === 403 ? 'notfound' : 'error');
+      }
+    },
+    [userId],
+  );
 
+  // /app/u/3 → /app/u/4 geçişinde eski profil kalmasın.
   useEffect(() => {
-    void load();
+    let ignore = false;
+    setProfile(null);
+    setLoadState('ok');
+    setMessage(null);
+    setConfirm(null);
+    setReportOpen(false);
+    void load(() => ignore);
     loadCatalog().catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
   }, [load, loadCatalog]);
 
-  if (notFound) {
+  if (loadState === 'notfound') {
     return (
       <EmptyState
         icon={UserX}
@@ -53,7 +73,10 @@ export default function UserProfilePage() {
       />
     );
   }
-  if (!profile) return <p className="py-16 text-center text-mb-body">Profil yükleniyor…</p>;
+  if (loadState === 'error') {
+    return <ErrorState title="Profil yüklenemedi" text="Bağlantını kontrol edip tekrar dene." onRetry={() => { setLoadState('ok'); void load(); }} />;
+  }
+  if (!profile) return <Skeleton className="mx-auto h-64 max-w-4xl" />;
 
   const run = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true);
@@ -67,6 +90,20 @@ export default function UserProfilePage() {
       setMessage({ tone: 'danger', text: getApiErrorMessage(error) });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const joinRoom = async (roomName: string) => {
+    navigate(await resolveFriendRoomPath(roomName));
+  };
+
+  const confirmAction = async () => {
+    const kind = confirm;
+    setConfirm(null);
+    if (kind === 'unfriend') {
+      await run(() => api.delete(`/users/friends/${profile.id}`), `${profile.fullName} arkadaşlıktan çıkarıldı.`);
+    } else if (kind === 'block') {
+      await run(() => api.post(`/moderation/blocks/${profile.id}`), 'Kullanıcı engellendi. Artık sana mesaj ya da istek gönderemez.');
     }
   };
 
@@ -98,10 +135,14 @@ export default function UserProfilePage() {
               </HeroChip>
             ) : null}
             {profile.currentRoom ? (
-              <Link to="/app/lobbies" className="inline-flex items-center gap-1.5 rounded-full bg-mb-on-solid/10 px-3 py-1 text-[13px] font-medium text-mb-on-solid transition hover:bg-mb-on-solid/20">
+              <button
+                type="button"
+                onClick={() => void joinRoom(profile.currentRoom!)}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-mb-on-solid/10 px-3 py-1 text-[13px] font-medium text-mb-on-solid transition hover:bg-mb-on-solid/20"
+              >
                 <DoorOpen className="h-3.5 w-3.5" aria-hidden="true" />
                 Şu an {profile.currentRoom} odasında
-              </Link>
+              </button>
             ) : null}
           </>
         }
@@ -143,17 +184,18 @@ export default function UserProfilePage() {
                   </button>
                 ) : null}
                 {friendship.status === 'friends' ? (
-                  <Link to={`/app/dm?with=${profile.id}`} className={actionButton}>
-                    <MessageCircle className="h-4 w-4" />
-                    Mesaj gönder
-                  </Link>
+                  <>
+                    <Link to={`/app/dm?with=${profile.id}`} className={actionButton}>
+                      <MessageCircle className="h-4 w-4" />
+                      Mesaj gönder
+                    </Link>
+                    <button type="button" disabled={busy} onClick={() => setConfirm('unfriend')} className={heroButton}>
+                      <UserMinus className="h-4 w-4" />
+                      Arkadaşlıktan çıkar
+                    </button>
+                  </>
                 ) : null}
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run(() => api.post(`/moderation/blocks/${profile.id}`), 'Kullanıcı engellendi. Artık sana mesaj, düello ya da istek gönderemez.')}
-                  className={heroButton}
-                >
+                <button type="button" disabled={busy} onClick={() => setConfirm('block')} className={heroButton}>
                   <Ban className="h-4 w-4" />
                   Engelle
                 </button>
@@ -199,6 +241,24 @@ export default function UserProfilePage() {
           </div>
         </Card>
       </Rise>
+
+      <ModalShell
+        open={confirm !== null}
+        title={confirm === 'unfriend' ? 'Arkadaşlıktan çıkarılsın mı?' : 'Kullanıcı engellensin mi?'}
+        description={
+          confirm === 'unfriend'
+            ? `${profile.fullName} arkadaş listenden çıkar; sen de onun listesinden çıkarsın. Dilersen sonra yeniden istek gönderebilirsin.`
+            : `${profile.fullName} sana mesaj ya da istek gönderemez. Engeli istediğin zaman kaldırabilirsin.`
+        }
+        onClose={() => setConfirm(null)}
+      >
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => setConfirm(null)}>Vazgeç</Button>
+          <Button type="button" variant="danger" onClick={() => void confirmAction()}>
+            {confirm === 'unfriend' ? 'Arkadaşlıktan çıkar' : 'Engelle'}
+          </Button>
+        </div>
+      </ModalShell>
 
       <ReportDialog target={reportOpen ? { id: profile.id, fullName: profile.fullName } : null} onClose={() => setReportOpen(false)} />
     </div>

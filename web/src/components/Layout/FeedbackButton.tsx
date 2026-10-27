@@ -63,7 +63,7 @@ export function FeedbackButton({ className = '' }: { className?: string }) {
         onClick={() => setOpen(true)}
         aria-label="Geri bildirim"
         title="Geri bildirim"
-        className={`grid h-10 w-10 place-items-center rounded-lg text-textMuted transition hover:bg-sunken hover:text-textDark ${className}`}
+        className={`grid h-10 w-10 place-items-center rounded-lg text-mb-body transition hover:bg-mb-surface hover:text-mb-ink ${className}`}
       >
         <MessageSquareText className="h-[18px] w-[18px]" />
       </button>
@@ -85,7 +85,7 @@ export function FeedbackButton({ className = '' }: { className?: string }) {
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <fieldset>
-              <legend className="mb-1.5 text-sm font-semibold text-textDark">Konu</legend>
+              <legend className="mb-1.5 text-sm font-semibold text-mb-ink">Konu</legend>
               <div className="grid grid-cols-3 gap-2">
                 {KINDS.map((item) => {
                   const active = kind === item.value;
@@ -108,7 +108,7 @@ export function FeedbackButton({ className = '' }: { className?: string }) {
               </div>
             </fieldset>
             <TextField label="Mesajın" value={message} onChange={(value) => setMessage(value.slice(0, 2000))} placeholder={PLACEHOLDERS[kind]} multiline />
-            <p className="-mt-2 text-right text-sm text-textMuted">{message.length} / 2000</p>
+            <p className="-mt-2 text-right text-sm text-mb-body">{message.length} / 2000</p>
             {error ? <Notice tone="danger">{error}</Notice> : null}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button type="button" variant="secondary" onClick={close} disabled={sending}>

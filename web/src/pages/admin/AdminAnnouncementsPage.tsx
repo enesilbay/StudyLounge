@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { CircleStop, Megaphone, Send, Trash2 } from 'lucide-react';
+import { CircleStop, Megaphone, Pencil, Save, Send, Trash2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/apiResponses';
 import { dateTimeFormatter } from '../../lib/admin';
 import type { AdminAnnouncementRow, AnnouncementStatus, AnnouncementTone } from '../../lib/admin';
+import { defaultEnd } from '../../components/admin/announcementTime';
 import { Button, ModalShell, Notice, PageHeader, Pill, StateBlock, TextField } from '../../components/ui';
 
 const MAX_LENGTH = 280;
@@ -38,29 +39,38 @@ function toLocalInput(date: Date): string {
 export default function AdminAnnouncementsPage() {
   const [items, setItems] = useState<AdminAnnouncementRow[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const latest = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const [message, setMessage] = useState('');
   const [tone, setTone] = useState<AnnouncementTone>('info');
   const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState(() => toLocalInput(new Date(Date.now() + 24 * 3600 * 1000)));
+  const [endsAt, setEndsAt] = useState(() => toLocalInput(defaultEnd('', 24)));
+  // Bitişe elle dokunulmadıysa gönderim anında seçili süreden yeniden hesaplanır.
+  const [hours, setHours] = useState(24);
+  const [endsAuto, setEndsAuto] = useState(true);
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [busyId, setBusyId] = useState<number | null>(null);
   const [toDelete, setToDelete] = useState<AdminAnnouncementRow | null>(null);
+  const [editing, setEditing] = useState<AdminAnnouncementRow | null>(null);
 
   const load = useCallback(async () => {
+    const requestId = ++latest.current;
     setLoading(true);
     try {
       const response = await api.get<AdminAnnouncementRow[]>('/admin/announcements');
-      setItems(response.data);
-      setError(null);
-    } catch (loadError) {
-      setError(getApiErrorMessage(loadError));
+      if (requestId !== latest.current) return;
+      setItems(Array.isArray(response.data) ? response.data : []);
+      setLoadError(null);
+    } catch (failure) {
+      if (requestId !== latest.current) return;
+      setLoadError(getApiErrorMessage(failure));
     } finally {
-      setLoading(false);
+      if (requestId === latest.current) setLoading(false);
     }
   }, []);
 
@@ -68,9 +78,15 @@ export default function AdminAnnouncementsPage() {
     void load();
   }, [load]);
 
-  const setDuration = (hours: number) => {
-    const from = startsAt ? new Date(startsAt) : new Date();
-    setEndsAt(toLocalInput(new Date(from.getTime() + hours * 3600 * 1000)));
+  const setDuration = (value: number) => {
+    setHours(value);
+    setEndsAuto(true);
+    setEndsAt(toLocalInput(defaultEnd(startsAt, value)));
+  };
+
+  const changeStart = (value: string) => {
+    setStartsAt(value);
+    if (endsAuto) setEndsAt(toLocalInput(defaultEnd(value, hours)));
   };
 
   const submit = async (event: FormEvent) => {
@@ -80,14 +96,17 @@ export default function AdminAnnouncementsPage() {
     if (!endsAt) return setFormError('Bitiş zamanını seç.');
     setSending(true);
     try {
+      const end = endsAuto ? defaultEnd(startsAt, hours) : new Date(endsAt);
       await api.post('/admin/announcements', {
         message: message.trim(),
         tone,
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
-        endsAt: new Date(endsAt).toISOString(),
+        endsAt: end.toISOString(),
       });
       setMessage('');
       setStartsAt('');
+      setEndsAuto(true);
+      setEndsAt(toLocalInput(defaultEnd('', hours)));
       setNotice(startsAt ? 'Duyuru planlandı.' : 'Duyuru yayında.');
       await load();
     } catch (sendError) {
@@ -97,17 +116,36 @@ export default function AdminAnnouncementsPage() {
     }
   };
 
+  /** Yayındaki duyuruyu şimdi bitirir; henüz başlamamış (planlı) duyuruyu siler. */
   const endNow = async (item: AdminAnnouncementRow) => {
     setBusyId(item.id);
     try {
-      await api.patch(`/admin/announcements/${item.id}`, { endsAt: new Date().toISOString() });
-      setNotice('Duyuru bitirildi.');
+      if (item.status === 'scheduled') {
+        // Bitişi şimdiye çekmek başlangıçtan önce kalacağı için sunucu reddeder; planlı duyuruyu iptal etmek silmektir.
+        await api.delete(`/admin/announcements/${item.id}`);
+        setNotice('Planlı duyuru iptal edildi.');
+      } else {
+        await api.patch(`/admin/announcements/${item.id}`, { endsAt: new Date().toISOString() });
+        setNotice('Duyuru bitirildi.');
+      }
       await load();
     } catch (actionError) {
       setError(getApiErrorMessage(actionError));
     } finally {
       setBusyId(null);
     }
+  };
+
+  const saveEdit = async (item: AdminAnnouncementRow, changes: { message: string; tone: AnnouncementTone; startsAt: string; endsAt: string }) => {
+    await api.patch(`/admin/announcements/${item.id}`, {
+      message: changes.message,
+      tone: changes.tone,
+      startsAt: new Date(changes.startsAt).toISOString(),
+      endsAt: new Date(changes.endsAt).toISOString(),
+    });
+    setEditing(null);
+    setNotice('Duyuru güncellendi.');
+    await load();
   };
 
   const remove = async (item: AdminAnnouncementRow) => {
@@ -161,7 +199,7 @@ export default function AdminAnnouncementsPage() {
               id="ann-start"
               type="datetime-local"
               value={startsAt}
-              onChange={(event) => setStartsAt(event.target.value)}
+              onChange={(event) => changeStart(event.target.value)}
               className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action"
             />
             <p className="mt-1.5 text-sm text-mb-body">Boş bırakırsan hemen başlar.</p>
@@ -172,7 +210,10 @@ export default function AdminAnnouncementsPage() {
               id="ann-end"
               type="datetime-local"
               value={endsAt}
-              onChange={(event) => setEndsAt(event.target.value)}
+              onChange={(event) => {
+                setEndsAt(event.target.value);
+                setEndsAuto(false);
+              }}
               required
               className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action"
             />
@@ -182,7 +223,8 @@ export default function AdminAnnouncementsPage() {
                   key={item.hours}
                   type="button"
                   onClick={() => setDuration(item.hours)}
-                  className="min-h-8 rounded-full border border-mb-line px-3 text-sm font-semibold text-mb-body transition hover:text-mb-ink"
+                  aria-pressed={endsAuto && hours === item.hours}
+                  className={`min-h-8 rounded-full border px-3 text-sm font-semibold transition hover:text-mb-ink ${endsAuto && hours === item.hours ? 'border-mb-action text-mb-ink' : 'border-mb-line text-mb-body'}`}
                 >
                   {item.label}
                 </button>
@@ -203,8 +245,15 @@ export default function AdminAnnouncementsPage() {
       </div>
 
       <div className="mt-5">
-        {loading && !items ? (
+        {loading && !items && !loadError ? (
           <StateBlock loading title="Duyurular yükleniyor" />
+        ) : loadError ? (
+          <StateBlock
+            tone="danger"
+            title="Duyurular yüklenemedi"
+            description={loadError}
+            action={<Button variant="secondary" size="sm" onClick={() => void load()}>Tekrar dene</Button>}
+          />
         ) : !items?.length ? (
           <StateBlock title="Henüz duyuru yok" description="Yukarıdaki formdan ilk duyuruyu yayınla." />
         ) : (
@@ -226,6 +275,7 @@ export default function AdminAnnouncementsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing(item)}>Düzenle</Button>
                   {item.status !== 'ended' ? (
                     <Button size="sm" variant="secondary" icon={CircleStop} loading={busyId === item.id} onClick={() => void endNow(item)}>
                       {item.status === 'live' ? 'Şimdi bitir' : 'İptal et'}
@@ -239,6 +289,8 @@ export default function AdminAnnouncementsPage() {
         )}
       </div>
 
+      {editing ? <EditAnnouncementDialog item={editing} onClose={() => setEditing(null)} onSave={(changes) => saveEdit(editing, changes)} /> : null}
+
       {toDelete ? (
         <ModalShell open title="Duyuru silinsin mi?" description="Duyuru listeden kalkar. İşlem kaydında metni görünmeye devam eder." onClose={() => setToDelete(null)}>
           <p className="mb-5 rounded-[12px] border border-mb-line bg-mb-surface p-3 text-base text-mb-ink">{toDelete.message}</p>
@@ -249,5 +301,75 @@ export default function AdminAnnouncementsPage() {
         </ModalShell>
       ) : null}
     </div>
+  );
+}
+
+/** Duyuru düzenleme penceresi: metin, tür, başlangıç ve bitiş (mevcut PATCH ucu). */
+function EditAnnouncementDialog({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: AdminAnnouncementRow;
+  onClose: () => void;
+  onSave: (changes: { message: string; tone: AnnouncementTone; startsAt: string; endsAt: string }) => Promise<void>;
+}) {
+  const [message, setMessage] = useState(item.message);
+  const [tone, setTone] = useState<AnnouncementTone>(item.tone);
+  const [startsAt, setStartsAt] = useState(() => toLocalInput(new Date(item.startsAt)));
+  const [endsAt, setEndsAt] = useState(() => toLocalInput(new Date(item.endsAt)));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    if (!message.trim()) return setError('Duyuru metnini yaz.');
+    if (!startsAt || !endsAt) return setError('Başlangıç ve bitiş zamanını seç.');
+    if (new Date(endsAt) <= new Date(startsAt)) return setError('Bitiş, başlangıçtan sonra olmalı.');
+    setBusy(true);
+    try {
+      await onSave({ message: message.trim(), tone, startsAt, endsAt });
+    } catch (saveError) {
+      setError(getApiErrorMessage(saveError));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <ModalShell open title="Duyuruyu düzenle" onClose={busy ? () => undefined : onClose}>
+      <form onSubmit={(event) => void submit(event)} className="space-y-4">
+        <div>
+          <TextField label="Duyuru metni" value={message} onChange={(value) => setMessage(value.slice(0, MAX_LENGTH))} multiline />
+          <p className="mt-1 text-right text-sm text-mb-body">{message.length} / {MAX_LENGTH}</p>
+        </div>
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-semibold text-mb-ink">Tür</legend>
+          <div className="flex flex-wrap gap-2">
+            {TONES.map((option) => (
+              <label key={option.value} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-[12px] border px-3.5 transition ${tone === option.value ? 'border-mb-action bg-mb-surface' : 'border-mb-line'}`}>
+                <input type="radio" name="edit-tone" value={option.value} checked={tone === option.value} onChange={() => setTone(option.value)} className="accent-[var(--color-mb-action)]" />
+                <span className="font-semibold text-mb-ink">{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="ann-edit-start" className="mb-1.5 block text-sm font-semibold text-mb-ink">Başlangıç</label>
+            <input id="ann-edit-start" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} required className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action" />
+          </div>
+          <div>
+            <label htmlFor="ann-edit-end" className="mb-1.5 block text-sm font-semibold text-mb-ink">Bitiş</label>
+            <input id="ann-edit-end" type="datetime-local" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} required className="min-h-11 w-full rounded-[12px] border border-mb-field bg-mb-surface px-3.5 text-base text-mb-ink outline-none focus:border-mb-action" />
+          </div>
+        </div>
+        {error ? <Notice tone="danger">{error}</Notice> : null}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Vazgeç</Button>
+          <Button type="submit" icon={Save} loading={busy}>Kaydet</Button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }

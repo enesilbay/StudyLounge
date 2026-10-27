@@ -6,6 +6,7 @@ import { CHARACTERS, characterAvatarPath } from '../../lib/avatars';
 import type { User } from '../../lib/types';
 import { ModalShell, Notice } from '../ui';
 import { outlineButton } from '../app/Kit';
+import { AVATAR_TYPES, validateAvatarFile } from './avatarFile';
 import { useAuthStore } from '../../store/authStore';
 
 /** Profil fotoğrafı penceresi: 10 hazır karakterden biri ya da kendi fotoğrafın. */
@@ -37,6 +38,12 @@ export function AvatarPicker({ open, onClose, onSaved }: { open: boolean; onClos
   };
 
   const upload = async (file: File) => {
+    const problem = validateAvatarFile(file);
+    if (problem) {
+      setError(problem);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     setBusy('upload');
     setError(null);
     const formData = new FormData();
@@ -87,7 +94,7 @@ export function AvatarPicker({ open, onClose, onSaved }: { open: boolean; onClos
           {busy === 'upload' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           Kendi fotoğrafını yükle
         </button>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && void upload(event.target.files[0])} />
+        <input ref={fileRef} type="file" accept={AVATAR_TYPES.join(",")} className="hidden" onChange={(event) => event.target.files?.[0] && void upload(event.target.files[0])} />
       </div>
     </ModalShell>
   );

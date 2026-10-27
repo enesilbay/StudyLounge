@@ -73,7 +73,7 @@ export default function TasksPanel({ onShare, onError }: { onShare: (text: strin
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <form
-        className="flex items-center gap-1 border-b border-border p-2"
+        className="flex items-center gap-1 border-b border-mb-line p-2"
         onSubmit={(event) => {
           event.preventDefault();
           void add();
@@ -85,17 +85,17 @@ export default function TasksPanel({ onShare, onError }: { onShare: (text: strin
           maxLength={200}
           placeholder="Bu turda ne yapacaksın?"
           aria-label="Yeni görev"
-          className="min-h-10 min-w-0 flex-1 rounded-lg bg-sunken px-3 text-[15px] outline-none focus:ring-1 focus:ring-accent"
+          className="min-h-10 min-w-0 flex-1 rounded-lg bg-mb-surface px-3 text-[15px] outline-none focus:ring-1 focus:ring-mb-action"
         />
-        <button disabled={adding || !title.trim()} aria-label="Görevi ekle" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-onPrimary disabled:opacity-40">
+        <button disabled={adding || !title.trim()} aria-label="Görevi ekle" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-mb-action text-mb-on-action disabled:opacity-40">
           {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         </button>
       </form>
 
       <div className="flex-1 overflow-y-auto p-3">
-        {loading ? <p className="pt-8 text-center text-[15px] text-textMuted">Görevler yükleniyor…</p> : null}
+        {loading ? <p className="pt-8 text-center text-[15px] text-mb-body">Görevler yükleniyor…</p> : null}
         {!loading && tasks.length === 0 ? (
-          <p className="px-2 pt-8 text-center text-[15px] text-textMuted">Listen boş. Bu turda bitirmek istediğin işi yaz; yıldızlı görevler üstte durur.</p>
+          <p className="px-2 pt-8 text-center text-[15px] text-mb-body">Listen boş. Bu turda bitirmek istediğin işi yaz; yıldızlı görevler üstte durur.</p>
         ) : null}
 
         <ul className="space-y-1">
@@ -106,7 +106,7 @@ export default function TasksPanel({ onShare, onError }: { onShare: (text: strin
 
         {done.length ? (
           <>
-            <p className="mb-1 mt-4 px-2 text-xs font-semibold text-textMuted">Bitenler (son 7 gün)</p>
+            <p className="mb-1 mt-4 px-2 text-xs font-semibold text-mb-body">Bitenler (son 7 gün)</p>
             <ul className="space-y-1">
               {done.map((task) => (
                 <TaskRow key={task.id} task={task} onToggleDone={() => void update(task, { done: false })} onShare={() => onShare(`Bitirdim: ${task.title}`)} onRemove={() => void remove(task)} />
@@ -133,21 +133,21 @@ function TaskRow({
   onRemove: () => void;
 }) {
   return (
-    <li className={`group flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-sunken ${task.current ? 'bg-softIndigo' : ''}`}>
+    <li className={`group flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-mb-surface ${task.current ? 'bg-mb-tint' : ''}`}>
       <button
         type="button"
         role="checkbox"
         aria-checked={task.done}
         aria-label={task.done ? `${task.title} görevini geri al` : `${task.title} görevini bitir`}
         onClick={onToggleDone}
-        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border ${task.done ? 'border-primary bg-primary text-onPrimary' : 'border-border bg-surface'}`}
+        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border ${task.done ? 'border-mb-action bg-mb-action text-mb-on-action' : 'border-mb-line bg-mb-card'}`}
       >
         {task.done ? <Check className="h-3.5 w-3.5" /> : null}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={`break-words text-[15px] leading-6 ${task.done ? 'text-textMuted line-through' : 'text-textDark'}`}>{task.title}</p>
+        <p className={`break-words text-[15px] leading-6 ${task.done ? 'text-mb-body line-through' : 'text-mb-ink'}`}>{task.title}</p>
         {task.subject ? (
-          <p className="flex items-center gap-1.5 text-xs text-textMuted">
+          <p className="flex items-center gap-1.5 text-xs text-mb-body">
             <span className={`h-2 w-2 rounded-full ${dotClassFor(task.subject.color)}`} aria-hidden="true" />
             {task.subject.name}
           </p>
@@ -155,14 +155,14 @@ function TaskRow({
       </div>
       <div className="flex shrink-0 items-center opacity-70 group-hover:opacity-100 group-focus-within:opacity-100">
         {onToggleCurrent ? (
-          <button type="button" onClick={onToggleCurrent} aria-pressed={task.current} aria-label={task.current ? 'Bu turdan çıkar' : 'Bu tura al'} title={task.current ? 'Bu turdan çıkar' : 'Bu tura al'} className="grid h-8 w-8 place-items-center rounded text-textMuted hover:text-primary">
-            <Star className={`h-4 w-4 ${task.current ? 'fill-current text-primary' : ''}`} />
+          <button type="button" onClick={onToggleCurrent} aria-pressed={task.current} aria-label={task.current ? 'Bu turdan çıkar' : 'Bu tura al'} title={task.current ? 'Bu turdan çıkar' : 'Bu tura al'} className="grid h-10 w-10 place-items-center rounded text-mb-body hover:text-mb-action">
+            <Star className={`h-4 w-4 ${task.current ? 'fill-current text-mb-action' : ''}`} />
           </button>
         ) : null}
-        <button type="button" onClick={onShare} aria-label="Odada paylaş" title="Odada paylaş" className="grid h-8 w-8 place-items-center rounded text-textMuted hover:text-primary">
+        <button type="button" onClick={onShare} aria-label="Odada paylaş" title="Odada paylaş" className="grid h-10 w-10 place-items-center rounded text-mb-body hover:text-mb-action">
           <Share2 className="h-4 w-4" />
         </button>
-        <button type="button" onClick={onRemove} aria-label="Görevi sil" title="Sil" className="grid h-8 w-8 place-items-center rounded text-textMuted hover:text-danger">
+        <button type="button" onClick={onRemove} aria-label="Görevi sil" title="Sil" className="grid h-10 w-10 place-items-center rounded text-mb-body hover:text-mb-live-ink">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { AuthEnvelope, ApiEnvelope } from '../lib/apiResponses';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
-import { api } from '../lib/api';
+import axios from 'axios';
+import { api, reportSessionEnded } from '../lib/api';
 import type { User } from '../lib/types';
 
 export type AvatarGroup = 'female' | 'male';
@@ -49,6 +50,11 @@ interface AuthState {
   clearError: () => void;
   logout: () => void;
   initAuth: () => Promise<void>;
+}
+
+/** Yalnızca token'ın reddedilmesi (401/403) oturumu kapatır; ağ hatası ve 5xx'te kayıtlı oturum korunur. */
+function isAuthRejection(error: unknown): boolean {
+  return axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403);
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -146,11 +152,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.setItem('user_data', JSON.stringify(user));
       set({ user, isAuthenticated: true, error: null });
       return user;
-    } catch {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_data');
-      set({ user: null, token: null, isAuthenticated: false });
-      return null;
+    } catch (error) {
+      if (isAuthRejection(error)) {
+        reportSessionEnded();
+        // Ortak akış kaydedilmemişse (test, erken açılış) oturum yine de temizlenir.
+        if (get().token) get().logout();
+        return null;
+      }
+      return get().user;
     }
   },
   clearError: () => {
@@ -167,16 +176,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isInitializing: false });
       return;
     }
-    
     try {
       const response = await api.get<ApiEnvelope<User>>('/users/me');
       const user = unwrapUser<User>(response.data);
       localStorage.setItem('user_data', JSON.stringify(user));
       set({ user, isAuthenticated: true, isInitializing: false });
-    } catch {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_data');
-      set({ user: null, token: null, isAuthenticated: false, isInitializing: false });
+    } catch (error) {
+      if (isAuthRejection(error)) {
+        set({ isInitializing: false });
+        reportSessionEnded();
+        if (get().token) get().logout();
+      } else {
+        // Ağ hatası ya da sunucu uyanıyor: kayıtlı oturumla devam edilir, sayfalar kendi hatalarını gösterir.
+        set({ isInitializing: false });
+      }
     }
   }
 }));

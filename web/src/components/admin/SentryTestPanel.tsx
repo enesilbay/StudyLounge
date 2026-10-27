@@ -38,8 +38,8 @@ export default function SentryTestPanel() {
   };
 
   return (
-    <details className="group rounded-[14px] border border-border px-5 py-4 text-sm text-textMuted">
-      <summary className="cursor-pointer font-semibold text-textDark">Hata takibini dene</summary>
+    <details className="group rounded-[14px] border border-mb-line px-5 py-4 text-sm text-mb-body">
+      <summary className="cursor-pointer font-semibold text-mb-ink">Hata takibini dene</summary>
       <div className="mt-3 max-w-3xl space-y-3">
         <p className="leading-6">
           Kasıtlı bir test hatası gönderir. Hata birkaç saniye içinde Sentry'de "Sentry test hatası" başlığıyla görünmelidir.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/apiResponses';
@@ -21,14 +21,23 @@ export default function ReportDialog({
   const [reason, setReason] = useState<ReportReason>('spam');
   const [details, setDetails] = useState('');
   const [sending, setSending] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [result, setResult] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
 
   useEffect(() => {
     if (!target) return;
+    if (closeTimer.current) clearTimeout(closeTimer.current);
     setReason('spam');
     setDetails('');
     setResult(null);
-  }, [target]);
+    // target nesnesi her render yeni olabilir; yalnızca kişi/mesaj değişince form sıfırlanır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.id, messageId]);
+
+  // Kapanış zamanlayıcısı bileşen kalkınca iptal edilir.
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -43,7 +52,7 @@ export default function ReportDialog({
         ...(messageId ? { messageId } : {}),
       });
       setResult({ tone: 'success', text: response.data?.message ?? 'Şikayetin alındı.' });
-      setTimeout(onClose, 1400);
+      closeTimer.current = setTimeout(onClose, 1400);
     } catch (error) {
       setResult({ tone: 'danger', text: getApiErrorMessage(error) });
     } finally {

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { AtSign, KeyRound, Loader2, Mail, MailCheck, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
@@ -13,21 +13,33 @@ import { PasswordField } from '../components/auth/PasswordField';
 import { useAuthStore } from '../store/authStore';
 import type { AvatarGroup } from '../store/authStore';
 import { characterAvatarPath } from '../lib/avatars';
+import { clearLogoutState, consumeLogoutReason, safeReturnPath } from '../lib/session';
 
 type AuthMode = 'login' | 'register' | 'verify' | 'forgot' | 'reset';
 
 /** Aynı adrese art arda kod istenmesin diye "Kodu tekrar gönder" bu kadar bekletilir. */
 const RESEND_COOLDOWN_SECONDS = 60;
 
+const AUTH_TABS = [
+  ['login', 'Giriş yap'],
+  ['register', 'Kayıt ol'],
+  ['forgot', 'Şifremi unuttum'],
+] as const;
+
 export default function AuthPage() {
   const navigate = useNavigate();
   const { loginWithCredentials, loginWithGoogle, registerWithCredentials, verifyEmail, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   // Açılış sayfasındaki "Ücretsiz hesap aç" doğrudan kayıt formunu açar (/auth?mod=kayit).
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<AuthMode>(() => (searchParams.get('mod') === 'kayit' ? 'register' : 'login'));
+  // Giriş sonrası dönülecek adres (korumalı sayfadan ya da iyzico dönüşünden gelinmişse).
+  const location = useLocation();
+  const returnTo = safeReturnPath((location.state as { from?: string } | null)?.from);
+  // Ayarlarda e-posta değişince /auth?dogrula=<e-posta> doğrulama adımını e-posta dolu açar.
+  const verifyParam = searchParams.get('dogrula')?.trim() ?? '';
+  const [mode, setMode] = useState<AuthMode>(() => (verifyParam ? 'verify' : searchParams.get('mod') === 'kayit' ? 'register' : 'login'));
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(verifyParam);
   const [avatarGroup, setAvatarGroup] = useState<AvatarGroup | null>(null);
   /** Giriş formunda e-posta ya da kullanıcı adı. */
   const [identifier, setIdentifier] = useState('');
@@ -54,9 +66,26 @@ export default function AuthPage() {
     setCooldown(mailSent ? RESEND_COOLDOWN_SECONDS : 0);
   };
 
+  // Oturum sunucu tarafından kapatıldıysa (askıya alma, hesap silme, süre dolumu) nedeni bir kez gösterilir.
+  const mailStatusShown = useRef(false);
   useEffect(() => {
-    if (isAuthenticated) navigate('/app/lobbies', { replace: true });
-  }, [isAuthenticated, navigate]);
+    const reason = consumeLogoutReason();
+    if (reason) {
+      setStatus(reason);
+      setStatusTone('danger');
+    } else if (verifyParam && !mailStatusShown.current) {
+      setStatus(`${verifyParam} adresine gönderdiğimiz 6 haneli kodu gir.`);
+      setStatusTone('success');
+    }
+    mailStatusShown.current = true;
+  }, [verifyParam]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      clearLogoutState();
+      navigate(returnTo, { replace: true });
+    }
+  }, [isAuthenticated, navigate, returnTo]);
 
   const switchMode = (nextMode: AuthMode) => {
     // Girişte yazılan e-posta, kayıt ve şifre sıfırlama formuna taşınır.
@@ -87,7 +116,7 @@ export default function AuthPage() {
           showMailStatus(result.message ?? 'Hesabın henüz doğrulanmadı. E-postana yeni bir kod gönderdik.', result.mailSent !== false);
           return;
         }
-        navigate('/app/lobbies');
+        navigate(returnTo, { replace: true });
       } else if (mode === 'register') {
         const result = await registerWithCredentials({ fullName: fullName.trim(), username: username.trim(), email: email.trim(), password, ...(avatarGroup ? { avatarGroup } : {}) });
         setMode('verify');
@@ -98,7 +127,7 @@ export default function AuthPage() {
       } else if (mode === 'verify') {
         if (!/^\d{6}$/.test(verifyCode.trim())) return setLocalError('Kod 6 rakamdan oluşur.');
         await verifyEmail(email.trim(), verifyCode.trim());
-        navigate('/app/lobbies');
+        navigate(returnTo, { replace: true });
       } else if (mode === 'forgot') {
         if (!email.trim()) return setLocalError('E-posta adresini gir.');
         setLocalLoading(true);
@@ -113,6 +142,8 @@ export default function AuthPage() {
         setStatus(response.data?.message ?? 'Şifren güncellendi. Giriş yapabilirsin.');
         setStatusTone('success');
         setMode('login');
+        // Giriş formu, sıfırlanan hesabın e-postasıyla dolu açılır.
+        setIdentifier(email.trim());
         setPassword('');
         setResetToken('');
         setNewPassword('');
@@ -146,7 +177,7 @@ export default function AuthPage() {
     setStatus(null);
     try {
       await loginWithGoogle(credential);
-      navigate('/app/lobbies');
+      navigate(returnTo, { replace: true });
     } catch {
       // Hata mesajı store'daki `error` ile gösterilir.
     }
@@ -157,6 +188,17 @@ export default function AuthPage() {
   const inputCls = 'min-h-12 min-w-0 flex-1 border-0 bg-transparent px-3.5 text-[15px] text-mb-ink outline-none placeholder:text-mb-body/70';
   // Sekmeler: giriş, kayıt, şifre sıfırlama (kod girme adımı da sıfırlama sekmesinde sayılır).
   const activeTab = mode === 'reset' ? 'forgot' : mode;
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  // Ok tuşları, Home ve End sekmeler arasında gezer; seçim odakla birlikte değişir.
+  const onTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, current: number) => {
+    const last = AUTH_TABS.length - 1;
+    const next = { ArrowRight: current === last ? 0 : current + 1, ArrowLeft: current === 0 ? last : current - 1, Home: 0, End: last }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    switchMode(AUTH_TABS[next][0]);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
     <div className="sl-yeni relative flex min-h-screen flex-col overflow-hidden bg-mb-surface text-mb-ink">
@@ -189,17 +231,20 @@ export default function AuthPage() {
           <section className="overflow-hidden rounded-[24px] border border-mb-line bg-mb-card shadow-mb-card">
             {mode !== 'verify' ? (
               <div role="tablist" aria-label="Hesap" className="grid grid-cols-3 border-b border-mb-line bg-mb-surface">
-                {([
-                  ['login', 'Giriş yap'],
-                  ['register', 'Kayıt ol'],
-                  ['forgot', 'Şifremi unuttum'],
-                ] as const).map(([item, label]) => (
+                {AUTH_TABS.map(([item, label], position) => (
                   <button
                     key={item}
+                    ref={(node) => {
+                      tabRefs.current[position] = node;
+                    }}
+                    id={`auth-tab-${item}`}
                     type="button"
                     role="tab"
                     aria-selected={activeTab === item}
+                    aria-controls="auth-panel"
+                    tabIndex={activeTab === item ? 0 : -1}
                     onClick={() => switchMode(item)}
+                    onKeyDown={(event) => onTabKeyDown(event, position)}
                     className={`min-h-12 border-r border-mb-line px-2 text-[13px] font-medium transition last:border-r-0 sm:text-sm ${
                       activeTab === item ? 'bg-mb-card text-mb-ink' : 'text-mb-body hover:text-mb-ink'
                     }`}
@@ -210,7 +255,10 @@ export default function AuthPage() {
               </div>
             ) : null}
 
-            <div className="p-5 sm:p-7">
+            <div
+              className="p-5 sm:p-7"
+              {...(mode !== 'verify' ? { role: 'tabpanel', id: 'auth-panel', 'aria-labelledby': `auth-tab-${activeTab}` } : {})}
+            >
               {/* Başlık: iki yanında ince çizgi */}
               <div className="flex items-center gap-3">
                 <span className="h-px flex-1 bg-mb-line" aria-hidden="true" />
@@ -297,6 +345,7 @@ export default function AuthPage() {
                       onChange={(event) => setVerifyCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
                       className={`${inputCls} font-mono text-xl tracking-[0.3em]`}
                       inputMode="numeric"
+                      maxLength={6}
                       autoComplete="one-time-code"
                       placeholder="000000"
                       required
@@ -306,7 +355,17 @@ export default function AuthPage() {
                 {mode === 'reset' ? (
                   <>
                     <Field label="E-postana gelen 6 haneli kod" icon={KeyRound}>
-                      <input name="one-time-code" value={resetToken} onChange={(event) => setResetToken(event.target.value)} className={inputCls} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" required />
+                      <input
+                        name="one-time-code"
+                        value={resetToken}
+                        onChange={(event) => setResetToken(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className={`${inputCls} font-mono text-xl tracking-[0.3em]`}
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoComplete="one-time-code"
+                        placeholder="123456"
+                        required
+                      />
                     </Field>
                     <PasswordField label="Yeni şifre" name="new-password" value={newPassword} onChange={setNewPassword} placeholder="Yeni bir şifre belirle" autoComplete="new-password" showRules />
                   </>
@@ -336,9 +395,15 @@ export default function AuthPage() {
                 </button>
               ) : null}
               {mode === 'verify' ? (
-                <button type="button" onClick={() => switchMode('login')} className="mt-3 w-full text-center text-sm font-medium text-mb-body hover:text-mb-ink">
-                  Girişe dön
-                </button>
+                <div className="mt-3 flex flex-col items-center gap-1">
+                  {/* Yanlış e-postayla kayıt olan kullanıcı kayıt formuna döner; e-posta alanı dolu ve düzenlenebilir kalır. */}
+                  <button type="button" onClick={() => switchMode('register')} className="w-full text-center text-sm font-medium text-mb-body hover:text-mb-ink">
+                    E-postayı değiştir
+                  </button>
+                  <button type="button" onClick={() => switchMode('login')} className="w-full text-center text-sm font-medium text-mb-body hover:text-mb-ink">
+                    Girişe dön
+                  </button>
+                </div>
               ) : null}
             </div>
           </section>

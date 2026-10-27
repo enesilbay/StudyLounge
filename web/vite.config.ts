@@ -27,8 +27,9 @@ export default defineConfig({
         start_url: '/app/lobbies',
         scope: '/',
         display: 'standalone',
-        background_color: '#FBF5EC',
-        theme_color: '#FBF5EC',
+        // Manifest CSS değişkeni okuyamaz; marka rehberindeki değerler (beyaz zemin, ana yeşil) burada sabit yazılır.
+        background_color: '#ffffff',
+        theme_color: '#055049',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

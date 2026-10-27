@@ -8,19 +8,13 @@ import { ACTION_LABELS, dateFormatter, dateTimeFormatter, formatMinutes, numberF
 import type { AdminUserDetail as Detail } from '../../lib/admin';
 import { useAuthStore } from '../../store/authStore';
 import { Avatar, Button, Notice, Pill, StateBlock } from '../../components/ui';
-import { UserActionDialog, type UserActionConfig } from '../../components/admin/UserActionDialog';
+import { UserActionDialog } from '../../components/admin/UserActionDialog';
+import { banConfig, deleteConfig, muteConfig, premiumConfig, revokeConfig, roleConfig, unbanConfig, unmuteConfig, verifyConfig, type WithDone } from '../../components/admin/userActions';
 import type { UsersOutletContext } from './AdminUsersPage';
 
-const dayShort = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-/** API hatasını iletişim kutusunda gösterilecek mesaja çevirir. */
-async function call(request: () => Promise<unknown>) {
-  try {
-    await request();
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
-}
+const dayShort = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
 
 /** Kullanıcı ayrıntısı: listenin sağında açılan panel (telefonda tam ekran). */
 export default function AdminUserDetail() {
@@ -35,6 +29,7 @@ export default function AdminUserDetail() {
   const [noticeFor, setNoticeFor] = useState<{ id: number; text: string } | null>(null);
   const [dialog, setDialog] = useState<WithDone | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const data = loaded?.id === id ? loaded.data : null;
   const error = loaded?.id === id ? loaded.error : null;
   const notice = noticeFor?.id === id ? noticeFor.text : null;
@@ -52,6 +47,14 @@ export default function AdminUserDetail() {
     }
   }, [id]);
 
+  // Odak tuzağı (ModalShell kalıbı): Tab panelin içinde döner, odak dışarı kaçarsa içeri alınır, kapanınca açan öğeye döner.
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -67,6 +70,43 @@ export default function AdminUserDetail() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (dialog) return; // iletişim kutusu açıkken ModalShell odağı yönetir
+    const panel = panelRef.current;
+    if (!panel) return;
+    const items = () => Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest('[hidden], [inert]'));
+    // Genel arama gibi panelin dışındaki açık pencerelere dokunma.
+    const inOtherDialog = (node: EventTarget | null) => node instanceof Element && node.closest('[role="dialog"]') !== null && !panel.contains(node);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || inOtherDialog(document.activeElement)) return;
+      const list = items();
+      if (list.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === panel || !panel.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      if (event.target instanceof Node && !panel.contains(event.target) && !inOtherDialog(event.target)) (items()[0] ?? panel).focus();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('focusin', onFocusIn);
+    };
+  }, [dialog]);
 
   useEffect(() => {
     if (dialog) return;
@@ -92,16 +132,18 @@ export default function AdminUserDetail() {
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Ayrıntıyı kapat" tabIndex={-1} onClick={close} className="absolute inset-0 hidden bg-black/30 md:block" />
+      <button type="button" aria-label="Ayrıntıyı kapat" tabIndex={-1} onClick={close} className="absolute inset-0 hidden bg-mb-solid/40 md:block" />
       <aside
+        ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={user ? `${user.fullName} ayrıntısı` : 'Kullanıcı ayrıntısı'}
-        className="relative flex h-full w-full flex-col overflow-y-auto border-l border-border bg-background shadow-[-12px_0_32px_-12px_rgba(0,0,0,0.25)] md:max-w-[580px]"
+        className="relative flex h-full w-full flex-col overflow-y-auto border-l border-mb-line bg-mb-bg shadow-mb-raised outline-none md:max-w-[580px]"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-5 py-3 backdrop-blur">
-          <span className="text-sm font-semibold text-textMuted">Kullanıcı</span>
-          <button ref={closeRef} type="button" onClick={close} aria-label="Kapat" className="grid h-10 w-10 place-items-center rounded-lg text-textMuted hover:bg-sunken hover:text-textDark">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mb-line bg-mb-bg/95 px-5 py-3 backdrop-blur">
+          <span className="text-sm font-semibold text-mb-body">Kullanıcı</span>
+          <button ref={closeRef} type="button" onClick={close} aria-label="Kapat" className="grid h-10 w-10 place-items-center rounded-lg text-mb-body hover:bg-mb-surface hover:text-mb-ink">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -117,8 +159,8 @@ export default function AdminUserDetail() {
               <header className="flex items-start gap-4">
                 <Avatar name={user.fullName} image={user.avatarUrl} size="lg" />
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-2xl text-textDark">{user.fullName}</h2>
-                  <p className="truncate text-textMuted">@{user.username}</p>
+                  <h2 className="truncate text-2xl text-mb-ink">{user.fullName}</h2>
+                  <p className="truncate text-mb-body">@{user.username}</p>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {userBadges(user).map((badge) => (
                       <Pill key={badge.label} tone={badge.tone}>{badge.label}</Pill>
@@ -126,7 +168,7 @@ export default function AdminUserDetail() {
                     {user.isOnline ? <Pill tone="success">Çevrimiçi{user.currentRoom ? ` · ${user.currentRoom}` : ''}</Pill> : null}
                   </div>
                 </div>
-                <Link to={`/app/u/${user.id}`} className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-textMuted underline-offset-2 hover:text-textDark hover:underline">
+                <Link to={`/app/u/${user.id}`} className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-mb-body underline-offset-2 hover:text-mb-ink hover:underline">
                   Profil
                   <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -152,19 +194,19 @@ export default function AdminUserDetail() {
 
               <Section title="Aktivite" aside={`Seri ${user.currentStreak} gün · en iyi ${user.bestStreak}`}>
                 <FocusBars days={data.focusDaily} />
-                <p className="mt-3 text-sm text-textMuted">
-                  Toplam <span className="font-semibold text-textDark">{formatMinutes(user.totalFocusMinutes)}</span>
+                <p className="mt-3 text-sm text-mb-body">
+                  Toplam <span className="font-semibold text-mb-ink">{formatMinutes(user.totalFocusMinutes)}</span>
                   {' · '}son odak {timeAgo(user.lastFocusAt)}
                 </p>
                 {data.recentSessions.length ? (
-                  <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
+                  <ul className="mt-3 divide-y divide-mb-line rounded-lg border border-mb-line">
                     {data.recentSessions.map((session) => (
                       <li key={session.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                        <span className="min-w-0 truncate text-textDark">
+                        <span className="min-w-0 truncate text-mb-ink">
                           {session.subject ?? 'Derssiz'}
-                          {session.roomName ? <span className="text-textMuted"> · {session.roomName}</span> : null}
+                          {session.roomName ? <span className="text-mb-body"> · {session.roomName}</span> : null}
                         </span>
-                        <span className="shrink-0 tabular-nums text-textMuted">
+                        <span className="shrink-0 tabular-nums text-mb-body">
                           {formatMinutes(session.minutes)} · {timeAgo(session.endedAt)}
                         </span>
                       </li>
@@ -177,31 +219,31 @@ export default function AdminUserDetail() {
                 {data.reports.recent.length ? (
                   <ul className="space-y-2">
                     {data.reports.recent.map((report) => (
-                      <li key={report.id} className="rounded-lg bg-sunken px-3 py-2 text-sm">
+                      <li key={report.id} className="rounded-lg bg-mb-surface px-3 py-2 text-sm">
                         <span className="flex flex-wrap items-center gap-2">
                           <Pill tone={report.status === 'open' ? 'danger' : 'neutral'}>{REPORT_REASON_LABELS[report.reason as keyof typeof REPORT_REASON_LABELS] ?? report.reason}</Pill>
-                          <span className="text-textMuted">
+                          <span className="text-mb-body">
                             {report.reporterUsername ? `@${report.reporterUsername}` : 'Silinmiş hesap'} · {timeAgo(report.createdAt)}
                           </span>
                         </span>
-                        {report.messageText || report.details ? <p className="mt-1 line-clamp-2 text-textDark">{report.messageText ?? report.details}</p> : null}
+                        {report.messageText || report.details ? <p className="mt-1 line-clamp-2 text-mb-ink">{report.messageText ?? report.details}</p> : null}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-textMuted">Hakkında şikayet yok.</p>
+                  <p className="text-sm text-mb-body">Hakkında şikayet yok.</p>
                 )}
               </Section>
 
               <Section title="Ödemeler">
                 {data.payments.length ? (
-                  <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                  <ul className="divide-y divide-mb-line rounded-lg border border-mb-line text-sm">
                     {data.payments.map((payment) => (
                       <li key={payment.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                        <span className="text-textDark">
+                        <span className="text-mb-ink">
                           {payment.planId === 'yearly' ? 'Yıllık' : payment.planId === 'monthly' ? 'Aylık' : payment.planId} · {numberFormatter.format(Number(payment.amount))} {payment.currency === 'TRY' ? '₺' : payment.currency}
                         </span>
-                        <span className="flex items-center gap-2 text-textMuted">
+                        <span className="flex items-center gap-2 text-mb-body">
                           <Pill tone={payment.status === 'success' ? 'success' : payment.status === 'failed' ? 'danger' : 'neutral'}>
                             {payment.status === 'success' ? 'Başarılı' : payment.status === 'failed' ? 'Başarısız' : 'Beklemede'}
                           </Pill>
@@ -211,25 +253,25 @@ export default function AdminUserDetail() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-textMuted">Ödeme yok.</p>
+                  <p className="text-sm text-mb-body">Ödeme yok.</p>
                 )}
               </Section>
 
-              <Section title="İşlem kaydı" aside={data.actions.length ? <Link to={`/admin/actions?targetId=${user.id}`} className="font-semibold text-primary underline-offset-2 hover:underline">Tümü</Link> : undefined}>
+              <Section title="İşlem kaydı" aside={data.actions.length ? <Link to={`/admin/actions?targetId=${user.id}`} className="font-semibold text-mb-action underline-offset-2 hover:underline">Tümü</Link> : undefined}>
                 {data.actions.length ? (
                   <ul className="space-y-1.5 text-sm">
                     {data.actions.map((action) => (
                       <li key={action.id} className="flex flex-wrap items-baseline gap-x-2">
                         <Pill tone={ACTION_LABELS[action.action]?.tone ?? 'neutral'}>{ACTION_LABELS[action.action]?.label ?? action.action}</Pill>
-                        <span className="text-textMuted">
+                        <span className="text-mb-body">
                           {action.admin ? `@${action.admin.username}` : action.adminLabel ? `@${action.adminLabel} (silindi)` : 'Bilinmeyen yönetici'} · {timeAgo(action.createdAt)}
                         </span>
-                        {action.reason ? <span className="basis-full pl-1 text-textDark">“{action.reason}”</span> : null}
+                        {action.reason ? <span className="basis-full pl-1 text-mb-ink">“{action.reason}”</span> : null}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-textMuted">Bu kullanıcıyla ilgili işlem yok.</p>
+                  <p className="text-sm text-mb-body">Bu kullanıcıyla ilgili işlem yok.</p>
                 )}
               </Section>
 
@@ -264,12 +306,15 @@ export default function AdminUserDetail() {
                 </div>
 
                 {isSelf ? (
-                  <p className="mt-4 text-sm text-textMuted">Bu senin hesabın. Rol, susturma, yasak ve silme işlemleri kendine uygulanamaz.</p>
+                  <p className="mt-4 text-sm text-mb-body">Bu senin hesabın. Rol, susturma, yasak ve silme işlemleri kendine uygulanamaz.</p>
                 ) : (
-                  <div className="mt-5 rounded-xl border border-danger/40 p-4">
-                    <h4 className="text-[15px] font-semibold text-danger">Tehlikeli bölge</h4>
+                  <div className="mt-5 rounded-xl border border-mb-live/40 p-4">
+                    <h4 className="text-[15px] font-semibold text-mb-live-ink">Tehlikeli bölge</h4>
                     {targetIsAdmin ? (
-                      <p className="mt-1 text-sm text-textMuted">Yöneticiye susturma, yasak ve silme uygulanamaz; önce rolünü kullanıcıya çevir.</p>
+                      <p className="mt-1 text-sm text-mb-body">Yöneticiye susturma, yasak ve silme uygulanamaz; önce rolünü kullanıcıya çevir.</p>
+                    ) : null}
+                    {!targetIsAdmin && user.bannedAt ? (
+                      <p className="mt-1 text-sm text-mb-body">Yasaklı hesap yönetici yapılamaz; önce yasağı kaldır.</p>
                     ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
                       {!targetIsAdmin ? (
@@ -287,6 +332,7 @@ export default function AdminUserDetail() {
                         size="sm"
                         variant="secondary"
                         icon={targetIsAdmin ? UserRound : ShieldCheck}
+                        disabled={!targetIsAdmin && Boolean(user.bannedAt)}
                         onClick={() => setDialog(roleConfig(user.id, user.username, targetIsAdmin ? 'user' : 'admin', done('Rol değişti.')))}
                       >
                         {targetIsAdmin ? 'Kullanıcıya çevir' : 'Yönetici yap'}
@@ -323,131 +369,14 @@ export default function AdminUserDetail() {
   );
 }
 
-/* ───────────────────────── İşlem tanımları ───────────────────────── */
-
-/** İşlem tanımı + başarıdan sonra ne olacağı. */
-type WithDone = UserActionConfig & { onDone: () => void };
-
-function muteConfig(id: number, onDone: () => void): WithDone {
-  return {
-    title: 'Kullanıcıyı sustur',
-    description: "Susturulan kişi oda sohbetine ve DM'e yazamaz; odalara girip çalışabilir.",
-    confirmLabel: 'Sustur',
-    choicesLabel: 'Süre',
-    choices: [
-      { value: '24', label: '24 saat' },
-      { value: '168', label: '7 gün' },
-      { value: '720', label: '30 gün' },
-    ],
-    run: ({ choice, reason }) => call(() => api.post(`/admin/users/${id}/mute`, { hours: Number(choice), reason: reason || undefined })),
-    onDone,
-  };
-}
-
-function unmuteConfig(id: number, onDone: () => void): WithDone {
-  return {
-    title: 'Susturmayı kaldır',
-    description: 'Kullanıcı yeniden sohbete ve DM’e yazabilir.',
-    confirmLabel: 'Susturmayı kaldır',
-    run: ({ reason }) => call(() => api.delete(`/admin/users/${id}/mute`, { data: { reason: reason || undefined } })),
-    onDone,
-  };
-}
-
-function verifyConfig(id: number, onDone: () => void): WithDone {
-  return {
-    title: 'E-postayı doğrulanmış say',
-    description: 'Doğrulama kodu ulaşmayan kullanıcı için. Kullanıcı kodu girmeden giriş yapabilir.',
-    confirmLabel: 'Doğrulanmış say',
-    run: ({ reason }) => call(() => api.post(`/admin/users/${id}/verify-email`, { reason: reason || undefined })),
-    onDone,
-  };
-}
-
-function premiumConfig(id: number, hasPremium: boolean, onDone: () => void): WithDone {
-  return {
-    title: hasPremium ? 'Premium süresini uzat' : 'Premium ver',
-    description: hasPremium ? 'Süre, mevcut bitiş tarihinin üstüne eklenir.' : 'Destek amacıyla ücretsiz Premium. Ödeme kaydı oluşmaz.',
-    confirmLabel: hasPremium ? 'Uzat' : 'Premium ver',
-    choicesLabel: 'Süre',
-    choices: [
-      { value: 'month', label: '1 ay' },
-      { value: 'year', label: '1 yıl' },
-      { value: 'unlimited', label: 'Süresiz' },
-    ],
-    run: ({ choice, reason }) => call(() => api.post(`/admin/users/${id}/premium`, { plan: choice, reason: reason || undefined })),
-    onDone,
-  };
-}
-
-function revokeConfig(id: number, onDone: () => void): WithDone {
-  return {
-    title: "Premium'u geri al",
-    description: 'Premium hemen kapanır ve kalan süre silinir. Ödeme iadesi yapılmaz.',
-    confirmLabel: 'Geri al',
-    run: ({ reason }) => call(() => api.post(`/admin/users/${id}/premium/revoke`, { reason: reason || undefined })),
-    onDone,
-  };
-}
-
-function banConfig(id: number, username: string, onDone: () => void): WithDone {
-  return {
-    title: `@${username} yasaklansın mı?`,
-    description: 'Yasaklanan hesap giriş yapamaz, canlı bağlantısı reddedilir. Yasak sonradan kaldırılabilir.',
-    confirmLabel: 'Yasakla',
-    danger: true,
-    reasonRequired: true,
-    run: ({ reason }) => call(() => api.post(`/admin/users/${id}/ban`, { reason })),
-    onDone,
-  };
-}
-
-function unbanConfig(id: number, onDone: () => void): WithDone {
-  return {
-    title: 'Yasağı kaldır',
-    description: 'Kullanıcı yeniden giriş yapabilir.',
-    confirmLabel: 'Yasağı kaldır',
-    run: ({ reason }) => call(() => api.delete(`/admin/users/${id}/ban`, { data: { reason: reason || undefined } })),
-    onDone,
-  };
-}
-
-function roleConfig(id: number, username: string, role: 'user' | 'admin', onDone: () => void): WithDone {
-  return {
-    title: role === 'admin' ? `@${username} yönetici olsun mu?` : `@${username} kullanıcıya çevrilsin mi?`,
-    description:
-      role === 'admin'
-        ? 'Yönetici bu paneli açar; kullanıcıları susturabilir, yasaklayabilir, Premium verebilir ve hesap silebilir.'
-        : 'Kullanıcı yönetim paneline erişimini kaybeder.',
-    confirmLabel: role === 'admin' ? 'Yönetici yap' : 'Kullanıcıya çevir',
-    danger: role === 'admin',
-    reasonRequired: role === 'admin',
-    run: ({ reason }) => call(() => api.patch(`/admin/users/${id}/role`, { role, reason: reason || undefined })),
-    onDone,
-  };
-}
-
-function deleteConfig(id: number, username: string, onDone: () => void): WithDone {
-  return {
-    title: `@${username} hesabı silinsin mi?`,
-    description: 'Oturumlar, dersler, görevler, arkadaşlıklar ve özel mesajlar kalıcı olarak silinir. Geri alınamaz.',
-    confirmLabel: 'Hesabı kalıcı olarak sil',
-    danger: true,
-    reasonRequired: true,
-    confirmText: username,
-    run: ({ reason, confirmation }) => call(() => api.delete(`/admin/users/${id}`, { data: { confirmation, reason } })),
-    onDone,
-  };
-}
-
 /* ───────────────────────── Küçük parçalar ───────────────────────── */
 
 function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
     <section>
       <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 className="text-lg text-textDark">{title}</h3>
-        {aside ? <span className="text-sm text-textMuted">{aside}</span> : null}
+        <h3 className="text-lg text-mb-ink">{title}</h3>
+        {aside ? <span className="text-sm text-mb-body">{aside}</span> : null}
       </div>
       {children}
     </section>
@@ -456,11 +385,11 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
 
 function Facts({ items }: { items: [string, ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border border-border bg-surface p-4 text-[15px] sm:gap-x-6">
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border border-mb-line bg-mb-card p-4 text-[15px] sm:gap-x-6">
       {items.map(([label, value]) => (
         <div key={label} className={`min-w-0 ${label === 'E-posta' ? 'col-span-2 sm:col-span-1' : ''}`}>
-          <dt className="text-sm text-textMuted">{label}</dt>
-          <dd className="text-textDark">{value}</dd>
+          <dt className="text-sm text-mb-body">{label}</dt>
+          <dd className="text-mb-ink">{value}</dd>
         </div>
       ))}
     </dl>
@@ -471,20 +400,20 @@ function Facts({ items }: { items: [string, ReactNode][] }) {
 function FocusBars({ days }: { days: { date: string; minutes: number }[] }) {
   const max = Math.max(1, ...days.map((day) => day.minutes));
   const total = days.reduce((sum, day) => sum + day.minutes, 0);
-  if (!total) return <p className="rounded-lg bg-sunken px-3 py-4 text-sm text-textMuted">Son 30 günde odak oturumu yok.</p>;
+  if (!total) return <p className="rounded-lg bg-mb-surface px-3 py-4 text-sm text-mb-body">Son 30 günde odak oturumu yok.</p>;
   return (
     <div>
-      <div className="flex h-16 items-end gap-[3px] rounded-lg bg-sunken px-2 pt-2" role="img" aria-label={`Son 30 günde ${formatMinutes(total)} odak`}>
+      <div className="flex h-16 items-end gap-[3px] rounded-lg bg-mb-surface px-2 pt-2" role="img" aria-label={`Son 30 günde ${formatMinutes(total)} odak`}>
         {days.map((day) => (
           <span
             key={day.date}
             title={`${dayShort.format(parseDay(day.date))}: ${day.minutes ? formatMinutes(day.minutes) : 'odak yok'}`}
-            className={`block flex-1 rounded-t-sm ${day.minutes ? 'bg-primary' : 'bg-transparent'}`}
+            className={`block flex-1 rounded-t-sm ${day.minutes ? 'bg-mb-action' : 'bg-transparent'}`}
             style={{ height: `${day.minutes ? Math.max(6, (day.minutes / max) * 100) : 0}%` }}
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-xs tabular-nums text-textMuted" aria-hidden="true">
+      <div className="mt-1 flex justify-between text-xs tabular-nums text-mb-body" aria-hidden="true">
         <span>{days[0] ? dayShort.format(parseDay(days[0].date)) : ''}</span>
         <span>Bugün</span>
       </div>

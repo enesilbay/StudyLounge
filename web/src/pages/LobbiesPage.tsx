@@ -144,7 +144,9 @@ export default function LobbiesPage() {
       navigate('/app/premium');
       return;
     }
-    if (lobby.isPrivate) {
+    // Odanın sahibi ya da şifreyi daha önce giren (sunucu `hasAccess` döner) tekrar şifre girmez.
+    const hasAccess = Boolean(lobby.hasAccess) || (lobby.ownerId != null && lobby.ownerId === user?.id);
+    if (lobby.isPrivate && !hasAccess) {
       setSelectedLobby(lobby);
       setFormError(null);
       setPasswordOpen(true);
@@ -165,7 +167,8 @@ export default function LobbiesPage() {
       setEnterPassword('');
       navigate(`/app/focus/${selectedLobby.id}`);
     } catch (verifyError) {
-      setFormError(getApiErrorMessage(verifyError));
+      const status = (verifyError as { response?: { status?: number } }).response?.status;
+      setFormError(status === 429 ? 'Çok fazla deneme yaptın, biraz bekleyip tekrar dene.' : getApiErrorMessage(verifyError));
     } finally {
       setVerifying(false);
     }
@@ -327,8 +330,8 @@ export default function LobbiesPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Oda adı" value={newName} onChange={setNewName} required placeholder="Örn. Final haftası, sessiz" />
             <div>
-              <label htmlFor="room-category" className="mb-1.5 block text-sm font-semibold text-textDark">Kategori</label>
-              <select id="room-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="min-h-11 w-full rounded-lg border border-border bg-sunken px-3 text-base text-textDark outline-none focus:border-primary">
+              <label htmlFor="room-category" className="mb-1.5 block text-sm font-semibold text-mb-ink">Kategori</label>
+              <select id="room-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="min-h-11 w-full rounded-lg border border-mb-line bg-mb-surface px-3 text-base text-mb-ink outline-none focus:border-mb-action">
                 {roomCategories.map((category) => <option key={category}>{category}</option>)}
               </select>
             </div>
@@ -486,7 +489,7 @@ function RoomCard({ lobby, kind, friends, isPremium, onEnter, delay = 0 }: RoomP
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-mb-body">
         <LampRow total={info.members} lit={info.focused} />
         <span>{info.members === 0 ? 'Boş' : info.focused > 0 ? `${info.focused} odakta` : 'Kimse odakta değil'}</span>
-        {info.friendsText ? <span className="font-medium text-success">{info.friendsText}</span> : null}
+        {info.friendsText ? <span className="font-medium text-mb-success">{info.friendsText}</span> : null}
       </div>
 
       <div className="mt-3">
@@ -552,7 +555,7 @@ function RoomRow({ lobby, friends, isPremium, onEnter }: RoomProps) {
             {info.members === 0 ? 'Boş' : `${info.members}/${info.capacity} kişi`}
             {info.focused > 0 ? `, ${info.focused} odakta` : ''}
           </span>
-          {info.friendsText ? <span className="font-medium text-success">{info.friendsText}</span> : null}
+          {info.friendsText ? <span className="font-medium text-mb-success">{info.friendsText}</span> : null}
         </div>
       </div>
       <EnterButton label={info.action} locked={info.locked} disabled={info.full} onClick={() => onEnter(lobby)} className="sm:w-28" />
@@ -585,7 +588,7 @@ function LampRow({ total, lit }: { total: number; lit: number }) {
       {Array.from({ length: shown }, (_, index) => (
         <span
           key={index}
-          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-accent shadow-[0_0_8px_var(--sl-blush)] motion-safe:animate-[sl-lamba_2.6s_ease-in-out_infinite]' : 'border border-mb-body/50'}`}
+          className={`h-2.5 w-2.5 rounded-full ${index < lit ? 'bg-mb-action shadow-[0_0_8px_var(--sl-blush)] motion-safe:animate-[sl-lamba_2.6s_ease-in-out_infinite]' : 'border border-mb-body/50'}`}
         />
       ))}
       {total > MAX_LAMPS ? <span className="ml-0.5 text-xs">+{total - MAX_LAMPS}</span> : null}

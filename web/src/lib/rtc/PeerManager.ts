@@ -78,6 +78,8 @@ export class PeerManager {
   private watching = new Set<number>();
   private readonly opts: PeerManagerOptions;
   private closed = false;
+  /** Henüz bağlantısı olmayan kişiden önce gelen meta sinyalleri (teklif gelince uygulanır). */
+  private pendingMeta = new Map<number, NonNullable<SignalData['meta']>>();
   private statsTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(opts: PeerManagerOptions) {
@@ -141,6 +143,13 @@ export class PeerManager {
       refresh();
     };
 
+    const early = this.pendingMeta.get(userId);
+    if (early) {
+      this.pendingMeta.delete(userId);
+      peer.remoteScreenStreamId = early.screenStreamId;
+      peer.watchingMe = Boolean(early.watch);
+    }
+
     this.syncSenders(peer);
     this.opts.sendSignal(userId, { meta: { screenStreamId: this.screenStream?.id ?? null, watch: this.watching.has(userId) } });
     this.opts.onChange();
@@ -149,6 +158,15 @@ export class PeerManager {
 
   async handleSignal(fromUserId: number, data: SignalData) {
     if (this.closed) return;
+    // Tanınmayan kişiden yalnızca teklif (offer) bağlantı açar; gecikmiş ICE/yanıt sinyali hayalet bağlantı oluşturmaz.
+    if (!this.peers.has(fromUserId)) {
+      if (data.meta) {
+        if (this.pendingMeta.size >= 20) this.pendingMeta.clear();
+        this.pendingMeta.set(fromUserId, data.meta);
+        return;
+      }
+      if (data.description?.type !== 'offer') return;
+    }
     const peer = this.ensurePeer(fromUserId);
     const { pc } = peer;
 
@@ -188,9 +206,20 @@ export class PeerManager {
     }
   }
 
+  /** Kişi için eski bağlantı varsa kapatıp sıfırdan kurar (yeniden katılım, ölü bağlantı). */
+  resetPeer(userId: number): Peer {
+    const old = this.peers.get(userId);
+    if (old) {
+      old.pc.close();
+      this.peers.delete(userId);
+    }
+    return this.ensurePeer(userId);
+  }
+
   removePeer(userId: number) {
     const peer = this.peers.get(userId);
     this.watching.delete(userId);
+    this.pendingMeta.delete(userId);
     if (!peer) return;
     peer.pc.close();
     this.peers.delete(userId);
@@ -247,6 +276,7 @@ export class PeerManager {
     if (this.statsTimer) clearInterval(this.statsTimer);
     for (const peer of this.peers.values()) peer.pc.close();
     this.peers.clear();
+    this.pendingMeta.clear();
   }
 
   /** Her bağlantının seçili aday çiftinden gecikmeyi, gelen RTP'den kaybı okur. */

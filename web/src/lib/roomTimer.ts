@@ -53,7 +53,7 @@ interface TimerEvent {
  * gönderir; aşama ve kalan süre her yarım saniyede yerelde hesaplanır.
  * Bilgisayar saatleri farklı olabileceği için sunucu saatiyle fark düzeltilir.
  */
-export function useRoomTimer({ roomName, enabled }: { roomName: string | null; enabled: boolean }) {
+export function useRoomTimer({ roomName, enabled, resyncKey = 0 }: { roomName: string | null; enabled: boolean; resyncKey?: number }) {
   const [timer, setTimer] = useState<RoomTimerSnapshot | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
   const [lastEvent, setLastEvent] = useState<{ action: TimerEvent['action']; byName: string | null; at: number } | null>(null);
@@ -79,6 +79,11 @@ export function useRoomTimer({ roomName, enabled }: { roomName: string | null; e
       setLastEvent(null);
     };
   }, [enabled, roomName]);
+
+  // Yeniden bağlanınca sayaç sunucudan yeniden istenir.
+  useEffect(() => {
+    if (resyncKey && enabled && roomName) getSocket().emit('room_timer_sync');
+  }, [resyncKey, enabled, roomName]);
 
   useEffect(() => {
     if (!timer) return;

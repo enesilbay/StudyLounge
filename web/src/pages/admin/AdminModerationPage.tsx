@@ -34,11 +34,11 @@ export default function AdminModerationPage() {
             aria-selected={tab === key}
             onClick={() => setSearchParams(key === 'reports' ? {} : { tab: key }, { replace: true })}
             className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
-              tab === key ? 'bg-primary text-onPrimary hover:bg-secondary' : 'border border-border bg-surface text-textDark hover:bg-sunken'
+              tab === key ? 'bg-mb-action text-mb-on-action hover:bg-mb-action-2' : 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface'
             }`}
           >
             {label}
-            {count ? <span className={`tabular-nums ${tab === key ? 'text-onPrimary/80' : 'text-textMuted'}`}>{count}</span> : null}
+            {count ? <span className={`tabular-nums ${tab === key ? 'text-mb-on-action/80' : 'text-mb-body'}`}>{count}</span> : null}
           </button>
         ))}
       </div>

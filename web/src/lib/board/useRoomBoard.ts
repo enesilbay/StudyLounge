@@ -17,7 +17,7 @@ export interface LaserTrail {
  * çizilirken parça parça (board_live), bitince bütün olarak (board_stroke)
  * gönderilir. Sunucu son durumu tutar, odaya sonradan gelen herkese yollar.
  */
-export function useRoomBoard({ roomName, enabled }: { roomName: string | null; enabled: boolean }) {
+export function useRoomBoard({ roomName, enabled, resyncKey = 0 }: { roomName: string | null; enabled: boolean; resyncKey?: number }) {
   const [board, setBoard] = useState<BoardState | null>(null);
   const [live, setLive] = useState<Record<string, BoardStroke>>({});
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +115,11 @@ export function useRoomBoard({ roomName, enabled }: { roomName: string | null; e
       setLive({});
     };
   }, [enabled, roomName, trackLaser]);
+
+  // Yeniden bağlanınca tahta durumu sunucudan yeniden istenir.
+  useEffect(() => {
+    if (resyncKey && enabled && roomName) getSocket().emit('board_sync');
+  }, [resyncKey, enabled, roomName]);
 
   const open = useCallback((fileUrl: string, fileName: string) => {
     setError(null);

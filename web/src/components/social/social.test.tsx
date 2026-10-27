@@ -80,6 +80,36 @@ describe('UserSearch', () => {
     await waitFor(() => expect(screen.getByRole('link', { name: /Ayşe Yılmaz/ })).toHaveAttribute('href', '/app/u/4'));
   });
 
+  it('supports combobox keyboard navigation and ignores stale results', async () => {
+    vi.useFakeTimers();
+    get.mockImplementation((_url: string, config: { params: { q: string } }) =>
+      Promise.resolve({ data: config.params.q === 'ay' ? [{ id: 4, username: 'ayse', fullName: 'Ayşe Yılmaz' }, { id: 6, username: 'aydin', fullName: 'Aydın K.' }] : [] }),
+    );
+    render(
+      <MemoryRouter>
+        <UserSearch />
+      </MemoryRouter>,
+    );
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'ay' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input).toHaveAttribute('aria-activedescendant', screen.getAllByRole('option')[1].id);
+    expect(screen.getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true');
+
+    // Sorgu değişince eski sonuçlar yeni sorgunun altında gösterilmez.
+    fireEvent.change(input, { target: { value: 'ayx' } });
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('does not search for a single character', async () => {
     vi.useFakeTimers();
     render(

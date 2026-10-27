@@ -33,14 +33,14 @@ export function TrendChart({ daily, series }: { daily: AdminOverview['daily']; s
       <div className="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-2">
         <div className="relative h-56" aria-hidden="true">
           {ticks.map((tick) => (
-            <span key={tick} className="absolute right-0 -translate-y-1/2 text-xs tabular-nums text-textMuted" style={{ top: `${100 - (tick / top) * 100}%` }}>
+            <span key={tick} className="absolute right-0 -translate-y-1/2 text-xs tabular-nums text-mb-body" style={{ top: `${100 - (tick / top) * 100}%` }}>
               {tick === 0 ? '0' : series === 'focusMinutes' ? formatMinutes(tick) : numberFormatter.format(tick)}
             </span>
           ))}
         </div>
         <div className="relative h-56" onMouseLeave={() => setHovered(null)} aria-hidden="true">
           {ticks.map((tick) => (
-            <span key={tick} className="absolute inset-x-0 border-t border-border" style={{ top: `${100 - (tick / top) * 100}%` }} />
+            <span key={tick} className="absolute inset-x-0 border-t border-mb-line" style={{ top: `${100 - (tick / top) * 100}%` }} />
           ))}
           <div className={`absolute inset-0 flex items-end ${gap}`}>
             {daily.map((day, index) => {
@@ -49,16 +49,16 @@ export function TrendChart({ daily, series }: { daily: AdminOverview['daily']; s
               return (
                 <div key={day.date} className="relative flex h-full min-w-0 flex-1 items-end justify-center" onMouseEnter={() => setHovered(index)}>
                   <span
-                    className={`block w-full max-w-10 rounded-t-sm ${value ? 'bg-primary' : 'bg-transparent'} ${hovered === index ? 'opacity-75' : ''}`}
+                    className={`block w-full max-w-10 rounded-t-sm ${value ? 'bg-mb-action' : 'bg-transparent'} ${hovered === index ? 'opacity-75' : ''}`}
                     style={{ height: `${value ? Math.max(1.5, height) : 0}%` }}
                   />
                   {hovered === index ? (
                     <span
-                      className={`pointer-events-none absolute z-10 mb-1.5 whitespace-nowrap rounded-md border border-border bg-surface px-2 py-1 text-xs text-textDark shadow ${index > daily.length * 0.7 ? 'right-0' : index < daily.length * 0.3 ? 'left-0' : ''}`}
+                      className={`pointer-events-none absolute z-10 mb-1.5 whitespace-nowrap rounded-md border border-mb-line bg-mb-card px-2 py-1 text-xs text-mb-ink shadow ${index > daily.length * 0.7 ? 'right-0' : index < daily.length * 0.3 ? 'left-0' : ''}`}
                       style={{ bottom: `${Math.min(height, 86)}%` }}
                     >
                       <span className="font-semibold">{dayLong.format(parseDay(day.date))}</span>
-                      <span className="block tabular-nums text-textMuted">{formatSeries(series, value)}</span>
+                      <span className="block tabular-nums text-mb-body">{formatSeries(series, value)}</span>
                     </span>
                   ) : null}
                 </div>
@@ -67,10 +67,10 @@ export function TrendChart({ daily, series }: { daily: AdminOverview['daily']; s
           </div>
         </div>
         <span />
-        <div className="mt-2 flex justify-between text-xs tabular-nums text-textMuted" aria-hidden="true">
+        <div className="mt-2 flex justify-between text-xs tabular-nums text-mb-body" aria-hidden="true">
           <span>{daily[0] ? dayShort.format(parseDay(daily[0].date)) : ''}</span>
           {daily.length > 10 && daily[middle] ? <span>{dayShort.format(parseDay(daily[middle].date))}</span> : null}
-          <span className="font-semibold text-textDark">Bugün</span>
+          <span className="font-semibold text-mb-ink">Bugün</span>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export function OnboardingFunnel({ funnel }: { funnel: AdminOverview['funnel'] }
     { label: 'İlk odak oturumu', value: funnel.firstFocus },
   ];
   if (!funnel.registered) {
-    return <p className="py-8 text-center text-[15px] text-textMuted">Bu dönemde kayıt olan yok.</p>;
+    return <p className="py-8 text-center text-[15px] text-mb-body">Bu dönemde kayıt olan yok.</p>;
   }
 
   // En büyük kayıp: bir önceki adıma göre en çok kişinin düştüğü adım.
@@ -127,17 +127,17 @@ export function OnboardingFunnel({ funnel }: { funnel: AdminOverview['funnel'] }
         return (
           <li key={step.label}>
             <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <span className="flex items-center gap-2 text-[15px] font-semibold text-textDark">
+              <span className="flex items-center gap-2 text-[15px] font-semibold text-mb-ink">
                 {step.label}
                 {index === worst ? <Pill tone="danger">En büyük kayıp: {numberFormatter.format(worstDrop)} kişi</Pill> : null}
               </span>
-              <span className="text-sm tabular-nums text-textMuted">
-                <span className="font-semibold text-textDark">{numberFormatter.format(step.value)}</span>
+              <span className="text-sm tabular-nums text-mb-body">
+                <span className="font-semibold text-mb-ink">{numberFormatter.format(step.value)}</span>
                 {index > 0 ? ` · ${percent.format(ratio)}` : ''}
               </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-sunken">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+            <div className="h-2.5 overflow-hidden rounded-full bg-mb-surface">
+              <div className="h-full rounded-full bg-mb-action" style={{ width: `${Math.min(100, ratio * 100)}%` }} />
             </div>
           </li>
         );
@@ -156,26 +156,26 @@ export function Retention({ retention }: { retention: AdminOverview['retention']
     <div>
       <dl className="grid grid-cols-3 gap-3">
         {retention.map((row) => (
-          <div key={row.day} className="rounded-lg bg-sunken px-3 py-3">
-            <dt className="text-sm font-semibold text-textMuted">{row.day}. gün</dt>
+          <div key={row.day} className="rounded-lg bg-mb-surface px-3 py-3">
+            <dt className="text-sm font-semibold text-mb-body">{row.day}. gün</dt>
             {row.eligible ? (
               <>
-                <dd className="mt-1 font-display text-3xl tabular-nums text-textDark">{percent.format(row.retained / row.eligible)}</dd>
-                <dd className="mt-0.5 text-sm tabular-nums text-textMuted">
+                <dd className="mt-1 font-mb-display text-3xl tabular-nums text-mb-ink">{percent.format(row.retained / row.eligible)}</dd>
+                <dd className="mt-0.5 text-sm tabular-nums text-mb-body">
                   {numberFormatter.format(row.retained)} / {numberFormatter.format(row.eligible)} kişi
                 </dd>
               </>
             ) : (
               <>
-                <dd className="mt-1 font-display text-3xl text-textMuted">—</dd>
-                <dd className="mt-0.5 text-sm text-textMuted">Henüz ölçülemez</dd>
+                <dd className="mt-1 font-mb-display text-3xl text-mb-body">—</dd>
+                <dd className="mt-0.5 text-sm text-mb-body">Henüz ölçülemez</dd>
               </>
             )}
           </div>
         ))}
       </dl>
       {Number.isFinite(smallest) && smallest < SMALL_SAMPLE ? (
-        <p className="mt-3 text-sm text-textMuted">Örneklem küçük ({numberFormatter.format(smallest)} kişi); oranlar kullanıcı sayısı arttıkça anlam kazanır.</p>
+        <p className="mt-3 text-sm text-mb-body">Örneklem küçük ({numberFormatter.format(smallest)} kişi); oranlar kullanıcı sayısı arttıkça anlam kazanır.</p>
       ) : null}
     </div>
   );
@@ -187,7 +187,7 @@ const WEEKDAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cuma
 const WEEKDAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
-const LEVELS = ['bg-sunken', 'bg-primary/20', 'bg-primary/45', 'bg-primary/70', 'bg-primary'];
+const LEVELS = ['bg-mb-surface', 'bg-mb-action/20', 'bg-mb-action/45', 'bg-mb-action/70', 'bg-mb-action'];
 
 function levelOf(value: number, max: number) {
   if (!value || !max) return 0;
@@ -203,7 +203,7 @@ export function Heatmap({ cells }: { cells: AdminOverview['heatmap'] }) {
   const grid = new Map(cells.map((cell) => [`${cell.dow}-${cell.hour}`, cell.minutes]));
   const max = Math.max(0, ...cells.map((cell) => cell.minutes));
   if (!max) {
-    return <p className="py-8 text-center text-[15px] text-textMuted">Bu dönemde odak oturumu yok.</p>;
+    return <p className="py-8 text-center text-[15px] text-mb-body">Bu dönemde odak oturumu yok.</p>;
   }
   const peak = cells.reduce((best, cell) => (cell.minutes > best.minutes ? cell : best), cells[0]);
 
@@ -214,7 +214,7 @@ export function Heatmap({ cells }: { cells: AdminOverview['heatmap'] }) {
           <div className="grid grid-cols-[2.75rem_repeat(24,minmax(0,1fr))] gap-[3px]">
             {WEEKDAYS.map((day, dayIndex) => (
               <div key={day} className="contents">
-                <span className="self-center text-xs font-semibold text-textMuted" aria-hidden="true">{WEEKDAYS_SHORT[dayIndex]}</span>
+                <span className="self-center text-xs font-semibold text-mb-body" aria-hidden="true">{WEEKDAYS_SHORT[dayIndex]}</span>
                 {Array.from({ length: 24 }, (_, hour) => {
                   const minutes = grid.get(`${dayIndex + 1}-${hour}`) ?? 0;
                   return (
@@ -229,16 +229,16 @@ export function Heatmap({ cells }: { cells: AdminOverview['heatmap'] }) {
             ))}
             <span />
             {Array.from({ length: 24 }, (_, hour) => (
-              <span key={hour} className="pt-1 text-[11px] tabular-nums text-textMuted" aria-hidden="true">
+              <span key={hour} className="pt-1 text-[11px] tabular-nums text-mb-body" aria-hidden="true">
                 {hour % 3 === 0 ? String(hour).padStart(2, '0') : ''}
               </span>
             ))}
           </div>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-textMuted">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-mb-body">
         <p>
-          En yoğun: <span className="font-semibold text-textDark">{WEEKDAYS[peak.dow - 1]} {hourLabel(peak.hour)}</span> ({formatMinutes(peak.minutes)})
+          En yoğun: <span className="font-semibold text-mb-ink">{WEEKDAYS[peak.dow - 1]} {hourLabel(peak.hour)}</span> ({formatMinutes(peak.minutes)})
         </p>
         <div className="flex items-center gap-1.5" aria-hidden="true">
           <span>Az</span>

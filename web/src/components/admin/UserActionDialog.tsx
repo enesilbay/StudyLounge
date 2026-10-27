@@ -15,6 +15,10 @@ export interface UserActionConfig {
   choices?: ActionChoice[];
   choicesLabel?: string;
   reasonRequired?: boolean;
+  /** Açılışta seçili seçenek (verilmezse ilki). */
+  defaultChoice?: string;
+  /** Gerekçe alanının ön değeri (ör. "Şikayet #12"). */
+  defaultReason?: string;
   /** Doluysa onay için bu metin (kullanıcı adı) aynen yazılmalı. */
   confirmText?: string;
   run: (input: { choice?: string; reason: string; confirmation: string }) => Promise<unknown>;
@@ -22,8 +26,8 @@ export interface UserActionConfig {
 
 /** Yönetici işlemi onayı: isteğe bağlı seçenek, gerekçe ve (silmede) kullanıcı adı onayı. */
 export function UserActionDialog({ config, onClose, onDone }: { config: UserActionConfig; onClose: () => void; onDone: () => void }) {
-  const [choice, setChoice] = useState(config.choices?.[0]?.value);
-  const [reason, setReason] = useState('');
+  const [choice, setChoice] = useState(config.defaultChoice ?? config.choices?.[0]?.value);
+  const [reason, setReason] = useState(config.defaultReason ?? '');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +55,8 @@ export function UserActionDialog({ config, onClose, onDone }: { config: UserActi
       <form onSubmit={(event) => void submit(event)} className="space-y-4">
         {config.choices ? (
           <fieldset>
-            <legend id={groupId} className="mb-1.5 text-sm font-semibold text-textDark">{config.choicesLabel ?? 'Seçenek'}</legend>
-            <div className="flex flex-wrap gap-1 rounded-lg bg-sunken p-1" role="radiogroup" aria-labelledby={groupId}>
+            <legend id={groupId} className="mb-1.5 text-sm font-semibold text-mb-ink">{config.choicesLabel ?? 'Seçenek'}</legend>
+            <div className="flex flex-wrap gap-1 rounded-lg bg-mb-surface p-1" role="radiogroup" aria-labelledby={groupId}>
               {config.choices.map((item) => (
                 <button
                   key={item.value}
@@ -60,7 +64,7 @@ export function UserActionDialog({ config, onClose, onDone }: { config: UserActi
                   role="radio"
                   aria-checked={choice === item.value}
                   onClick={() => setChoice(item.value)}
-                  className={`min-h-9 flex-1 rounded-md px-3 text-sm font-semibold transition ${choice === item.value ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
+                  className={`min-h-9 flex-1 rounded-md px-3 text-sm font-semibold transition ${choice === item.value ? 'bg-mb-card text-mb-ink shadow-sm' : 'text-mb-body hover:text-mb-ink'}`}
                 >
                   {item.label}
                 </button>

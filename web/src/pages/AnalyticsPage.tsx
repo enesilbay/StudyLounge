@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { m } from 'framer-motion';
 import { BarChart3, BookOpen, CalendarDays, Clock3, Flame, History, Snowflake, Sun, Timer, TrendingDown, TrendingUp, Waves } from 'lucide-react';
 import { api } from '../lib/api';
-import { bestSlot, calendarWeeks, changePercent, lastDays, longestRun, peakHour, periodTotals, rhythmGrid, WEEKDAYS } from '../lib/analytics';
+import { bestSlot, calendarWeeks, changePercent, ISTANBUL_TZ, lastDays, longestRun, peakHour, periodStart, periodTotals, rhythmGrid, WEEKDAYS } from '../lib/analytics';
 import { formatMinutes } from '../lib/study';
 import type { StudySession, StudySummary } from '../lib/study';
 import { AppPage, Card, CountUp, EmptyState, ErrorState, IconHeading, Rise, SegmentedTabs, Skeleton, TileStat, actionButton } from '../components/app/Kit';
+import { Notice } from '../components/ui';
 import { CalendarMap, DailyChart, RhythmMap, SubjectDonut } from '../components/analytics/AnalyticsCharts';
 import { SessionTimeline } from '../components/analytics/SessionTimeline';
 import { useAuthStore } from '../store/authStore';
@@ -23,7 +24,9 @@ const PERIODS: { value: Period; label: string }[] = [
 const HISTORY_DAYS = 180;
 const CALENDAR_WEEKS = 12;
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
-const shortDate = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
+const shortDate = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', timeZone: ISTANBUL_TZ });
+/** Sunucu 1000 oturumdan fazlasını kesip `X-Truncated: true` başlığı ekler. */
+const SESSION_LIMIT = 1000;
 
 function readPeriod(): Period {
   try {
@@ -38,8 +41,9 @@ export default function AnalyticsPage() {
   const user = useAuthStore((state) => state.user);
   const [period, setPeriod] = useState<Period>(readPeriod);
   const [history, setHistory] = useState<StudySummary | null>(null);
-  const [current, setCurrent] = useState<{ period: Period; summary: StudySummary; sessions: StudySession[] } | null>(null);
-  const [failed, setFailed] = useState(false);
+  // İki istekten biri düşebilir: eksik olan `null` kalır, diğeri gösterilir. `period` verinin hangi döneme ait olduğunu söyler.
+  const [current, setCurrent] = useState<{ period: Period; summary: StudySummary | null; sessions: StudySession[] | null; truncated: boolean } | null>(null);
+  const [historyFailed, setHistoryFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const days = Number(period);
 
@@ -48,7 +52,7 @@ export default function AnalyticsPage() {
     api
       .get<StudySummary>(`/study/summary?days=${HISTORY_DAYS}`)
       .then((response) => !ignore && setHistory(response.data))
-      .catch(() => !ignore && setFailed(true));
+      .catch(() => !ignore && setHistoryFailed(true));
     return () => {
       ignore = true;
     };
@@ -56,10 +60,17 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     let ignore = false;
-    const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    Promise.all([api.get<StudySummary>(`/study/summary?days=${days}`), api.get<StudySession[]>(`/study/sessions?from=${encodeURIComponent(from)}`)])
-      .then(([summary, sessions]) => !ignore && setCurrent({ period, summary: summary.data, sessions: sessions.data }))
-      .catch(() => !ignore && setFailed(true));
+    // Dönem değişince eski dönemin verisi `current.period` denetimiyle gizlenir; yeni başlıkla eski veri görünmez.
+    const from = periodStart(days).toISOString();
+    Promise.allSettled([api.get<StudySummary>(`/study/summary?days=${days}`), api.get<StudySession[]>(`/study/sessions?from=${encodeURIComponent(from)}`)]).then(([summary, sessions]) => {
+      if (ignore) return;
+      setCurrent({
+        period,
+        summary: summary.status === 'fulfilled' ? summary.value.data : null,
+        sessions: sessions.status === 'fulfilled' ? sessions.value.data : null,
+        truncated: sessions.status === 'fulfilled' && (String(sessions.value.headers?.['x-truncated']) === 'true' || sessions.value.data.length >= SESSION_LIMIT),
+      });
+    });
     return () => {
       ignore = true;
     };
@@ -103,7 +114,8 @@ export default function AnalyticsPage() {
     </div>
   );
 
-  if (failed) {
+  const everythingFailed = current !== null && current.period === period && !current.summary && !current.sessions;
+  if (historyFailed || everythingFailed) {
     return (
       <AppPage title="Analitik" actions={header}>
         <Card className="mt-6">
@@ -111,7 +123,9 @@ export default function AnalyticsPage() {
             title="Analitik yüklenemedi"
             text="Bağlantını kontrol edip tekrar dene."
             onRetry={() => {
-              setFailed(false);
+              setHistoryFailed(false);
+              setHistory(null);
+              setCurrent(null);
               setAttempt((value) => value + 1);
             }}
           />
@@ -120,7 +134,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (!history || !current) {
+  if (!history || !current || current.period !== period) {
     return (
       <AppPage title="Analitik" description="Ne kadar, ne zaman ve hangi derse odaklandığın." actions={header}>
         <div className="space-y-4" aria-label="Analitik yükleniyor">
@@ -136,12 +150,29 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { summary, sessions } = current;
-  const noData = daily.every((day) => !day.minutes) && sessions.length === 0;
+  const { summary, truncated } = current;
+  const sessions = current.sessions ?? [];
+  const partial = !current.summary || !current.sessions;
+  const noData = !partial && daily.every((day) => !day.minutes) && sessions.length === 0;
   const asDuration = (value: number) => formatMinutes(Math.round(value));
 
   return (
     <AppPage title="Analitik" description="Ne kadar, ne zaman ve hangi derse odaklandığın." actions={header}>
+      {partial ? (
+        <div className="mb-4">
+          <Notice tone="danger">
+            {!summary ? 'Ders dağılımı yüklenemedi.' : 'Oturum ayrıntıları yüklenemedi.'} Diğer bölümler gösteriliyor.{' '}
+            <button type="button" className="font-medium underline underline-offset-2" onClick={() => setAttempt((value) => value + 1)}>
+              Yeniden dene
+            </button>
+          </Notice>
+        </div>
+      ) : null}
+      {truncated ? (
+        <div className="mb-4">
+          <Notice tone="info">Yalnızca son {SESSION_LIMIT} oturum gösteriliyor; ritim ve oturum listesi bu sınıra göre hesaplanır.</Notice>
+        </div>
+      ) : null}
       {noData ? (
         <Card className="mt-2">
           <EmptyState
@@ -164,7 +195,7 @@ export default function AnalyticsPage() {
             previous={view.totals.previous}
             activeDays={view.activeDays}
             average={view.totals.current / days}
-            sessionCount={summary.sessionCount}
+            sessionCount={summary?.sessionCount ?? sessions.length}
             series={view.range.map((day) => day.minutes)}
           />
 
@@ -221,8 +252,10 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Rise delay={0.2}>
               <Card className="h-full p-5 md:p-6">
-                <IconHeading icon={BookOpen} tile="bg-mb-tile-3" title="Ders dağılımı" text={`Son ${days} gün · ${summary.sessionCount} oturum`} />
-                {summary.bySubject.length ? (
+                <IconHeading icon={BookOpen} tile="bg-mb-tile-3" title="Ders dağılımı" text={summary ? `Son ${days} gün · ${summary.sessionCount} oturum` : `Son ${days} gün`} />
+                {!summary ? (
+                  <p className="py-10 text-center text-[15px] text-mb-body">Ders dağılımı şu an yüklenemedi.</p>
+                ) : summary.bySubject.length ? (
                   <SubjectDonut rows={summary.bySubject} />
                 ) : (
                   <p className="py-10 text-center text-[15px] text-mb-body">Odada bir ders seçip odaklandığında dağılım burada görünür.</p>
@@ -237,7 +270,13 @@ export default function AnalyticsPage() {
                   title="Çalışma ritmin"
                   text={view.slot ? `En çok ${WEEKDAYS[view.slot.weekday].toLocaleLowerCase('tr-TR')} ${view.slot.part.label}ları odaklanıyorsun` : `Son ${days} gün, gün ve saate göre`}
                 />
-                {sessions.length ? <RhythmMap grid={view.grid} /> : <p className="py-10 text-center text-[15px] text-mb-body">Oturum tamamladıkça ritmin burada oluşur.</p>}
+                {!current.sessions ? (
+                  <p className="py-10 text-center text-[15px] text-mb-body">Oturum ayrıntıları yüklenemedi.</p>
+                ) : sessions.length ? (
+                  <RhythmMap grid={view.grid} />
+                ) : (
+                  <p className="py-10 text-center text-[15px] text-mb-body">Oturum tamamladıkça ritmin burada oluşur.</p>
+                )}
               </Card>
             </Rise>
           </div>
@@ -252,7 +291,9 @@ export default function AnalyticsPage() {
             <Rise delay={0.34}>
               <Card className="p-5 md:p-6">
                 <IconHeading icon={History} tile="bg-mb-tile-6" title="Oturumların" text={`Son ${days} gün · güne göre`} />
-                {sessions.length ? (
+                {!current.sessions ? (
+                  <p className="py-10 text-center text-[15px] text-mb-body">Oturum ayrıntıları yüklenemedi.</p>
+                ) : sessions.length ? (
                   <SessionTimeline sessions={sessions} />
                 ) : (
                   <p className="py-10 text-center text-[15px] text-mb-body">Bu dönemde kayıtlı oturum yok.</p>

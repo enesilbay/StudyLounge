@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, type FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Camera,
@@ -34,9 +34,10 @@ import {
   Users,
   Video,
   Volume2,
+  WifiOff,
   X,
 } from 'lucide-react';
-import { Button, Notice } from '../components/ui';
+import { Button, ModalShell, Notice, TextField } from '../components/ui';
 import { OverflowMenu } from '../components/app/Kit';
 import { LogoMark } from '../components/brand/Logo';
 import { ParticipantTile, SceneTile, type RoomPerson } from '../components/room/ParticipantTile';
@@ -52,7 +53,9 @@ import { hasLiveVideo } from '../lib/rtc/media';
 import { useRoomBoard } from '../lib/board/useRoomBoard';
 import { isPdfUrl, MAX_PDF_BYTES } from '../lib/board/types';
 import { BREAK_MINUTES_RANGE, FOCUS_MINUTES_RANGE, breakMinutesFor, playChime, useRoomTimer } from '../lib/roomTimer';
-import type { DuelRequest, DuelResult, Lobby, Message, RoomUser } from '../lib/types';
+import type { Lobby, Message, RoomUser } from '../lib/types';
+import { addMessage, hasServerId, mergeMessages, normalizeSocketMessage } from '../lib/room/messages';
+import ConfirmDialog from '../components/room/ConfirmDialog';
 import { useAuthStore } from '../store/authStore';
 import { useStudyStore } from '../store/studyStore';
 import SubjectPicker from '../components/room/SubjectPicker';
@@ -121,7 +124,7 @@ function MinutesField({ label, value, range, onCommit }: { label: string; value:
           commit(event.target.value);
           setDraft(null);
         }}
-        className="h-8 w-14 rounded-[8px] border border-mb-line bg-mb-card px-2 text-center text-sm text-mb-ink outline-none focus:border-mb-action"
+        className="h-10 w-16 rounded-[8px] border border-mb-line bg-mb-card px-2 text-center text-sm text-mb-ink outline-none focus:border-mb-action"
       />
       dk
     </label>
@@ -186,7 +189,6 @@ export default function FocusRoomPage() {
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ id: number; fullName: string; messageId?: number; preview?: string } | null>(null);
   const user = useAuthStore((state) => state.user);
-  const refreshUser = useAuthStore((state) => state.refreshUser);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const pdfInputRef = useRef<HTMLInputElement | null>(null);
@@ -213,8 +215,20 @@ export default function FocusRoomPage() {
   const [chatText, setChatText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [pendingDuel, setPendingDuel] = useState<DuelRequest | null>(null);
-  const [activeDuel, setActiveDuel] = useState<string | null>(null);
+  // Katılım durumu: sunucu odaya almazsa (dolu, kilitli, çıkarıldın…) oda ekranı yerine açıklama gösterilir.
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinAttempt, setJoinAttempt] = useState(0);
+  const [askPassword, setAskPassword] = useState(false);
+  const [passwordOk, setPasswordOk] = useState(false);
+  const [roomPassword, setRoomPassword] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  // Bağlantı koptu mu? Kopunca şerit görünür, geri gelince odaya yeniden katılınıp durum geri yüklenir.
+  const [connectionLost, setConnectionLost] = useState(false);
+  const [resyncKey, setResyncKey] = useState(0);
+  const [confirm, setConfirm] = useState<{ title: string; description: string; confirmLabel: string; onConfirm: () => void } | null>(null);
+  // Bu oturumda en az bir kez odaklanıldı mı? Kutucuktaki "Hazır" / "Molada" ayrımı için.
+  const [hadSession, setHadSession] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanel | null>(readSidePanel);
   const [barHidden, setBarHidden] = useState(readBarHidden);
   const [pinnedKey, setPinnedKey] = useState<string | null>(null);
@@ -228,35 +242,55 @@ export default function FocusRoomPage() {
   const [watching, setWatching] = useState<number[]>([]);
   const [dismissedShares, setDismissedShares] = useState<number[]>([]);
 
+  // Oda listesi yüklenemezse (ağ/sunucu hatası) "oda yok" denmez; tekrar denenebilir.
+  const [lobbiesFailed, setLobbiesFailed] = useState(false);
+  const [lobbiesTick, setLobbiesTick] = useState(0);
   useEffect(() => {
     let ignore = false;
     api
       .get<Lobby[]>('/lobbies')
-      .then((response) => !ignore && setLobbies(unwrapData<Lobby[]>(response.data)))
-      .catch(() => !ignore && setLobbies([]))
-      .finally(() => !ignore && setLobbiesLoaded(true));
+      .then((response) => {
+        if (ignore) return;
+        setLobbies(unwrapData<Lobby[]>(response.data));
+        setLobbiesFailed(false);
+        setLobbiesLoaded(true);
+      })
+      .catch(() => {
+        if (ignore) return;
+        setLobbiesFailed(true);
+        setLobbiesLoaded(true);
+      });
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [lobbiesTick]);
 
   const lobby = useMemo(() => lobbies.find((item) => String(item.id) === String(roomId)), [lobbies, roomId]);
   const roomName = lobby?.name ?? null;
   const videoRoom = Boolean(lobby?.allowVideo);
   const isOwner = Boolean(lobby && user && lobby.ownerId === user.id);
+  // Sunucu `hasAccess` döndürürse (sahip ya da şifreyi girmiş) şifre sorulmaz; alan yoksa önce katılmayı dener, reddedilirse sorar.
+  const lobbyHasAccess = lobby?.hasAccess;
+  const needsPassword = Boolean(lobby?.isPrivate && !isOwner && lobbyHasAccess === false);
+  const passwordGate = (needsPassword || askPassword) && !passwordOk;
   const updateLobby = (changes: Partial<Lobby>) =>
     setLobbies((current) => current.map((item) => (item.id === lobby?.id ? { ...item, ...changes } : item)));
   const joinedLobby = Boolean(user && roomUsers.some((roomUser) => roomUser.userId === user.id));
+  const maxUsersRef = useRef<number | undefined>(undefined);
+  maxUsersRef.current = lobby?.maxUsers;
 
-  const call = useRoomCall({ roomName, selfId: user?.id ?? null, enabled: videoRoom && joinedLobby });
-  const board = useRoomBoard({ roomName, enabled: joinedLobby });
-  const roomTimer = useRoomTimer({ roomName, enabled: joinedLobby });
-  // Tahta açıkken ekran paylaşılmaz: tahta açılınca (kim açarsa açsın) kendi paylaşımın durur.
+  const call = useRoomCall({ roomName, selfId: user?.id ?? null, enabled: videoRoom && joinedLobby, resyncKey });
+  const board = useRoomBoard({ roomName, enabled: joinedLobby, resyncKey });
+  const roomTimer = useRoomTimer({ roomName, enabled: joinedLobby, resyncKey });
+  // Tahta açıkken ekran paylaşılmaz: tahta açılınca (kim açarsa açsın) kendi paylaşımın durur ve paylaşan bilgilendirilir.
   const boardOpen = Boolean(board.board);
   const sharingScreen = call.media.screen;
   const toggleScreen = call.toggleScreen;
   useEffect(() => {
-    if (boardOpen && sharingScreen) void toggleScreen();
+    if (boardOpen && sharingScreen) {
+      void toggleScreen();
+      setNotice('Tahta açıldığı için ekran paylaşımın durduruldu.');
+    }
   }, [boardOpen, sharingScreen, toggleScreen]);
   // Ortak sayaca katılan kişi odak aşamasında otomatik "odakta" sayılır.
   const [followShared, setFollowShared] = useState(false);
@@ -278,6 +312,11 @@ export default function FocusRoomPage() {
     (isAtDesk: boolean) => (isAtDesk ? { isAtDesk, roomName, subjectId: selectedSubjectId, source: 'web' as const } : { isAtDesk, roomName }),
     [roomName, selectedSubjectId],
   );
+  // Yeniden bağlanınca masada olma bilgisini geri yüklemek için güncel değerler.
+  const focusingRef = useRef(false);
+  focusingRef.current = focusing;
+  const deskPayloadRef = useRef(deskPayload);
+  deskPayloadRef.current = deskPayload;
 
   useEffect(() => {
     const onChange = () => {
@@ -313,23 +352,32 @@ export default function FocusRoomPage() {
     };
   }, [roomFullscreen]);
 
+  // Geçmiş yalnızca katılım (ya da yeniden bağlanma) sonrası çekilir: şifreli odanın sohbeti şifre girilmeden istenmez.
+  const historyLoadedRef = useRef(false);
+  const latestMessagesRef = useRef<Message[]>([]);
+  latestMessagesRef.current = messages;
   useEffect(() => {
     let ignore = false;
-    if (!roomName) return;
+    if (!roomName || passwordGate || !joinedLobby) return;
     api
       .get<Message[]>(`/messages/${encodeURIComponent(roomName)}`)
       .then((response) => {
         if (ignore) return;
         const history = unwrapData<Message[]>(response.data);
-        setMessages(history);
+        // Yüklenirken ya da kopukken gelen canlı mesajlar ezilmez; geçmişle birleşir.
+        const merged = mergeMessages(history, latestMessagesRef.current);
+        setMessages(merged);
         // Geçmiş mesajlar okunmuş sayılır; yalnızca odadayken gelenler sayılır.
-        setSeenMessages(history.length);
+        if (!historyLoadedRef.current) setSeenMessages(merged.length);
+        historyLoadedRef.current = true;
       })
-      .catch(() => !ignore && setMessages([]));
+      .catch(() => {
+        // Geçmiş gelmezse canlı mesajlar korunur.
+      });
     return () => {
       ignore = true;
     };
-  }, [roomName]);
+  }, [roomName, passwordGate, joinedLobby, resyncKey]);
 
   useEffect(() => {
     // Yalnızca sohbet kutusu kayar; scrollIntoView tüm sayfayı kaydırıp tahtadaki çizimi bozuyordu.
@@ -360,33 +408,32 @@ export default function FocusRoomPage() {
 
     const socket = getSocket();
 
-    const handleRoomUsers = (users: RoomUser[]) => setRoomUsers(users);
+    // Yeniden bağlandıktan sonra odaya dönüş onayı (room_users içinde sen) bekleniyor mu?
+    let restorePending = false;
+    const handleRoomUsers = (users: RoomUser[]) => {
+      setRoomUsers(users);
+      setJoinError(null);
+      if (restorePending && users.some((item) => item.userId === userId)) {
+        restorePending = false;
+        // Sunucu soketin eski durumunu unuttu: masada olma bilgisi, tahta, sayaç ve arama yeniden eşitlenir.
+        if (focusingRef.current) socket.emit('update_presence', deskPayloadRef.current(true));
+        setResyncKey((key) => key + 1);
+      }
+    };
     const handleReceiveMessage = (message: Message) => {
       if (message.roomName && message.roomName !== roomName) return;
-      setMessages((current) => {
-        const normalized = normalizeSocketMessage(message, roomName);
-        const exists = current.some((item) => messageIdentity(item) === messageIdentity(normalized));
-        return exists ? current : [...current, normalized];
-      });
+      setMessages((current) => addMessage(current, normalizeSocketMessage(message, roomName)));
     };
     const handleNudge = (payload: { senderName: string; message?: string }) => {
       setNotice(payload.message ?? `${payload.senderName} seni çalışmaya davet ediyor.`);
     };
-    const handleDuelReceived = (payload: DuelRequest) => setPendingDuel(payload);
-    const handleDuelStarted = (payload: { opponentName?: string; betAmount: number }) => {
-      setPendingDuel(null);
-      setActiveDuel(`${payload.opponentName ?? 'Rakibinle'} ${payload.betAmount} puanlık düello başladı. Odaktan ilk çıkan kaybeder.`);
-      void refreshUser();
-    };
-    const handleDuelEnded = (payload: DuelResult) => {
-      setActiveDuel(null);
-      setNotice(payload.winner ? `Düelloyu kazandın, ${payload.betAmount * 2} puan hesabına eklendi.` : `Düelloyu ${payload.opponentName ?? 'rakibin'} kazandı.`);
-      void refreshUser();
-    };
-    const handleDuelDeclined = () => setNotice('Düello davetin reddedildi.');
-    const handleDuelExpired = () => setNotice('Düello davetin yanıtlanmadığı için düştü.');
     const handleSocketError = (payload: { message?: string }) => setError(payload.message ?? 'İşlem tamamlanamadı.');
-    const handleJoinError = (payload: { message?: string }) => setError(payload.message ?? 'Odaya katılamadın.');
+    const handleJoinError = (payload: { message?: string }) => {
+      const message = payload.message ?? 'Odaya katılamadın.';
+      // Şifre gerekiyorsa şifre penceresi, diğer durumlarda (dolu, kilitli, çıkarıldın…) "Odalara dön" ekranı.
+      if (/şifre|sifre/i.test(message)) setAskPassword(true);
+      else setJoinError(message);
+    };
     // Oda sahibi çıkardıysa ya da odayı kapattıysa odalar sayfasına dönülür.
     const handleRemoved = (payload: { message?: string }) => {
       useInboxStore.getState().pushToast({ title: 'Odadan ayrıldın', body: payload.message ?? 'Oda kapandı.' });
@@ -396,56 +443,64 @@ export default function FocusRoomPage() {
       if (payload.roomName !== roomName) return;
       setLobbies((current) => current.map((item) => (item.name === roomName ? { ...item, isLocked: payload.isLocked } : item)));
     };
+    // Aynı hesap başka sekmede odaklanınca sunucu bu sekmenin oturumunu kapatır.
+    const handleFocusMoved = () => {
+      setRunning(false);
+      setFollowShared(false);
+      pauseAmbient();
+      setNotice('Odak başka bir sekmeye taşındı.');
+    };
     const handleRoomNotice = (payload: { message?: string }) => payload.message && setNotice(payload.message);
 
-    // Bağlantı koparsa masa listesi boşaltılır (arama da kapanır); geri gelince odaya yeniden katılınır.
-    const handleDisconnect = () => {
-      setRoomUsers([]);
-      setRunning(false);
-      pauseAmbient();
+    // Bağlantı kısa süre koparsa oturum ve arama bozulmaz; şerit gösterilir, geri gelince odaya yeniden katılınıp durum geri yüklenir.
+    // Açılışta henüz bağlanmamış soket, bekleyen join_lobby'yi bağlanınca kendisi gönderir; yalnızca sonradan kopuş yeniden katılım ister.
+    let lostBefore = false;
+    const handleLost = () => {
+      lostBefore = true;
+      setConnectionLost(true);
     };
-    const handleReconnect = () => socket.emit('join_lobby', { roomName, maxUsers: lobby?.maxUsers });
+    const handleReconnect = () => {
+      setConnectionLost(false);
+      if (!lostBefore) return;
+      lostBefore = false;
+      restorePending = true;
+      socket.emit('join_lobby', { roomName, maxUsers: maxUsersRef.current });
+    };
 
-    socket.on('disconnect', handleDisconnect);
+    socket.on('disconnect', handleLost);
+    socket.on('connect_error', handleLost);
     socket.on('connect', handleReconnect);
     socket.on('room_users', handleRoomUsers);
     socket.on('receive_message', handleReceiveMessage);
     socket.on('nudge_received', handleNudge);
-    socket.on('duel_received', handleDuelReceived);
-    socket.on('duel_started', handleDuelStarted);
-    socket.on('duel_ended', handleDuelEnded);
-    socket.on('duel_declined', handleDuelDeclined);
-    socket.on('duel_expired', handleDuelExpired);
     socket.on('error', handleSocketError);
     socket.on('join_lobby_error', handleJoinError);
     socket.on('kicked', handleRemoved);
     socket.on('lobby_closed', handleRemoved);
     socket.on('lobby_updated', handleLobbyUpdated);
     socket.on('room_notice', handleRoomNotice);
-    socket.emit('join_lobby', { roomName, maxUsers: lobby?.maxUsers });
+    socket.on('focus_moved', handleFocusMoved);
+    socket.emit('join_lobby', { roomName, maxUsers: maxUsersRef.current });
 
     return () => {
       socket.emit('update_presence', { isAtDesk: false, roomName });
       socket.emit('leave_lobby');
-      socket.off('disconnect', handleDisconnect);
+      socket.off('disconnect', handleLost);
+      socket.off('connect_error', handleLost);
       socket.off('connect', handleReconnect);
       socket.off('room_users', handleRoomUsers);
       socket.off('receive_message', handleReceiveMessage);
       socket.off('nudge_received', handleNudge);
-      socket.off('duel_received', handleDuelReceived);
-      socket.off('duel_started', handleDuelStarted);
-      socket.off('duel_ended', handleDuelEnded);
-      socket.off('duel_declined', handleDuelDeclined);
-      socket.off('duel_expired', handleDuelExpired);
       socket.off('error', handleSocketError);
       socket.off('join_lobby_error', handleJoinError);
       socket.off('kicked', handleRemoved);
       socket.off('lobby_closed', handleRemoved);
       socket.off('lobby_updated', handleLobbyUpdated);
       socket.off('room_notice', handleRoomNotice);
+      socket.off('focus_moved', handleFocusMoved);
       pauseAmbient();
     };
-  }, [lobby?.maxUsers, roomName, userId, refreshUser, pauseAmbient, navigate]);
+  }, [roomName, userId, passwordGate, joinAttempt, pauseAmbient, navigate]);
 
   useEffect(() => {
     soundTracks.forEach((track) => {
@@ -532,6 +587,7 @@ export default function FocusRoomPage() {
     setError(null);
     // Kişisel sayaç durur; bundan sonra odak/mola ortak sayaçtan gelir.
     setRunning(false);
+    setHadSession(true);
     setFollowShared(true);
   };
 
@@ -571,8 +627,9 @@ export default function FocusRoomPage() {
   }, [focusing, sharedMode, stopFocus, pauseAmbient, roomName]);
 
   const startFocus = () => {
-    if (!roomName) return;
+    if (!roomName || !joinedLobby) return;
     setError(null);
+    setHadSession(true);
     if (remainingSeconds <= 0) setRemainingSeconds(selectedDuration);
     playAmbient();
     setRunning(true);
@@ -592,22 +649,35 @@ export default function FocusRoomPage() {
   };
 
   // Görev paneli: görevi odaya sohbet mesajı olarak paylaşır.
-  const kickUser = (targetUserId: number) => getSocket().emit('kick_user', { targetUserId });
+  const kickUser = (targetUserId: number, name: string) =>
+    setConfirm({
+      title: `${name} odadan çıkarılsın mı?`,
+      description: 'Kişi odadan çıkarılır ve 15 dakika boyunca tekrar giremez.',
+      confirmLabel: 'Odadan çıkar',
+      onConfirm: () => getSocket().emit('kick_user', { targetUserId }),
+    });
+
+  // Bağlantı yokken gönderilen mesaj ve dosyalar sunucuya ulaşmaz; bunun yerine kullanıcı bilgilendirilir.
+  const requireConnection = () => {
+    if (!connectionLost) return true;
+    setError('Bağlantı yok. Yeniden bağlanınca tekrar dene.');
+    return false;
+  };
 
   const shareToRoom = (text: string) => {
-    if (!roomName || !joinedLobby) return;
+    if (!roomName || !joinedLobby || !requireConnection()) return;
     getSocket().emit('send_message', { roomName, text, type: 'text' });
     setSidePanel('chat');
   };
 
   const handleSend = () => {
-    if (!chatText.trim() || !roomName) return;
+    if (!chatText.trim() || !roomName || !joinedLobby || !requireConnection()) return;
     getSocket().emit('send_message', { roomName, text: chatText.trim(), type: 'text' });
     setChatText('');
   };
 
   const uploadFile = async (file: File, type: 'file' | 'image'): Promise<Message | null> => {
-    if (!roomName) return null;
+    if (!roomName || !joinedLobby || !requireConnection()) return null;
     setError(null);
     const formData = new FormData();
     formData.append('roomName', roomName);
@@ -618,7 +688,7 @@ export default function FocusRoomPage() {
       // Uç kaydedilen mesajı zarfsız döndürür; mesajdaki `user` alanı zarf sanılmasın.
       const body = response.data as Message | { data?: Message };
       const savedMessage = body && typeof body === 'object' && 'fileUrl' in body ? (body as Message) : unwrapData<Message>(body);
-      setMessages((current) => (current.some((item) => messageIdentity(item) === messageIdentity(savedMessage)) ? current : [...current, savedMessage]));
+      setMessages((current) => addMessage(current, savedMessage));
       getSocket().emit('send_message', { roomName, text: savedMessage.text, type: savedMessage.type ?? type, fileUrl: savedMessage.fileUrl });
       return savedMessage;
     } catch (uploadError) {
@@ -679,25 +749,9 @@ export default function FocusRoomPage() {
     setNotice(`${name} kişisine çalışma daveti gönderildi.`);
   };
 
-  const challengeUser = (targetUserId: number, name: string) => {
-    if (!roomName) return;
-    getSocket().emit('challenge_duel', { targetUserId, roomName, betAmount: 10 });
-    setNotice(`${name} kişisine 10 puanlık düello daveti gönderildi.`);
-  };
-
-  const acceptDuel = () => {
-    if (!pendingDuel) return;
-    getSocket().emit('accept_duel', { duelId: pendingDuel.duelId });
-  };
-
-  const declineDuel = () => {
-    if (!pendingDuel) return;
-    getSocket().emit('decline_duel', { duelId: pendingDuel.duelId });
-    setPendingDuel(null);
-  };
-
   /* ── Masa listesi: önce sen, sonra odaklananlar ── */
   // Uzak medya her değiştiğinde useRoomCall yeniden render tetikler; bu listeler her render'da hesaplanır.
+  const sharedBreak = Boolean(roomTimer.view && roomTimer.timer && roomTimer.view.phase === 'break' && !roomTimer.view.paused);
   const people: RoomPerson[] = (() => {
     const list: RoomPerson[] = [];
     if (user) {
@@ -709,6 +763,7 @@ export default function FocusRoomPage() {
         lamp: user.equippedLampColor,
         isPremium: user.isPremium,
         isAtDesk: focusing,
+        idleLabel: sharedBreak || hadSession ? 'Molada' : 'Hazır',
         isSelf: true,
         inCall: call.joined,
         micOn: call.media.mic,
@@ -729,6 +784,7 @@ export default function FocusRoomPage() {
           lamp: roomUser.equippedLampColor,
           isPremium: roomUser.isPremium,
           isAtDesk: roomUser.isAtDesk,
+          idleLabel: sharedBreak ? 'Molada' : 'Hazır',
           isSelf: false,
           inCall: Boolean(roomUser.isInCall),
           micOn: Boolean(roomUser.isMicOn),
@@ -804,19 +860,81 @@ export default function FocusRoomPage() {
 
   const leaveRoom = () => navigate('/app/lobbies');
 
-  if (lobbiesLoaded && !lobby) {
-    return (
-      <div className="grid min-h-dvh place-items-center bg-mb-surface px-6 text-center">
-        <div>
-          <LogoMark className="mx-auto h-14 w-14 text-mb-body" beam={false} />
-          <h1 className="mt-4 font-mb-display text-[1.75rem] font-light tracking-[-0.03em] text-mb-ink">Bu oda artık yok</h1>
-          <p className="mx-auto mt-2 max-w-sm text-[15px] text-mb-body">Odalar 24 saat sonra kapanır. Başka bir odaya katılabilir ya da yenisini kurabilirsin.</p>
-          <Link to="/app/lobbies" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-[12px] bg-mb-action px-5 text-[15px] font-medium text-mb-on-action shadow-mb-press">
-            Odalara dön
-          </Link>
+  const leaveToLobbies = (
+    <Link to="/app/lobbies" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-[12px] bg-mb-action px-5 text-[15px] font-medium text-mb-on-action shadow-mb-press">
+      Odalara dön
+    </Link>
+  );
+  const blockScreen = (title: string, text: string, retry?: () => void) => (
+    <div className="grid min-h-dvh place-items-center bg-mb-surface px-6 text-center">
+      <div>
+        <LogoMark className="mx-auto h-14 w-14 text-mb-body" beam={false} />
+        <h1 className="mt-4 font-mb-display text-[1.75rem] font-light tracking-[-0.03em] text-mb-ink">{title}</h1>
+        <p className="mx-auto mt-2 max-w-sm text-[15px] text-mb-body">{text}</p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {leaveToLobbies}
+          {retry ? (
+            <button type="button" onClick={retry} className="mt-6 inline-flex min-h-11 items-center rounded-[12px] border border-mb-line bg-mb-card px-5 text-[15px] font-medium text-mb-ink transition hover:bg-mb-surface">
+              Tekrar dene
+            </button>
+          ) : null}
         </div>
       </div>
+    </div>
+  );
+
+  if (lobbiesLoaded && lobbiesFailed && !lobby) {
+    return blockScreen('Oda yüklenemedi', 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.', () => {
+      setLobbiesLoaded(false);
+      setLobbiesTick((tick) => tick + 1);
+    });
+  }
+
+  if (lobbiesLoaded && !lobby) {
+    return blockScreen('Bu oda artık yok', 'Odalar 24 saat sonra kapanır. Başka bir odaya katılabilir ya da yenisini kurabilirsin.');
+  }
+
+  if (passwordGate && lobby) {
+    const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!roomPassword.trim()) return setPasswordError('Şifreyi gir.');
+      setVerifying(true);
+      setPasswordError(null);
+      try {
+        await api.post('/lobbies/verify-password', { lobbyId: lobby.id, password: roomPassword });
+        setRoomPassword('');
+        setPasswordOk(true);
+        setAskPassword(false);
+        setJoinError(null);
+        setJoinAttempt((attempt) => attempt + 1);
+      } catch (verifyError) {
+        const status = (verifyError as { response?: { status?: number } }).response?.status;
+        setPasswordError(status === 429 ? 'Çok fazla deneme yaptın, biraz bekleyip tekrar dene.' : getApiErrorMessage(verifyError));
+      } finally {
+        setVerifying(false);
+      }
+    };
+    return (
+      <div className="min-h-dvh bg-mb-room">
+        <ModalShell open title="Şifreli oda" description={`"${lobby.name}" odasına girmek için şifreyi gir.`} onClose={() => navigate('/app/lobbies', { replace: true })}>
+          <form onSubmit={submitPassword} className="space-y-4">
+            <TextField label="Şifre" value={roomPassword} onChange={setRoomPassword} type="password" required />
+            {passwordError ? <Notice tone="danger">{passwordError}</Notice> : null}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => navigate('/app/lobbies', { replace: true })}>Vazgeç</Button>
+              <Button type="submit" loading={verifying}>Odaya gir</Button>
+            </div>
+          </form>
+        </ModalShell>
+      </div>
     );
+  }
+
+  if (joinError) {
+    return blockScreen('Odaya katılamadın', joinError, () => {
+      setJoinError(null);
+      setJoinAttempt((attempt) => attempt + 1);
+    });
   }
 
   const sharedView = roomTimer.view && roomTimer.timer ? roomTimer.view : null;
@@ -824,6 +942,15 @@ export default function FocusRoomPage() {
   const timerLit = sharedView ? followShared && sharedView.phase === 'focus' && !sharedView.paused : running;
   const timerPhase = sharedView ? (sharedView.paused ? 'Duraklatıldı' : sharedView.phase === 'focus' ? 'Odak' : 'Mola') : running ? 'Odakta' : 'Hazır';
   const timerTotal = sharedView && roomTimer.timer ? (sharedView.phase === 'focus' ? roomTimer.timer.focusSeconds : roomTimer.timer.breakSeconds) : selectedDuration;
+  const canStopTimer = Boolean(isOwner || (roomTimer.timer && user && roomTimer.timer.startedBy === user.id));
+  const canCloseBoard = Boolean(isOwner || (board.board && user && board.board.openedBy === user.id));
+  const closeBoardWithConfirm = () =>
+    setConfirm({
+      title: 'Tahta kapatılsın mı?',
+      description: 'Tahta ve üzerindeki çizimler odadaki herkes için kapanır.',
+      confirmLabel: 'Tahtayı kapat',
+      onConfirm: board.close,
+    });
   const timerTitle = sharedView ? `Ortak sayaç · ${sharedView.round}. tur` : 'Sayaç';
 
   // Sayaç kontrolleri: ortak sayaç varsa duraklat/bitir/katıl, yoksa süre seçimi ve Odaklan.
@@ -832,12 +959,25 @@ export default function FocusRoomPage() {
       {sharedView && roomTimer.timer ? (
         <>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mb-body">
-            <span className={`rounded-[6px] px-2 py-0.5 font-medium ${sharedView.paused ? 'bg-mb-surface text-mb-body' : sharedView.phase === 'focus' ? 'bg-lightAmber text-accentDark' : 'bg-mb-tint text-mb-action'}`}>{timerPhase}</span>
+            <span className={`rounded-[6px] px-2 py-0.5 font-medium ${sharedView.paused ? 'bg-mb-surface text-mb-body' : sharedView.phase === 'focus' ? 'bg-mb-tint text-mb-action' : 'bg-mb-surface text-mb-body'}`}>{timerPhase}</span>
             {describeTimerEvent(roomTimer.lastEvent, roomTimer.timer.startedByName)}
           </p>
           <div className="mt-4 flex items-center gap-1.5">
             <IconButton label={sharedView.paused ? 'Ortak sayacı sürdür' : 'Ortak sayacı herkes için duraklat'} onClick={sharedView.paused ? roomTimer.resume : roomTimer.pause} icon={sharedView.paused ? Play : Pause} />
-            <IconButton label="Ortak sayacı herkes için bitir" onClick={roomTimer.stop} icon={Square} />
+            {canStopTimer ? (
+              <IconButton
+                label="Ortak sayacı herkes için bitir"
+                onClick={() =>
+                  setConfirm({
+                    title: 'Ortak sayaç bitirilsin mi?',
+                    description: 'Sayaç odadaki herkes için durur ve sıfırlanır.',
+                    confirmLabel: 'Sayacı bitir',
+                    onConfirm: roomTimer.stop,
+                  })
+                }
+                icon={Square}
+              />
+            ) : null}
             {followShared ? (
               <button type="button" onClick={leaveShared} className="ml-auto inline-flex min-h-10 items-center rounded-[12px] border border-mb-line bg-mb-card px-4 text-sm font-medium text-mb-ink transition hover:bg-mb-surface">
                 Sayaçtan ayrıl
@@ -859,7 +999,7 @@ export default function FocusRoomPage() {
                 type="button"
                 onClick={() => selectDuration(item.seconds)}
                 aria-pressed={selectedDuration === item.seconds}
-                className={`rounded-[8px] px-2.5 py-1 text-xs font-medium transition ${selectedDuration === item.seconds ? 'bg-mb-solid text-mb-on-solid' : 'bg-mb-surface text-mb-body hover:text-mb-ink'}`}
+                className={`min-h-10 rounded-[8px] px-3 py-1 text-xs font-medium transition ${selectedDuration === item.seconds ? 'bg-mb-solid text-mb-on-solid' : 'bg-mb-surface text-mb-body hover:text-mb-ink'}`}
               >
                 {item.label}
               </button>
@@ -874,7 +1014,7 @@ export default function FocusRoomPage() {
             <button
               type="button"
               onClick={() => (running ? stopFocus() : startFocus())}
-              disabled={!roomName}
+              disabled={!joinedLobby}
               className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[12px] text-[15px] font-medium transition disabled:opacity-50 ${
                 running ? 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface' : 'bg-mb-action text-mb-on-action shadow-mb-press hover:bg-mb-action-2'
               }`}
@@ -902,11 +1042,11 @@ export default function FocusRoomPage() {
   // Tahta ya da ekran açıkken sahnenin üstündeki ince sayaç şeridinin tek eylemi.
   const timerMainAction = sharedView ? (
     followShared ? (
-      <button type="button" onClick={leaveShared} className="inline-flex min-h-9 items-center rounded-[10px] border border-mb-line bg-mb-card px-3 text-sm font-medium text-mb-ink transition hover:bg-mb-surface">
+      <button type="button" onClick={leaveShared} className="inline-flex min-h-10 items-center rounded-[10px] border border-mb-line bg-mb-card px-3 text-sm font-medium text-mb-ink transition hover:bg-mb-surface">
         Sayaçtan ayrıl
       </button>
     ) : (
-      <button type="button" onClick={joinShared} className="inline-flex min-h-9 items-center gap-1.5 rounded-[10px] bg-mb-action px-3 text-sm font-medium text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2">
+      <button type="button" onClick={joinShared} className="inline-flex min-h-10 items-center gap-1.5 rounded-[10px] bg-mb-action px-3 text-sm font-medium text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2">
         <LogoMark className="h-4 w-4" />
         Katıl
       </button>
@@ -915,8 +1055,8 @@ export default function FocusRoomPage() {
     <button
       type="button"
       onClick={() => (running ? stopFocus() : startFocus())}
-      disabled={!roomName}
-      className={`inline-flex min-h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition disabled:opacity-50 ${
+      disabled={!joinedLobby}
+      className={`inline-flex min-h-10 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition disabled:opacity-50 ${
         running ? 'border border-mb-line bg-mb-card text-mb-ink hover:bg-mb-surface' : 'bg-mb-action text-mb-on-action shadow-mb-press hover:bg-mb-action-2'
       }`}
     >
@@ -942,8 +1082,7 @@ export default function FocusRoomPage() {
       selected={stageCameraKey === `camera:${person.userId}`}
       onSelect={() => toggleCameraPin(person.userId)}
       onNudge={() => nudgeUser(person.userId, person.name)}
-      onDuel={() => challengeUser(person.userId, person.name)}
-      onKick={isOwner && !person.isSelf ? () => kickUser(person.userId) : undefined}
+      onKick={isOwner && !person.isSelf ? () => kickUser(person.userId, person.name) : undefined}
     />
   );
   const tileAction = (small: boolean, dark: boolean) =>
@@ -1028,7 +1167,7 @@ export default function FocusRoomPage() {
       {/* Ortam sesleri: panel kapalıyken de çalabilmeleri için her zaman sayfada */}
       <div hidden>
         {soundTracks.map((sound) => (
-          <audio key={sound.key} ref={(element) => { audioRefs.current[sound.key] = element; }} src={sound.src} preload="auto" loop />
+          <audio key={sound.key} ref={(element) => { audioRefs.current[sound.key] = element; }} src={sound.src} preload="none" loop />
         ))}
       </div>
 
@@ -1106,19 +1245,14 @@ export default function FocusRoomPage() {
                   </div>
                 </Notice>
               ))}
-              {notice ? <Notice tone="info" onDismiss={() => setNotice(null)}>{notice}</Notice> : null}
-              {activeDuel ? <Notice tone="accent">{activeDuel}</Notice> : null}
-              {pendingDuel ? (
-                <Notice tone="accent" onDismiss={declineDuel}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span>{pendingDuel.challengerName} seni {pendingDuel.betAmount} puanlık düelloya çağırıyor.</span>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={declineDuel}>Reddet</Button>
-                      <Button size="sm" onClick={acceptDuel}>Kabul et</Button>
-                    </div>
-                  </div>
-                </Notice>
+              {connectionLost ? (
+                <div role="status" className="flex items-center gap-2 rounded-[12px] bg-mb-live-soft px-4 py-3 text-sm font-medium text-mb-live-ink">
+                  <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Bağlantı koptu, yeniden bağlanılıyor…
+                </div>
               ) : null}
+              {roomTimer.error ? <Notice tone="danger" onDismiss={roomTimer.clearError}>{roomTimer.error}</Notice> : null}
+              {notice ? <Notice tone="info" onDismiss={() => setNotice(null)}>{notice}</Notice> : null}
             </div>
           </div>
 
@@ -1148,10 +1282,10 @@ export default function FocusRoomPage() {
                       );
                     })}
                   </div>
-                  <button type="button" onClick={toggleStageFullscreen} aria-label={stageFullscreen ? 'Tam ekrandan çık' : 'Sahneyi tam ekran yap'} title={stageFullscreen ? 'Tam ekrandan çık' : 'Sahneyi tam ekran yap'} className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-white/70 transition hover:bg-white/10 hover:text-white">
+                  <button type="button" onClick={toggleStageFullscreen} aria-label={stageFullscreen ? 'Tam ekrandan çık' : 'Sahneyi tam ekran yap'} title={stageFullscreen ? 'Tam ekrandan çık' : 'Sahneyi tam ekran yap'} className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] text-white/70 transition hover:bg-white/10 hover:text-white">
                     {stageFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                   </button>
-                  <button type="button" onClick={closeStage} aria-label={stage.kind === 'screen' ? 'İzlemeyi bırak' : 'Sahneden indir'} title={stage.kind === 'screen' ? 'İzlemeyi bırak' : 'Sahneden indir'} className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-white/70 transition hover:bg-white/10 hover:text-white">
+                  <button type="button" onClick={closeStage} aria-label={stage.kind === 'screen' ? 'İzlemeyi bırak' : 'Sahneden indir'} title={stage.kind === 'screen' ? 'İzlemeyi bırak' : 'Sahneden indir'} className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] text-white/70 transition hover:bg-white/10 hover:text-white">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -1224,7 +1358,7 @@ export default function FocusRoomPage() {
                     role="tab"
                     aria-selected={sidePanel === item.key}
                     onClick={() => setSidePanel(item.key)}
-                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition ${
+                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition ${
                       sidePanel === item.key ? 'bg-mb-surface text-mb-ink' : 'text-mb-body hover:text-mb-ink'
                     }`}
                   >
@@ -1233,7 +1367,7 @@ export default function FocusRoomPage() {
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={() => setSidePanel(null)} aria-label="Yan paneli kapat" title="Kapat" className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] text-mb-body transition hover:bg-mb-surface hover:text-mb-ink">
+              <button type="button" onClick={() => setSidePanel(null)} aria-label="Yan paneli kapat" title="Kapat" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-mb-body transition hover:bg-mb-surface hover:text-mb-ink">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1253,13 +1387,13 @@ export default function FocusRoomPage() {
                         {!mine ? (
                           <p className="mb-0.5 flex items-center gap-1 px-1 text-xs font-medium text-mb-body">
                             {message.user?.fullName ?? message.fullName ?? 'Öğrenci'}
-                            {senderId && message.id ? (
+                            {senderId && hasServerId(message) ? (
                               <button
                                 type="button"
                                 onClick={() => setReportTarget({ id: senderId, fullName: message.user?.fullName ?? message.fullName ?? 'Öğrenci', messageId: message.id, preview: message.text })}
                                 title="Mesajı şikayet et"
                                 aria-label="Mesajı şikayet et"
-                                className="grid h-5 w-5 place-items-center rounded text-mb-body opacity-0 transition hover:text-danger focus:opacity-100 group-hover/msg:opacity-100"
+                                className="-my-2.5 grid h-10 w-10 place-items-center rounded text-mb-body transition hover:text-mb-live-ink focus:opacity-100 md:opacity-0 md:group-hover/msg:opacity-100"
                               >
                                 <Flag className="h-3 w-3" />
                               </button>
@@ -1369,7 +1503,7 @@ export default function FocusRoomPage() {
           onClick={() => setBarHidden(false)}
           aria-label="Kontrolleri göster"
           title="Kontrolleri göster"
-          className="absolute bottom-3 left-1/2 z-40 inline-flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full border border-mb-line bg-mb-card px-4 text-[13px] font-medium text-mb-body shadow-mb-raised transition hover:text-mb-ink"
+          className="absolute bottom-3 left-1/2 z-40 inline-flex h-10 -translate-x-1/2 items-center gap-1.5 rounded-full border border-mb-line bg-mb-card px-4 text-[13px] font-medium text-mb-body shadow-mb-raised transition hover:text-mb-ink"
         >
           <ChevronUp className="h-4 w-4" aria-hidden="true" />
           Kontroller
@@ -1413,7 +1547,7 @@ export default function FocusRoomPage() {
                 text={board.board ? 'Başka PDF' : 'PDF aç'}
               />
               <IconButton label="Boş tahta aç" onClick={openBlankBoard} icon={Presentation} disabled={!joinedLobby} text="Boş tahta" />
-              {board.board ? <IconButton label="Tahtayı herkes için kapat" onClick={board.close} icon={X} text="Tahtayı kapat" /> : null}
+              {board.board && canCloseBoard ? <IconButton label="Tahtayı herkes için kapat" onClick={closeBoardWithConfirm} icon={X} text="Tahtayı kapat" /> : null}
               <BarDivider />
             </div>
             <input ref={pdfInputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => event.target.files?.[0] && void openPdfFile(event.target.files[0])} />
@@ -1460,7 +1594,7 @@ export default function FocusRoomPage() {
                   : []),
                 { label: board.board ? 'Başka PDF aç' : 'PDF aç ve çiz', icon: FileText, onClick: () => pdfInputRef.current?.click(), disabled: !joinedLobby || openingPdf },
                 { label: 'Boş tahta aç', icon: Presentation, onClick: openBlankBoard, disabled: !joinedLobby },
-                ...(board.board ? [{ label: 'Tahtayı herkes için kapat', icon: X, onClick: board.close }] : []),
+                ...(board.board && canCloseBoard ? [{ label: 'Tahtayı herkes için kapat', icon: X, onClick: closeBoardWithConfirm }] : []),
                 { label: 'Görevler', icon: ListChecks, onClick: () => toggleSide('tasks'), active: sidePanel === 'tasks' },
                 { label: 'Ortam sesi', icon: Volume2, onClick: () => toggleSide('sound'), active: sidePanel === 'sound' },
                 ...(canFullscreen ? [{ label: roomFullscreen ? 'Tam ekrandan çık' : 'Tam ekran', icon: roomFullscreen ? Minimize2 : Maximize2, onClick: toggleRoomFullscreen }] : []),
@@ -1495,6 +1629,14 @@ export default function FocusRoomPage() {
       {videoRoom ? (
         <DeviceSettingsModal open={devicesOpen} devices={call.devices} onChange={(kind, deviceId) => void call.setDevice(kind, deviceId)} onClose={() => setDevicesOpen(false)} />
       ) : null}
+      <ConfirmDialog
+        open={confirm !== null}
+        title={confirm?.title ?? ''}
+        description={confirm?.description ?? ''}
+        confirmLabel={confirm?.confirmLabel ?? 'Onayla'}
+        onConfirm={() => confirm?.onConfirm()}
+        onClose={() => setConfirm(null)}
+      />
       <ReportDialog
         target={reportTarget ? { id: reportTarget.id, fullName: reportTarget.fullName } : null}
         messageId={reportTarget?.messageId}
@@ -1597,22 +1739,6 @@ function describeTimerEvent(event: { action: string; byName: string | null } | n
   if (event?.byName && event.action === 'pause') return `${event.byName} duraklattı`;
   if (event?.byName && event.action === 'resume') return `${event.byName} sürdürdü`;
   return `${startedByName} başlattı`;
-}
-
-function normalizeSocketMessage(message: Message, roomName: string): Message {
-  return {
-    ...message,
-    id: message.id ?? Date.now(),
-    roomName,
-    createdAt: message.createdAt ?? message.timestamp ?? new Date().toISOString(),
-    user: message.user ?? (message.userId ? { id: message.userId, fullName: message.fullName ?? 'Öğrenci', email: '', username: '' } : undefined),
-  };
-}
-
-function messageIdentity(message: Message) {
-  if (message.id) return `id:${message.id}`;
-  if (message.fileUrl) return `file:${message.fileUrl}`;
-  return `${message.user?.id ?? message.userId ?? 'anon'}:${message.text}:${message.createdAt ?? message.timestamp ?? ''}`;
 }
 
 function isImageMessage(message: Message) {

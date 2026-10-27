@@ -5,6 +5,8 @@ export interface User {
   username?: string;
   fullName: string;
   email: string;
+  /** Hesabın şifresi var mı (yalnızca Google ile açılmış hesaplarda false). */
+  hasPassword?: boolean;
   isPremium?: boolean;
   score?: number;
   avatarUrl?: string | null;
@@ -121,6 +123,8 @@ export interface Lobby {
   ownerId?: number | null;
   /** Oda sahibi yeni girişleri kapattı mı. */
   isLocked?: boolean;
+  /** İstek atan oda sahibi ya da şifreyi daha önce doğruladı mı. */
+  hasAccess?: boolean;
 }
 
 export interface Message {
@@ -168,18 +172,6 @@ export interface MediaState {
   camera: boolean;
   mic: boolean;
   screen: boolean;
-}
-
-export interface DuelRequest {
-  duelId: string;
-  challengerName: string;
-  betAmount: number;
-}
-
-export interface DuelResult {
-  winner: boolean;
-  opponentName?: string;
-  betAmount: number;
 }
 
 export interface DailyAnalytics {

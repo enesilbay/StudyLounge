@@ -1,5 +1,3 @@
-import { BatteryLow, Smartphone, UserX, type LucideIcon } from 'lucide-react';
-
 /*
  * Açılış sayfasının metinleri. Görünümden bağımsızdır: Didasko ve Mobilo
  * sürümleri aynı içeriği kendi yerleşimleriyle gösterir. Gerçek olmayan bir
@@ -26,28 +24,22 @@ export const problemSection = {
   intro: 'Vize haftası da olsa, aylardır süren bir sınav hazırlığı da olsa sorun aynı: masada yalnızsın.',
 };
 
-export const problems: Array<{ icon: LucideIcon; title: string; text: string }> = [
+export const problems: Array<{ title: string; text: string }> = [
   {
-    icon: Smartphone,
     title: 'Dikkat dağılıyor',
     text: 'Telefon elinin altında, bir sekme daha açık. Kimse görmeyince "beş dakika ara" bir saate uzuyor.',
   },
   {
-    icon: BatteryLow,
     title: 'Motivasyon eriyor',
     text: 'Aylara yayılan bir hazırlıkta her gün aynı saatte masaya oturmak, tek başına giderek zorlaşıyor.',
   },
   {
-    icon: UserX,
     title: 'Yanında kimse yok',
     text: 'Kütüphanede yer yok, arkadaşların başka şehirde. Takıldığın soruyu soracak kimse yok.',
   },
 ];
 
-/** Görünümün çizeceği şekil; her sürüm bunu kendi görseline eşler. */
-export type FigureKey = 'timer' | 'board' | 'camera' | 'rooms' | 'break';
-
-export type Benefit = { title: string; text: string; detail?: string; figure?: FigureKey };
+export type Benefit = { title: string; text: string; detail?: string };
 
 export const benefitSection = {
   title: 'Odada neler var',
@@ -61,7 +53,6 @@ export const benefitRows: Array<[Benefit, Benefit]> = [
       title: 'Ortak sayaç',
       text: 'Odak ve mola sırayla gelir; katılan herkesin sayacı aynıdır. Duraklatan ya da bitiren kim olursa olsun odadaki herkes görür.',
       detail: 'Kendi sayacınla da çalışabilirsin; ortak sayaca katılmak isteğe bağlı.',
-      figure: 'timer',
     },
     {
       title: 'Kamera zorunlu değil',
@@ -77,7 +68,6 @@ export const benefitRows: Array<[Benefit, Benefit]> = [
       title: 'Ortak tahta',
       text: 'Ders notunu PDF olarak yükle, odadaki herkes aynı sayfayı görsün. Kalemle çiz, fosforlu kalemle işaretle, lazerle bir yeri göster.',
       detail: 'Tablet kalemiyle bastırdıkça çizgi kalınlaşır; avuç içi dokunuşu çizim yapmaz.',
-      figure: 'board',
     },
   ],
   [
@@ -85,7 +75,6 @@ export const benefitRows: Array<[Benefit, Benefit]> = [
       title: 'İstersen kamera',
       text: 'Kameralı odalarda en fazla altı kişi görüntülü çalışır, takıldığı soruyu ekranını paylaşarak gösterir. Kamera ve mikrofon sen açana kadar kapalı kalır.',
       detail: 'Görüntü ve ses kaydedilmez.',
-      figure: 'camera',
     },
     {
       title: 'Haftalık lig',
@@ -99,21 +88,18 @@ export const stepSection = {
   intro: 'Kurulum yok, takvim ayarlamak yok. Odaya girersin, odaklanırsın; gerisi herkes için aynı anda işler.',
 };
 
-export const steps: Array<{ title: string; text: string; figure: FigureKey }> = [
+export const steps: Array<{ title: string; text: string }> = [
   {
     title: 'Bir odaya gir',
     text: 'Konusuna göre açılmış odalardan birine katıl ya da arkadaşının kurduğu şifreli odaya gir. Kimin çalıştığını, kimin molada olduğunu hemen görürsün.',
-    figure: 'rooms',
   },
   {
     title: 'Lambanı yak',
     text: 'Bir odaya girip "Odaklan"a basman yeterli; masandaki lamba yanar ve odadakiler odakta olduğunu görür. Sekmeden uzun süre ayrılırsan odak durur.',
-    figure: 'timer',
   },
   {
     title: 'Birlikte mola ver',
     text: 'Biri ortak sayacı başlatınca katılan herkes aynı anda odaklanır, aynı anda mola verir. Sohbet molaya kalır; zil çalınca herkes masasına döner.',
-    figure: 'break',
   },
 ];
 
@@ -122,6 +108,9 @@ export const pricingSection = {
   intro: 'Birlikte çalışmak için gereken her şey ücretsiz. Kendi odanı kurmak ve kameralı odalar için Premium var.',
   footnote: 'Premium dönemlik alınır, otomatik yenilenmez. Süre bitince hesabın ücretsiz plana döner; verilerin yerinde kalır.',
 };
+
+/** Premium fiyatları (TL). Açılış sayfası önce `GET /payments/plans` ile sunucudan okur; ulaşılamazsa bunlar gösterilir. */
+export const fallbackPremiumPrices = { monthly: 49, yearly: 499 };
 
 export const plans = {
   free: {
@@ -133,9 +122,7 @@ export const plans = {
   premium: {
     name: 'Premium',
     description: 'Kendi odanı kur, kameralı çalış, Elite odalara gir.',
-    price: '₺49',
     period: '/ ay',
-    note: 'ya da yıllık ₺499 (aylığa göre yılda ₺89 daha az)',
     action: "Premium'a geç",
     features: ['Ücretsiz plandaki her şey', 'Kendi odanı kurma, istersen şifreli', 'Kameralı oda açma (en fazla 6 kişi)', 'Elite odalar: odak süren iki kat sayılır', 'Ortam seslerini odadakilerle eşleme'],
   },

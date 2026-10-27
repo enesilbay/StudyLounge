@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Undo2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/apiResponses';
 import { useAdminPending } from '../../lib/admin';
 import { Button, Notice, Pill, StateBlock, Surface } from '../ui';
+import { Pager } from './Pager';
+import { usePagedList } from './pagedList';
 
 type FeedbackKind = 'bug' | 'idea' | 'other';
 type Filter = 'open' | 'done' | 'all';
@@ -32,39 +34,33 @@ const KIND_LABELS: Record<FeedbackKind, { label: string; tone: 'danger' | 'info'
   other: { label: 'Diğer', tone: 'neutral' },
 };
 
+const PAGE_SIZE = 25;
 const dateFormatter = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
 
 /** Yönetici: uygulama içinden gelen hata bildirimleri ve öneriler. */
 export function FeedbackPanel() {
   const [filter, setFilter] = useState<Filter>('open');
-  const [items, setItems] = useState<AdminFeedback[] | null>(null);
+  const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const refreshPending = useAdminPending((state) => state.refresh);
 
-  const load = useCallback(async () => {
-    try {
-      const response = await api.get<AdminFeedback[]>('/admin/feedback', { params: { status: filter } });
-      setItems(response.data);
-    } catch (loadError) {
-      setError(getApiErrorMessage(loadError));
-      setItems([]);
-    }
-  }, [filter]);
+  const { data, loading, error, reload } = usePagedList<AdminFeedback>('/admin/feedback', { status: filter }, page, PAGE_SIZE, setPage);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const changeFilter = (next: Filter) => {
+    setFilter(next);
+    setPage(1);
+  };
 
   const setStatus = async (id: number, status: 'open' | 'done') => {
     setBusyId(id);
-    setError(null);
+    setActionError(null);
     try {
       await api.patch(`/admin/feedback/${id}`, { status });
-      await load();
+      await reload();
       void refreshPending();
     } catch (updateError) {
-      setError(getApiErrorMessage(updateError));
+      setActionError(getApiErrorMessage(updateError));
     } finally {
       setBusyId(null);
     }
@@ -72,32 +68,42 @@ export function FeedbackPanel() {
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap gap-1 rounded-lg bg-sunken p-1" role="tablist" aria-label="Geri bildirim durumu">
+      <div className="mb-5 flex flex-wrap gap-1 rounded-lg bg-mb-surface p-1" role="tablist" aria-label="Geri bildirim durumu">
         {FILTERS.map(([key, label]) => (
           <button
             key={key}
             type="button"
             role="tab"
             aria-selected={filter === key}
-            onClick={() => setFilter(key)}
-            className={`min-h-10 rounded-md px-4 text-[15px] font-semibold transition ${filter === key ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
+            onClick={() => changeFilter(key)}
+            className={`min-h-10 rounded-md px-4 text-[15px] font-semibold transition ${filter === key ? 'bg-mb-card text-mb-ink shadow-sm' : 'text-mb-body hover:text-mb-ink'}`}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {error ? (
+      {actionError ? (
         <div className="mb-4">
-          <Notice tone="danger" onDismiss={() => setError(null)}>{error}</Notice>
+          <Notice tone="danger" onDismiss={() => setActionError(null)}>{actionError}</Notice>
         </div>
       ) : null}
 
-      {items === null ? <StateBlock loading title="Geri bildirimler yükleniyor" /> : null}
-      {items?.length === 0 ? <StateBlock title={filter === 'open' ? 'Açık geri bildirim yok' : 'Bu filtrede geri bildirim yok'} description="Kullanıcılar menüdeki geri bildirim düğmesiyle yazdığında burada görünür." /> : null}
+      {loading && !data && !error ? <StateBlock loading title="Geri bildirimler yükleniyor" /> : null}
+      {error ? (
+        <StateBlock
+          tone="danger"
+          title="Geri bildirimler yüklenemedi"
+          description={error}
+          action={<Button variant="secondary" size="sm" onClick={() => void reload()}>Tekrar dene</Button>}
+        />
+      ) : null}
+      {!error && data?.items.length === 0 ? <StateBlock title={filter === 'open' ? 'Açık geri bildirim yok' : 'Bu filtrede geri bildirim yok'} description="Kullanıcılar menüdeki geri bildirim düğmesiyle yazdığında burada görünür." /> : null}
 
+      {!error && data && data.items.length > 0 ? (
+        <div className={`transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
       <ul className="space-y-3">
-        {items?.map((item) => {
+        {data.items.map((item) => {
           const kind = KIND_LABELS[item.kind] ?? KIND_LABELS.other;
           const busy = busyId === item.id;
           return (
@@ -106,21 +112,21 @@ export function FeedbackPanel() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Pill tone={kind.tone}>{kind.label}</Pill>
                   {item.status === 'done' ? <Pill>Tamamlandı</Pill> : null}
-                  <span className="ml-auto text-sm text-textMuted">{dateFormatter.format(new Date(item.createdAt))}</span>
+                  <span className="ml-auto text-sm text-mb-body">{dateFormatter.format(new Date(item.createdAt))}</span>
                 </div>
-                <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-6 text-textDark">{item.message}</p>
-                <p className="mt-2 text-sm text-textMuted">
+                <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-6 text-mb-ink">{item.message}</p>
+                <p className="mt-2 text-sm text-mb-body">
                   {item.user ? (
-                    <Link to={`/app/u/${item.user.id}`} className="font-semibold hover:underline">
+                    <Link to={`/admin/users/${item.user.id}`} className="font-semibold hover:underline">
                       {item.user.fullName} (@{item.user.username})
                     </Link>
                   ) : (
                     'Silinmiş kullanıcı'
                   )}
                 </p>
-                {item.page ? <p className="mt-1 text-sm text-textMuted">Sayfa: {item.page}</p> : null}
-                {item.userAgent ? <p className="mt-1 truncate text-xs text-textMuted" title={item.userAgent}>{item.userAgent}</p> : null}
-                <div className="mt-3 flex justify-end border-t border-border pt-3">
+                {item.page ? <p className="mt-1 text-sm text-mb-body">Sayfa: {item.page}</p> : null}
+                {item.userAgent ? <p className="mt-1 truncate text-xs text-mb-body" title={item.userAgent}>{item.userAgent}</p> : null}
+                <div className="mt-3 flex justify-end border-t border-mb-line pt-3">
                   {item.status === 'open' ? (
                     <Button size="sm" icon={Check} disabled={busy} onClick={() => void setStatus(item.id, 'done')}>
                       Tamamlandı
@@ -136,6 +142,9 @@ export function FeedbackPanel() {
           );
         })}
       </ul>
+          <Pager data={data} page={page} onPage={setPage} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { m } from 'framer-motion';
-import { ChevronDown, Monitor, Smartphone } from 'lucide-react';
-import { groupByDay, localKey } from '../../lib/analytics';
+import { ChevronDown } from 'lucide-react';
+import { groupByDay, ISTANBUL_TZ, localKey } from '../../lib/analytics';
 import { formatMinutes } from '../../lib/study';
 import type { StudySession } from '../../lib/study';
 import { ghostButton } from '../app/Kit';
 
-const time = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
-const dayTitle = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+const time = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: ISTANBUL_TZ });
+const dayTitle = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: ISTANBUL_TZ });
 
 function dayLabel(date: Date) {
   const today = new Date();
-  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
   if (localKey(date) === localKey(today)) return 'Bugün';
   if (localKey(date) === localKey(yesterday)) return 'Dün';
   return dayTitle.format(date);
@@ -75,11 +75,6 @@ export function SessionTimeline({ sessions }: { sessions: StudySession[] }) {
                           <span className="rounded-[6px] bg-mb-tile-5 px-1.5 text-xs font-medium text-mb-ink" title="Elite odada iki kat puan">×2</span>
                         ) : null}
                         <span className="font-medium">{formatMinutes(session.minutes)}</span>
-                        {session.source === 'web' ? (
-                          <Monitor className="h-4 w-4 text-mb-body" aria-label="Web" />
-                        ) : (
-                          <Smartphone className="h-4 w-4 text-mb-body" aria-label="Telefon" />
-                        )}
                       </span>
                     </m.li>
                   );

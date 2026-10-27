@@ -2,14 +2,44 @@ import type { StudySession } from './study';
 
 /*
  * Analitik sayfasının hesapları: dönem toplamları, haftalık ritim (gün × saat), takvim ve oturum grupları.
- * Hepsi saf fonksiyon; tarih anahtarları tarayıcının yerel günüdür (kullanıcı ve backend Türkiye saatinde).
+ * Hepsi saf fonksiyon. Gün sınırları tarayıcının saat diliminden bağımsız olarak İstanbul saatine (UTC+3,
+ * yaz saati uygulaması yok) sabittir; backend de günleri böyle böler. Günler "İstanbul öğlesi" anıyla
+ * temsil edilir; böylece `Intl` ile hangi saat diliminde biçimlenirse biçimlensin aynı gün görünür.
  */
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const ISTANBUL_OFFSET_MS = 3 * HOUR_MS;
 
+/** `Intl` biçimleyicileri için saat dilimi. */
+export const ISTANBUL_TZ = 'Europe/Istanbul';
+
+/** UTC alıcılarıyla okunduğunda İstanbul duvar saatini veren kaydırılmış tarih. */
+function wall(date: Date) {
+  return new Date(date.getTime() + ISTANBUL_OFFSET_MS);
+}
+
+/** Günün İstanbul'daki öğle 12:00 anı. */
+function noonOf(date: Date) {
+  const w = wall(date);
+  return new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate(), 12) - ISTANBUL_OFFSET_MS);
+}
+
+/** İstanbul saatine göre "YYYY-AA-GG" gün anahtarı. */
 export function localKey(date: Date) {
   const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const w = wall(date);
+  return `${w.getUTCFullYear()}-${pad(w.getUTCMonth() + 1)}-${pad(w.getUTCDate())}`;
+}
+
+/** İstanbul saatine göre saat (0-23). */
+export function istanbulHour(date: Date) {
+  return wall(date).getUTCHours();
+}
+
+/** Bugünle biten `count` günlük dönemin ilk İstanbul gününün 00:00 anı (oturum listesi `from` parametresi için). */
+export function periodStart(count: number, today = new Date()) {
+  return new Date(noonOf(today).getTime() - (count - 1) * DAY_MS - 12 * HOUR_MS);
 }
 
 export interface DayValue {
@@ -22,7 +52,7 @@ export interface DayValue {
 export function lastDays(daily: { date: string; minutes: number }[], count: number, today = new Date()): DayValue[] {
   const byDate = new Map(daily.map((day) => [day.date, day.minutes]));
   return Array.from({ length: count }, (_, index) => {
-    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (count - 1 - index));
+    const date = new Date(noonOf(today).getTime() - (count - 1 - index) * DAY_MS);
     const key = localKey(date);
     return { key, date, minutes: byDate.get(key) ?? 0 };
   });
@@ -43,7 +73,7 @@ export function changePercent(current: number, previous: number): number | null 
 
 /** Pazartesi = 0 ... Pazar = 6 */
 export function weekdayIndex(date: Date) {
-  return (date.getDay() + 6) % 7;
+  return (wall(date).getUTCDay() + 6) % 7;
 }
 
 /**
@@ -62,9 +92,9 @@ export function rhythmGrid(sessions: Pick<StudySession, 'startedAt' | 'endedAt' 
     let cursor = start;
     while (cursor < end) {
       const at = new Date(cursor);
-      const hourEnd = new Date(at.getFullYear(), at.getMonth(), at.getDate(), at.getHours() + 1).getTime();
+      const hourEnd = (Math.floor((cursor + ISTANBUL_OFFSET_MS) / HOUR_MS) + 1) * HOUR_MS - ISTANBUL_OFFSET_MS;
       const until = Math.min(end, hourEnd);
-      grid[weekdayIndex(at)][at.getHours()] += ((until - cursor) / 60000) * scale;
+      grid[weekdayIndex(at)][istanbulHour(at)] += ((until - cursor) / 60000) * scale;
       cursor = until;
     }
   }
@@ -105,11 +135,11 @@ export function peakHour(grid: number[][]) {
  */
 export function calendarWeeks(daily: { date: string; minutes: number }[], weeks: number, today = new Date()) {
   const byDate = new Map(daily.map((day) => [day.date, day.minutes]));
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayStart = noonOf(today);
   const firstMonday = new Date(todayStart.getTime() - (weekdayIndex(todayStart) + (weeks - 1) * 7) * DAY_MS);
   return Array.from({ length: weeks }, (_, week) =>
     Array.from({ length: 7 }, (_, weekday) => {
-      const date = new Date(firstMonday.getFullYear(), firstMonday.getMonth(), firstMonday.getDate() + week * 7 + weekday);
+      const date = new Date(firstMonday.getTime() + (week * 7 + weekday) * DAY_MS);
       const key = localKey(date);
       return { key, date, minutes: byDate.get(key) ?? 0, future: date > todayStart, today: key === localKey(todayStart) };
     }),
@@ -120,7 +150,7 @@ export function calendarWeeks(daily: { date: string; minutes: number }[], weeks:
 export function groupByDay<T extends { startedAt: string }>(sessions: T[]) {
   const groups = new Map<string, { key: string; date: Date; items: T[] }>();
   for (const session of sessions) {
-    const date = new Date(session.startedAt);
+    const date = noonOf(new Date(session.startedAt));
     const key = localKey(date);
     const group = groups.get(key) ?? { key, date, items: [] };
     group.items.push(session);

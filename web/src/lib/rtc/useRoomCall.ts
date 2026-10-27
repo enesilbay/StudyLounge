@@ -12,6 +12,8 @@ interface UseRoomCallOptions {
   selfId: number | null;
   /** Oda kameralı mı ve kullanıcı lobiye katıldı mı? İkisi de doğruysa aramaya girilir. */
   enabled: boolean;
+  /** Bağlantı koptuktan sonra odaya dönülünce artar; arama sunucuya yeniden kaydedilir. */
+  resyncKey?: number;
 }
 
 export interface RoomCall {
@@ -39,7 +41,7 @@ export interface RoomCall {
 
 const OFF: MediaState = { camera: false, mic: false, screen: false };
 
-export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): RoomCall {
+export function useRoomCall({ roomName, selfId, enabled, resyncKey = 0 }: UseRoomCallOptions): RoomCall {
   const managerRef = useRef<PeerManager | null>(null);
   const [manager, setManager] = useState<PeerManager | null>(null);
   const cameraRef = useRef<MediaStream | null>(null);
@@ -80,9 +82,13 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
 
     const onPeers = (payload: { peers: Array<{ userId: number }> }) => {
       setJoined(true);
-      payload.peers.forEach((peer) => managerRef.current?.ensurePeer(peer.userId));
+      // Yeniden katılımda eski bağlantılar ölü olabilir: her biri sıfırdan kurulur.
+      payload.peers.forEach((peer) => managerRef.current?.resetPeer(peer.userId));
+      // Sunucu medya durumunu soketle birlikte unuttu; açık kamera/mikrofon yeniden bildirilir.
+      publish();
     };
-    const onPeerJoined = (payload: { userId: number }) => managerRef.current?.ensurePeer(payload.userId);
+    // Aynı kişi yeniden katıldıysa (yeni soket) eski bağlantısı atılıp yenisi kurulur.
+    const onPeerJoined = (payload: { userId: number }) => managerRef.current?.resetPeer(payload.userId);
     const onPeerLeft = (payload: { userId: number }) => managerRef.current?.removePeer(payload.userId);
     const onSignal = (payload: { fromUserId: number; data: SignalData }) => {
       void managerRef.current?.handleSignal(payload.fromUserId, payload.data);
@@ -136,7 +142,13 @@ export function useRoomCall({ roomName, selfId, enabled }: UseRoomCallOptions): 
       setMedia(OFF);
       setJoined(false);
     };
-  }, [enabled, roomName, selfId]);
+  }, [enabled, roomName, selfId, publish]);
+
+  // Bağlantı kopup geri gelince aynı yöneticiyle aramaya yeniden katıl (kamera/mikrofon kapanmaz).
+  useEffect(() => {
+    if (!resyncKey || !enabled || !roomName || !managerRef.current) return;
+    getSocket().emit('rtc_join', { roomName });
+  }, [resyncKey, enabled, roomName]);
 
   const ensureCameraStream = () => {
     if (!cameraRef.current) cameraRef.current = new MediaStream();

@@ -91,7 +91,7 @@ export default function DeviceSettingsModal({
 
   // Mikrofon yoksa çubuk boş görünür (son ölçüm değeri kullanılmaz).
   const shownLevel = preview?.getAudioTracks().length ? level : 0;
-  const selectCls = 'min-h-11 w-full rounded-lg border border-border bg-sunken px-3 text-base text-textDark outline-none focus:border-accent';
+  const selectCls = 'min-h-11 w-full rounded-lg border border-mb-line bg-mb-surface px-3 text-base text-mb-ink outline-none focus:border-mb-action';
 
   return (
     <ModalShell open={open} title="Kamera ve mikrofon" description="Seçimin bu tarayıcıda hatırlanır. Kameran açıksa yeni cihaza görüşme kesilmeden geçilir." onClose={onClose}>
@@ -107,7 +107,7 @@ export default function DeviceSettingsModal({
         {error ? <Notice tone="danger">{error}</Notice> : null}
 
         <div>
-          <label htmlFor={cameraId} className="mb-1.5 block text-sm font-semibold text-textDark">Kamera</label>
+          <label htmlFor={cameraId} className="mb-1.5 block text-sm font-semibold text-mb-ink">Kamera</label>
           <select id={cameraId} value={devices.camera ?? ''} onChange={(event) => onChange('camera', event.target.value || null)} className={selectCls}>
             <option value="">Tarayıcının varsayılanı</option>
             {cameras.map((device) => (
@@ -117,7 +117,7 @@ export default function DeviceSettingsModal({
         </div>
 
         <div>
-          <label htmlFor={micId} className="mb-1.5 block text-sm font-semibold text-textDark">Mikrofon</label>
+          <label htmlFor={micId} className="mb-1.5 block text-sm font-semibold text-mb-ink">Mikrofon</label>
           <select id={micId} value={devices.mic ?? ''} onChange={(event) => onChange('mic', event.target.value || null)} className={selectCls}>
             <option value="">Tarayıcının varsayılanı</option>
             {mics.map((device) => (
@@ -125,12 +125,12 @@ export default function DeviceSettingsModal({
             ))}
           </select>
           <div className="mt-2 flex items-center gap-2" aria-hidden="true">
-            <span className="text-xs text-textMuted">Ses</span>
-            <span className="h-2 flex-1 overflow-hidden rounded-full bg-sunken">
-              <span className="block h-2 rounded-full bg-primary transition-[width] duration-75" style={{ width: `${Math.round(shownLevel * 100)}%` }} />
+            <span className="text-xs text-mb-body">Ses</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-mb-surface">
+              <span className="block h-2 rounded-full bg-mb-action transition-[width] duration-75" style={{ width: `${Math.round(shownLevel * 100)}%` }} />
             </span>
           </div>
-          <p className="mt-1 text-xs text-textMuted">Konuşunca çubuk hareket etmiyorsa başka bir mikrofon seç.</p>
+          <p className="mt-1 text-xs text-mb-body">Konuşunca çubuk hareket etmiyorsa başka bir mikrofon seç.</p>
         </div>
 
         <div className="flex justify-end">
