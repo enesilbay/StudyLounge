@@ -755,7 +755,7 @@ export class UsersService implements OnModuleInit, OnApplicationBootstrap {
         equippedProfileFrame: currentUser.equippedProfileFrame,
         isOnline: currentUser.isOnline,
         currentRoom: currentUser.currentRoom,
-      } as any);
+      });
     }
 
     return friends.sort(

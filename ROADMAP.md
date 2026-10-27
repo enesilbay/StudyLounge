@@ -35,7 +35,7 @@ Tüm sayfaların ve backend'in analizinde çıkan bulgular düzeltildi. Öne ç�
 - **Ekonomi:** coin değişiklikleri atomik (eşzamanlı satın alma ile çift harcama kapandı); süre `Math.floor`, oturum başına 240 dk sınırı, kullanıcı başına tek aktif odak oturumu; kaldırılan günlük hedef artık coin vermiyor.
 - **Güvenilirlik:** lig ödülü uyuyan sunucuda da verilir (açılışta ve saatlik telafi); bekleyen ödemeler 10 dakikada bir iyzico ile mutabakata alınır; `synchronize` artık `DB_SYNCHRONIZE` bayrağına bağlı (varsayılan kapalı).
 - **Web:** 401 ve `force_logout` ortak çıkış akışına bağlı; geçici ağ hatası artık oturumu kapatmaz; odada bağlantı koptu şeridi, katılım hatası ekranı, onaylı ortak eylemler; ortam sesleri yalnızca açılınca iner; mobil üst çubuk taşması; DM son 100 mesaj + eskiler; gerçek zamanlı arkadaşlık istekleri; yönetim panelinde sayfalama ve onaylı yaptırımlar.
-- **Açık kalan:** ortam sesi mp3'leri (~50 MB) sıkıştırılmadı; ffmpeg ile 64 kbps'ye indirilmeli.
+- **Ortam sesleri:** mp3'ler 64 kbps stereo olarak yeniden kodlandı; toplam 49,7 MB → 13,1 MB.
 
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
 

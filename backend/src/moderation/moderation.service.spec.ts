@@ -163,11 +163,11 @@ describe('ModerationService', () => {
   });
 
   it('paginates the report list and always returns the paged shape', async () => {
-    (reports as unknown as { findAndCount: jest.Mock }).findAndCount =
-      jest.fn().mockResolvedValue([[{ id: 1 }], 41]);
+    const findAndCount = jest.fn().mockResolvedValue([[{ id: 1 }], 41]);
+    (reports as unknown as { findAndCount: jest.Mock }).findAndCount = findAndCount;
     const result = await service.listReports('open', 2, 500);
     expect(result).toEqual({ items: [{ id: 1 }], total: 41, page: 2, pageSize: 100 });
-    const args = (reports as unknown as { findAndCount: jest.Mock }).findAndCount.mock.calls[0][0];
+    const [[args]] = findAndCount.mock.calls as [[unknown]];
     expect(args).toMatchObject({ where: { status: 'open' }, skip: 100, take: 100 });
 
     const defaults = await service.listReports('all');

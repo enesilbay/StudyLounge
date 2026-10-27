@@ -276,7 +276,7 @@ describe('SensorsGateway (socket.io)', () => {
       expect(await join(a, 'Kütüphane')).toHaveLength(1);
       const full = next<{ message: string }>(b, 'room_full');
       b.emit('join_lobby', { roomName: 'Kütüphane' });
-      expect(await full).toMatchObject({ message: expect.stringContaining('kapasite') });
+      expect((await full)?.message).toContain('kapasite');
     });
 
     it('şifresi doğrulanmamış şifreli odaya girişi reddeder', async () => {
@@ -407,7 +407,9 @@ describe('SensorsGateway (socket.io)', () => {
       expect(fakeMessages.createDirectMessage).toHaveBeenCalledTimes(1);
 
       moderation.blocks.add('2:1');
-      expect(await ack({ targetUserId: 2, text: 'x' })).toMatchObject({ ok: false, error: expect.stringMatching(/gönderemezsin/) });
+      const blocked = await ack({ targetUserId: 2, text: 'x' });
+      expect(blocked.ok).toBe(false);
+      expect(blocked.error).toMatch(/gönderemezsin/);
     });
 
     it('DM hız sınırı ack hatası döner', async () => {
@@ -587,7 +589,7 @@ describe('SensorsGateway (socket.io)', () => {
   describe('odak', () => {
     const tick = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
     type Sessions = Map<string, { startedAt: number }>;
-    const sessionsOf = () => (app.get(SensorsGateway) as unknown as { activeSessions: Sessions }).activeSessions;
+    const sessionsOf = () => (app.get<SensorsGateway>(SensorsGateway) as unknown as { activeSessions: Sessions }).activeSessions;
 
     it('masadan kalkınca oturumu kaydeder; tekrar gelen "masadayım" başlangıcı sıfırlamaz', async () => {
       lobbies.add({ name: 'Odak' });
