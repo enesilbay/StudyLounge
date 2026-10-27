@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import { m } from 'framer-motion';
 import { formatMinutes } from '../../lib/study';
 import type { StudySummary } from '../../lib/study';
-import { WEEKDAYS } from '../../lib/analytics';
+import { ISTANBUL_TZ, WEEKDAYS } from '../../lib/analytics';
 import type { DayValue, calendarWeeks } from '../../lib/analytics';
 
 /*
@@ -11,10 +12,13 @@ import type { DayValue, calendarWeeks } from '../../lib/analytics';
  */
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
-const dayShort = new Intl.DateTimeFormat('tr-TR', { weekday: 'short' });
-const dayLong = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
-const dayMonth = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
-const monthShort = new Intl.DateTimeFormat('tr-TR', { month: 'short' });
+const dayShort = new Intl.DateTimeFormat('tr-TR', { weekday: 'short', timeZone: ISTANBUL_TZ });
+const dayLong = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: ISTANBUL_TZ });
+const dayMonth = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', timeZone: ISTANBUL_TZ });
+const monthShort = new Intl.DateTimeFormat('tr-TR', { month: 'short', timeZone: ISTANBUL_TZ });
+
+/** Dokunmatik hedef en az 24 px olsun diye dar ekranda ızgaralar bu genişlikten küçülmez; sayfa değil grafik kayar. */
+const MIN_TARGET_PX = 24;
 
 /** Sıfırdan büyük dakikaları dört kademeye ayırır (en yoğun değere göre). */
 function intensity(value: number, max: number) {
@@ -47,6 +51,9 @@ function niceCeiling(value: number) {
 
 export function DailyChart({ days }: { days: DayValue[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [tabStop, setTabStop] = useState<number | null>(null);
+  const barRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const top = niceCeiling(Math.max(30, ...days.map((day) => day.minutes)));
   const active = days.filter((day) => day.minutes > 0);
   const average = active.length ? days.reduce((sum, day) => sum + day.minutes, 0) / days.length : 0;
@@ -55,6 +62,24 @@ export function DailyChart({ days }: { days: DayValue[] }) {
   const gap = count <= 7 ? 'gap-2 sm:gap-3' : count <= 30 ? 'gap-[3px]' : 'gap-px';
   const labelEvery = count <= 7 ? 1 : count <= 30 ? 5 : 15;
   const lastIndex = count - 1;
+  const gapPx = count <= 7 ? 8 : count <= 30 ? 3 : 1;
+  // Tek tab durağı (yuvarlanan tabindex): oklar çubuklar arasında gezer.
+  const stop = tabStop ?? lastIndex;
+
+  // Dar ekranda kaydırılan grafik en yeni güne (sağ uca) açılır.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [count]);
+
+  const onBarKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const next = event.key === 'ArrowRight' ? index + 1 : event.key === 'ArrowLeft' ? index - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? lastIndex : null;
+    if (next === null) return;
+    event.preventDefault();
+    const target = Math.max(0, Math.min(lastIndex, next));
+    setTabStop(target);
+    barRefs.current[target]?.focus();
+  };
 
   return (
     <div className="mt-6 grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-2">
@@ -65,6 +90,8 @@ export function DailyChart({ days }: { days: DayValue[] }) {
           </span>
         ))}
       </div>
+      <div ref={scrollRef} className="overflow-x-auto sm:overflow-visible">
+      <div className="min-w-[var(--chart-min)] sm:min-w-0" style={{ '--chart-min': `${count * MIN_TARGET_PX + (count - 1) * gapPx}px` } as CSSProperties}>
       <div className="relative h-56" onMouseLeave={() => setHovered(null)}>
         {[top, top / 2, 0].map((tick) => (
           <span key={tick} className="absolute inset-x-0 border-t border-mb-line/70" style={{ top: `${100 - (tick / top) * 100}%` }} aria-hidden="true" />
@@ -90,9 +117,18 @@ export function DailyChart({ days }: { days: DayValue[] }) {
               <li key={day.key} className="relative flex items-end justify-center">
                 <button
                   type="button"
+                  ref={(el) => {
+                    barRefs.current[index] = el;
+                  }}
                   aria-label={label}
+                  tabIndex={index === stop ? 0 : -1}
                   onMouseEnter={() => setHovered(index)}
-                  onFocus={() => setHovered(index)}
+                  onFocus={() => {
+                    setHovered(index);
+                    setTabStop(index);
+                  }}
+                  onClick={() => setHovered(index)}
+                  onKeyDown={(event) => onBarKey(event, index)}
                   onBlur={() => setHovered(null)}
                   className="flex h-full w-full items-end justify-center rounded-[6px] focus-visible:outline-2 focus-visible:outline-mb-action"
                 >
@@ -128,7 +164,6 @@ export function DailyChart({ days }: { days: DayValue[] }) {
           })}
         </ol>
       </div>
-      <span />
       <ol className={`mt-2 grid ${gap} text-xs`} style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }} aria-hidden="true">
         {days.map((day, index) => {
           const show = count <= 7 || index === lastIndex || (index % labelEvery === 0 && lastIndex - index >= labelEvery / 2);
@@ -143,6 +178,8 @@ export function DailyChart({ days }: { days: DayValue[] }) {
           );
         })}
       </ol>
+      </div>
+      </div>
     </div>
   );
 }
@@ -225,26 +262,55 @@ const WEEKDAY_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
 export function RhythmMap({ grid }: { grid: number[][] }) {
   const [hovered, setHovered] = useState<{ day: number; hour: number } | null>(null);
+  const [tabStop, setTabStop] = useState({ day: 0, hour: 0 });
+  const cellRefs = useRef<(HTMLLIElement | null)[]>([]);
   const max = Math.max(...grid.flat());
+
+  // Tek tab durağı; oklar kareler arasında gezer, odak ve dokunma ayrıntıyı alttaki satırda gösterir.
+  const onCellKey = (event: KeyboardEvent<HTMLLIElement>, day: number, hour: number) => {
+    let nextDay = day;
+    let nextHour = hour;
+    if (event.key === 'ArrowRight') nextHour = Math.min(23, hour + 1);
+    else if (event.key === 'ArrowLeft') nextHour = Math.max(0, hour - 1);
+    else if (event.key === 'ArrowDown') nextDay = Math.min(6, day + 1);
+    else if (event.key === 'ArrowUp') nextDay = Math.max(0, day - 1);
+    else if (event.key === 'Home') nextHour = 0;
+    else if (event.key === 'End') nextHour = 23;
+    else return;
+    event.preventDefault();
+    setTabStop({ day: nextDay, hour: nextHour });
+    cellRefs.current[nextDay * 24 + nextHour]?.focus();
+  };
   const caption = hovered
     ? `${WEEKDAYS[hovered.day]} ${String(hovered.hour).padStart(2, '0')}:00–${String((hovered.hour + 1) % 24).padStart(2, '0')}:00 · ${
         grid[hovered.day][hovered.hour] >= 1 ? formatMinutes(Math.round(grid[hovered.day][hovered.hour])) : 'odak yok'
       }`
-    : 'Bir kareye gel; o saatte ne kadar çalıştığını gör.';
+    : 'Bir kareye gel, dokun ya da oklarla gez; o saatte ne kadar çalıştığını gör.';
 
   return (
     <div className="mt-5">
-      <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2 gap-y-[3px]" onMouseLeave={() => setHovered(null)}>
+      <div className="overflow-x-auto sm:overflow-visible">
+      <div className="grid min-w-[var(--map-min)] grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2 gap-y-[3px] sm:min-w-0" style={{ '--map-min': `${24 * MIN_TARGET_PX + 23 * 3 + 44}px` } as CSSProperties} onMouseLeave={() => setHovered(null)}>
         {grid.map((hours, day) => (
           <div key={day} className="contents">
-            <span className="self-center text-xs text-mb-body">{WEEKDAY_SHORT[day]}</span>
+            <span className="sticky left-0 self-center bg-mb-card text-xs text-mb-body">{WEEKDAY_SHORT[day]}</span>
             <ol className="grid gap-[3px]" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }} aria-label={`${WEEKDAYS[day]} saatleri`}>
               {hours.map((value, hour) => (
                 <m.li
                   key={hour}
+                  ref={(el: HTMLLIElement | null) => {
+                    cellRefs.current[day * 24 + hour] = el;
+                  }}
+                  tabIndex={tabStop.day === day && tabStop.hour === hour ? 0 : -1}
                   aria-label={`${WEEKDAYS[day]} ${String(hour).padStart(2, '0')}:00: ${value >= 1 ? formatMinutes(Math.round(value)) : 'odak yok'}`}
                   onMouseEnter={() => setHovered({ day, hour })}
-                  className={`aspect-square rounded-[3px] ${intensity(value, max)} ${hovered?.day === day && hovered.hour === hour ? 'ring-2 ring-mb-ink' : ''}`}
+                  onFocus={() => {
+                    setHovered({ day, hour });
+                    setTabStop({ day, hour });
+                  }}
+                  onClick={() => setHovered({ day, hour })}
+                  onKeyDown={(event) => onCellKey(event, day, hour)}
+                  className={`aspect-square rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-mb-action ${intensity(value, max)} ${hovered?.day === day && hovered.hour === hour ? 'ring-2 ring-mb-ink' : ''}`}
                   initial={{ opacity: 0, scale: 0.4 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3, delay: 0.25 + hour * 0.015 + day * 0.03 }}
@@ -262,6 +328,7 @@ export function RhythmMap({ grid }: { grid: number[][] }) {
           ))}
         </div>
       </div>
+      </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-mb-body" aria-live="polite">{caption}</p>
         <IntensityLegend />
@@ -275,16 +342,32 @@ export function RhythmMap({ grid }: { grid: number[][] }) {
 export function CalendarMap({ weeks }: { weeks: ReturnType<typeof calendarWeeks> }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const cells = weeks.flat();
+  const [tabStop, setTabStop] = useState<string | null>(null);
+  const cellRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+  // Başlangıçta bugün tab durağıdır.
+  const stopKey = tabStop ?? cells.find((cell) => cell.today)?.key ?? cells[0]?.key;
+
+  // Oklar: sol/sağ hafta, yukarı/aşağı gün. Henüz gelmemiş günlere gidilmez.
+  const onCellKey = (event: KeyboardEvent<HTMLSpanElement>, index: number) => {
+    const delta = event.key === 'ArrowRight' ? 7 : event.key === 'ArrowLeft' ? -7 : event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    const next = cells[index + delta];
+    if (!next || next.future) return;
+    setTabStop(next.key);
+    cellRefs.current[next.key]?.focus();
+  };
   const max = Math.max(...cells.map((cell) => cell.minutes));
   const hoveredCell = cells.find((cell) => cell.key === hovered);
 
   return (
     <div className="mt-5">
-      <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2">
+      <div className="overflow-x-auto sm:overflow-visible">
+      <div className="grid min-w-[var(--map-min)] grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2 sm:min-w-0" style={{ '--map-min': `${weeks.length * MIN_TARGET_PX + (weeks.length - 1) * 3 + 44}px` } as CSSProperties}>
         <span />
         <div className="relative mb-1 h-4 text-[11px] text-mb-body" aria-hidden="true">
           {weeks.map((week, index) =>
-            index === 0 || week[0].date.getMonth() !== weeks[index - 1][0].date.getMonth() ? (
+            index === 0 || monthShort.format(week[0].date) !== monthShort.format(weeks[index - 1][0].date) ? (
               <span key={week[0].key} className="absolute" style={{ left: `${(index / weeks.length) * 100}%` }}>
                 {monthShort.format(week[0].date)}
               </span>
@@ -298,16 +381,27 @@ export function CalendarMap({ weeks }: { weeks: ReturnType<typeof calendarWeeks>
             </span>
           ))}
         </div>
-        <div className="grid grid-flow-col grid-rows-7 gap-[3px]" role="list" aria-label="Son haftaların odak takvimi" onMouseLeave={() => setHovered(null)}>
+        <div className="grid grid-flow-col grid-rows-7 gap-[3px]" style={{ gridAutoColumns: 'minmax(0, 1fr)' }} role="list" aria-label="Son haftaların odak takvimi" onMouseLeave={() => setHovered(null)}>
           {weeks.map((week, weekIndex) =>
-            week.map((cell) => (
+            week.map((cell, weekday) => (
               <m.span
                 key={cell.key}
+                ref={(el: HTMLSpanElement | null) => {
+                  cellRefs.current[cell.key] = el;
+                }}
                 role="listitem"
+                tabIndex={!cell.future && cell.key === stopKey ? 0 : undefined}
+                onFocus={() => {
+                  if (cell.future) return;
+                  setHovered(cell.key);
+                  setTabStop(cell.key);
+                }}
+                onClick={() => !cell.future && setHovered(cell.key)}
+                onKeyDown={(event) => onCellKey(event, weekIndex * 7 + weekday)}
                 aria-label={cell.future ? undefined : `${dayLong.format(cell.date)}: ${cell.minutes ? formatMinutes(cell.minutes) : 'odak yok'}`}
                 aria-hidden={cell.future || undefined}
                 onMouseEnter={() => !cell.future && setHovered(cell.key)}
-                className={`aspect-square rounded-[3px] ${cell.future ? 'opacity-0' : intensity(cell.minutes, max)} ${
+                className={`aspect-square rounded-[3px] outline-none focus-visible:ring-2 focus-visible:ring-mb-action ${cell.future ? 'opacity-0' : intensity(cell.minutes, max)} ${
                   cell.today ? 'ring-2 ring-mb-ink ring-offset-1 ring-offset-mb-card' : hovered === cell.key ? 'ring-2 ring-mb-ink/60' : ''
                 }`}
                 initial={{ opacity: 0, scale: 0.4 }}
@@ -317,6 +411,7 @@ export function CalendarMap({ weeks }: { weeks: ReturnType<typeof calendarWeeks>
             )),
           )}
         </div>
+      </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-mb-body" aria-live="polite">

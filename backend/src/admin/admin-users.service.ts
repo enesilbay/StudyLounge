@@ -5,12 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
+import { RealtimeService } from '../realtime/realtime.service';
 import { AdminAuditService } from '../admin-audit/admin-audit.service';
 import { extendPremiumUntil } from '../payments/plans';
 import { StorageService } from '../storage/storage.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
-import { assertCanManage, escapeLike, toCsv } from './admin-users.rules';
+import {
+  assertCanManage,
+  assertRoleChange,
+  escapeLike,
+  toCsv,
+} from './admin-users.rules';
 import type {
   PremiumGrant,
   UserFilter,
@@ -73,6 +79,7 @@ export class AdminUsersService {
     private readonly usersService: UsersService,
     private readonly storage: StorageService,
     private readonly audit: AdminAuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   /** Arama, filtre ve sıralama için WHERE/ORDER parçaları ve parametreleri. */
@@ -305,9 +312,9 @@ export class AdminUsersService {
     action: 'role' | 'delete_user',
   ) {
     const rows = await manager.query<
-      { id: number; role: string; username: string }[]
+      { id: number; role: string; username: string; bannedAt: Date | null }[]
     >(
-      `SELECT "id", "role", "username" FROM "users" WHERE "id" = ANY($1::int[]) ORDER BY "id" FOR UPDATE`,
+      `SELECT "id", "role", "username", "bannedAt" FROM "users" WHERE "id" = ANY($1::int[]) ORDER BY "id" FOR UPDATE`,
       [[adminId, id]],
     );
     const actor = rows.find((row) => row.id === adminId);
@@ -320,14 +327,19 @@ export class AdminUsersService {
   }
 
   async setRole(adminId: number, id: number, role: UserRole, reason?: string) {
-    // Yetki vermek kayıtta gerekçesiz kalmasın.
-    if (role === 'admin' && (reason?.trim().length ?? 0) < 3) {
-      throw new BadRequestException('Yönetici yapmak için gerekçe yaz.');
+    // Yetki vermek de almak da kayıtta gerekçesiz kalmasın.
+    if ((reason?.trim().length ?? 0) < 3) {
+      throw new BadRequestException(
+        role === 'admin'
+          ? 'Yönetici yapmak için gerekçe yaz.'
+          : 'Yönetici yetkisini almak için gerekçe yaz.',
+      );
     }
     await this.dataSource.transaction(async (manager) => {
       const target = await this.lockForManage(manager, adminId, id, 'role');
       if (target.role === role)
         throw new BadRequestException('Kullanıcının rolü zaten bu.');
+      assertRoleChange(target, role, reason);
       await manager.update(User, id, { role });
       await this.audit.record(
         {
@@ -350,18 +362,29 @@ export class AdminUsersService {
     plan: PremiumGrant,
     reason?: string,
   ) {
-    const target = await this.findTarget(id);
-    const unlimited = target.isPremium && !target.premiumUntil;
-    if (unlimited)
-      throw new BadRequestException("Bu kullanıcının Premium'u zaten süresiz.");
-    const premiumUntil =
-      plan === 'unlimited'
-        ? null
-        : extendPremiumUntil(
-            target.isPremium ? target.premiumUntil : null,
-            plan === 'month' ? 1 : 12,
-          );
+    await this.findTarget(id);
+    let premiumUntil: Date | null = null;
     await this.dataSource.transaction(async (manager) => {
+      // Aynı anda iki verme/ödeme birbirinin süresini ezmesin: satır kilitlenir, güncel değerle hesaplanır.
+      const target = await manager
+        .getRepository(User)
+        .createQueryBuilder('user')
+        .addSelect('user.premiumUntil')
+        .setLock('pessimistic_write')
+        .where('user.id = :id', { id })
+        .getOne();
+      if (!target) throw new NotFoundException('Kullanıcı bulunamadı.');
+      if (target.isPremium && !target.premiumUntil)
+        throw new BadRequestException(
+          "Bu kullanıcının Premium'u zaten süresiz.",
+        );
+      premiumUntil =
+        plan === 'unlimited'
+          ? null
+          : extendPremiumUntil(
+              target.isPremium ? target.premiumUntil : null,
+              plan === 'month' ? 1 : 12,
+            );
       await manager.update(User, id, { isPremium: true, premiumUntil });
       await this.audit.record(
         {
@@ -461,6 +484,8 @@ export class AdminUsersService {
       );
       await this.usersService.purgeAccount(id, manager);
     });
+    // Açık soketler kapansın; silinen hesap odada kalmasın.
+    this.realtime.disconnectUser(id, 'Hesabın silindi.');
     await this.storage.removeByUrl(target.avatarUrl);
     return { success: true };
   }

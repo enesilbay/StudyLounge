@@ -369,7 +369,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Araç çubuğu: telefonda iki sabit satır, geniş ekranda tek satır; araç değişince yükseklik değişmez */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 whitespace-nowrap border-b border-border bg-surface px-3 py-2 scrollbar-hide sm:flex-nowrap sm:overflow-x-auto">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 whitespace-nowrap border-b border-mb-line bg-mb-card px-3 py-2 scrollbar-hide sm:flex-nowrap sm:overflow-x-auto">
         <div className="flex items-center gap-1" role="group" aria-label="Çizim aracı">
           <ToolButton active={tool === 'pen'} label="Kalem" onClick={() => setTool('pen')} icon={PenLine} />
           <ToolButton active={tool === 'highlighter'} label="Fosforlu kalem" onClick={() => setTool('highlighter')} icon={Highlighter} />
@@ -388,13 +388,14 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
                 aria-label={color.name}
                 title={color.name}
                 onClick={() => setActiveColor(color.value)}
-                className={`h-6 w-6 rounded-full border-2 transition sm:h-7 sm:w-7 ${activeColor === color.value ? 'scale-110 border-textDark' : 'border-surface'}`}
-                style={{ background: color.value }}
-              />
+                className="grid h-10 w-8 place-items-center sm:w-10"
+              >
+                <span className={`h-6 w-6 rounded-full border-2 transition sm:h-7 sm:w-7 ${activeColor === color.value ? 'scale-110 border-mb-ink' : 'border-mb-card'}`} style={{ background: color.value }} />
+              </button>
             ))}
           </div>
         ) : (
-          <p className="hidden text-sm text-textMuted 2xl:block">
+          <p className="hidden text-sm text-mb-body 2xl:block">
             {tool === 'laser' ? 'Göstermek istediğin yerin üstünden geç.' : 'Çizginin üstünden geç.'}
           </p>
         )}
@@ -408,7 +409,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
               disabled={!inkTool}
               aria-label={`Kalınlık: ${sizeLabel}. Değiştirmek için tıkla.`}
               title={`Kalınlık: ${sizeLabel}`}
-              className="grid h-9 w-9 place-items-center rounded-lg text-textDark transition hover:bg-sunken disabled:opacity-40"
+              className="grid h-10 w-10 place-items-center rounded-lg text-mb-ink transition hover:bg-mb-surface disabled:opacity-40"
             >
               <span aria-hidden="true" className="rounded-full bg-current" style={{ width: [4, 7, 11][sizeIndex], height: [4, 7, 11][sizeIndex] }} />
             </button>
@@ -430,7 +431,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
               }}
               disabled={!pageHasStrokes}
               className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold transition disabled:opacity-40 ${
-                confirmClear ? 'bg-danger text-background' : 'text-textMuted hover:bg-sunken hover:text-textDark'
+                confirmClear ? 'bg-mb-live-solid text-mb-on-live' : 'text-mb-body hover:bg-mb-surface hover:text-mb-ink'
               }`}
             >
               <Trash2 className="h-4 w-4" />
@@ -438,7 +439,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
             </button>
           </div>
           <ToolButton label="Önceki sayfa" onClick={() => goTo(pageNumber - 1)} icon={ChevronLeft} disabled={pageNumber <= 1} />
-          <span className="min-w-16 text-center font-mono text-sm tabular-nums text-textDark" aria-live="polite">
+          <span className="min-w-16 text-center font-mono text-sm tabular-nums text-mb-ink" aria-live="polite">
             {pageCount ? `${pageNumber} / ${pageCount}` : '…'}
           </span>
           <ToolButton
@@ -447,7 +448,7 @@ export function PdfBoard({ board, actions, selfId }: { board: BoardState; action
             icon={nextIsNewPage ? Plus : ChevronRight}
             disabled={!pageCount || pageNumber >= lastAllowedPage}
           />
-          <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+          <span className="mx-1 h-5 w-px bg-mb-line" aria-hidden="true" />
           <ToolButton
             label={fitPage ? 'Genişliğe sığdır (büyük göster)' : 'Bütün sayfayı göster'}
             onClick={() => setFitPage((value) => !value)}
@@ -508,8 +509,8 @@ function ToolButton({
       aria-label={label}
       title={label}
       aria-pressed={active || undefined}
-      className={`grid h-9 w-9 place-items-center rounded-lg transition disabled:opacity-40 ${
-        active ? 'bg-primary text-onPrimary' : 'text-textMuted hover:bg-sunken hover:text-textDark'
+      className={`grid h-10 w-10 place-items-center rounded-lg transition disabled:opacity-40 ${
+        active ? 'bg-mb-action text-mb-on-action' : 'text-mb-body hover:bg-mb-surface hover:text-mb-ink'
       }`}
     >
       <Icon className="h-[18px] w-[18px]" />

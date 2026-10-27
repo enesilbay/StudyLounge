@@ -1,26 +1,45 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/Layout/AppLayout';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import NotFoundPage, { RouteErrorPage } from './pages/NotFoundPage';
+import { getLogoutRedirect, isExplicitLogout } from './lib/session';
 
 // Uygulama içi sayfalar ilk ziyarette yüklenir; açılış ve giriş sayfası hemen gelir.
 const page = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({ Component: (await load()).default });
 
 /** Sayfa doğrudan bir uygulama içi adresle açıldığında, sayfa kodu yüklenirken gösterilir. */
 const PageLoading = () => (
-  <div className="grid min-h-screen place-items-center bg-background">
-    <Loader2 className="h-6 w-6 animate-spin text-primary" aria-label="Sayfa yükleniyor" />
+  <div className="grid min-h-screen place-items-center bg-mb-bg">
+    <Loader2 className="h-6 w-6 animate-spin text-mb-action" aria-label="Sayfa yükleniyor" />
   </div>
 );
+
+/** Yönetim kodu yalnızca yönetici rolündeki hesaba indirilir; diğerleri sayfa parçasını hiç görmez (veri zaten API'de korunur). */
+const isAdminUser = () => useAuthStore.getState().user?.role === 'admin';
+const adminPage = (load: () => Promise<{ default: React.ComponentType }>) => async () =>
+  isAdminUser() ? page(load)() : { Component: AdminDenied };
+
+function AdminDenied() {
+  // Girişsiz kullanıcı önce girişe (dönüş adresi /admin kalır), yönetici olmayan uygulamaya gönderilir.
+  return (
+    <ProtectedRoute>
+      <Navigate to="/app/lobbies" replace />
+    </ProtectedRoute>
+  );
+}
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const location = useLocation();
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    // Girişten sonra gidilmek istenen adres (iyzico dönüşü gibi sorgu parametreleri dahil) korunur;
+    // kullanıcı kendi isteğiyle çıktıysa korunmaz.
+    const from = isExplicitLogout() ? undefined : `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={getLogoutRedirect() ?? '/auth'} replace state={from ? { from } : undefined} />;
   }
   return <>{children}</>;
 };
@@ -105,8 +124,9 @@ const router = createBrowserRouter([
     path: '/admin',
     hydrateFallbackElement: <PageLoading />,
     errorElement: <RouteErrorPage />,
-    // Yönetim paneli kodu yalnızca yöneticiler açtığında yüklenir.
+    // Yönetim paneli kodu yalnızca yönetici rolündeki hesap açtığında yüklenir (rol kontrolü indirmeden önce).
     lazy: async () => {
+      if (!isAdminUser()) return { Component: AdminDenied };
       const { default: AdminLayout } = await import('./components/admin/AdminLayout');
       return {
         Component: () => (
@@ -119,33 +139,33 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        lazy: page(() => import('./pages/admin/AdminOverviewPage')),
+        lazy: adminPage(() => import('./pages/admin/AdminOverviewPage')),
       },
       {
         path: 'users',
-        lazy: page(() => import('./pages/admin/AdminUsersPage')),
+        lazy: adminPage(() => import('./pages/admin/AdminUsersPage')),
         children: [
           {
             path: ':userId',
-            lazy: page(() => import('./pages/admin/AdminUserDetail')),
+            lazy: adminPage(() => import('./pages/admin/AdminUserDetail')),
           },
         ],
       },
       {
         path: 'rooms',
-        lazy: page(() => import('./pages/admin/AdminRoomsPage')),
+        lazy: adminPage(() => import('./pages/admin/AdminRoomsPage')),
       },
       {
         path: 'announcements',
-        lazy: page(() => import('./pages/admin/AdminAnnouncementsPage')),
+        lazy: adminPage(() => import('./pages/admin/AdminAnnouncementsPage')),
       },
       {
         path: 'moderation',
-        lazy: page(() => import('./pages/admin/AdminModerationPage')),
+        lazy: adminPage(() => import('./pages/admin/AdminModerationPage')),
       },
       {
         path: 'actions',
-        lazy: page(() => import('./pages/admin/AdminActionsPage')),
+        lazy: adminPage(() => import('./pages/admin/AdminActionsPage')),
       },
       {
         path: '*',

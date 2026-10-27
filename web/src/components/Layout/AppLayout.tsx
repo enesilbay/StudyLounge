@@ -5,13 +5,12 @@ import { BarChart3, Bell, Crown, DoorOpen, LogOut, MessageCircle, Moon, PanelLef
 import { Avatar } from '../ui';
 import { LogoMark } from '../brand/Logo';
 import { useAuthStore } from '../../store/authStore';
-import { disconnectSocket } from '../../lib/socket';
+import { endSession } from '../../lib/session';
 import { useTheme } from '../../lib/theme';
 import { useInboxStore } from '../../store/inboxStore';
 import ToastStack from './ToastStack';
 import { FeedbackButton } from './FeedbackButton';
 import { AnnouncementBanner } from './AnnouncementBanner';
-import { useStudyStore } from '../../store/studyStore';
 import { useAppNotifications } from './useAppNotifications';
 
 // Her sayfanın kendi pastel rengi (mb-tile-*); menüde ikon rozeti, seçiliyken satırın zemini olur.
@@ -46,7 +45,7 @@ function readCollapsed() {
 const iconButton = 'grid h-10 w-10 place-items-center rounded-[12px] text-mb-body transition hover:bg-mb-surface hover:text-mb-ink';
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   useAppNotifications();
@@ -66,12 +65,7 @@ export default function AppLayout() {
     }
   }, [collapsed]);
 
-  const handleLogout = () => {
-    disconnectSocket();
-    useInboxStore.getState().reset();
-    useStudyStore.getState().reset();
-    logout();
-  };
+  const handleLogout = () => endSession({ explicit: true });
 
   // Odak odası dikkat dağıtmasın: menü ve üst çubuk yok, odadan çıkış düğmesi sayfanın kendisinde.
   if (location.pathname.startsWith('/app/focus/')) {
@@ -176,7 +170,7 @@ export default function AppLayout() {
               onClick={handleLogout}
               title="Çıkış yap"
               aria-label="Çıkış yap"
-              className={`flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[12px] text-sm font-medium text-mb-body transition hover:bg-softDanger hover:text-danger ${collapsed ? 'w-10' : 'ml-auto px-3'}`}
+              className={`flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-[12px] text-sm font-medium text-mb-body transition hover:bg-mb-live-soft hover:text-mb-live-ink ${collapsed ? 'w-10' : 'ml-auto px-3'}`}
             >
               <LogOut className="h-4 w-4" />
               {collapsed ? null : 'Çıkış'}
@@ -194,7 +188,7 @@ export default function AppLayout() {
             StudyLounge
           </span>
           <div className="relative flex h-16 items-center justify-between gap-3 px-4 md:px-6">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setCollapsed((value) => !value)}
@@ -205,30 +199,30 @@ export default function AppLayout() {
               >
                 {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
               </button>
-              <Link to="/app/lobbies" className="flex items-center gap-2 lg:hidden" aria-label="StudyLounge, Odalar">
+              <Link to="/app/lobbies" className="flex shrink-0 items-center gap-2 lg:hidden" aria-label="StudyLounge, Odalar">
                 <LogoMark className="h-8 w-8 text-mb-action" />
                 {pageTitle ? null : <span className="font-mb-display text-lg font-medium tracking-[-0.03em]">StudyLounge</span>}
               </Link>
               {/* Sayfa başlığı: sayfa değişince yumuşakça kayarak yenilenir */}
               {pageTitle ? (
-                <div key={pageTitle.title} className="ml-1 flex items-center gap-3 motion-safe:animate-[sl-baslik_0.35s_cubic-bezier(0.16,1,0.3,1)]" aria-hidden="true">
-                  <span className={`grid h-9 w-9 place-items-center rounded-[11px] text-mb-ink shadow-mb-card ${pageTitle.tile}`}>
+                <div key={pageTitle.title} className="ml-1 flex min-w-0 items-center gap-3 motion-safe:animate-[sl-baslik_0.35s_cubic-bezier(0.16,1,0.3,1)]" aria-hidden="true">
+                  <span className={`hidden h-9 w-9 shrink-0 place-items-center sm:grid rounded-[11px] text-mb-ink shadow-mb-card ${pageTitle.tile}`}>
                     <pageTitle.icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="font-mb-display text-[1.65rem] font-light leading-none tracking-[-0.045em] text-mb-ink md:text-[1.9rem]">{pageTitle.title}</span>
+                  <span className="truncate font-mb-display text-[1.25rem] font-light leading-none tracking-[-0.045em] text-mb-ink sm:text-[1.65rem] md:text-[1.9rem]">{pageTitle.title}</span>
                 </div>
               ) : null}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               {user?.role === 'admin' ? (
                 <NavLink to="/admin" aria-label="Yönetim" title="Yönetim" className={`${iconButton} lg:hidden`}>
                   <ShieldCheck className="h-[18px] w-[18px]" />
                 </NavLink>
               ) : null}
-              <NavLink to="/app/dm" aria-label={friendsBadge ? `Bildirimler, ${friendsBadge} yeni` : 'Bildirimler'} title="Bildirimler" className={`${iconButton} relative`}>
+              <NavLink to="/app/dm" aria-label={friendsBadge ? `Arkadaşlar ve istekler, ${friendsBadge} yeni` : 'Arkadaşlar ve istekler'} title="Arkadaşlar ve istekler" className={`${iconButton} relative`}>
                 <Bell className="h-[18px] w-[18px]" />
-                {friendsBadge ? <span aria-hidden="true" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger ring-2 ring-mb-bg" /> : null}
+                {friendsBadge ? <span aria-hidden="true" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-mb-live ring-2 ring-mb-bg" /> : null}
               </NavLink>
               <FeedbackButton />
               <NavLink to="/app/settings" aria-label="Ayarlar" title="Ayarlar" className={`${iconButton} lg:hidden`}>

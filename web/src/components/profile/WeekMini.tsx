@@ -1,31 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { m } from 'framer-motion';
-import { ArrowRight, BarChart3 } from 'lucide-react';
+import { ArrowRight, BarChart3, RotateCcw } from 'lucide-react';
 import { api } from '../../lib/api';
-import { lastDays } from '../../lib/analytics';
+import { ISTANBUL_TZ, lastDays } from '../../lib/analytics';
 import type { DayValue } from '../../lib/analytics';
 import { formatMinutes } from '../../lib/study';
 import type { StudySummary } from '../../lib/study';
-import { IconHeading, Skeleton } from '../app/Kit';
+import { IconHeading, Skeleton, outlineButton } from '../app/Kit';
 
-const dayShort = new Intl.DateTimeFormat('tr-TR', { weekday: 'short' });
-const dayLong = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+const dayShort = new Intl.DateTimeFormat('tr-TR', { weekday: 'short', timeZone: ISTANBUL_TZ });
+const dayLong = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: ISTANBUL_TZ });
 
 /** Profildeki küçük haftalık özet: 7 çubuk ve toplam; ayrıntı Analitik sayfasında. */
 export function WeekMini() {
   const [days, setDays] = useState<DayValue[] | null>(null);
+  // Yükleme hatası "odak yok" ile karışmasın diye ayrı tutulur.
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let ignore = false;
     api
       .get<StudySummary>('/study/summary?days=7')
-      .then((response) => !ignore && setDays(lastDays(response.data.daily, 7)))
-      .catch(() => !ignore && setDays(lastDays([], 7)));
+      .then((response) => {
+        if (ignore) return;
+        setFailed(false);
+        setDays(lastDays(response.data.daily, 7));
+      })
+      .catch(() => !ignore && setFailed(true));
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [attempt]);
 
   const total = days?.reduce((sum, day) => sum + day.minutes, 0) ?? 0;
   const max = Math.max(1, ...(days ?? []).map((day) => day.minutes));
@@ -36,14 +43,22 @@ export function WeekMini() {
         icon={BarChart3}
         tile="bg-mb-tile-7"
         title="Son 7 gün"
-        text={days ? (total ? `Toplam ${formatMinutes(total)}` : 'Bu hafta henüz odak yok') : 'Yükleniyor…'}
+        text={failed ? 'Yüklenemedi' : days ? (total ? `Toplam ${formatMinutes(total)}` : 'Bu hafta henüz odak yok') : 'Yükleniyor…'}
         aside={
           <Link to="/app/analytics" className="inline-flex items-center gap-1 rounded-[10px] px-2 py-1.5 text-sm font-medium text-mb-action-ink transition hover:bg-mb-surface">
             Analitik <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         }
       />
-      {days ? (
+      {failed ? (
+        <div className="mt-5 flex flex-1 flex-col items-center justify-center gap-3 py-6 text-center" role="status">
+          <p className="text-sm text-mb-body">Haftalık özet alınamadı.</p>
+          <button type="button" onClick={() => { setFailed(false); setAttempt((value) => value + 1); }} className={outlineButton}>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Yeniden dene
+          </button>
+        </div>
+      ) : days ? (
         <ol className="mt-5 grid flex-1 grid-cols-7 items-end gap-2" aria-label="Son 7 günün odak süreleri">
           {days.map((day, index) => {
             const isToday = index === days.length - 1;

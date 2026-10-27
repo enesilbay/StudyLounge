@@ -42,6 +42,7 @@ describe('PaymentsService', () => {
       conversationId: 'conv-1',
       token: 'tok-1',
       user: { id: 3 },
+      createdAt: new Date(),
     }) as unknown as Payment;
 
   const okDetail = {
@@ -199,6 +200,89 @@ describe('PaymentsService', () => {
     payments.findOne.mockResolvedValue(null);
     await expect(service.completeCheckout('yok')).resolves.toBe('failure');
     await expect(service.completeCheckout(undefined)).resolves.toBe('failure');
+  });
+
+  it('fraud incelemesindeki odeme pending kalir ve listede gorunur', async () => {
+    payments.findOne.mockResolvedValue(pending());
+    iyzico.post.mockResolvedValue({ ...okDetail, fraudStatus: 0 });
+
+    await expect(service.completeCheckout('tok-1')).resolves.toBe('pending');
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(payments.update).toHaveBeenCalledWith(
+      { id: 7, status: 'pending' },
+      { failureReason: 'Ödeme incelemede' },
+    );
+    expect(payments.update).not.toHaveBeenCalledWith(
+      { id: 7, status: 'pending' },
+      expect.objectContaining({ status: 'failure' }),
+    );
+  });
+
+  it('fraud incelemesinde reddedilen odeme failure olur', async () => {
+    payments.findOne.mockResolvedValue(pending());
+    iyzico.post.mockResolvedValue({ ...okDetail, fraudStatus: -1 });
+
+    await expect(service.completeCheckout('tok-1')).resolves.toBe('failure');
+  });
+
+  it('48 saati gecen ve sonucu alinamayan bekleyen odeme failure olur', async () => {
+    const old = {
+      ...pending(),
+      createdAt: new Date(Date.now() - 49 * 3_600_000),
+    };
+    iyzico.post.mockRejectedValue(new Error('ag hatasi'));
+    payments.find.mockResolvedValue([old]);
+    users.createQueryBuilder.mockReturnValue({
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({ isPremium: false, premiumUntil: null }),
+    });
+
+    await service.status(3);
+
+    expect(payments.update).toHaveBeenCalledWith(
+      { id: 7, status: 'pending' },
+      expect.objectContaining({ status: 'failure' }),
+    );
+  });
+
+  it('status bekleyen odemeyi yeniden dogrular ve basariliysa Premium verir', async () => {
+    payments.find.mockResolvedValue([pending()]);
+    iyzico.post.mockResolvedValue(okDetail);
+    users.createQueryBuilder.mockReturnValue({
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({ isPremium: true, premiumUntil: new Date() }),
+    });
+
+    const result = await service.status(3);
+
+    expect(iyzico.post).toHaveBeenCalledTimes(1);
+    expect(manager.update).toHaveBeenCalledWith(
+      Payment,
+      { id: 7, status: 'pending' },
+      expect.objectContaining({ status: 'success' }),
+    );
+    expect(result.isPremium).toBe(true);
+  });
+
+  it('mutabakat: callback gelmemis form henuz basarisizsa dokunulmaz, basariliysa Premium verilir', async () => {
+    payments.find.mockResolvedValue([pending()]);
+    iyzico.post.mockResolvedValue({ status: 'failure', errorMessage: 'form tamamlanmadi' });
+    await service.reconcilePending();
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(payments.update).not.toHaveBeenCalledWith(
+      { id: 7, status: 'pending' },
+      expect.objectContaining({ status: 'failure' }),
+    );
+
+    iyzico.post.mockResolvedValue(okDetail);
+    await service.reconcilePending();
+    expect(manager.update).toHaveBeenCalledWith(
+      Payment,
+      { id: 7, status: 'pending' },
+      expect.objectContaining({ status: 'success' }),
+    );
   });
 
   it('odemeden sonra kullanici web sitesine doner', () => {

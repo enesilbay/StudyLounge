@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, MicOff, MonitorUp, Swords, UserRound, UserX, WifiLow, WifiOff } from 'lucide-react';
+import { Bell, MicOff, MonitorUp, UserRound, UserX, WifiLow, WifiOff } from 'lucide-react';
 import { Avatar } from '../ui';
 import type { FrameId } from '../../lib/types';
 import { VideoView } from './MediaViews';
@@ -19,6 +19,8 @@ export interface RoomPerson {
   lamp?: string | null;
   isPremium?: boolean;
   isAtDesk: boolean;
+  /** Masada değilken kutucukta yazan etiket (oturum başlamadıysa "Hazır", molada "Molada"). */
+  idleLabel?: string;
   isSelf: boolean;
   inCall: boolean;
   micOn: boolean;
@@ -42,7 +44,6 @@ export function ParticipantTile({
   speaking = false,
   onSelect,
   onNudge,
-  onDuel,
   onKick,
 }: {
   person: RoomPerson;
@@ -53,12 +54,11 @@ export function ParticipantTile({
   speaking?: boolean;
   onSelect?: () => void;
   onNudge?: () => void;
-  onDuel?: () => void;
   /** Yalnızca oda sahibine verilir: kişiyi odadan çıkarır. */
   onKick?: () => void;
 }) {
   const showVideo = hasLiveVideo(person.cameraStream);
-  const status = person.isAtDesk ? 'Odakta' : 'Molada';
+  const status = person.isAtDesk ? 'Odakta' : person.idleLabel ?? 'Hazır';
   const ring = speaking
     ? 'ring-[3px] ring-mb-action'
     : person.isAtDesk
@@ -123,21 +123,16 @@ export function ParticipantTile({
 
       {!person.isSelf && !small ? (
         <div className="absolute right-2 top-2 z-[3] flex gap-1 opacity-100 transition md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-          <Link to={`/app/u/${person.userId}`} title="Profili gör" aria-label={`${person.name} profilini gör`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/90 text-mb-ink shadow-mb-card hover:bg-mb-card">
+          <Link to={`/app/u/${person.userId}`} title="Profili gör" aria-label={`${person.name} profilini gör`} className="grid h-10 w-10 place-items-center rounded-[10px] md:h-8 md:w-8 bg-mb-card/90 text-mb-ink shadow-mb-card hover:bg-mb-card">
             <UserRound className="h-4 w-4" />
           </Link>
           {onNudge ? (
-            <button type="button" onClick={onNudge} title="Dürt" aria-label={`${person.name} kişisini dürt`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/90 text-mb-action shadow-mb-card hover:bg-mb-card">
+            <button type="button" onClick={onNudge} title="Dürt" aria-label={`${person.name} kişisini dürt`} className="grid h-10 w-10 place-items-center rounded-[10px] md:h-8 md:w-8 bg-mb-card/90 text-mb-action shadow-mb-card hover:bg-mb-card">
               <Bell className="h-4 w-4" />
             </button>
           ) : null}
-          {onDuel ? (
-            <button type="button" onClick={onDuel} title="Düelloya davet et" aria-label={`${person.name} kişisini düelloya davet et`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/90 text-danger shadow-mb-card hover:bg-mb-card">
-              <Swords className="h-4 w-4" />
-            </button>
-          ) : null}
           {onKick ? (
-            <button type="button" onClick={onKick} title="Odadan çıkar" aria-label={`${person.name} kişisini odadan çıkar`} className="grid h-8 w-8 place-items-center rounded-[10px] bg-mb-card/90 text-mb-body shadow-mb-card hover:bg-mb-card hover:text-danger">
+            <button type="button" onClick={onKick} title="Odadan çıkar" aria-label={`${person.name} kişisini odadan çıkar`} className="grid h-10 w-10 place-items-center rounded-[10px] md:h-8 md:w-8 bg-mb-card/90 text-mb-body shadow-mb-card hover:bg-mb-card hover:text-mb-live-ink">
               <UserX className="h-4 w-4" />
             </button>
           ) : null}

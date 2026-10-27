@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import type { Readable } from 'stream';
-import { contentTypeFor, StorageService } from './storage.service';
+import { contentTypeFor, DAILY_UPLOAD_QUOTA_BYTES, StorageService } from './storage.service';
 
 const readAll = async (stream: Readable) => {
   const chunks: Buffer[] = [];
@@ -60,5 +60,12 @@ describe('StorageService (yerel disk)', () => {
   it('derives the content type from the extension, not the upload', () => {
     expect(contentTypeFor('a.png')).toBe('image/png');
     expect(contentTypeFor('a.html')).toBe('application/octet-stream');
+  });
+
+  it('enforces a per-user daily upload quota', () => {
+    service.reserveUploadQuota(1, DAILY_UPLOAD_QUOTA_BYTES - 10);
+    expect(() => service.reserveUploadQuota(1, 11)).toThrow(/Günlük yükleme sınırı/);
+    // Başka kullanıcı etkilenmez.
+    expect(() => service.reserveUploadQuota(2, 11)).not.toThrow();
   });
 });

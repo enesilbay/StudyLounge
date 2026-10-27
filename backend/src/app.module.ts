@@ -41,6 +41,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { StudyModule } from './study/study.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { LeagueModule } from './league/league.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { WeeklyResult } from './league/weekly-result.entity';
 import { Feedback } from './feedback/feedback.entity';
 import { Payment } from './payments/payment.entity';
@@ -121,12 +122,13 @@ import { ScheduledSession, ScheduledSessionInvite } from './study/scheduled-sess
             'DB_RUN_MIGRATIONS',
             false,
           ),
-          synchronize:
-            getConfigString(configService, 'NODE_ENV', 'development') !==
-            'production',
+          // Sema degisiklikleri migration ile gelir. Yerel gelistirmede tablolari otomatik kurmak
+          // icin DB_SYNCHRONIZE=true verilir; varsayilan kapali (kullanilmayan tablolari silmesin).
+          synchronize: getConfigBoolean(configService, 'DB_SYNCHRONIZE', false),
         };
       },
     }),
+    RealtimeModule,
     UsersModule,
     LobbiesModule,
     MessagesModule,

@@ -38,6 +38,19 @@ export class ReportsQueryDto {
   @IsOptional()
   @IsIn(['open', 'resolved', 'dismissed', 'all'])
   status?: 'open' | 'resolved' | 'dismissed' | 'all';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }
 
 export class ResolveReportDto {

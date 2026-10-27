@@ -5,7 +5,7 @@
 ### Temel platform
 - NestJS backend: JWT kimlik doğrulama, e-posta doğrulama, şifre sıfırlama
 - PostgreSQL + TypeORM, migration'lar
-- Socket.IO gateway: lobi varlığı (presence), oda sohbeti, DM, dürtme, düello
+- Socket.IO gateway: lobi varlığı (presence), oda sohbeti, DM, dürtme (düello Ekim 2026'da kaldırıldı)
 - Oyunlaştırma: odak puanı, seri (streak), rütbeler, mağaza, profil çerçeveleri
 - Docker multi-stage build, Docker Compose, GitHub Actions CI, Render dağıtımı
 
@@ -26,6 +26,16 @@
 | :--- | :--- | :--- |
 | ✅ | E-posta gönderimi | Çözüldü: Render'ın ücretsiz planı SMTP portlarını engelliyordu (`Connection timeout`). E-posta artık Brevo HTTPS API ile gidiyor (`BREVO_API_KEY`, `BREVO_FROM`); test ve canlıda denendi, gelen kutusuna düşüyor. |
 | ✅ | Ortam ayrımı: son kontrol | Doğrulandı: test sitesinden açılan hesaplar yalnızca Neon `staging` dalında, `production`'da yok. Test sitesi test backend'ine, canlı site canlı backend'e bağlı; CORS ve `JWT_SECRET` ayrımı çalışıyor. |
+
+### Tam analiz düzeltme turu ✅ (Ekim 2026, `duzeltme/analiz-bulgulari` dalı)
+
+Tüm sayfaların ve backend'in analizinde çıkan bulgular düzeltildi. Öne çıkanlar:
+- **Düello tamamen kaldırıldı** (kullanıcı kararı): socket event'leri, bahis, rozet ve arayüz.
+- **Güvenlik:** ayarlarda e-posta/kullanıcı adı değişimi mevcut şifreyi ister, yeni e-posta yeniden doğrulanır, yanıt gizli alan sızdırmaz; şifre değişince eski token'lar geçersiz (`tokenVersion`); yasaklanan kullanıcının açık soketleri kapanır; socket event'lerine hız sınırı ve doğrulama; oda sohbetinde yalnızca kendi yüklenen dosya paylaşılabilir; oda adları benzersiz (`LOWER(name)` unique index).
+- **Ekonomi:** coin değişiklikleri atomik (eşzamanlı satın alma ile çift harcama kapandı); süre `Math.floor`, oturum başına 240 dk sınırı, kullanıcı başına tek aktif odak oturumu; kaldırılan günlük hedef artık coin vermiyor.
+- **Güvenilirlik:** lig ödülü uyuyan sunucuda da verilir (açılışta ve saatlik telafi); bekleyen ödemeler 10 dakikada bir iyzico ile mutabakata alınır; `synchronize` artık `DB_SYNCHRONIZE` bayrağına bağlı (varsayılan kapalı).
+- **Web:** 401 ve `force_logout` ortak çıkış akışına bağlı; geçici ağ hatası artık oturumu kapatmaz; odada bağlantı koptu şeridi, katılım hatası ekranı, onaylı ortak eylemler; ortam sesleri yalnızca açılınca iner; mobil üst çubuk taşması; DM son 100 mesaj + eskiler; gerçek zamanlı arkadaşlık istekleri; yönetim panelinde sayfalama ve onaylı yaptırımlar.
+- **Ortam sesleri:** mp3'ler 64 kbps stereo olarak yeniden kodlandı; toplam 49,7 MB → 13,1 MB.
 
 Fazlar sırayla uygulanır: önce güvenlik, sonra yeni değer. Her faz ayrı commit/PR olarak gelir.
 
@@ -187,7 +197,7 @@ Kapalı beta oturduktan sonra, para almaya ve herkese açılmaya başlamadan ön
 
 ## 🔭 Uzun vadede
 - **SFU'ya geçiş (LiveKit / mediasoup):** Mesh topolojisi 6 kişide sınırlanıyor. Daha kalabalık kameralı odalar için medya sunucusu gerekir.
-- **Ölçeklenebilir durum:** Gateway'deki oturum, düello, arama, ortak tahta ve ortak sayaç durumu bellekte tutuluyor. Tek sunucuda sorun değil; ikinci bir sunucu açılmadan önce Redis adapter gerekir.
+- **Ölçeklenebilir durum:** Gateway'deki oturum, arama, ortak tahta ve ortak sayaç durumu bellekte tutuluyor. Tek sunucuda sorun değil; ikinci bir sunucu açılmadan önce Redis adapter gerekir.
 - **Kayıt yok politikası:** Görüntülü odalarda kayıt özelliği bilinçli olarak eklenmeyecek; bu karar Faz 6'daki gizlilik politikasında belgelenir.
 
 ## ⏸️ Ertelenen: web ön yüz yeniden tasarımı (Ekranlar v3)

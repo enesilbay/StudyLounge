@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m } from 'framer-motion';
 import { ArrowLeft, Check, DoorOpen, Flag, Hand, MessageCircle, MessagesSquare, Radio, Search, Send, UserCheck, UserPlus, Users, X } from 'lucide-react';
 import { Avatar, Notice, ModalShell } from '../components/ui';
 import { AppPage, Card, CountUp, EmptyState, SegmentedTabs, TileStat, actionButton, ghostButton, inputClass } from '../components/app/Kit';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
+import { DM_MAX_LENGTH, sendDm } from '../lib/dm';
+import { resolveFriendRoomPath } from '../lib/friendRoom';
 import { getApiErrorMessage, unwrapData } from '../lib/apiResponses';
 import type { Message, User } from '../lib/types';
 import { purchasedBubbleColor } from '../lib/cosmetics';
@@ -15,13 +17,40 @@ import { useInboxStore } from '../store/inboxStore';
 import ReportDialog from '../components/social/ReportDialog';
 import UserSearch from '../components/social/UserSearch';
 
+/** Sunucunun tek seferde döndürdüğü en yeni mesaj sayısı; bu kadar geldiyse daha eskiler olabilir. */
+const PAGE_SIZE = 100;
+/** Arkadaşların çevrim içi/oda bilgisi bu aralıkla tazelenir. */
+const FRIENDS_REFRESH_MS = 30_000;
+const DESKTOP_QUERY = '(min-width: 1024px)';
+
+/** Masaüstü yerleşimde liste ve sohbet yan yana görünür; telefonda yalnızca biri. */
+function useIsDesktop() {
+  const [matches, setMatches] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(DESKTOP_QUERY).matches : true));
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const query = window.matchMedia(DESKTOP_QUERY);
+    const onChange = () => setMatches(query.matches);
+    onChange();
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  return matches;
+}
+
 export default function DMPage() {
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const [friends, setFriends] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeFriendId, setActiveFriendId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [messageText, setMessageText] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [messagesError, setMessagesError] = useState(false);
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [tab, setTab] = useState<'chats' | 'requests'>('chats');
@@ -31,7 +60,10 @@ export default function DMPage() {
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const unreadFrom = useInboxStore((state) => state.unreadFrom);
   const friendRequests = useInboxStore((state) => state.friendRequests);
+  const friendsVersion = useInboxStore((state) => state.friendsVersion);
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  // Eski mesajlar başa eklenince liste en alta kaymasın.
+  const keepScrollRef = useRef(false);
 
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -41,9 +73,9 @@ export default function DMPage() {
 
   const activeFriend = friends.find((friend) => friend.id === activeFriendId) ?? friends[0];
 
-  const loadFriends = useCallback(async (isCancelled: () => boolean = () => false) => {
+  const loadFriends = useCallback(async (isCancelled: () => boolean = () => false, silent = false) => {
     if (!user?.id) return;
-    setIsLoadingFriends(true);
+    if (!silent) setIsLoadingFriends(true);
     try {
       const response = await api.get<User[]>(`/users/friends/${user.id}`);
       const nextFriends = unwrapData<User[]>(response.data);
@@ -54,7 +86,8 @@ export default function DMPage() {
         if (requested) setMobileChatOpen(true);
       }
     } catch {
-      if (!isCancelled()) setFriends([]);
+      // Sessiz yenilemede var olan liste korunur.
+      if (!silent && !isCancelled()) setFriends([]);
     } finally {
       if (!isCancelled()) setIsLoadingFriends(false);
     }
@@ -68,13 +101,38 @@ export default function DMPage() {
     };
   }, [loadFriends]);
 
+  // Arkadaşın çevrim içi/oda bilgisi: periyodik, sekmeye dönünce, yeniden bağlanınca ve yeni arkadaş eklenince tazelenir.
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = () => void loadFriends(() => false, true);
+    const timer = setInterval(() => {
+      if (!document.hidden) refresh();
+    }, FRIENDS_REFRESH_MS);
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [user?.id, loadFriends]);
+
+  useEffect(() => {
+    if (friendsVersion > 0) void loadFriends(() => false, true);
+  }, [friendsVersion, loadFriends]);
+
+  // Telefonda sohbet ekranı açılmadan mesajlar okunmuş sayılmaz (varsayılan ilk arkadaş görünmez durumdadır).
+  const chatVisible = isDesktop || mobileChatOpen;
+  const viewingFriendId = chatVisible ? activeFriend?.id ?? null : null;
+
   // Açık sohbetin mesajları okunmuş sayılır; uygulama geneli bildirimler bu kişiyi atlar.
   useEffect(() => {
     const { setViewingDmWith, markRead, unreadFrom: unread } = useInboxStore.getState();
-    setViewingDmWith(activeFriend?.id ?? null);
-    if (activeFriend?.id && unread.includes(activeFriend.id)) markRead(activeFriend.id);
+    setViewingDmWith(viewingFriendId);
+    if (viewingFriendId && unread.includes(viewingFriendId)) markRead(viewingFriendId);
     return () => setViewingDmWith(null);
-  }, [activeFriend?.id]);
+  }, [viewingFriendId]);
 
   const respond = async (requestId: number, status: 'accepted' | 'rejected') => {
     setRespondingId(requestId);
@@ -89,30 +147,65 @@ export default function DMPage() {
     }
   };
 
+  const loadMessages = useCallback(async (friendId: number | undefined, isCancelled: () => boolean, silent = false) => {
+    if (!friendId) {
+      setMessages([]);
+      setHasOlder(false);
+      return;
+    }
+    if (!silent) setIsLoadingMessages(true);
+    try {
+      const response = await api.get<Message[]>(`/messages/dm/${friendId}`);
+      if (isCancelled()) return;
+      const latest = unwrapData<Message[]>(response.data);
+      setMessagesError(false);
+      setHasOlder((current) => (silent ? current : latest.length >= PAGE_SIZE));
+      // Yeniden bağlanmada elde olan eski mesajlar korunur, yeniler birleştirilir.
+      setMessages((current) => {
+        if (!silent) return latest;
+        const ids = new Set(latest.map((item) => item.id));
+        const oldest = latest[0]?.id ?? 0;
+        return [...current.filter((item) => !ids.has(item.id) && item.id < oldest), ...latest];
+      });
+    } catch {
+      if (!isCancelled() && !silent) {
+        setMessages([]);
+        setMessagesError(true);
+      }
+    } finally {
+      if (!isCancelled() && !silent) setIsLoadingMessages(false);
+    }
+  }, []);
+
   useEffect(() => {
     let ignore = false;
-
-    async function loadMessages() {
-      if (!activeFriend?.id) {
-        setMessages([]);
-        return;
-      }
-      setIsLoadingMessages(true);
-      try {
-        const response = await api.get<Message[]>(`/messages/dm/${activeFriend.id}`);
-        if (!ignore) setMessages(unwrapData<Message[]>(response.data));
-      } catch {
-        if (!ignore) setMessages([]);
-      } finally {
-        if (!ignore) setIsLoadingMessages(false);
-      }
-    }
-
-    void loadMessages();
+    setSendError(null);
+    void loadMessages(activeFriend?.id, () => ignore);
     return () => {
       ignore = true;
     };
-  }, [activeFriend?.id]);
+  }, [activeFriend?.id, loadMessages]);
+
+  const loadOlder = async () => {
+    const friendId = activeFriend?.id;
+    const oldestId = messages[0]?.id;
+    if (!friendId || !oldestId || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    try {
+      const response = await api.get<Message[]>(`/messages/dm/${friendId}`, { params: { before: oldestId } });
+      const older = unwrapData<Message[]>(response.data);
+      setHasOlder(older.length >= PAGE_SIZE);
+      keepScrollRef.current = true;
+      setMessages((current) => {
+        const ids = new Set(current.map((item) => item.id));
+        return [...older.filter((item) => !ids.has(item.id)), ...current];
+      });
+    } catch (error) {
+      setSendError(getApiErrorMessage(error));
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -127,18 +220,31 @@ export default function DMPage() {
       ) {
         setMessages((current) => (current.some((item) => item.id === message.id) ? current : [...current, message]));
         // Sohbet açıkken gelen mesaj veritabanında da okundu işaretlenir.
-        if (senderId === activeFriend?.id && !document.hidden) useInboxStore.getState().markRead(senderId);
+        if (senderId === activeFriend?.id && !document.hidden && chatVisible) useInboxStore.getState().markRead(senderId);
       }
     };
 
+    // Bağlantı koptuğu sürede gelen mesajlar ve arkadaş durumları yeniden bağlanınca alınır.
+    const onReconnect = () => {
+      void loadMessages(activeFriend?.id, () => false, true);
+      void loadFriends(() => false, true);
+      void useInboxStore.getState().refresh();
+    };
+
     socket.on('receive_dm', onReceiveDm);
+    socket.on('connect', onReconnect);
     return () => {
       socket.off('receive_dm', onReceiveDm);
+      socket.off('connect', onReconnect);
     };
-  }, [activeFriend?.id, user?.id]);
+  }, [activeFriend?.id, user?.id, chatVisible, loadMessages, loadFriends]);
 
   // Yeni mesajda yalnızca mesaj kutusu kayar (sayfa değil).
   useEffect(() => {
+    if (keepScrollRef.current) {
+      keepScrollRef.current = false;
+      return;
+    }
     const list = messagesRef.current;
     if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
   }, [messages]);
@@ -156,13 +262,27 @@ export default function DMPage() {
     [friends],
   );
 
-  const handleSend = () => {
-    if (!activeFriend?.id || !messageText.trim()) return;
-    getSocket().emit('send_dm', {
-      targetUserId: activeFriend.id,
-      text: messageText.trim(),
-    });
+  const handleSend = async () => {
+    const friendId = activeFriend?.id;
+    const text = messageText.trim();
+    if (!friendId || !text || isSending) return;
+    setIsSending(true);
+    setSendError(null);
     setMessageText('');
+    const result = await sendDm(getSocket(), friendId, text);
+    setIsSending(false);
+    if (!result.ok) {
+      // Gönderilemeyen metin kaybolmaz; kullanıcı yeni bir şey yazmadıysa geri konur.
+      setMessageText((current) => (current ? current : text));
+      setSendError(result.error);
+      return;
+    }
+    const sent = result.message;
+    if (sent) setMessages((current) => (current.some((item) => item.id === sent.id) ? current : [...current, sent]));
+  };
+
+  const joinFriendRoom = async (roomName: string) => {
+    navigate(await resolveFriendRoomPath(roomName));
   };
 
   const openChat = (friendId: number) => {
@@ -356,10 +476,10 @@ export default function DMPage() {
                   </p>
                 </Link>
                 {activeFriend.isOnline && activeFriend.currentRoom ? (
-                  <Link to="/app/lobbies" className="hidden shrink-0 items-center gap-1.5 rounded-[10px] bg-mb-tile-5 px-3 py-2 text-sm font-medium text-mb-ink transition hover:brightness-95 sm:inline-flex">
+                  <button type="button" onClick={() => void joinFriendRoom(activeFriend.currentRoom!)} className="hidden shrink-0 items-center gap-1.5 rounded-[10px] bg-mb-tile-5 px-3 py-2 text-sm font-medium text-mb-ink transition hover:brightness-95 sm:inline-flex">
                     <DoorOpen className="h-4 w-4" aria-hidden="true" />
                     Odaya katıl
-                  </Link>
+                  </button>
                 ) : null}
                 <button type="button" onClick={() => setReportOpen(true)} title="Şikayet et" aria-label={`${activeFriend.fullName} kişisini şikayet et`} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-mb-body hover:bg-mb-surface hover:text-danger">
                   <Flag className="h-4 w-4" />
@@ -368,6 +488,21 @@ export default function DMPage() {
 
               <div ref={messagesRef} role="log" aria-label="Mesajlar" aria-live={isLoadingMessages ? 'off' : 'polite'} className="min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-mb-surface/50 px-4 py-5 md:px-6">
                 {isLoadingMessages ? <p className="py-10 text-center text-sm text-mb-body">Mesajlar yükleniyor…</p> : null}
+                {!isLoadingMessages && messagesError ? (
+                  <p role="alert" className="py-10 text-center text-sm text-danger">
+                    Mesajlar yüklenemedi.{' '}
+                    <button type="button" onClick={() => void loadMessages(activeFriend.id, () => false)} className="font-medium underline underline-offset-2">
+                      Tekrar dene
+                    </button>
+                  </p>
+                ) : null}
+                {!isLoadingMessages && hasOlder ? (
+                  <div className="flex justify-center">
+                    <button type="button" onClick={() => void loadOlder()} disabled={isLoadingOlder} className={`${ghostButton} min-h-10 text-sm`}>
+                      {isLoadingOlder ? 'Yükleniyor…' : 'Daha eski mesajlar'}
+                    </button>
+                  </div>
+                ) : null}
                 <AnimatePresence initial={false}>
                   {!isLoadingMessages &&
                     messages.map((message, index) => {
@@ -406,7 +541,7 @@ export default function DMPage() {
                       );
                     })}
                 </AnimatePresence>
-                {!isLoadingMessages && messages.length === 0 ? (
+                {!isLoadingMessages && !messagesError && messages.length === 0 ? (
                   <EmptyState
                     icon={MessageCircle}
                     title="Henüz mesaj yok"
@@ -424,14 +559,17 @@ export default function DMPage() {
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }}
-                className="flex items-center gap-2 border-t border-mb-line p-3"
+                className="space-y-2 border-t border-mb-line p-3"
               >
-                <input value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Mesaj yaz" aria-label="Mesaj" className={inputClass} />
-                <button disabled={!messageText.trim()} aria-label="Gönder" className="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-mb-action text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2 disabled:opacity-40">
+                {sendError ? <Notice tone="danger" onDismiss={() => setSendError(null)}>{sendError}</Notice> : null}
+                <div className="flex items-center gap-2">
+                <input value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Mesaj yaz" aria-label="Mesaj" maxLength={DM_MAX_LENGTH} className={inputClass} />
+                <button disabled={!messageText.trim() || isSending} aria-label="Gönder" className="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-mb-action text-mb-on-action shadow-mb-press transition hover:bg-mb-action-2 disabled:opacity-40">
                   <Send className="h-4 w-4" />
                 </button>
+                </div>
               </form>
             </>
           ) : (

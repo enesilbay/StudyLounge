@@ -1,45 +1,53 @@
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
-  ValidateIf,
 } from 'class-validator';
+
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
 
 export class UpdateAccountSettingsDto {
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
   @IsEmail()
   @MaxLength(120)
   email?: string;
 
   @IsOptional()
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @Transform(trim)
   @IsString()
   @MinLength(3)
   @MaxLength(32)
   @Matches(/^[a-zA-Z0-9_]+$/, {
     message:
-      'Kullanici adinda sadece harf, rakam ve alt cizgi (_) kullanilabilir.',
+      'Kullanıcı adında yalnızca harf, rakam ve alt çizgi (_) kullanılabilir.',
   })
   username?: string;
 
-  @ValidateIf((dto: UpdateAccountSettingsDto) => !!dto.newPassword)
+  @IsOptional()
+  @Transform(trim)
   @IsString()
-  @MinLength(1)
+  @IsNotEmpty()
+  @MaxLength(80)
+  fullName?: string;
+
+  /** Şifresi olan hesapta e-posta, kullanıcı adı ya da şifre değişirken zorunludur (serviste doğrulanır). */
+  @IsOptional()
+  @IsString()
   @MaxLength(72)
   currentPassword?: string;
 
   @IsOptional()
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: 'Yeni şifre en az 8 karakter olmalıdır.' })
   @MaxLength(72)
   newPassword?: string;
 }

@@ -3,15 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, MoreThanOrEqual, Repository } from 'typeorm';
 import { DailyAnalytics } from '../users/daily-analytics.entity';
 import { User } from '../users/user.entity';
-import { CreateSubjectDto, UpdateGoalsDto, UpdateSubjectDto } from './dto/study.dto';
+import { CreateSubjectDto, UpdateSubjectDto } from './dto/study.dto';
 import { StudySession } from './study-session.entity';
-import { localDayKey, localWeekStartKey } from '../config/time';
+import { addDaysToKey, localDayEnd, localDayKey, localDayStart, localWeekStartKey } from '../config/time';
 import { Subject } from './subject.entity';
 
 const MAX_SUBJECTS = 30;
-/** Günlük hedef ilk tutulduğunda verilen bonus puan. */
-export const DAILY_GOAL_BONUS = 25;
-const DAY_MS = 24 * 60 * 60 * 1000;
+/** Oturum listesinin tek yanıttaki üst sınırı; aşılırsa yanıt kesilir (X-Truncated). */
+export const MAX_SESSIONS = 1000;
 
 /** `daily_analytics.date` ile aynı gün anahtarı (Türkiye saati, YYYY-AA-GG). */
 export const dayKey = localDayKey;
@@ -104,7 +103,7 @@ export class StudyService {
   // ── OTURUMLAR ──
 
   async recordSession(input: RecordSessionInput) {
-    const minutes = Math.round((input.endedAt.getTime() - input.startedAt.getTime()) / 60000);
+    const minutes = Math.floor((input.endedAt.getTime() - input.startedAt.getTime()) / 60000);
     if (minutes <= 0) return null;
     const subjectId = await this.resolveOwnedSubjectId(input.userId, input.subjectId);
 
@@ -122,22 +121,29 @@ export class StudyService {
     );
   }
 
-  listSessions(userId: number, from?: string, to?: string) {
-    const end = to ? new Date(to) : new Date();
-    const start = from ? new Date(from) : new Date(end.getTime() - 30 * DAY_MS);
-    return this.sessions.find({
-      where: { user: { id: userId }, startedAt: Between(start, end) },
+  /**
+   * Oturumlar, Türkiye saatinin gün sınırlarına oturtulur: from ve to hangi Türkiye gününe
+   * düşüyorsa o günün başı/sonu alınır. En fazla MAX_SESSIONS satır döner; fazlası varsa
+   * truncated true olur (en yeni oturumlar korunur).
+   */
+  async listSessions(userId: number, from?: string, to?: string) {
+    const endKey = dayKey(to ? new Date(to) : new Date());
+    const startKey = from ? dayKey(new Date(from)) : addDaysToKey(endKey, -30);
+    const rows = await this.sessions.find({
+      where: { user: { id: userId }, startedAt: Between(localDayStart(startKey), localDayEnd(endKey)) },
       relations: { subject: true },
       order: { startedAt: 'DESC' },
-      take: 200,
+      take: MAX_SESSIONS + 1,
     });
+    const truncated = rows.length > MAX_SESSIONS;
+    return { sessions: truncated ? rows.slice(0, MAX_SESSIONS) : rows, truncated };
   }
 
   /** Analitik sayfası: ders dağılımı (oturumlardan) ve günlük toplamlar (geçmişi de kapsayan günlük özetten). */
   async summary(userId: number, days = 30) {
-    const now = new Date();
-    const since = new Date(now.getTime() - (days - 1) * DAY_MS);
-    since.setUTCHours(0, 0, 0, 0);
+    // Tek gün sınırı: Türkiye saatine göre bugünden (days - 1) gün öncesinin 00:00'ı.
+    const sinceKey = addDaysToKey(dayKey(new Date()), -(days - 1));
+    const since = localDayStart(sinceKey);
 
     const [bySubjectRows, sessionStats, dailyRows] = await Promise.all([
       this.sessions
@@ -162,7 +168,7 @@ export class StudyService {
         .andWhere('session.startedAt >= :since', { since })
         .getRawOne<{ count: string; minutes: string }>(),
       this.dailyAnalytics.find({
-        where: { user: { id: userId }, date: MoreThanOrEqual(dayKey(since)) },
+        where: { user: { id: userId }, date: MoreThanOrEqual(sinceKey) },
         order: { date: 'ASC' },
       }),
     ]);
@@ -218,33 +224,6 @@ export class StudyService {
       todayMinutes: todayRow?.focusMinutes ?? 0,
       weekMinutes: weekRows.reduce((sum, row) => sum + row.focusMinutes, 0),
       rewardedToday: todayRow?.goalRewarded ?? false,
-      dailyGoalBonus: DAILY_GOAL_BONUS,
     };
-  }
-
-  async updateGoals(userId: number, dto: UpdateGoalsDto) {
-    const changes: Partial<User> = {};
-    if (dto.dailyGoalMinutes !== undefined) changes.dailyGoalMinutes = dto.dailyGoalMinutes;
-    if (dto.weeklyGoalMinutes !== undefined) changes.weeklyGoalMinutes = dto.weeklyGoalMinutes;
-    if (Object.keys(changes).length) await this.users.update(userId, changes);
-    return this.getGoalProgress(userId);
-  }
-
-  /**
-   * Odak süresi eklendikten sonra çağrılır. Günlük hedef bugün ilk kez tutulduysa
-   * bonus puan verir ve true döner. Aynı gün ikinci kez ödül verilmez.
-   */
-  async rewardDailyGoalIfReached(userId: number): Promise<boolean> {
-    const user = await this.users.findOne({ where: { id: userId }, select: { id: true, dailyGoalMinutes: true } });
-    if (!user?.dailyGoalMinutes) return false;
-
-    const today = await this.dailyAnalytics.findOne({ where: { user: { id: userId }, date: dayKey(new Date()) } });
-    if (!today || today.goalRewarded || today.focusMinutes < user.dailyGoalMinutes) return false;
-
-    // Yarış durumunda iki kez ödül verilmesin: yalnızca hâlâ false olan satır güncellenir.
-    const result = await this.dailyAnalytics.update({ id: today.id, goalRewarded: false }, { goalRewarded: true });
-    if (!result.affected) return false;
-    await this.users.increment({ id: userId }, 'coins', DAILY_GOAL_BONUS);
-    return true;
   }
 }

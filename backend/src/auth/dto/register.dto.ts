@@ -17,7 +17,7 @@ export class RegisterDto {
   @MaxLength(32)
   @Matches(/^[a-zA-Z0-9_]+$/, {
     message:
-      'Kullanici adinda sadece harf, rakam ve alt cizgi (_) kullanilabilir.',
+      'Kullanıcı adında yalnızca harf, rakam ve alt çizgi (_) kullanılabilir.',
   })
   username: string;
 

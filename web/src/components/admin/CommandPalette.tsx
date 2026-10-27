@@ -98,10 +98,10 @@ function PaletteBody({ onClose, links }: { onClose: () => void; links: PaletteLi
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/45 px-4 pt-[12vh]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Yönetimde ara" className="sl-panel mx-auto w-full max-w-xl overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-border px-4">
-          <Search className="h-5 w-5 shrink-0 text-textMuted" />
+    <div className="fixed inset-0 z-50 bg-mb-solid/40 px-4 pt-[12vh]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Yönetimde ara" className="rounded-[16px] border border-mb-line bg-mb-card shadow-mb-card mx-auto w-full max-w-xl overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-mb-line px-4">
+          <Search className="h-5 w-5 shrink-0 text-mb-body" />
           <input
             ref={inputRef}
             value={query}
@@ -116,13 +116,13 @@ function PaletteBody({ onClose, links }: { onClose: () => void; links: PaletteLi
             aria-activedescendant={results[activeIndex] ? `${listId}-${results[activeIndex].key}` : undefined}
             aria-label="Yönetimde ara"
             placeholder="Kullanıcı ya da sayfa ara"
-            className="min-h-14 w-full bg-transparent text-base text-textDark outline-none placeholder:text-textMuted"
+            className="min-h-14 w-full bg-transparent text-base text-mb-ink outline-none placeholder:text-mb-body"
           />
-          <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-xs text-textMuted sm:block">Esc</kbd>
+          <kbd className="hidden rounded border border-mb-line px-1.5 py-0.5 text-xs text-mb-body sm:block">Esc</kbd>
         </div>
         <ul id={listId} role="listbox" className="max-h-[50vh] overflow-y-auto p-2">
           {results.length === 0 ? (
-            <li className="px-3 py-6 text-center text-[15px] text-textMuted">{term.length < 2 ? 'Aramak için yaz.' : searching ? 'Aranıyor…' : 'Sonuç yok.'}</li>
+            <li className="px-3 py-6 text-center text-[15px] text-mb-body">{term.length < 2 ? 'Aramak için yaz.' : searching ? 'Aranıyor…' : 'Sonuç yok.'}</li>
           ) : (
             results.map((result, index) => (
               <li
@@ -132,20 +132,20 @@ function PaletteBody({ onClose, links }: { onClose: () => void; links: PaletteLi
                 aria-selected={index === activeIndex}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => go(result)}
-                className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 ${index === activeIndex ? 'bg-softIndigo' : ''}`}
+                className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 ${index === activeIndex ? 'bg-mb-tint' : ''}`}
               >
                 {result.user ? (
                   <Avatar name={result.user.fullName} image={result.user.avatarUrl} size="xs" />
                 ) : result.icon ? (
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-sunken text-textMuted">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-mb-surface text-mb-body">
                     <result.icon className="h-4 w-4" />
                   </span>
                 ) : null}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold text-textDark">{result.label}</span>
-                  <span className="block truncate text-sm text-textMuted">{result.hint}</span>
+                  <span className="block truncate font-semibold text-mb-ink">{result.label}</span>
+                  <span className="block truncate text-sm text-mb-body">{result.hint}</span>
                 </span>
-                {index === activeIndex ? <CornerDownLeft className="h-4 w-4 text-textMuted" aria-hidden="true" /> : null}
+                {index === activeIndex ? <CornerDownLeft className="h-4 w-4 text-mb-body" aria-hidden="true" /> : null}
               </li>
             ))
           )}

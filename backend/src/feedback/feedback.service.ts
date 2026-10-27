@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AdminAuditService } from '../admin-audit/admin-audit.service';
 import { CreateFeedbackDto } from './dto/feedback.dto';
 import { Feedback, FeedbackStatus } from './feedback.entity';
 
@@ -9,6 +10,7 @@ export class FeedbackService {
   constructor(
     @InjectRepository(Feedback)
     private readonly feedbackRepository: Repository<Feedback>,
+    private readonly audit: AdminAuditService,
   ) {}
 
   async create(userId: number, body: CreateFeedbackDto, userAgent?: string) {
@@ -28,9 +30,14 @@ export class FeedbackService {
     };
   }
 
-  /** Yönetici listesi: en yeniler önce; gönderenin yalnızca herkese açık bilgileri döner. */
-  list(status: FeedbackStatus | 'all') {
-    return this.feedbackRepository.find({
+  /**
+   * Yönetici listesi: en yeniler önce, sayfalı; gönderenin yalnızca herkese açık bilgileri döner.
+   * Yanıt her zaman { items, total, page, pageSize }.
+   */
+  async list(status: FeedbackStatus | 'all', page = 1, pageSize = 25) {
+    const size = Math.min(Math.max(pageSize, 1), 100);
+    const current = Math.max(page, 1);
+    const [items, total] = await this.feedbackRepository.findAndCount({
       where: status === 'all' ? {} : { status },
       relations: { user: true },
       select: {
@@ -43,15 +50,35 @@ export class FeedbackService {
         createdAt: true,
         user: { id: true, username: true, fullName: true },
       },
-      order: { createdAt: 'DESC' },
-      take: 200,
+      order: { createdAt: 'DESC', id: 'DESC' },
+      take: size,
+      skip: (current - 1) * size,
     });
+    return { items, total, page: current, pageSize: size };
   }
 
-  async setStatus(id: number, status: FeedbackStatus) {
-    const result = await this.feedbackRepository.update(id, { status });
-    if (!result.affected)
-      throw new NotFoundException('Geri bildirim bulunamadı.');
+  /** Durum değişikliği aynı transaction'da denetim kaydına yazılır. */
+  async setStatus(adminId: number, id: number, status: FeedbackStatus) {
+    await this.feedbackRepository.manager.transaction(async (manager) => {
+      const item = await manager.findOne(Feedback, {
+        where: { id },
+        relations: { user: true },
+        select: { id: true, status: true, user: { id: true, username: true } },
+      });
+      if (!item) throw new NotFoundException('Geri bildirim bulunamadı.');
+      if (item.status === status) return;
+      await manager.update(Feedback, id, { status });
+      await this.audit.record(
+        {
+          adminId,
+          targetId: item.user?.id ?? null,
+          targetLabel: item.user?.username ?? `Geri bildirim #${id}`,
+          action: status === 'done' ? 'feedback_done' : 'feedback_reopen',
+          details: { feedbackId: id, from: item.status, to: status },
+        },
+        manager,
+      );
+    });
     return { success: true };
   }
 }

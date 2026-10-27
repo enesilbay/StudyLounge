@@ -7,7 +7,7 @@ import { unwrapData } from '../lib/apiResponses';
 import { formatMinutes } from '../lib/study';
 import type { User, WeeklyChampions, WeeklyLeague } from '../lib/types';
 import { Avatar } from '../components/ui';
-import { AppPage, Card, CountUp, EmptyState, IconHeading, Rise, SegmentedTabs, actionButton } from '../components/app/Kit';
+import { AppPage, Card, CountUp, EmptyState, ErrorState, IconHeading, Rise, SegmentedTabs, actionButton } from '../components/app/Kit';
 import UserSearch from '../components/social/UserSearch';
 import { useAuthStore } from '../store/authStore';
 
@@ -43,37 +43,41 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('week');
   const [scope, setScope] = useState<Scope>('global');
   // Sonuç, hangi dönem/kapsam için yüklendiğiyle saklanır; seçim değişince eskisi gösterilmez.
-  const [loaded, setLoaded] = useState<{ key: string; rows: Row[] } | null>(null);
+  // Lig de aynı kayıtta tutulur: kapsam/dönem değişince önceki seçimin ligi (bitiş tarihi, "ben") görünmez.
+  const [loaded, setLoaded] = useState<{ key: string; rows: Row[]; league: WeeklyLeague | null; failed: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const key = `${period}:${scope}`;
-  const rows = loaded?.key === key ? loaded.rows : null;
-  const [league, setLeague] = useState<WeeklyLeague | null>(null);
+  const current = loaded?.key === key ? loaded : null;
+  const rows = current && !current.failed ? current.rows : null;
+  const failed = current?.failed ?? false;
+  const league = current?.league ?? null;
   const [champions, setChampions] = useState<WeeklyChampions[]>([]);
 
   useEffect(() => {
     let ignore = false;
     const requestKey = `${period}:${scope}`;
-    const setRows = (next: Row[]) => setLoaded({ key: requestKey, rows: next });
     const load = async () => {
       try {
         if (period === 'week') {
           const response = await api.get<WeeklyLeague>('/league/weekly', { params: { scope } });
           if (ignore) return;
-          setLeague(response.data);
-          setRows(response.data.entries);
+          setLoaded({ key: requestKey, rows: response.data.entries, league: response.data, failed: false });
         } else {
           const response = await api.get<User[]>(scope === 'global' ? '/users/leaderboard' : '/users/friends-leaderboard');
           if (ignore) return;
-          setRows(unwrapData<User[]>(response.data).map((user, index) => ({ rank: index + 1, minutes: user.totalFocusMinutes ?? 0, user })));
+          const list = unwrapData<User[]>(response.data).map((user, index) => ({ rank: index + 1, minutes: user.totalFocusMinutes ?? 0, user }));
+          setLoaded({ key: requestKey, rows: list, league: null, failed: false });
         }
       } catch {
-        if (!ignore) setRows([]);
+        // Hata "kimse yok" gibi görünmesin; ayrı hata durumu ve yeniden deneme gösterilir.
+        if (!ignore) setLoaded({ key: requestKey, rows: [], league: null, failed: true });
       }
     };
     void load();
     return () => {
       ignore = true;
     };
-  }, [period, scope]);
+  }, [period, scope, attempt]);
 
   useEffect(() => {
     api
@@ -128,7 +132,19 @@ export default function LeaderboardPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0">
-            {rows === null ? <p className="py-16 text-center text-mb-body">Sıralama yükleniyor…</p> : null}
+            {rows === null && !failed ? <p className="py-16 text-center text-mb-body">Sıralama yükleniyor…</p> : null}
+            {failed ? (
+              <Card>
+                <ErrorState
+                  title="Sıralama yüklenemedi"
+                  text="Bağlantını kontrol edip tekrar dene."
+                  onRetry={() => {
+                    setLoaded(null);
+                    setAttempt((value) => value + 1);
+                  }}
+                />
+              </Card>
+            ) : null}
             {rows?.length === 0 ? (
               <Card>
                 <EmptyState

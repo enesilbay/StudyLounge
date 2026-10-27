@@ -74,7 +74,7 @@ export default function RoomSettingsModal({
     }
   };
 
-  const selectCls = 'min-h-11 w-full rounded-lg border border-border bg-sunken px-3 text-base text-textDark outline-none focus:border-accent';
+  const selectCls = 'min-h-11 w-full rounded-lg border border-mb-line bg-mb-surface px-3 text-base text-mb-ink outline-none focus:border-mb-action';
 
   return (
     <ModalShell open={open} title="Oda ayarları" description={`"${lobby.name}" odasının sahibisin. Oda adı değiştirilemez.`} onClose={onClose}>
@@ -84,14 +84,14 @@ export default function RoomSettingsModal({
           description={lobby.isLocked ? 'Kapalı. Şu an odada olanlar sayfayı yenilese de geri girebilir.' : 'Açık. Odayı bulan herkes girebilir.'}
           checked={Boolean(lobby.isLocked)}
           onChange={(locked) => onToggleLock(locked)}
-          trailing={lobby.isLocked ? <Lock className="h-4 w-4 text-textMuted" /> : <LockOpen className="h-4 w-4 text-textMuted" />}
+          trailing={lobby.isLocked ? <Lock className="h-4 w-4 text-mb-body" /> : <LockOpen className="h-4 w-4 text-mb-body" />}
         />
 
-        <form onSubmit={save} className="space-y-4 border-t border-border pt-5">
+        <form onSubmit={save} className="space-y-4 border-t border-mb-line pt-5">
           <TextField label="Açıklama" value={description} onChange={setDescription} multiline placeholder="Ne çalışılıyor, oda kuralları neler?" />
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="room-settings-category" className="mb-1.5 block text-sm font-semibold text-textDark">Kategori</label>
+              <label htmlFor="room-settings-category" className="mb-1.5 block text-sm font-semibold text-mb-ink">Kategori</label>
               <select id="room-settings-category" value={category} onChange={(event) => setCategory(event.target.value)} className={selectCls}>
                 {categories.map((item) => (
                   <option key={item}>{item}</option>
@@ -110,9 +110,9 @@ export default function RoomSettingsModal({
           </div>
         </form>
 
-        <div className="rounded-lg border border-danger/30 bg-softDanger p-4">
-          <p className="font-semibold text-textDark">Odayı kapat</p>
-          <p className="mt-1 text-sm text-textMuted">Herkes odadan çıkarılır ve oda silinir. Sohbet geçmişi kaybolur.</p>
+        <div className="rounded-lg border border-mb-live/30 bg-mb-live-soft p-4">
+          <p className="font-semibold text-mb-ink">Odayı kapat</p>
+          <p className="mt-1 text-sm text-mb-body">Herkes odadan çıkarılır ve oda silinir. Sohbet geçmişi kaybolur.</p>
           <div className="mt-3 flex gap-2">
             {confirmClose ? (
               <>

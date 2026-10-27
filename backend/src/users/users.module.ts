@@ -12,12 +12,14 @@ import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModerationModule } from '../moderation/moderation.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   // EKLENDİ: Friendship tablosu TypeOrmModule içine yazıldı
   imports: [
     TypeOrmModule.forFeature([User, Friendship, DailyAnalytics]),
     ModerationModule,
+    MailModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {

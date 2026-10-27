@@ -63,7 +63,11 @@ export class AdminController {
 
   @Get('reports')
   reports(@Query() query: ReportsQueryDto) {
-    return this.moderationService.listReports(query.status ?? 'open');
+    return this.moderationService.listReports(
+      query.status ?? 'open',
+      query.page,
+      query.pageSize,
+    );
   }
 
   @Patch('reports/:id')

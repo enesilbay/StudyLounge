@@ -19,6 +19,12 @@ describe('RtcService', () => {
     );
   });
 
+  it('reports the previous socket when the same user rejoins with a new one', () => {
+    service.join('Cam', 1, 's1', true);
+    expect(service.join('Cam', 1, 's1', true).previousSocketId).toBeNull();
+    expect(service.join('Cam', 1, 's2', true).previousSocketId).toBe('s1');
+  });
+
   it('returns existing peers when joining', () => {
     service.join('Cam', 1, 's1', true);
     const { peers } = service.join('Cam', 2, 's2', true);

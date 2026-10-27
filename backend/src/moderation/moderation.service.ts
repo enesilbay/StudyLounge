@@ -11,6 +11,7 @@ import {
   RecordActionInput,
 } from '../admin-audit/admin-audit.service';
 import { Message } from '../messages/message.entity';
+import { RealtimeService } from '../realtime/realtime.service';
 import { Friendship } from '../users/friendship.entity';
 import { User } from '../users/user.entity';
 import { Block } from './block.entity';
@@ -40,6 +41,7 @@ export class ModerationService {
     @InjectRepository(Message)
     private readonly messages: Repository<Message>,
     private readonly audit: AdminAuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // ── ENGELLEME ──
@@ -129,12 +131,15 @@ export class ModerationService {
 
   // ── SUSTURMA / YASAK ──
 
-  /** Susturulmuş kullanıcı mesaj yazamaz; kalan süreyi içeren hata fırlatır. */
+  /** Susturulmuş ya da askıya alınmış kullanıcı mesaj yazamaz; susturmada kalan süreyi içeren hata fırlatır. */
   async assertCanChat(userId: number) {
     const user = await this.users.findOne({
       where: { id: userId },
-      select: { id: true, mutedUntil: true },
+      select: { id: true, mutedUntil: true, bannedAt: true },
     });
+    if (user?.bannedAt) {
+      throw new ForbiddenException('Hesabın askıya alındı.');
+    }
     if (user?.mutedUntil && user.mutedUntil > new Date()) {
       const until = new Intl.DateTimeFormat('tr-TR', {
         dateStyle: 'short',
@@ -210,8 +215,14 @@ export class ModerationService {
 
   // ── YÖNETİCİ ──
 
-  listReports(status: ReportStatus | 'all' = 'open') {
-    return this.reports.find({
+  async listReports(
+    status: ReportStatus | 'all' = 'open',
+    page = 1,
+    pageSize = 25,
+  ) {
+    const size = Math.min(100, Math.max(1, Math.trunc(pageSize) || 25));
+    const current = Math.max(1, Math.trunc(page) || 1);
+    const [items, total] = await this.reports.findAndCount({
       where: status === 'all' ? {} : { status },
       relations: { reporter: true, target: true, resolvedBy: true },
       select: {
@@ -228,9 +239,11 @@ export class ModerationService {
         target: { ...PUBLIC_USER_SELECT, mutedUntil: true, bannedAt: true },
         resolvedBy: { id: true, fullName: true },
       },
-      order: { createdAt: 'DESC' },
-      take: 200,
+      order: { createdAt: 'DESC', id: 'DESC' },
+      skip: (current - 1) * size,
+      take: size,
     });
+    return { items, total, page: current, pageSize: size };
   }
 
   async resolveReport(
@@ -313,6 +326,8 @@ export class ModerationService {
         reason,
       },
     );
+    // Açık bağlantılar (oda, kamera, DM) hemen kapanır; yeniden bağlanma da reddedilir.
+    this.realtime.disconnectUser(userId, 'Hesabın askıya alındı.');
     return { success: true };
   }
 

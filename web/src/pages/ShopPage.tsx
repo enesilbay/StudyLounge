@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { AnimatePresence, m, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { Check, Coins, Flame, Image as ImageIcon, Lamp, Loader2, Lock, MessageCircle, RefreshCw, Snowflake, Sparkles } from 'lucide-react';
+import { Check, Coins, Flame, Image as ImageIcon, Lamp, Loader2, Lock, MessageCircle, PackageOpen, RefreshCw, Snowflake, Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 import { getApiErrorMessage, unwrapUser } from '../lib/apiResponses';
 import { COVER_STYLES, DEFAULT_BUBBLE_COLOR, FRAME_STYLES, LAMP_COLORS, coverStyle, lampColor, purchasedBubbleColor } from '../lib/cosmetics';
 import type { ShopItem, ShopItemType, User } from '../lib/types';
 import { Avatar, Notice } from '../components/ui';
-import { AppPage, CountUp, Rise, outlineButton } from '../components/app/Kit';
+import { AppPage, CountUp, EmptyState, Rise, outlineButton } from '../components/app/Kit';
 import { useAuthStore } from '../store/authStore';
 
 type Category = Extract<ShopItemType, 'profileFrame' | 'profileCover' | 'lampColor' | 'color' | 'streakFreeze'>;
@@ -90,7 +90,7 @@ export default function ShopPage() {
   const items = useMemo(() => (catalog ?? []).filter((item) => item.type === category), [catalog, category]);
   const current = CATEGORIES.find((entry) => entry.key === category)!;
 
-  if (loading || !user) return <p className="py-16 text-center text-mb-body">Mağaza yükleniyor…</p>;
+  if (loading || !user) return <p role="status" aria-busy="true" className="py-16 text-center text-mb-body">Mağaza yükleniyor…</p>;
   const coins = user.coins ?? 0;
 
   const act = async (item: ShopItem) => {
@@ -102,30 +102,38 @@ export default function ShopPage() {
     const key = `${item.type}:${item.id}`;
     setBusyKey(key);
     setMessage(null);
+    let next: User;
     try {
-      let next: User;
       if (owned) {
         next = unwrapUser<User>((await api.post('/users/equip', { itemType: item.type, itemId: item.id })).data);
+        setUser(next);
         setMessage({ tone: 'success', text: `${displayName(item)} kuşanıldı.` });
-      } else {
-        next = unwrapUser<User>((await api.post('/users/buy', { itemType: item.type, itemId: item.id })).data);
-        // Alınan ürün hemen kuşanılır; seri koruma kendiliğinden kullanılır.
-        if (item.type !== 'streakFreeze') {
-          next = unwrapUser<User>((await api.post('/users/equip', { itemType: item.type, itemId: item.id })).data);
-        }
-        setCelebrate(key);
-        window.setTimeout(() => setCelebrate((value) => (value === key ? null : value)), 1100);
-        setMessage({
-          tone: 'success',
-          text: item.type === 'streakFreeze' ? 'Seri koruma alındı. Bir günü kaçırırsan kendiliğinden kullanılır.' : `${displayName(item)} senin ve kuşanıldı.`,
-        });
+        return;
       }
-      setUser(next);
+      next = unwrapUser<User>((await api.post('/users/buy', { itemType: item.type, itemId: item.id })).data);
     } catch (error) {
       setMessage({ tone: 'danger', text: getApiErrorMessage(error) });
-    } finally {
       setBusyKey(null);
+      return;
     }
+
+    // Satın alma tamamlandı: puan ve sahiplik hemen yansır; kuşanma hatası satın almayı geri almaz.
+    setUser(next);
+    setCelebrate(key);
+    window.setTimeout(() => setCelebrate((value) => (value === key ? null : value)), 1100);
+    if (item.type === 'streakFreeze') {
+      setMessage({ tone: 'success', text: 'Seri koruma alındı. Bir günü kaçırırsan kendiliğinden kullanılır.' });
+    } else {
+      try {
+        // Alınan ürün hemen kuşanılır.
+        next = unwrapUser<User>((await api.post('/users/equip', { itemType: item.type, itemId: item.id })).data);
+        setUser(next);
+        setMessage({ tone: 'success', text: `${displayName(item)} senin ve kuşanıldı.` });
+      } catch (equipError) {
+        setMessage({ tone: 'danger', text: `${displayName(item)} senin oldu ama kuşanılamadı: ${getApiErrorMessage(equipError)} "Kuşan" düğmesiyle tekrar deneyebilirsin.` });
+      }
+    }
+    setBusyKey(null);
   };
 
   // Önizleme: seçili/üstüne gelinen ürün, diğerleri kuşanılan haliyle.
@@ -159,7 +167,7 @@ export default function ShopPage() {
     >
       <CategoryTiles value={category} onChange={(next) => { setCategory(next); setPreview(null); }} />
 
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="mt-5 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm text-mb-body">
             <current.icon className="h-4 w-4 text-mb-ink" aria-hidden="true" />
@@ -181,13 +189,15 @@ export default function ShopPage() {
                 </button>
               </div>
             ) : !catalog ? (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Yükleniyor">
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Yükleniyor" aria-busy="true">
                 {Array.from({ length: 6 }, (_, index) => (
                   <li key={index} className="h-60 animate-pulse rounded-[20px] bg-mb-surface" />
                 ))}
               </ul>
             ) : category === 'streakFreeze' ? (
-              items[0] ? <FreezeCard item={items[0]} user={user} busy={busyKey !== null} celebrating={celebrate !== null} onBuy={() => void act(items[0])} /> : null
+              items[0] ? <FreezeCard item={items[0]} user={user} busy={busyKey !== null} celebrating={celebrate !== null} onBuy={() => void act(items[0])} /> : <EmptyShelf />
+            ) : items.length === 0 ? (
+              <EmptyShelf />
             ) : (
               <ul key={category} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {items.map((item, index) => {
@@ -213,13 +223,22 @@ export default function ShopPage() {
           </div>
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start" aria-labelledby="preview-title">
+        {/* Telefonda önizleme listenin üstünde ve yapışkan; ürüne dokununca seni nasıl göreceklerini hemen görürsün. */}
+        <aside className="sticky top-16 z-10 order-first lg:top-24 lg:order-none lg:self-start" aria-labelledby="preview-title">
           <Rise delay={0.15}>
-            <PreviewCard user={user} look={look} previewName={preview ? displayName(preview) : null} />
+            <PreviewCard user={user} look={look} previewName={preview ? displayName(preview) : null} showChat={category === 'lampColor' || category === 'color'} />
           </Rise>
         </aside>
       </div>
     </AppPage>
+  );
+}
+
+function EmptyShelf() {
+  return (
+    <div className="rounded-[20px] border border-mb-line/70 bg-mb-card shadow-mb-card">
+      <EmptyState icon={PackageOpen} title="Bu kategoride ürün yok" text="Yeni ürünler eklendiğinde burada görünecek. Şimdilik başka bir kategoriye göz atabilirsin." />
+    </div>
   );
 }
 
@@ -376,7 +395,7 @@ function ItemStage({ item, user }: { item: ShopItem; user: User }) {
     return (
       <span className={`absolute inset-0 flex items-end gap-2 p-3 ${background ? '' : 'bg-mb-solid'}`} style={background ? { background } : undefined}>
         <Avatar name={user.fullName} image={user.avatarUrl} frame={user.equippedProfileFrame} size="xs" />
-        <span className="mb-1 h-2 w-16 rounded-full bg-white/70" aria-hidden="true" />
+        <span className="mb-1 h-2 w-16 rounded-full bg-mb-card/70" aria-hidden="true" />
       </span>
     );
   }
@@ -386,7 +405,7 @@ function ItemStage({ item, user }: { item: ShopItem; user: User }) {
   const bubble = purchasedBubbleColor(item.id);
   return (
     <span
-      className={`rounded-[14px] rounded-br-[4px] px-3.5 py-2 text-sm font-medium shadow-mb-card transition-transform duration-300 [li:hover_&]:-rotate-3 [li:hover_&]:scale-110 ${bubble ? 'text-white' : 'bg-mb-action text-mb-on-action'}`}
+      className={`rounded-[14px] rounded-br-[4px] px-3.5 py-2 text-sm font-medium shadow-mb-card transition-transform duration-300 [li:hover_&]:-rotate-3 [li:hover_&]:scale-110 ${bubble ? 'text-mb-on-action' : 'bg-mb-action text-mb-on-action'}`}
       style={bubble ? { backgroundColor: bubble } : undefined}
     >
       Merhaba!
@@ -488,7 +507,7 @@ function FreezeCard({ item, user, busy, celebrating, onBuy }: { item: ShopItem; 
                 {Array.from({ length: MAX_FREEZES }, (_, index) => (
                   <span
                     key={index}
-                    className={`grid h-9 w-9 place-items-center rounded-full ${index < held ? 'bg-mb-info text-white shadow-mb-card' : 'border-2 border-dashed border-mb-ink/25 text-mb-ink/30'}`}
+                    className={`grid h-9 w-9 place-items-center rounded-full ${index < held ? 'bg-mb-info text-mb-on-action shadow-mb-card' : 'border-2 border-dashed border-mb-ink/25 text-mb-ink/30'}`}
                   >
                     <Snowflake className="h-4 w-4" aria-hidden="true" />
                   </span>
@@ -524,37 +543,47 @@ function PreviewCard({
   user,
   look,
   previewName,
+  showChat,
 }: {
   user: User;
   look: { frame: string; cover: string; lamp: string; bubble: string };
   previewName: string | null;
+  /** Telefonda sohbet/lamba kısmı yalnızca ilgili kategorilerde görünür; geniş ekranda her zaman. */
+  showChat: boolean;
 }) {
   const background = coverStyle(look.cover);
   const bubble = purchasedBubbleColor(look.bubble);
 
   return (
     <div className="overflow-hidden rounded-[20px] border border-mb-line/70 bg-mb-card shadow-mb-card">
-      <div className="relative h-28 bg-mb-solid transition-[background] duration-500" style={background ? { background } : undefined}>
-        <p className="absolute right-3 top-3 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+      <div className="relative h-14 bg-mb-solid transition-[background] duration-500 lg:h-28" style={background ? { background } : undefined}>
+        <p className="absolute right-3 top-3 rounded-full bg-mb-solid/60 px-2.5 py-1 text-[11px] font-medium text-mb-on-solid backdrop-blur-sm">
           {previewName ? `${previewName} önizleniyor` : 'Önizleme'}
         </p>
       </div>
-      <div className="-mt-10 px-5">
-        <m.span key={look.frame} className="inline-block" initial={{ scale: 0.8, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 16 }}>
-          <Avatar name={user.fullName} image={user.avatarUrl} frame={look.frame} premium={user.isPremium} size="xl" />
+      <div className="-mt-8 flex items-end gap-3 px-5 pb-3 lg:-mt-10 lg:block lg:pb-0">
+        <m.span key={look.frame} className="inline-block shrink-0" initial={{ scale: 0.8, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 16 }}>
+          <span className="lg:hidden">
+            <Avatar name={user.fullName} image={user.avatarUrl} frame={look.frame} premium={user.isPremium} size="lg" />
+          </span>
+          <span className="hidden lg:block">
+            <Avatar name={user.fullName} image={user.avatarUrl} frame={look.frame} premium={user.isPremium} size="xl" />
+          </span>
         </m.span>
-        <h2 id="preview-title" className="mt-2 truncate font-mb-display text-xl font-medium tracking-[-0.02em] text-mb-ink">
-          {user.fullName}
-        </h2>
-        <p className="text-[13px] text-mb-body">@{user.username} · seni böyle görürler</p>
+        <div className="min-w-0 pb-1 lg:pb-0">
+          <h2 id="preview-title" className="truncate font-mb-display text-lg font-medium tracking-[-0.02em] text-mb-ink lg:mt-2 lg:text-xl">
+            {user.fullName}
+          </h2>
+          <p className="truncate text-[13px] text-mb-body">@{user.username} · seni böyle görürler</p>
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-t border-mb-line/70 bg-mb-surface px-5 py-4">
+      <div className={`mt-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-t border-mb-line/70 bg-mb-surface px-5 py-4 lg:mt-4 lg:grid ${showChat ? 'grid' : 'hidden'}`}>
         <LampTile lamp={look.lamp} name={user.fullName} image={user.avatarUrl} label />
         <div className="space-y-2">
           <p className="max-w-full rounded-[14px] rounded-bl-[4px] bg-mb-card px-3 py-1.5 text-sm text-mb-ink">Hangi ünitedesin?</p>
           <p
-            className={`ml-auto w-fit max-w-full rounded-[14px] rounded-br-[4px] px-3 py-1.5 text-sm transition-colors duration-500 ${bubble ? 'text-white' : 'bg-mb-action text-mb-on-action'}`}
+            className={`ml-auto w-fit max-w-full rounded-[14px] rounded-br-[4px] px-3 py-1.5 text-sm transition-colors duration-500 ${bubble ? 'text-mb-on-action' : 'bg-mb-action text-mb-on-action'}`}
             style={bubble ? { backgroundColor: bubble } : undefined}
           >
             Türev, 3. bölüm.

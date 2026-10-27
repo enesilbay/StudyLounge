@@ -62,6 +62,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true, select: false })
   emailVerificationToken: string | null;
 
+  // E-posta dogrulama kodunun son kullanma zamani. Bos ise eski (suresiz) koddur.
+  @Column({ type: 'timestamptz', nullable: true, select: false })
+  emailVerificationExpires: Date | null;
+
   @Column({ type: 'varchar', nullable: true, select: false })
   resetPasswordToken: string | null;
 
@@ -71,6 +75,10 @@ export class User {
   // Dogrulama / sifre sifirlama kodu icin ust uste yanlis deneme sayisi.
   @Column({ default: 0, select: false })
   codeAttempts: number;
+
+  // Sifre degisince/sifirlaninca artar; JWT'deki `tv` ile eslesmeyen eski token'lar reddedilir.
+  @Column({ default: 0 })
+  tokenVersion: number;
 
   // ── AŞAMA 3: OYUNLAŞTIRMA VE EKONOMİ ──
   @Column({ default: 0 })

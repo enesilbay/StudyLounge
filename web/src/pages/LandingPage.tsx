@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, Check, CircleHelp, LayoutGrid, LogIn, Menu, Route, Tag, X } from 'lucide-react';
@@ -13,6 +13,7 @@ import {
   benefitSection,
   closing,
   faqSection,
+  fallbackPremiumPrices,
   faqs,
   footer,
   hero,
@@ -25,6 +26,9 @@ import {
   steps,
 } from '../components/landing/content';
 import { useAuthStore } from '../store/authStore';
+import { api } from '../lib/api';
+import { formatTry } from '../lib/payments';
+import type { PremiumPlan } from '../lib/payments';
 
 /*
  * Açılış sayfası, Mobilo denemesi (ozellik/acilis-mobilo). Didasko sürümüyle
@@ -65,6 +69,16 @@ export default function LandingPage() {
   const primary = isAuthenticated ? { to: '/app/lobbies', label: 'Odalara git' } : { to: '/auth?mod=kayit', label: 'Ücretsiz hesap aç' };
   const premiumTo = isAuthenticated ? '/app/premium' : '/auth?mod=kayit';
   const [yearly, setYearly] = useState(false);
+  const prices = usePremiumPrices();
+  // Seçenek grubunda ok tuşları, Home ve End seçimi değiştirir ve odağı seçilene taşır (radio düzeni).
+  const onPeriodKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const next = { ArrowRight: true, ArrowDown: true, End: true, ArrowLeft: false, ArrowUp: false, Home: false }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    setYearly(next);
+    event.currentTarget.querySelector<HTMLButtonElement>(`[data-period="${next ? 'yearly' : 'monthly'}"]`)?.focus();
+  };
+  const yearlySavings = prices.monthly * 12 - prices.yearly;
 
   return (
     // LazyMotion: framer-motion'ın yalnızca kullanılan özellikleri yüklenir (animasyonlar sadece bu sayfada).
@@ -232,7 +246,7 @@ export default function LandingPage() {
             <MbContainer>
               <MbSectionTitle id="fiyat-baslik" pill="Fiyat" title={pricingSection.title} intro={pricingSection.intro} />
               <div className="mt-10 flex justify-center">
-                <div role="radiogroup" aria-label="Premium ödeme dönemi" className="relative grid grid-cols-2 rounded-full bg-mb-surface p-1.5">
+                <div role="radiogroup" aria-label="Premium ödeme dönemi" className="relative grid grid-cols-2 rounded-full bg-mb-surface p-1.5" onKeyDown={onPeriodKeyDown}>
                   {/* Seçim göstergesi: seçilen seçeneğin altına kayar. */}
                   <m.span
                     aria-hidden="true"
@@ -250,6 +264,8 @@ export default function LandingPage() {
                       type="button"
                       role="radio"
                       aria-checked={yearly === option.value}
+                      tabIndex={yearly === option.value ? 0 : -1}
+                      data-period={option.value ? 'yearly' : 'monthly'}
                       onClick={() => setYearly(option.value)}
                       className={`${mbFocus} relative min-h-11 rounded-full px-7 text-[0.9375rem] font-medium transition-colors duration-300 ${yearly === option.value ? 'text-mb-bg' : 'text-mb-body hover:text-mb-ink'}`}
                     >
@@ -264,9 +280,9 @@ export default function LandingPage() {
                   highlighted
                   name={plans.premium.name}
                   description={plans.premium.description}
-                  price={yearly ? '₺499' : plans.premium.price}
+                  price={formatTry(yearly ? prices.yearly : prices.monthly)}
                   period={yearly ? '/ yıl' : plans.premium.period}
-                  note={yearly ? 'Aylığa göre yılda ₺89 daha az' : 'Yıllık alırsan ₺499'}
+                  note={yearly ? (yearlySavings > 0 ? `Aylığa göre yılda ${formatTry(yearlySavings)} daha az` : undefined) : `Yıllık alırsan ${formatTry(prices.yearly)}`}
                   features={plans.premium.features}
                   cta={{ to: premiumTo, label: plans.premium.action }}
                   delay={0.12}
@@ -391,18 +407,51 @@ export default function LandingPage() {
   );
 }
 
+/** Premium fiyatları sunucudan; erişilemezse (ya da giriş gerektiriyorsa) content.ts'teki değerler. */
+function usePremiumPrices() {
+  const [prices, setPrices] = useState(fallbackPremiumPrices);
+  useEffect(() => {
+    let alive = true;
+    api
+      .get<{ plans: PremiumPlan[] }>('/payments/plans')
+      .then((response) => {
+        const monthly = response.data.plans.find((plan) => plan.id === 'monthly');
+        const yearly = response.data.plans.find((plan) => plan.id === 'yearly');
+        if (alive && monthly && yearly) setPrices({ monthly: monthly.price, yearly: yearly.price });
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return prices;
+}
+
 function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; primary: { to: string; label: string } }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const reduce = useReducedMotion();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
+  // Esc ya da menü dışına tıklama menüyü kapatır; Esc'te odak menü düğmesine döner.
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const onPointer = (event: PointerEvent) => {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) setMenuOpen(false);
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
   }, [menuOpen]);
 
   // Kaydırınca çubuk incelir ve gölgesi belirginleşir.
@@ -413,10 +462,14 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const close = () => setMenuOpen(false);
+  // Menüden bir bağlantıya gidilince odak düğmeye döner (menü kapanıp odak kaybolmaz).
+  const close = () => {
+    setMenuOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
+  };
 
   return (
-    <header className="sticky top-0 z-40 px-3 pt-3 md:px-6 md:pt-5">
+    <header ref={headerRef} className="sticky top-0 z-40 px-3 pt-3 md:px-6 md:pt-5">
       <div className={`mx-auto max-w-[62.5rem] rounded-[22px] border border-mb-line bg-mb-bg/90 backdrop-blur transition-shadow duration-300 ${scrolled || menuOpen ? 'shadow-mb-raised' : 'shadow-mb-card'}`}>
         <div className={`flex items-center justify-between gap-4 pl-5 pr-2.5 transition-[height] duration-300 ${scrolled ? 'h-14 md:h-16' : 'h-16 md:h-[76px]'}`}>
           <Link to="/" className={`${mbFocus} flex items-center gap-2`} aria-label="StudyLounge ana sayfa">
@@ -445,6 +498,7 @@ function SiteHeader({ isAuthenticated, primary }: { isAuthenticated: boolean; pr
               </Link>
             </span>
             <button
+              ref={triggerRef}
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
               aria-expanded={menuOpen}

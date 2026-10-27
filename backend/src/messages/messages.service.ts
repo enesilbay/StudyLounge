@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { In, LessThan, Repository, MoreThan } from 'typeorm';
 import { Message } from './message.entity';
 import { DirectMessage } from './direct-message.entity';
 import { User } from '../users/user.entity';
@@ -11,6 +11,9 @@ function publicAuthor(user: User | null | undefined) {
   const { id, username, fullName, avatarUrl, equippedProfileFrame, equippedBubbleColor, equippedIcon, isPremium } = user;
   return { id, username, fullName, avatarUrl, equippedProfileFrame, equippedBubbleColor, equippedIcon, isPremium } as User;
 }
+
+/** DM geçmişinde bir seferde dönen mesaj sayısı. */
+export const DM_PAGE_SIZE = 100;
 
 @Injectable()
 export class MessagesService {
@@ -50,6 +53,22 @@ export class MessagesService {
     return await this.messageRepository.save(newMessage);
   }
 
+  /**
+   * Kullanıcının bu odaya son 10 dakikada yüklediği, fileUrl'i eşleşen dosya mesajı.
+   * Yükleme ucu her dosya için `message` tablosuna kayıt yazdığı için oradan bakılır.
+   */
+  async findOwnFileMessage(userId: number, roomName: string, fileUrl: string): Promise<Message | null> {
+    return await this.messageRepository.findOne({
+      where: {
+        user: { id: userId },
+        roomName,
+        fileUrl,
+        createdAt: MoreThan(new Date(Date.now() - 10 * 60 * 1000)),
+      },
+      order: { id: 'DESC' },
+    });
+  }
+
   // Odaya ait son 50 mesajı getir (İlişkili kullanıcı verisiyle beraber)
   async getRoomMessages(roomName: string) {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -63,16 +82,23 @@ export class MessagesService {
   }
 
   // ── DM METODLARI ──
-  async getDirectMessages(userId1: number, userId2: number) {
+  /**
+   * Sohbetin en yeni DM_PAGE_SIZE mesajı, eskiden yeniye sıralı. `before`: bu mesaj
+   * id'sinden önceki (daha eski) mesajları getirir.
+   */
+  async getDirectMessages(userId1: number, userId2: number, before?: number) {
+    const idFilter = before !== undefined ? { id: LessThan(before) } : {};
     const messages = await this.dmRepository.find({
       where: [
-        { sender: { id: userId1 }, receiver: { id: userId2 } },
-        { sender: { id: userId2 }, receiver: { id: userId1 } },
+        { sender: { id: userId1 }, receiver: { id: userId2 }, ...idFilter },
+        { sender: { id: userId2 }, receiver: { id: userId1 }, ...idFilter },
       ],
-      order: { createdAt: 'ASC' },
-      take: 100,
+      order: { id: 'DESC' },
+      take: DM_PAGE_SIZE,
     });
-    return messages.map((message) => ({ ...message, sender: publicAuthor(message.sender), receiver: publicAuthor(message.receiver) }));
+    return messages
+      .reverse()
+      .map((message) => ({ ...message, sender: publicAuthor(message.sender), receiver: publicAuthor(message.receiver) }));
   }
 
   async createDirectMessage(senderId: number, receiverId: number, text: string, type: string = 'text', fileUrl?: string) {
@@ -87,18 +113,18 @@ export class MessagesService {
   }
 
   async getUnreadSenders(userId: number) {
-    const unreadMessages = await this.dmRepository.find({
-      where: { receiver: { id: userId }, isRead: false },
-      relations: ['sender'],
+    // Tekilleştirme veritabanında: yalnızca farklı gönderen id'leri çekilir.
+    const rows = await this.dmRepository
+      .createQueryBuilder('dm')
+      .select('DISTINCT dm."senderId"', 'senderId')
+      .where('dm."receiverId" = :userId', { userId })
+      .andWhere('dm."isRead" = false')
+      .getRawMany<{ senderId: number }>();
+    if (rows.length === 0) return [];
+    const senders = await this.dmRepository.manager.find(User, {
+      where: { id: In(rows.map((row) => Number(row.senderId))) },
     });
-
-    const sendersMap = new Map<number, any>();
-    for (const msg of unreadMessages) {
-      if (!sendersMap.has(msg.sender.id)) {
-        sendersMap.set(msg.sender.id, publicAuthor(msg.sender));
-      }
-    }
-    return Array.from(sendersMap.values());
+    return senders.map((sender) => publicAuthor(sender));
   }
 
   async markAsRead(senderId: number, receiverId: number) {

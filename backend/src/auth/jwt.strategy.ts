@@ -27,6 +27,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (user.bannedAt) {
       throw new UnauthorizedException('Hesabın askıya alındı.');
     }
+    // Şifre değişince/sıfırlanınca tokenVersion artar; eski token'lar geçersizdir.
+    if ((payload.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+      throw new UnauthorizedException('Oturumun sona erdi. Yeniden giriş yap.');
+    }
     void this.usersService.touchLastSeen(user.id);
     return user;
   }

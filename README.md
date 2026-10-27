@@ -207,7 +207,7 @@ StudyLounge/
 
 9. 🏆 **Haftalık Lig ve Rozetler:**
    - Sıralama her pazartesi 00:00'da (Türkiye saati) sıfırlanır; ilk üç 100, 60 ve 30 puan alır.
-   - 12 rozet (seri, gece kuşu, düello galibi, ders ustası, haftanın şampiyonu…).
+   - Rozetler (seri, gece kuşu, ders ustası, haftanın şampiyonu…).
 
 10. 🛡️ **Güvenlik ve Topluluk:**
     - Kullanıcı arama ve herkese açık profil; engelleme, mesaj/kullanıcı şikayeti ve yönetici paneli (susturma, yasaklama).

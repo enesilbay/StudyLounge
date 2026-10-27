@@ -18,6 +18,9 @@ interface InboxState {
   /** DM sayfasında şu an açık olan sohbet; o kişiden gelen mesaj okunmamış sayılmaz. */
   viewingDmWith: number | null;
   toasts: Toast[];
+  /** Arkadaş listesi değiştiğinde (istek kabul edildi) artar; listeyi gösteren sayfalar yeniden yükler. */
+  friendsVersion: number;
+  bumpFriendsVersion: () => void;
   refresh: () => Promise<void>;
   addUnread: (senderId: number) => void;
   markRead: (senderId: number) => void;
@@ -36,6 +39,9 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   friendRequests: [],
   viewingDmWith: null,
   toasts: [],
+  friendsVersion: 0,
+
+  bumpFriendsVersion: () => set((state) => ({ friendsVersion: state.friendsVersion + 1 })),
 
   refresh: async () => {
     const [senders, requests] = await Promise.allSettled([

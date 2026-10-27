@@ -4,10 +4,12 @@ import {
   MessageBody,
   WebSocketServer,
   ConnectedSocket,
+  Ack,
+  OnGatewayInit,
   OnGatewayDisconnect,
   OnGatewayConnection,
 } from '@nestjs/websockets';
-import { UseFilters } from '@nestjs/common';
+import { HttpException, UseFilters } from '@nestjs/common';
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { Server, Socket } from 'socket.io';
 import { UsersService } from './users/users.service';
@@ -22,8 +24,10 @@ import { MessagesService } from './messages/messages.service';
 import { MediaState, RtcService } from './rtc/rtc.service';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 import { RoomTimerService } from './room-timer/room-timer.service';
-import { DAILY_GOAL_BONUS, StudyService } from './study/study.service';
+import { StudyService } from './study/study.service';
 import { ModerationService } from './moderation/moderation.service';
+import { RealtimeService, userRoom } from './realtime/realtime.service';
+import { STORAGE_KEY_PATTERN } from './storage/storage.service';
 import { BADGE_NAMES } from './users/badges';
 import { reportUnexpected } from './common/report-error';
 
@@ -41,6 +45,18 @@ interface SendMessageDto {
   fileUrl?: string;
   isPremium?: boolean;
 }
+
+interface SendDmDto {
+  targetUserId: number;
+  text: string;
+  type?: string;
+  fileUrl?: string;
+}
+
+/** `send_dm` ack yaniti: basarida kaydedilen mesaj, hatada Turkce hata metni. */
+type DmAck = (
+  response: { ok: true; message: unknown } | { ok: false; error: string },
+) => void;
 
 interface UpdatePresenceDto {
   isAtDesk: boolean;
@@ -60,7 +76,7 @@ interface ActiveFocusSession {
 interface NudgeFriendDto {
   targetUserId: number;
   senderName?: string;
-  roomName: string;
+  roomName?: string;
 }
 
 interface ConnectedRoomUser {
@@ -98,21 +114,36 @@ interface RoomTimerStartDto {
   breakMinutes: number;
 }
 
-interface Duel {
-  id: string;
-  challengerId: number;
-  challengedId: number;
-  betAmount: number;
-  status: 'pending' | 'active';
-  roomName: string;
-  expiresTimer?: ReturnType<typeof setTimeout>;
+interface TokenBucket {
+  tokens: number;
+  updatedAt: number;
 }
 
 const MAX_CHAT_MESSAGE_LENGTH = 2000;
-const MIN_DUEL_BET = 1;
-const MAX_DUEL_BET = 100;
-/** Kabul edilmeyen duello daveti bu sureden sonra duser. */
-const DUEL_INVITE_TTL_MS = 60_000;
+const CHAT_TYPES = ['text', 'image', 'file'];
+const FILE_TYPES = ['image', 'file'];
+const GENERIC_ERROR = 'Bir şeyler ters gitti, tekrar dene.';
+const CONTROL_DENIED = 'Bunu yalnızca başlatan kişi ya da oda sahibi yapabilir.';
+const RATE_LIMIT_ERROR = 'Çok hızlı işlem yapıyorsun, biraz yavaşla.';
+
+/** Tek bir odak oturumundan en fazla bu kadar dakika yazilir (Elite carpani dahil). */
+export const MAX_SESSION_MINUTES = 240;
+/** Arkadaslara "masaya gecti" bildirimi kullanici basina bu sureden sik gitmez. */
+const DESK_NOTICE_COOLDOWN_MS = 30 * 60_000;
+/** Ayni arkadasi tekrar durtmek icin beklenecek sure. */
+const NUDGE_COOLDOWN_MS = 60_000;
+/** Socket basina token bucket: ani en fazla 10 islem, saniyede 2 islem yenilenir. */
+const BUCKET_CAPACITY = 10;
+const BUCKET_REFILL_PER_SECOND = 2;
+
+const MAX_ATMOSPHERE_CHANNELS = 10;
+const ATMOSPHERE_KEY = /^[\w-]{1,24}$/;
+
+/** Yalnizca bizim yukleme ucumuzun verdigi "/uploads/<anahtar>" adresleri kabul edilir. */
+const isUploadUrl = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.startsWith('/uploads/') &&
+  STORAGE_KEY_PATTERN.test(value.slice('/uploads/'.length));
 
 // Global filtreler gateway'lere uygulanmaz; beklenmeyen socket hatalari da Sentry'ye gitsin.
 @UseFilters(new SentryGlobalFilter())
@@ -128,14 +159,17 @@ const DUEL_INVITE_TTL_MS = 60_000;
   pingTimeout: 5000,
 })
 export class SensorsGateway
-  implements OnGatewayDisconnect, OnGatewayConnection
+  implements OnGatewayInit, OnGatewayDisconnect, OnGatewayConnection
 {
   @WebSocketServer() server!: Server;
 
-  private activeSessions = new Map<number, ActiveFocusSession>();
+  /** Odak oturumlari SOKET bazinda tutulur: her sekmenin kendi odasi ve carpani vardir. */
+  private activeSessions = new Map<string, ActiveFocusSession>();
   private connectedUsers = new Map<string, ConnectedRoomUser>();
-  private duels = new Map<string, Duel>();
   private userSockets = new Map<number, Set<string>>();
+  private buckets = new Map<string, TokenBucket>();
+  private lastDeskNotice = new Map<number, number>();
+  private lastNudge = new Map<string, number>();
 
   constructor(
     private readonly usersService: UsersService,
@@ -149,7 +183,12 @@ export class SensorsGateway
     private readonly roomTimerService: RoomTimerService,
     private readonly studyService: StudyService,
     private readonly moderationService: ModerationService,
+    private readonly realtime: RealtimeService,
   ) {}
+
+  afterInit(server: Server) {
+    this.realtime.attach(server);
+  }
 
   async handleConnection(client: Socket) {
     try {
@@ -159,63 +198,80 @@ export class SensorsGateway
         throw new Error('Token eksik');
       }
 
-      const payload = this.jwtService.verify<JwtPayload>(token, {
-        secret: getJwtSecret(this.configService),
-      });
+      const payload = this.jwtService.verify<JwtPayload & { tv?: number }>(
+        token,
+        { secret: getJwtSecret(this.configService) },
+      );
 
       (client.data as Record<string, unknown>).user = payload;
 
+      const userId = payload.sub;
+      const dbUser = await this.usersService.findById(userId);
+      if (!dbUser) {
+        throw new Error('Kullanici yok');
+      }
+      // Sifre degisince/sifirlaninca surum artar; eski token'li soket baglanamaz.
+      const currentVersion = dbUser.tokenVersion ?? 0;
+      if ((payload.tv ?? 0) !== currentVersion) {
+        throw new Error('Token iptal edilmis');
+      }
       // Askıdaki hesap bağlanamaz.
-      if (await this.moderationService.isBanned(payload.sub)) {
+      if (await this.moderationService.isBanned(userId)) {
         throw new Error('Hesap askida');
       }
 
-      const userId = payload.sub;
       if (!this.userSockets.has(userId)) {
         this.userSockets.set(userId, new Set());
       }
       this.userSockets.get(userId)!.add(client.id);
+      // Kullaniciya ozel odaya katilir: RealtimeService (yasak, arkadaslik bildirimi) buradan ulasir.
+      await client.join(userRoom(userId));
 
       // Global olarak çevrimiçi işaretle
       await this.usersService.setOnlineStatus(userId, true);
       void this.usersService.touchLastSeen(userId);
     } catch {
       console.log('[Socket] Yetkisiz baglanti denemesi reddedildi.');
+      (client.data as Record<string, unknown>).user = undefined;
       client.disconnect();
     }
   }
 
   async handleDisconnect(client: Socket) {
-    const payload = (client.data as any).user;
-    if (payload?.sub) {
-      const userId = payload.sub;
-      const userSocketSet = this.userSockets.get(userId);
+    this.buckets.delete(client.id);
+    const payload = (client.data as { user?: JwtPayload }).user;
+    const userId = payload?.sub;
+    if (userId) {
       this.leaveCall(userId, client.id);
+    }
+
+    const user = this.connectedUsers.get(client.id);
+    if (user) {
+      try {
+        await this.finishFocusSession(client.id, user);
+      } catch (error) {
+        reportUnexpected(error, 'session_record');
+      }
+      this.connectedUsers.delete(client.id);
+      this.broadcastRoomUsers(user.roomName);
+      console.log(`[Baglanti Koptu] ${user.fullName} lobiden ayrildi.`);
+    }
+
+    if (userId) {
+      const userSocketSet = this.userSockets.get(userId);
       if (userSocketSet) {
         userSocketSet.delete(client.id);
         if (userSocketSet.size === 0) {
           this.userSockets.delete(userId);
+          this.lastDeskNotice.delete(userId);
           // Global olarak çevrimdışı işaretle
           await this.usersService.setOnlineStatus(userId, false);
+        } else if (user) {
+          // Baska sekme acik: odasi o sekmenin odasi olarak kalir.
+          await this.syncCurrentRoom(userId);
         }
       }
     }
-
-    const user = this.connectedUsers.get(client.id);
-    if (!user) {
-      return;
-    }
-
-    await this.resolveDuel(user.userId);
-
-    const startTime = this.activeSessions.get(user.userId);
-    if (startTime) {
-      await this.finishFocusSession(user);
-    }
-
-    this.connectedUsers.delete(client.id);
-    this.broadcastRoomUsers(user.roomName);
-    console.log(`[Baglanti Koptu] ${user.fullName} lobiden ayrildi.`);
   }
 
   private getSocketUser(client: Socket): JwtPayload | null {
@@ -225,8 +281,60 @@ export class SensorsGateway
     return user?.sub ? user : null;
   }
 
+  /** Bozuk JSON ya da nesne olmayan gövde bos nesneye doner; hicbir zaman firlatmaz. */
   private parsePayload<T>(payload: T | string): T {
-    return typeof payload === 'string' ? (JSON.parse(payload) as T) : payload;
+    let value: unknown = payload;
+    if (typeof payload === 'string') {
+      try {
+        value = JSON.parse(payload);
+      } catch {
+        return {} as T;
+      }
+    }
+    return value && typeof value === 'object' ? (value as T) : ({} as T);
+  }
+
+  /** Socket basina token bucket; false donerse islem reddedilir. */
+  private takeToken(client: Socket, cost = 1): boolean {
+    const now = Date.now();
+    const bucket = this.buckets.get(client.id) ?? {
+      tokens: BUCKET_CAPACITY,
+      updatedAt: now,
+    };
+    bucket.tokens = Math.min(
+      BUCKET_CAPACITY,
+      bucket.tokens + ((now - bucket.updatedAt) / 1000) * BUCKET_REFILL_PER_SECOND,
+    );
+    bucket.updatedAt = now;
+    const allowed = bucket.tokens >= cost;
+    if (allowed) bucket.tokens -= cost;
+    this.buckets.set(client.id, bucket);
+    return allowed;
+  }
+
+  /**
+   * Istemciye giden hata metni: yalnizca bilincli (HttpException) mesajlar gider,
+   * digerleri Sentry'ye raporlanir ve genel metne cevrilir.
+   */
+  private errorMessage(error: unknown, context: string): string {
+    if (error instanceof HttpException) {
+      return error.message;
+    }
+    reportUnexpected(error, context);
+    return GENERIC_ERROR;
+  }
+
+  /** Kullanicinin veritabaninda gorunen odasini acik soketlerine gore yeniler. */
+  private async syncCurrentRoom(userId: number) {
+    if (!this.userSockets.has(userId)) return;
+    const roomName =
+      Array.from(this.connectedUsers.values()).find((u) => u.userId === userId)
+        ?.roomName ?? null;
+    try {
+      await this.usersService.setOnlineStatus(userId, true, roomName);
+    } catch (error) {
+      reportUnexpected(error, 'socket');
+    }
   }
 
   private broadcastRoomUsers(roomName: string) {
@@ -260,19 +368,21 @@ export class SensorsGateway
     this.server.to(roomName).emit('room_users', payload);
   }
 
-  private async finishFocusSession(user: ConnectedRoomUser) {
-    const session = this.activeSessions.get(user.userId);
+  private async finishFocusSession(socketId: string, user: ConnectedRoomUser) {
+    const session = this.activeSessions.get(socketId);
     if (!session) {
       return;
     }
     // Ayni oturum iki kez kapatilmasin (ornegin ayrilma ve kopma ust uste gelirse).
-    this.activeSessions.delete(user.userId);
+    this.activeSessions.delete(socketId);
     const endedAt = Date.now();
 
-    let durationMinutes = Math.round((endedAt - session.startedAt) / 60000);
+    // Yalnizca tam dakikalar yazilir; 30 sn'lik tiklamalarla puan kasilamaz.
+    let durationMinutes = Math.floor((endedAt - session.startedAt) / 60000);
     if (user.isEliteRoom) {
       durationMinutes *= 2;
     }
+    durationMinutes = Math.min(durationMinutes, MAX_SESSION_MINUTES);
 
     if (durationMinutes > 0) {
       const updatedUser = await this.usersService.addFocusTime(
@@ -290,7 +400,7 @@ export class SensorsGateway
         }
       }
 
-      // Oturum gecmisi ve gunluk hedef; hata olursa odak puani yine de yazilmis olur.
+      // Oturum gecmisi; hata olursa odak puani yine de yazilmis olur.
       try {
         await this.studyService.recordSession({
           userId: user.userId,
@@ -301,13 +411,13 @@ export class SensorsGateway
           creditedMinutes: durationMinutes,
           source: session.source,
         });
-        if (await this.studyService.rewardDailyGoalIfReached(user.userId)) {
-          this.emitToUser(user.userId, 'goal_reached', { bonus: DAILY_GOAL_BONUS });
-          if ((await this.studyService.countGoalDays(user.userId)) >= 7) {
-            await this.awardBadge(user.userId, BADGE_NAMES.goalHunter);
-          }
-        }
-        if (session.subjectId && (await this.studyService.subjectMinutes(user.userId, session.subjectId)) >= 600) {
+        if (
+          session.subjectId &&
+          (await this.studyService.subjectMinutes(
+            user.userId,
+            session.subjectId,
+          )) >= 600
+        ) {
           await this.awardBadge(user.userId, BADGE_NAMES.subjectMaster);
         }
       } catch (error) {
@@ -325,37 +435,7 @@ export class SensorsGateway
   }
 
   private emitToUser(userId: number, event: string, payload: unknown) {
-    for (const socketId of this.userSockets.get(userId) ?? []) {
-      this.server.to(socketId).emit(event, payload);
-    }
-  }
-
-  // ── AŞAMA 4: DÜELLO ÇÖZÜMLEME ──
-  private async resolveDuel(loserId: number) {
-    for (const [duelId, duel] of this.duels.entries()) {
-      if (duel.status === 'active' && (duel.challengerId === loserId || duel.challengedId === loserId)) {
-        const winnerId = duel.challengerId === loserId ? duel.challengedId : duel.challengerId;
-        
-        await this.usersService.addCoins(winnerId, duel.betAmount * 2);
-        await this.awardBadge(winnerId, BADGE_NAMES.duelWinner);
-
-        const winnerSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === winnerId)?.[0];
-        const loserSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === loserId)?.[0];
-        
-        const winnerObj = await this.usersService.findById(winnerId);
-        const loserObj = await this.usersService.findById(loserId);
-
-        if (winnerSocket) {
-          this.server.to(winnerSocket).emit('duel_ended', { winner: true, opponentName: loserObj?.fullName, betAmount: duel.betAmount });
-        }
-        if (loserSocket) {
-          this.server.to(loserSocket).emit('duel_ended', { winner: false, opponentName: winnerObj?.fullName, betAmount: duel.betAmount });
-        }
-
-        this.duels.delete(duelId);
-        break;
-      }
-    }
+    this.server.to(userRoom(userId)).emit(event, payload);
   }
 
   @SubscribeMessage('join_lobby')
@@ -371,6 +451,10 @@ export class SensorsGateway
 
     const data = this.parsePayload(payload);
     const { roomName, maxUsers } = data;
+    if (typeof roomName !== 'string' || !roomName.trim()) {
+      client.emit('join_lobby_error', { message: 'Oda adı geçersiz.' });
+      return;
+    }
 
     try {
       const currentUser = await this.usersService.findById(socketUser.sub);
@@ -392,7 +476,7 @@ export class SensorsGateway
       );
 
       if (capacity && usersInRoom.length >= capacity) {
-        client.emit('room_full', { message: 'Bu oda kapasitesine ulasti.' });
+        client.emit('room_full', { message: 'Bu oda kapasitesine ulaştı.' });
         client.emit('join_lobby_error', { message: 'Bu oda dolu.' });
         return;
       }
@@ -442,20 +526,24 @@ export class SensorsGateway
         client.emit('room_timer', { timer, action: 'sync' });
       }
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      const message =
-        error instanceof Error ? error.message : 'Lobiye giris reddedildi.';
-      client.emit('join_lobby_error', { message });
+      client.emit('join_lobby_error', {
+        message: this.errorMessage(error, 'socket'),
+      });
     }
   }
 
   private async leaveLobby(client: Socket, user: ConnectedRoomUser) {
-    await this.resolveDuel(user.userId);
-    await this.finishFocusSession(user);
+    try {
+      await this.finishFocusSession(client.id, user);
+    } catch (error) {
+      reportUnexpected(error, 'session_record');
+    }
     this.leaveCall(user.userId, client.id);
     void client.leave(user.roomName);
     this.connectedUsers.delete(client.id);
     this.broadcastRoomUsers(user.roomName);
+    // Kisi artik hicbir sekmede o odada degilse "odada" sayilmaya devam etmez.
+    await this.syncCurrentRoom(user.userId);
   }
 
   // Web: sayfadan ayrilirken soket acik kaldigi icin odadan acikca cikilir.
@@ -479,37 +567,72 @@ export class SensorsGateway
     }
 
     const data = this.parsePayload(payload);
+    if (!this.takeToken(client)) {
+      client.emit('error', { message: RATE_LIMIT_ERROR });
+      return;
+    }
     const connectedUser = this.connectedUsers.get(client.id);
     // Yalnizca bu sokette join_lobby ile girilmis odaya mesaj yazilabilir.
-    if (!connectedUser || connectedUser.roomName !== data?.roomName) {
-      client.emit('error', { message: 'Mesaj gondermek icin once odaya katilmalisin.' });
+    if (!connectedUser || connectedUser.roomName !== data.roomName) {
+      client.emit('error', { message: 'Mesaj göndermek için önce odaya katılmalısın.' });
       return;
     }
-    if (typeof data.text !== 'string' || data.text.length > MAX_CHAT_MESSAGE_LENGTH) {
-      client.emit('error', { message: 'Mesaj gecersiz ya da cok uzun.' });
+    const type = data.type ?? 'text';
+    const hasFile = data.fileUrl !== undefined && data.fileUrl !== null;
+    if (
+      typeof data.text !== 'string' ||
+      data.text.length > MAX_CHAT_MESSAGE_LENGTH ||
+      typeof type !== 'string' ||
+      !CHAT_TYPES.includes(type) ||
+      (hasFile ? !FILE_TYPES.includes(type) : type !== 'text' || !data.text.trim())
+    ) {
+      client.emit('error', { message: 'Mesaj geçersiz ya da çok uzun.' });
       return;
     }
+    if (hasFile && !isUploadUrl(data.fileUrl)) {
+      client.emit('error', { message: 'Dosya adresi geçersiz.' });
+      return;
+    }
+    let fileMessage: { id: number; type: string } | null = null;
     try {
       await this.moderationService.assertCanChat(socketUser.sub);
+      if (hasFile) {
+        // Dosya, gonderenin bu odaya az once yukledigi kayitla eslesmeli.
+        const upload = await this.messagesService.findOwnFileMessage(
+          socketUser.sub,
+          data.roomName,
+          data.fileUrl as string,
+        );
+        if (!upload) {
+          client.emit('error', { message: 'Dosya bulunamadı, tekrar yükle.' });
+          return;
+        }
+        fileMessage = { id: upload.id, type: upload.type ?? type };
+      }
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      client.emit('error', { message: error instanceof Error ? error.message : 'Mesaj gonderilemedi.' });
+      client.emit('error', { message: this.errorMessage(error, 'socket') });
       return;
     }
     const fullName = connectedUser.fullName;
 
     console.log(`[Chat - ${data.roomName}] ${fullName}: ${data.text}`);
 
-    const savedMessage = data.fileUrl
-      ? null
-      : await this.messagesService.createMessage(
-          data.text,
-          data.roomName,
-          socketUser.sub,
-        );
+    let savedMessage: Awaited<ReturnType<MessagesService['createMessage']>> | null = null;
+    try {
+      savedMessage = hasFile
+        ? null
+        : await this.messagesService.createMessage(
+            data.text,
+            data.roomName,
+            socketUser.sub,
+          );
+    } catch (error) {
+      client.emit('error', { message: this.errorMessage(error, 'socket') });
+      return;
+    }
 
     this.server.to(data.roomName).emit('receive_message', {
-      id: savedMessage?.id,
+      id: savedMessage?.id ?? fileMessage?.id,
       roomName: data.roomName,
       userId: socketUser.sub,
       fullName,
@@ -519,90 +642,139 @@ export class SensorsGateway
       equippedBubbleColor: connectedUser?.equippedBubbleColor,
       equippedIcon: connectedUser?.equippedIcon,
       text: data.text,
-      type: data.type,
-      fileUrl: data.fileUrl,
+      type: fileMessage?.type ?? type,
+      fileUrl: hasFile ? data.fileUrl : undefined,
       isPremium: connectedUser?.isPremium ?? false,
       createdAt: savedMessage?.createdAt ?? new Date().toISOString(),
       timestamp: savedMessage?.createdAt ?? new Date().toISOString(),
     });
   }
 
+  /** `send_dm` hatasi: ack varsa onunla, yoksa eski `error` event'iyle bildirilir. */
+  private failDm(client: Socket, ack: DmAck | undefined, message: string) {
+    if (typeof ack === 'function') {
+      ack({ ok: false, error: message });
+    } else {
+      client.emit('error', { message });
+    }
+  }
+
   @SubscribeMessage('send_dm')
   async handleSendDm(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { targetUserId: number; text: string; type?: string; fileUrl?: string } | string,
+    @MessageBody() payload: SendDmDto | string,
+    @Ack() ack?: DmAck,
   ) {
     try {
       const socketUser = this.getSocketUser(client);
-      if (!socketUser) return;
-
-      const data = this.parsePayload(payload) as { targetUserId: number; text: string; type?: string; fileUrl?: string };
-      try {
-        await this.moderationService.assertCanChat(socketUser.sub);
-        await this.moderationService.assertNotBlocked(socketUser.sub, data.targetUserId, 'Bu kullaniciya mesaj gonderemezsin.');
-      } catch (error) {
-        reportUnexpected(error, 'socket');
-        client.emit('error', { message: error instanceof Error ? error.message : 'Mesaj gonderilemedi.' });
+      if (!socketUser) {
+        this.failDm(client, ack, 'Oturum geçersiz.');
         return;
       }
+
+      const data = this.parsePayload(payload);
+      if (!this.takeToken(client)) {
+        this.failDm(client, ack, RATE_LIMIT_ERROR);
+        return;
+      }
+
+      const targetUserId = Number(data.targetUserId);
+      const text = typeof data.text === 'string' ? data.text.trim() : '';
+      const type = data.type ?? 'text';
+      const hasFile = data.fileUrl !== undefined && data.fileUrl !== null;
+      if (
+        !Number.isInteger(targetUserId) ||
+        targetUserId <= 0 ||
+        targetUserId === socketUser.sub
+      ) {
+        this.failDm(client, ack, 'Alıcı geçersiz.');
+        return;
+      }
+      if (
+        !text ||
+        text.length > MAX_CHAT_MESSAGE_LENGTH ||
+        typeof type !== 'string' ||
+        !CHAT_TYPES.includes(type) ||
+        (hasFile ? !FILE_TYPES.includes(type) : type !== 'text')
+      ) {
+        this.failDm(
+          client,
+          ack,
+          `Mesaj 1 ile ${MAX_CHAT_MESSAGE_LENGTH} karakter arasında olmalı.`,
+        );
+        return;
+      }
+      if (hasFile && !isUploadUrl(data.fileUrl)) {
+        this.failDm(client, ack, 'Dosya adresi geçersiz.');
+        return;
+      }
+
+      await this.moderationService.assertCanChat(socketUser.sub);
+      await this.moderationService.assertNotBlocked(
+        socketUser.sub,
+        targetUserId,
+        'Bu kullanıcıya mesaj gönderemezsin.',
+      );
+      const target = await this.usersService.findById(targetUserId);
+      if (!target) {
+        this.failDm(client, ack, 'Kullanıcı bulunamadı.');
+        return;
+      }
+
       const sender = await this.usersService.findById(socketUser.sub);
       const senderName = sender?.fullName ?? socketUser.username;
       const senderUsername = sender?.username ?? socketUser.username;
+      const fileUrl = hasFile ? (data.fileUrl as string) : undefined;
       const savedMsg = await this.messagesService.createDirectMessage(
         socketUser.sub,
-        data.targetUserId,
-        data.text,
-        data.type || 'text',
-        data.fileUrl
+        targetUserId,
+        text,
+        type,
+        fileUrl,
       );
 
       const dmPayload = {
         id: savedMsg.id,
         senderId: socketUser.sub,
-        receiverId: data.targetUserId,
-        text: data.text,
-        type: data.type || 'text',
-        fileUrl: data.fileUrl,
+        receiverId: targetUserId,
+        text,
+        type,
+        fileUrl,
         createdAt: savedMsg.createdAt || new Date(),
         senderName,
         senderUsername,
       };
 
-      // Alıcıya gönder
-      const targetSockets = this.userSockets.get(data.targetUserId);
-      if (targetSockets) {
-        for (const socketId of targetSockets) {
-          this.server.to(socketId).emit('receive_dm', dmPayload);
-        }
+      // Alıcıya ve göndericinin açık tüm sekmelerine (kendi ekranında çıksın)
+      this.emitToUser(targetUserId, 'receive_dm', dmPayload);
+      this.emitToUser(socketUser.sub, 'receive_dm', dmPayload);
+      if (typeof ack === 'function') {
+        ack({ ok: true, message: dmPayload });
       }
 
-      // Gönderene de geri yolla (kendi ekranında çıksın)
-      const senderSockets = this.userSockets.get(socketUser.sub);
-      if (senderSockets) {
-        for (const socketId of senderSockets) {
-          this.server.to(socketId).emit('receive_dm', dmPayload);
-        }
+      try {
+        const tokens = await this.usersService.getUserPushTokens([targetUserId]);
+        tokens.forEach((token) => {
+          void this.notificationsService.sendNotification(
+            token,
+            'Yeni mesaj',
+            `${senderName} sana bir mesaj gönderdi.`,
+            {
+              type: 'dm',
+              targetUserId: socketUser.sub,
+              targetName: senderName,
+              targetUsername: senderUsername,
+              targetAvatarUrl: sender?.avatarUrl,
+              targetProfileFrame: sender?.equippedProfileFrame,
+            },
+          );
+        });
+      } catch (error) {
+        reportUnexpected(error, 'dm_push');
       }
-
-      const tokens = await this.usersService.getUserPushTokens([data.targetUserId]);
-      tokens.forEach((token) => {
-        void this.notificationsService.sendNotification(
-          token,
-          'Yeni mesaj',
-          `${senderName} sana bir mesaj gönderdi.`,
-          {
-            type: 'dm',
-            targetUserId: socketUser.sub,
-            targetName: senderName,
-            targetUsername: senderUsername,
-            targetAvatarUrl: sender?.avatarUrl,
-            targetProfileFrame: sender?.equippedProfileFrame,
-          },
-        );
-      });
     } catch (error) {
       console.error('DM Gönderim Hatası:', error);
-      reportUnexpected(error, 'dm_send');
+      this.failDm(client, ack, this.errorMessage(error, 'dm_send'));
     }
   }
 
@@ -619,7 +791,7 @@ export class SensorsGateway
 
     const data = this.parsePayload(payload);
     const user = this.connectedUsers.get(client.id);
-    if (!user) {
+    if (!user || typeof data.isAtDesk !== 'boolean') {
       return;
     }
 
@@ -629,17 +801,19 @@ export class SensorsGateway
 
     if (data.isAtDesk) {
       const subjectId = typeof data.subjectId === 'number' ? data.subjectId : null;
-      const active = this.activeSessions.get(socketUser.sub);
+      const active = this.activeSessions.get(client.id);
       if (active && active.subjectId === subjectId) {
         // Zaten odakta: baslangic sifirlanmaz (aksi halde birikmis sure kaybolurdu).
-        this.server.to(user.roomName).emit('presence_changed', { ...data, userId: socketUser.sub, isEliteRoom: user.isEliteRoom });
+        this.emitPresence(user, true, socketUser.sub);
         return;
       }
       if (active) {
         // Ders degisti: onceki oturum kapanir, yenisi yeni dersle baslar.
-        await this.finishFocusSession(user);
+        await this.finishFocusSession(client.id, user);
       }
-      this.activeSessions.set(socketUser.sub, {
+      // Ayni anda tek aktif oturum: baska sekmedeki acik oturum kapanir (suresi yazilir).
+      await this.closeOtherSessions(socketUser.sub, client.id);
+      this.activeSessions.set(client.id, {
         startedAt: Date.now(),
         subjectId,
         source: data.source === 'web' ? 'web' : 'mobile',
@@ -648,30 +822,61 @@ export class SensorsGateway
         `[Odaklanma Basladi - ${user.roomName}] Kullanici: ${socketUser.sub} (Elite: ${user.isEliteRoom})`,
       );
 
-      void this.usersService
-        .getFriendsPushTokens(socketUser.sub)
-        .then((tokens) => {
-          tokens.forEach((token) => {
-            void this.notificationsService.sendNotification(
-              token,
-              'StudyLounge',
-              `${user.fullName} masaya gecti, beraber calisabilirsiniz!`,
-            );
-          });
-        });
+      this.notifyFriendsAtDesk(socketUser.sub, user.fullName);
     } else {
-      await this.resolveDuel(user.userId);
-      await this.finishFocusSession(user);
+      await this.finishFocusSession(client.id, user);
       console.log(
         `[Odaklanma Bitti - ${user.roomName}] Kullanici: ${socketUser.sub} (Elite: ${user.isEliteRoom})`,
       );
     }
 
+    this.emitPresence(user, data.isAtDesk, socketUser.sub);
+  }
+
+  /** Kullanicinin diger soketlerindeki acik oturumlari kapatir ve o sekmelere haber verir. */
+  private async closeOtherSessions(userId: number, exceptSocketId: string) {
+    for (const socketId of Array.from(this.activeSessions.keys())) {
+      const other = this.connectedUsers.get(socketId);
+      if (socketId === exceptSocketId || other?.userId !== userId) continue;
+      other.isAtDesk = false;
+      try {
+        await this.finishFocusSession(socketId, other);
+      } catch (error) {
+        reportUnexpected(error, 'session_record');
+      }
+      this.server.to(socketId).emit('focus_moved', { roomName: this.connectedUsers.get(exceptSocketId)?.roomName });
+      this.broadcastRoomUsers(other.roomName);
+    }
+  }
+
+  private emitPresence(user: ConnectedRoomUser, isAtDesk: boolean, userId: number) {
     this.server.to(user.roomName).emit('presence_changed', {
-      ...data,
-      userId: socketUser.sub,
+      isAtDesk,
+      roomName: user.roomName,
+      userId,
       isEliteRoom: user.isEliteRoom,
     });
+  }
+
+  /** Arkadaslara "masaya gecti" bildirimi; kullanici basina 30 dakikada en fazla bir kez. */
+  private notifyFriendsAtDesk(userId: number, fullName: string) {
+    const now = Date.now();
+    const last = this.lastDeskNotice.get(userId) ?? 0;
+    if (now - last < DESK_NOTICE_COOLDOWN_MS) return;
+    this.lastDeskNotice.set(userId, now);
+
+    void this.usersService
+      .getFriendsPushTokens(userId)
+      .then((tokens) => {
+        tokens.forEach((token) => {
+          void this.notificationsService.sendNotification(
+            token,
+            'StudyLounge',
+            `${fullName} masaya geçti, beraber çalışabilirsiniz!`,
+          );
+        });
+      })
+      .catch((error) => reportUnexpected(error, 'desk_notice'));
   }
 
   @SubscribeMessage('nudge_friend')
@@ -686,49 +891,87 @@ export class SensorsGateway
     }
 
     const data = this.parsePayload(payload);
-    if (await this.moderationService.isBlockedEitherWay(socketUser.sub, data.targetUserId)) {
-      client.emit('error', { message: 'Bu kullaniciyi durtemezsin.' });
+    if (!this.takeToken(client)) {
+      client.emit('error', { message: RATE_LIMIT_ERROR });
       return;
     }
     const connectedUser = this.connectedUsers.get(client.id);
-    const senderName = connectedUser?.fullName ?? socketUser.username;
-
-    console.log(
-      `[Nudge] ${senderName} (ID: ${socketUser.sub}), Kullanici ${data.targetUserId}'yi durtuyor.`,
-    );
-
-    let notified = false;
-    const targetSockets = this.userSockets.get(data.targetUserId);
-    if (targetSockets) {
-      for (const socketId of targetSockets) {
-        this.server.to(socketId).emit('nudge_received', {
-          senderName,
-          senderId: socketUser.sub,
-          roomName: data.roomName,
-          message: `${senderName} seni ${data.roomName} odasina davet ediyor!`,
-        });
-        notified = true;
-      }
+    if (!connectedUser) {
+      client.emit('error', { message: 'Dürtmek için önce bir odaya katılmalısın.' });
+      return;
     }
-
-    if (!notified) {
-      console.log(
-        `[Nudge] Kullanici ${data.targetUserId} cevrimici degil, push bildirimi denenecek.`,
-      );
+    const targetUserId = Number(data.targetUserId);
+    if (
+      !Number.isInteger(targetUserId) ||
+      targetUserId <= 0 ||
+      targetUserId === socketUser.sub
+    ) {
+      client.emit('error', { message: 'Bu kullanıcıyı dürtemezsin.' });
+      return;
     }
 
     try {
-      const tokens = await this.usersService.getUserPushTokens([
-        data.targetUserId,
-      ]);
+      if (await this.moderationService.isBlockedEitherWay(socketUser.sub, targetUserId)) {
+        client.emit('error', { message: 'Bu kullanıcıyı dürtemezsin.' });
+        return;
+      }
+      const friendship = await this.usersService.friendshipStatus(
+        socketUser.sub,
+        targetUserId,
+      );
+      if (friendship.status !== 'friends') {
+        client.emit('error', { message: 'Yalnızca arkadaşlarını dürtebilirsin.' });
+        return;
+      }
+    } catch (error) {
+      client.emit('error', { message: this.errorMessage(error, 'nudge') });
+      return;
+    }
+
+    // Zaten ayni odadaki arkadas durtulmez.
+    const roomName = connectedUser.roomName;
+    const alreadyInRoom = Array.from(this.connectedUsers.values()).some(
+      (u) => u.userId === targetUserId && u.roomName === roomName,
+    );
+    if (alreadyInRoom) {
+      client.emit('error', { message: 'Bu arkadaşın zaten bu odada.' });
+      return;
+    }
+    const now = Date.now();
+    const pairKey = `${socketUser.sub}:${targetUserId}`;
+    if (now - (this.lastNudge.get(pairKey) ?? 0) < NUDGE_COOLDOWN_MS) {
+      client.emit('error', { message: 'Bu arkadaşını az önce dürttün, biraz bekle.' });
+      return;
+    }
+    if (this.lastNudge.size > 2000) {
+      for (const [key, at] of this.lastNudge) {
+        if (now - at >= NUDGE_COOLDOWN_MS) this.lastNudge.delete(key);
+      }
+    }
+    this.lastNudge.set(pairKey, now);
+
+    const senderName = connectedUser.fullName;
+    console.log(
+      `[Nudge] ${senderName} (ID: ${socketUser.sub}), Kullanici ${targetUserId}'yi durtuyor.`,
+    );
+
+    this.emitToUser(targetUserId, 'nudge_received', {
+      senderName,
+      senderId: socketUser.sub,
+      roomName,
+      message: `${senderName} seni ${roomName} odasına davet ediyor!`,
+    });
+
+    try {
+      const tokens = await this.usersService.getUserPushTokens([targetUserId]);
       tokens.forEach((token) => {
         void this.notificationsService.sendNotification(
           token,
           'StudyLounge',
-          `${senderName} seni ${data.roomName} odasina davet ediyor!`,
+          `${senderName} seni ${roomName} odasına davet ediyor!`,
           {
             type: 'room_invite',
-            roomName: data.roomName,
+            roomName,
             senderId: socketUser.sub,
             senderName,
           },
@@ -744,10 +987,18 @@ export class SensorsGateway
   @SubscribeMessage('broadcast_atmosphere')
   async handleBroadcastAtmosphere(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { volumes: Record<string, number>; roomName: string } | string,
+    @MessageBody() payload: { volumes: Record<string, number>; roomName?: string } | string,
   ) {
     const socketUser = this.getSocketUser(client);
     if (!socketUser) return;
+    if (!this.takeToken(client)) {
+      client.emit('error', { message: RATE_LIMIT_ERROR });
+      return;
+    }
+
+    // Oda adi istemciden degil, soketin gercekten bulundugu odadan alinir.
+    const room = this.connectedUsers.get(client.id);
+    if (!room) return;
 
     // Sadece Premium kullanıcılar yayın yapabilir
     const user = await this.usersService.findById(socketUser.sub);
@@ -756,137 +1007,31 @@ export class SensorsGateway
       return;
     }
 
-    const data = this.parsePayload(payload) as { volumes: Record<string, number>; roomName: string };
-    
+    const data = this.parsePayload(payload);
+    const entries =
+      data.volumes && typeof data.volumes === 'object' && !Array.isArray(data.volumes)
+        ? Object.entries(data.volumes)
+        : [];
+    if (entries.length === 0 || entries.length > MAX_ATMOSPHERE_CHANNELS) {
+      client.emit('error', { message: 'Ses ayarları geçersiz.' });
+      return;
+    }
+    const volumes: Record<string, number> = {};
+    for (const [key, value] of entries) {
+      const volume = Number(value);
+      if (!ATMOSPHERE_KEY.test(key) || !Number.isFinite(volume)) {
+        client.emit('error', { message: 'Ses ayarları geçersiz.' });
+        return;
+      }
+      volumes[key] = Math.max(0, Math.min(100, Math.round(volume)));
+    }
+
     // Odadaki diğer kullanıcılara (kendisi hariç) ayarları gönder
-    client.to(data.roomName).emit('atmosphere_updated', {
+    client.to(room.roomName).emit('atmosphere_updated', {
       ownerId: socketUser.sub,
       ownerName: user.fullName,
-      volumes: data.volumes,
+      volumes,
     });
-  }
-
-  // ── AŞAMA 4: DÜELLO SİSTEMİ ──
-  @SubscribeMessage('challenge_duel')
-  async handleChallengeDuel(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { targetUserId: number; betAmount: number; roomName: string } | string,
-  ) {
-    const socketUser = this.getSocketUser(client);
-    if (!socketUser) return;
-
-    const data = this.parsePayload(payload) as { targetUserId: number; betAmount: number; roomName: string };
-    const betAmount = Number(data?.betAmount);
-    if (!Number.isInteger(betAmount) || betAmount < MIN_DUEL_BET || betAmount > MAX_DUEL_BET) {
-      client.emit('error', { message: `Bahis ${MIN_DUEL_BET} ile ${MAX_DUEL_BET} puan arasinda olmali.` });
-      return;
-    }
-
-    // Duello yalnizca ayni odadaki baska bir kullaniciya acilabilir.
-    const challengerInRoom = this.connectedUsers.get(client.id);
-    const targetSocketId = Array.from(this.connectedUsers.entries()).find(
-      ([, u]) => u.userId === data.targetUserId && u.roomName === challengerInRoom?.roomName,
-    )?.[0];
-    if (!challengerInRoom || data.targetUserId === socketUser.sub || !targetSocketId) {
-      client.emit('error', { message: 'Rakip bu odada degil.' });
-      return;
-    }
-    if (await this.moderationService.isBlockedEitherWay(socketUser.sub, data.targetUserId)) {
-      client.emit('error', { message: 'Bu kullaniciyla duello yapamazsin.' });
-      return;
-    }
-
-    const challenger = await this.usersService.findById(socketUser.sub);
-    if (!challenger || challenger.coins < betAmount) {
-      client.emit('error', { message: 'Yetersiz bakiye!' });
-      return;
-    }
-
-    const duelId = `duel_${Date.now()}_${Math.random()}`;
-    const duel: Duel = {
-      id: duelId,
-      challengerId: socketUser.sub,
-      challengedId: data.targetUserId,
-      betAmount,
-      status: 'pending',
-      roomName: challengerInRoom.roomName,
-    };
-    duel.expiresTimer = setTimeout(() => this.dropPendingDuel(duelId, 'duel_expired'), DUEL_INVITE_TTL_MS);
-    this.duels.set(duelId, duel);
-
-    this.server.to(targetSocketId).emit('duel_received', {
-      duelId,
-      challengerName: challenger.fullName,
-      betAmount,
-    });
-  }
-
-  /** Bekleyen daveti kaldirir ve meydan okuyana bildirir (istege bagli event; eski istemciler yok sayar). */
-  private dropPendingDuel(duelId: string, event: 'duel_expired' | 'duel_declined') {
-    const duel = this.duels.get(duelId);
-    if (!duel || duel.status !== 'pending') return;
-    clearTimeout(duel.expiresTimer);
-    this.duels.delete(duelId);
-    for (const socketId of this.userSockets.get(duel.challengerId) ?? []) {
-      this.server.to(socketId).emit(event, { duelId });
-    }
-  }
-
-  @SubscribeMessage('decline_duel')
-  handleDeclineDuel(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { duelId: string } | string,
-  ) {
-    const socketUser = this.getSocketUser(client);
-    if (!socketUser) return;
-    const data = this.parsePayload(payload) as { duelId: string };
-    const duel = this.duels.get(data?.duelId);
-    if (duel?.challengedId !== socketUser.sub) return;
-    this.dropPendingDuel(duel.id, 'duel_declined');
-  }
-
-  @SubscribeMessage('accept_duel')
-  async handleAcceptDuel(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { duelId: string } | string,
-  ) {
-    const socketUser = this.getSocketUser(client);
-    if (!socketUser) return;
-
-    const data = this.parsePayload(payload) as { duelId: string };
-    const duel = this.duels.get(data.duelId);
-
-    if (!duel || duel.status !== 'pending' || duel.challengedId !== socketUser.sub) {
-      client.emit('error', { message: 'Geçersiz düello isteği!' });
-      return;
-    }
-    // Kabul sureci baslarken zaman asimi durdurulur; bakiye kontrolu basarisiz olursa davet duser.
-    clearTimeout(duel.expiresTimer);
-
-    const challenged = await this.usersService.findById(socketUser.sub);
-    if (!challenged || challenged.coins < duel.betAmount) {
-      this.duels.delete(duel.id);
-      client.emit('error', { message: 'Yetersiz bakiye!' });
-      return;
-    }
-
-    // Her iki taraftan da coinleri düş
-    const challengerSuccess = await this.usersService.removeCoins(duel.challengerId, duel.betAmount);
-    if (!challengerSuccess) {
-      client.emit('error', { message: 'Rakibinin bakiyesi yetersiz.' });
-      this.duels.delete(duel.id);
-      return;
-    }
-    await this.usersService.removeCoins(duel.challengedId, duel.betAmount);
-
-    duel.status = 'active';
-    this.duels.set(duel.id, duel);
-
-    const challengerSocket = Array.from(this.connectedUsers.entries()).find(([_, u]) => u.userId === duel.challengerId)?.[0];
-    if (challengerSocket) {
-      this.server.to(challengerSocket).emit('duel_started', { opponentName: challenged.fullName, betAmount: duel.betAmount });
-    }
-    client.emit('duel_started', { opponentName: 'Rakip', betAmount: duel.betAmount });
   }
 
   // ── ODA SAHIBI KONTROLLERI (istege bagli event'ler; mobil yok sayar) ──
@@ -906,17 +1051,16 @@ export class SensorsGateway
     try {
       await this.lobbiesService.kick(owner.roomName, owner.userId, Number(data?.targetUserId));
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      client.emit('error', { message: error instanceof Error ? error.message : 'Kisi odadan cikarilamadi.' });
+      client.emit('error', { message: this.errorMessage(error, 'socket') });
       return;
     }
     for (const [socketId, roomUser] of this.socketsInRoom(owner.roomName)) {
       if (roomUser.userId !== Number(data.targetUserId)) continue;
       const targetSocket = this.server.sockets.sockets.get(socketId);
-      this.server.to(socketId).emit('kicked', { roomName: owner.roomName, message: `${owner.fullName} seni odadan cikardi.` });
+      this.server.to(socketId).emit('kicked', { roomName: owner.roomName, message: `${owner.fullName} seni odadan çıkardı.` });
       if (targetSocket) await this.leaveLobby(targetSocket, roomUser);
     }
-    client.emit('room_notice', { message: 'Kisi odadan cikarildi.' });
+    client.emit('room_notice', { message: 'Kişi odadan çıkarıldı.' });
   }
 
   /** Odayi yeni girislere kilitler ya da acar; o an odada olanlar geri girebilir. */
@@ -932,8 +1076,7 @@ export class SensorsGateway
       const members = this.socketsInRoom(owner.roomName).map(([, u]) => u.userId);
       await this.lobbiesService.setLocked(owner.roomName, owner.userId, locked, members);
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      client.emit('error', { message: error instanceof Error ? error.message : 'Oda kilitlenemedi.' });
+      client.emit('error', { message: this.errorMessage(error, 'socket') });
       return;
     }
     this.server.to(owner.roomName).emit('lobby_updated', { roomName: owner.roomName, isLocked: locked });
@@ -947,12 +1090,11 @@ export class SensorsGateway
     try {
       await this.lobbiesService.findOwnedLobby({ name: owner.roomName }, owner.userId);
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      client.emit('error', { message: error instanceof Error ? error.message : 'Oda kapatilamadi.' });
+      client.emit('error', { message: this.errorMessage(error, 'socket') });
       return;
     }
     const roomName = owner.roomName;
-    this.server.to(roomName).emit('lobby_closed', { roomName, message: `${owner.fullName} odayi kapatti.` });
+    this.server.to(roomName).emit('lobby_closed', { roomName, message: `${owner.fullName} odayı kapattı.` });
     for (const [socketId, roomUser] of this.socketsInRoom(roomName)) {
       const roomSocket = this.server.sockets.sockets.get(socketId);
       if (roomSocket) await this.leaveLobby(roomSocket, roomUser);
@@ -1003,13 +1145,13 @@ export class SensorsGateway
     const data = this.parsePayload(payload);
     const roomUser = this.connectedUsers.get(client.id);
     if (!roomUser || roomUser.roomName !== data.roomName) {
-      client.emit('rtc_error', { message: 'Once lobiye katilmalisin.' });
+      client.emit('rtc_error', { message: 'Önce odaya katılmalısın.' });
       return;
     }
 
     try {
       const lobby = await this.lobbiesService.findByName(data.roomName);
-      const { peers, previousRoom } = this.rtcService.join(
+      const { peers, previousRoom, previousSocketId } = this.rtcService.join(
         data.roomName,
         socketUser.sub,
         client.id,
@@ -1022,6 +1164,15 @@ export class SensorsGateway
           .emit('rtc_peer_left', { userId: socketUser.sub });
       }
 
+      // Ayni kisi yeni bir soketle katildi (yenileme, ikinci sekme): eski sokete bagli
+      // eslerin ayni kisiyi iki kez tutmamasi icin once eski baglanti kapatilir.
+      if (previousSocketId) {
+        client
+          .to(data.roomName)
+          .except(previousSocketId)
+          .emit('rtc_peer_left', { userId: socketUser.sub });
+      }
+
       client.emit('rtc_peers', {
         peers: peers.map((peer) => ({ userId: peer.userId, media: peer.media })),
       });
@@ -1030,10 +1181,7 @@ export class SensorsGateway
         .emit('rtc_peer_joined', { userId: socketUser.sub });
       this.broadcastRoomUsers(data.roomName);
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      const message =
-        error instanceof Error ? error.message : 'Aramaya katilinamadi.';
-      client.emit('rtc_error', { message });
+      client.emit('rtc_error', { message: this.errorMessage(error, 'socket') });
     }
   }
 
@@ -1125,17 +1273,30 @@ export class SensorsGateway
             );
       this.server.to(user.roomName).emit('board_state', { board });
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      const message =
-        error instanceof Error ? error.message : 'PDF tahtada acilamadi.';
-      client.emit('board_error', { message });
+      client.emit('board_error', { message: this.errorMessage(error, 'socket') });
+    }
+  }
+
+  /** Ortak sayaci/tahtayi yalnizca baslatan kisi ya da oda sahibi kapatabilir. */
+  private async canControlShared(user: ConnectedRoomUser, starterId: number) {
+    if (user.userId === starterId) return true;
+    try {
+      await this.lobbiesService.findOwnedLobby({ name: user.roomName }, user.userId);
+      return true;
+    } catch {
+      return false;
     }
   }
 
   @SubscribeMessage('board_close')
-  handleBoardClose(@ConnectedSocket() client: Socket) {
+  async handleBoardClose(@ConnectedSocket() client: Socket) {
     const user = this.getBoardRoom(client);
-    if (!user) return;
+    const board = user && this.whiteboardService.getState(user.roomName);
+    if (!user || !board) return;
+    if (!(await this.canControlShared(user, board.openedBy))) {
+      client.emit('board_error', { message: CONTROL_DENIED });
+      return;
+    }
     if (this.whiteboardService.close(user.roomName)) {
       this.server.to(user.roomName).emit('board_state', { board: null });
     }
@@ -1265,10 +1426,7 @@ export class SensorsGateway
       );
       this.broadcastRoomTimer(user.roomName, 'start', user.fullName);
     } catch (error) {
-      reportUnexpected(error, 'socket');
-      const message =
-        error instanceof Error ? error.message : 'Ortak sayac baslatilamadi.';
-      client.emit('room_timer_error', { message });
+      client.emit('room_timer_error', { message: this.errorMessage(error, 'socket') });
     }
   }
 
@@ -1289,9 +1447,15 @@ export class SensorsGateway
   }
 
   @SubscribeMessage('room_timer_stop')
-  handleRoomTimerStop(@ConnectedSocket() client: Socket) {
+  async handleRoomTimerStop(@ConnectedSocket() client: Socket) {
     const user = this.connectedUsers.get(client.id);
-    if (user && this.roomTimerService.stop(user.roomName)) {
+    const state = user && this.roomTimerService.getState(user.roomName);
+    if (!user || !state) return;
+    if (!(await this.canControlShared(user, state.startedBy))) {
+      client.emit('room_timer_error', { message: CONTROL_DENIED });
+      return;
+    }
+    if (this.roomTimerService.stop(user.roomName)) {
       this.broadcastRoomTimer(user.roomName, 'stop', user.fullName);
     }
   }

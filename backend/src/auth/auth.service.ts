@@ -7,19 +7,22 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
-import { JwtPayload } from './jwt-payload.interface';
+import { buildJwtPayload } from './jwt-payload.interface';
 import { randomCharacterAvatar } from '../users/avatar-characters';
 import { RegisterDto } from './dto/register.dto';
 import { GoogleTokenService } from './google-token.service';
 import { User } from '../users/user.entity';
+import { RealtimeService } from '../realtime/realtime.service';
+import { generateVerificationCode } from '../users/users.service';
 
 const MAIL_FAILED_MESSAGE =
   'Doğrulama e-postası şu an gönderilemedi. Birkaç dakika sonra "Kodu tekrar gönder" ile yeniden dene.';
 
-/** 6 haneli, kriptografik olarak rastgele dogrulama kodu. */
-function generateCode(): string {
-  return randomInt(100000, 1000000).toString();
+const generateCode = generateVerificationCode;
+
+/** Kodun son kullanma zamani geçtiyse true (süresi kayıtlı değilse eski kod: geçerli sayılır). */
+function isExpired(expires: Date | null | undefined): boolean {
+  return !!expires && Date.now() > new Date(expires).getTime();
 }
 
 @Injectable()
@@ -29,17 +32,14 @@ export class AuthService {
     private jwtService: JwtService,
     private mailService: MailService,
     private googleTokenService: GoogleTokenService,
+    private realtime: RealtimeService,
   ) {}
 
   private async rejectWrongCode(
     userId: number,
-    attempts: number | undefined,
     message: string,
   ): Promise<never> {
-    const locked = await this.usersService.registerFailedCodeAttempt(
-      userId,
-      attempts ?? 0,
-    );
+    const locked = await this.usersService.registerFailedCodeAttempt(userId);
     throw new UnauthorizedException(
       locked
         ? 'Çok fazla hatalı deneme yaptın. Lütfen yeni bir kod iste.'
@@ -63,7 +63,7 @@ export class AuthService {
 
     if (!user.isEmailVerified) {
       let token = user.emailVerificationToken;
-      if (!token) {
+      if (!token || isExpired(user.emailVerificationExpires)) {
         token = generateCode();
         await this.usersService.updateVerificationToken(user.id, token);
       }
@@ -84,6 +84,7 @@ export class AuthService {
 
     // Dogrulama kodu yalnizca yukaridaki kontrol icin yuklendi; yanita girmesin.
     user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
     return this.issueSession(user);
   }
 
@@ -100,15 +101,10 @@ export class AuthService {
   }
 
   private issueSession(user: User) {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      username: user.username,
-    };
     return {
       success: true,
       user,
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(buildJwtPayload(user)),
     };
   }
 
@@ -118,9 +114,10 @@ export class AuthService {
       ...data,
       ...(avatarGroup ? { avatarUrl: randomCharacterAvatar(avatarGroup) } : {}),
     });
-    const token = user.emailVerificationToken || generateCode();
-
-    if (!user.emailVerificationToken) {
+    // Kod `create` sirasinda uretilir ve son kullanma zamaniyla birlikte kaydedilir.
+    let token = user.emailVerificationToken;
+    if (!token) {
+      token = generateCode();
       await this.usersService.updateVerificationToken(user.id, token);
     }
 
@@ -151,11 +148,9 @@ export class AuthService {
       return genericResponse;
     }
 
-    let token = user.emailVerificationToken;
-    if (!token) {
-      token = generateCode();
-      await this.usersService.updateVerificationToken(user.id, token);
-    }
+    // Tekrar gonder her zaman yeni kod uretir (eski kodun suresi dolmus olabilir).
+    const token = generateCode();
+    await this.usersService.updateVerificationToken(user.id, token);
     const mailSent = await this.mailService.sendVerificationEmail(
       user.email,
       token,
@@ -171,10 +166,14 @@ export class AuthService {
     if (!user || !user.emailVerificationToken) {
       throw new UnauthorizedException('Geçersiz veya hatalı doğrulama kodu.');
     }
+    if (isExpired(user.emailVerificationExpires)) {
+      throw new UnauthorizedException(
+        'Doğrulama kodunun süresi doldu. "Kodu tekrar gönder" ile yeni kod iste.',
+      );
+    }
     if (user.emailVerificationToken !== token) {
       await this.rejectWrongCode(
         user.id,
-        user.codeAttempts,
         'Geçersiz veya hatalı doğrulama kodu.',
       );
     }
@@ -182,15 +181,10 @@ export class AuthService {
     await this.usersService.markEmailAsVerified(user.id);
     const updatedUser = await this.usersService.findById(user.id);
 
-    const payload: JwtPayload = {
-      sub: updatedUser!.id,
-      email: updatedUser!.email,
-      username: updatedUser!.username,
-    };
     return {
       success: true,
       user: updatedUser,
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(buildJwtPayload(updatedUser!)),
       message: 'E-posta adresiniz başarıyla doğrulandı!',
     };
   }
@@ -233,11 +227,7 @@ export class AuthService {
       throw new UnauthorizedException('Geçersiz veya hatalı kod.');
     }
     if (user.resetPasswordToken !== token) {
-      await this.rejectWrongCode(
-        user.id,
-        user.codeAttempts,
-        'Geçersiz veya hatalı kod.',
-      );
+      await this.rejectWrongCode(user.id, 'Geçersiz veya hatalı kod.');
     }
 
     if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {
@@ -246,6 +236,8 @@ export class AuthService {
 
     const hashed = await bcrypt.hash(newPass, 10);
     await this.usersService.updatePassword(user.id, hashed);
+    // Eski token'lar tokenVersion ile geçersiz olur; açık soketler de kapatılır.
+    this.realtime.disconnectUser(user.id);
 
     return {
       success: true,

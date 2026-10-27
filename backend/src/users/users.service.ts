@@ -2,10 +2,12 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  OnApplicationBootstrap,
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { User } from './user.entity';
 import { Friendship } from './friendship.entity';
 import { DailyAnalytics } from './daily-analytics.entity';
@@ -14,7 +16,7 @@ import { randomInt } from 'crypto';
 import { UpdateAccountSettingsDto } from './dto/update-account-settings.dto';
 import { MAX_STREAK_FREEZES, SHOP_CATALOG, findShopItem } from './shop-catalog';
 import { advanceStreak } from './streak';
-import { BADGES, focusBadges } from './badges';
+import { BADGES, BADGE_NAMES, focusBadges } from './badges';
 import {
   addDaysToKey,
   daysBetweenKeys,
@@ -27,8 +29,27 @@ import type { ShopItemType } from './shop-catalog';
 /** Dogrulama / sifirlama kodu bu kadar yanlis denemeden sonra gecersiz olur. */
 export const MAX_CODE_ATTEMPTS = 5;
 
+/** E-posta dogrulama kodunun gecerlilik suresi. */
+export const VERIFICATION_CODE_TTL_MS = 15 * 60_000;
+
+/** 6 haneli, kriptografik olarak rastgele kod. */
+export function generateVerificationCode(): string {
+  return randomInt(100000, 1000000).toString();
+}
+
+/** Ayar degisikliginin sonucu: guncel (temiz) kullanici ve yan etkiler. */
+export interface AccountSettingsResult {
+  user: User & { hasPassword: boolean };
+  emailChanged: boolean;
+  passwordChanged: boolean;
+  /** E-posta degistiyse yeni adrese gonderilecek dogrulama kodu. */
+  verificationCode: string | null;
+}
+
+const KNOWN_BADGES = new Set(BADGES.map((badge) => badge.name));
+
 @Injectable()
-export class UsersService implements OnModuleInit {
+export class UsersService implements OnModuleInit, OnApplicationBootstrap {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -50,47 +71,99 @@ export class UsersService implements OnModuleInit {
     }
   }
 
+  /**
+   * Sunucu yeniden basladiginda onceki surecten kalan canli durum temizlenir:
+   * tum soketler zaten kopmustur, kimse bir odada degildir.
+   */
+  async onApplicationBootstrap() {
+    try {
+      await this.usersRepository
+        .createQueryBuilder()
+        .update(User)
+        .set({ isOnline: false, currentRoom: null })
+        .where('"isOnline" = true OR "currentRoom" IS NOT NULL')
+        .execute();
+    } catch (e) {
+      console.warn('[UsersService] Çevrimiçi durum sıfırlanamadı:', e);
+    }
+  }
+
+  /** E-postaya gore buyuk/kucuk harf duyarsiz arama. */
+  private findByEmailInsensitive(email: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect(['user.emailVerificationToken', 'user.emailVerificationExpires'])
+      .where('LOWER(user.email) = :email', { email: email.trim().toLowerCase() })
+      .getOne();
+  }
+
   // ── 1. KAYIT OL ──
+  /**
+   * Yeni hesap açar. E-postası ya da kullanıcı adı, doğrulanmamış (terk edilmiş) bir kayıtta
+   * duruyorsa o kayıt yeni bilgilerle yeniden kullanılır; böylece yanlış e-postayla kayıt
+   * olan kullanıcı sıkışmaz. Doğrulanmış hesabın e-postası/kullanıcı adı korunur.
+   */
   async create(userData: Partial<User>): Promise<User> {
-    if (userData.username) {
-      const usernameRegex = /^[a-zA-Z0-9_]+$/;
-      if (!usernameRegex.test(userData.username)) {
-        throw new BadRequestException(
-          'Kullanıcı adında boşluk veya geçersiz karakter olamaz! Sadece harf, rakam ve alt çizgi (_) kullanın.',
-        );
-      }
-      const existingUsername = await this.usersRepository.findOne({
-        where: { username: userData.username },
-      });
-      if (existingUsername) {
-        throw new BadRequestException(
-          'Bu kullanıcı adı maalesef çoktan alınmış.',
-        );
-      }
-    } else {
+    if (!userData.username) {
       throw new BadRequestException('Kullanıcı adı alanı zorunludur.');
     }
-
-    const existingEmail = await this.usersRepository.findOne({
-      where: { email: userData.email },
-    });
-    if (existingEmail) {
-      throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor.');
+    if (!/^[a-zA-Z0-9_]+$/.test(userData.username)) {
+      throw new BadRequestException(
+        'Kullanıcı adında boşluk veya geçersiz karakter olamaz! Sadece harf, rakam ve alt çizgi (_) kullanın.',
+      );
     }
-
     if (!userData.password || userData.password.length < 8) {
       throw new BadRequestException(
         'Şifre alanı zorunludur ve en az 8 karakter olmalıdır.',
       );
     }
+    const email = (userData.email ?? '').trim().toLowerCase();
+
+    const sameEmail = email ? await this.findByEmailInsensitive(email) : null;
+    if (sameEmail?.isEmailVerified) {
+      throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor.');
+    }
+    const sameUsername = await this.usersRepository.findOne({
+      where: { username: userData.username },
+    });
+    // Kullanıcı adı başka bir kayıttaysa: doğrulanmışsa alınmıştır; doğrulanmamışsa terk edilmiş sayılır.
+    const usernameOwner =
+      sameUsername && sameUsername.id !== sameEmail?.id ? sameUsername : null;
+    if (usernameOwner?.isEmailVerified) {
+      throw new BadRequestException('Bu kullanıcı adı maalesef çoktan alınmış.');
+    }
+
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const emailToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = generateVerificationCode();
+    const expires = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
+
+    // Terk edilmiş kayıtlardan biri yeniden kullanılır, diğeri (varsa) silinir.
+    const reusable = sameEmail ?? usernameOwner;
+    if (reusable) {
+      if (sameEmail && usernameOwner) {
+        await this.usersRepository.delete({ id: usernameOwner.id });
+      }
+      reusable.username = userData.username;
+      reusable.email = email;
+      reusable.fullName = userData.fullName ?? reusable.fullName;
+      reusable.password = hashedPassword;
+      reusable.isEmailVerified = false;
+      reusable.emailVerificationToken = code;
+      reusable.emailVerificationExpires = expires;
+      reusable.codeAttempts = 0;
+      if (userData.avatarUrl) reusable.avatarUrl = userData.avatarUrl;
+      const saved = await this.usersRepository.save(reusable);
+      delete saved.password;
+      return saved;
+    }
 
     const newUser = this.usersRepository.create({
       ...userData,
+      email,
       password: hashedPassword,
       isEmailVerified: false,
-      emailVerificationToken: emailToken,
+      emailVerificationToken: code,
+      emailVerificationExpires: expires,
     });
 
     const savedUser = await this.usersRepository.save(newUser);
@@ -103,12 +176,20 @@ export class UsersService implements OnModuleInit {
   /** identifier: e-posta ("@" iceriyorsa) ya da kullanici adi. */
   async login(identifier: string, pass: string): Promise<User | null> {
     const value = identifier.trim();
-    const column = value.includes('@') ? 'email' : 'username';
+    // E-postalar kucuk harfle aranir; kullanici adi aynen eslesir.
+    const isEmail = value.includes('@');
     // Sifre ve dogrulama kodu select: false; giris icin acikca istenir.
     const user = await this.usersRepository
       .createQueryBuilder('user')
-      .addSelect(['user.password', 'user.emailVerificationToken'])
-      .where(`user.${column} = :value`, { value })
+      .addSelect([
+        'user.password',
+        'user.emailVerificationToken',
+        'user.emailVerificationExpires',
+      ])
+      .where(
+        isEmail ? 'LOWER(user.email) = :value' : 'user.username = :value',
+        { value: isEmail ? value.toLowerCase() : value },
+      )
       .getOne();
 
     if (user && user.password && (await bcrypt.compare(pass, user.password))) {
@@ -145,6 +226,7 @@ export class UsersService implements OnModuleInit {
         googleId: profile.googleId,
         isEmailVerified: true,
         emailVerificationToken: null,
+        emailVerificationExpires: null,
         codeAttempts: 0,
         ...(existing.isEmailVerified
           ? {}
@@ -249,36 +331,45 @@ export class UsersService implements OnModuleInit {
     await this.usersRepository.update(userId, {
       isEmailVerified: true,
       emailVerificationToken: null,
+      emailVerificationExpires: null,
       codeAttempts: 0,
     });
   }
 
+  /** Yeni dogrulama kodu yazar; kod `VERIFICATION_CODE_TTL_MS` boyunca gecerlidir. */
   async updateVerificationToken(userId: number, token: string) {
     await this.usersRepository.update(userId, {
       emailVerificationToken: token,
+      emailVerificationExpires: new Date(Date.now() + VERIFICATION_CODE_TTL_MS),
       codeAttempts: 0,
     });
   }
 
   /**
-   * Yanlis kod denemesini sayar. Sinira ulasilinca bekleyen kodlar gecersiz olur
-   * ve kullanici yeni kod istemek zorunda kalir. Kod gecersizlestiyse true doner.
+   * Yanlis kod denemesini sayar. Sayac veritabaninda tek ifadeyle artar; paralel istekler
+   * sayaci atlatamaz. Sinira ulasilinca bekleyen kodlar gecersiz olur ve kullanici yeni
+   * kod istemek zorunda kalir. Kod gecersizlestiyse true doner.
    */
-  async registerFailedCodeAttempt(
-    userId: number,
-    previousAttempts: number,
-  ): Promise<boolean> {
-    const attempts = previousAttempts + 1;
+  async registerFailedCodeAttempt(userId: number): Promise<boolean> {
+    const result = await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ codeAttempts: () => '"codeAttempts" + 1' })
+      .where('id = :id', { id: userId })
+      .returning('"codeAttempts"')
+      .execute();
+    const rows = result.raw as Array<{ codeAttempts: number }> | undefined;
+    const attempts = Number(rows?.[0]?.codeAttempts ?? 0);
     if (attempts >= MAX_CODE_ATTEMPTS) {
       await this.usersRepository.update(userId, {
         emailVerificationToken: null,
+        emailVerificationExpires: null,
         resetPasswordToken: null,
         resetPasswordExpires: null,
         codeAttempts: 0,
       });
       return true;
     }
-    await this.usersRepository.update(userId, { codeAttempts: attempts });
     return false;
   }
 
@@ -299,15 +390,19 @@ export class UsersService implements OnModuleInit {
   }
 
   private normalizeBadges(badges?: string[] | null): string[] {
+    // Katalogda olmayan (kaldirilmis) rozet adlari sessizce yok sayilir.
     return (Array.isArray(badges) ? badges : []).filter(
-      (badge) => typeof badge === 'string' && badge.trim().length > 0,
+      (badge) => typeof badge === 'string' && KNOWN_BADGES.has(badge),
     );
   }
 
   private getVisibleBadges(user: User): string[] {
     const badges = this.normalizeBadges(user.badges);
-    if ((user.totalFocusMinutes || 0) >= 120 && !badges.includes('Maratoncu')) {
-      badges.push('Maratoncu');
+    if (
+      (user.totalFocusMinutes || 0) >= 120 &&
+      !badges.includes(BADGE_NAMES.marathon)
+    ) {
+      badges.push(BADGE_NAMES.marathon);
     }
     return badges;
   }
@@ -322,7 +417,10 @@ export class UsersService implements OnModuleInit {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: email.trim().toLowerCase() })
+      .getOne();
   }
 
   /**
@@ -334,11 +432,12 @@ export class UsersService implements OnModuleInit {
       .createQueryBuilder('user')
       .addSelect([
         'user.emailVerificationToken',
+        'user.emailVerificationExpires',
         'user.resetPasswordToken',
         'user.resetPasswordExpires',
         'user.codeAttempts',
       ])
-      .where('user.email = :email', { email })
+      .where('LOWER(user.email) = :email', { email: email.trim().toLowerCase() })
       .getOne();
   }
 
@@ -352,122 +451,141 @@ export class UsersService implements OnModuleInit {
   }
 
   // ── ŞİFRE GÜNCELLE ──
+  /** Sifreyi degistirir ve eski token'lari gecersiz kilar (tokenVersion + 1). */
   async updatePassword(userId: number, hashedPass: string) {
-    await this.usersRepository.update(userId, {
-      password: hashedPass,
-      resetPasswordToken: null,
-      resetPasswordExpires: null,
-      codeAttempts: 0,
-    });
+    await this.usersRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({
+        password: hashedPass,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+        codeAttempts: 0,
+        tokenVersion: () => '"tokenVersion" + 1',
+      })
+      .where('id = :id', { id: userId })
+      .execute();
   }
 
-  // ── AŞAMA 4: DÜELLO BAKİYE YÖNETİMİ ──
+  /** Odul gibi coin eklemeleri; tek ifadeyle (coins = coins + n) oldugu icin yarisa girmez. */
   async addCoins(userId: number, amount: number) {
-    const user = await this.usersRepository.findOneBy({ id: userId });
-    if (!user) return;
-    user.coins = (user.coins || 0) + amount;
-    await this.usersRepository.save(user);
-  }
-
-  async removeCoins(userId: number, amount: number): Promise<boolean> {
-    const user = await this.usersRepository.findOneBy({ id: userId });
-    if (!user || (user.coins || 0) < amount) return false;
-    user.coins -= amount;
-    await this.usersRepository.save(user);
-    return true;
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    await this.usersRepository.increment(
+      { id: userId },
+      'coins',
+      Math.floor(amount),
+    );
   }
 
   // ── 3. ODAKLANMA PUANI VE OYUNLAŞTIRMA (AŞAMA 3) ──
-  async addFocusTime(userId: number, minutes: number) {
-    const user = await this.usersRepository.findOneBy({ id: userId });
-    if (user) {
-      user.totalFocusMinutes = (user.totalFocusMinutes || 0) + minutes;
+  async addFocusTime(userId: number, rawMinutes: number) {
+    // Kesirli dakika sayilmaz (30 sn = 1 dk olmasin).
+    const minutes = Math.floor(rawMinutes);
+    if (!Number.isFinite(minutes) || minutes < 1) return null;
 
-      // SERİ: günler Türkiye saatine göre sayılır; dün çalıştıysa seri sürer, bir gün atlanırsa sıfırlanır.
-      const now = new Date();
-      const todayString = localDayKey(now);
-      const currentHour = localHour(now);
+    // Satir kilidi: ayni anda yapilan magaza alisverisi ya da baska odul bu yazimi ezemez.
+    const progress = await this.usersRepository.manager.transaction(
+      async (em) => {
+        const user = await em.findOne(User, {
+          where: { id: userId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!user) return null;
+        return this.applyFocusTime(em, user, minutes);
+      },
+    );
+    if (!progress) return null;
+    const { user, todayString, currentHour, newBadges } = progress;
 
-      let streakMultiplier = 0;
-      if (user.lastFocusDate) {
-        const gap = daysBetweenKeys(
-          localDayKey(user.lastFocusDate),
-          todayString,
+    // Günlük analitik tablosuna da ekle
+    const today = todayString;
+    let daily = await this.dailyAnalyticsRepository.findOne({
+      where: { user: { id: userId }, date: today },
+    });
+
+    if (!daily) {
+      daily = this.dailyAnalyticsRepository.create({
+        user: user,
+        date: today,
+        focusMinutes: minutes,
+        hourlyDistribution: Array<number>(24).fill(0),
+      });
+    } else {
+      daily.focusMinutes += minutes;
+      if (
+        !daily.hourlyDistribution ||
+        daily.hourlyDistribution.length !== 24
+      ) {
+        daily.hourlyDistribution = Array<number>(24).fill(0);
+      }
+    }
+
+    daily.hourlyDistribution[currentHour] += minutes;
+
+    await this.dailyAnalyticsRepository.save(daily);
+
+    console.log(
+      `${user.fullName} için ${minutes} dakika eklendi. Yeni Toplam: ${user.totalFocusMinutes}`,
+    );
+    // Bu oturumda yeni kazanılan rozetler (kaydedilmez; çağıran bildirmek için kullanır).
+    return Object.assign(user, { newBadges });
+  }
+
+  /** Kilitli kullanici satirina odak suresini, seriyi, coin'i ve rozetleri yazar. */
+  private async applyFocusTime(em: EntityManager, user: User, minutes: number) {
+    user.totalFocusMinutes = (user.totalFocusMinutes || 0) + minutes;
+
+    // SERİ: günler Türkiye saatine göre sayılır; dün çalıştıysa seri sürer, bir gün atlanırsa sıfırlanır.
+    const now = new Date();
+    const todayString = localDayKey(now);
+    const currentHour = localHour(now);
+
+    let streakMultiplier = 0;
+    if (user.lastFocusDate) {
+      const gap = daysBetweenKeys(
+        localDayKey(user.lastFocusDate),
+        todayString,
+      );
+      if (gap >= 1) {
+        // Arada bos gun varsa seri koruma harcanir (bkz. streak.ts).
+        const next = advanceStreak(
+          user.currentStreak || 0,
+          gap,
+          user.streakFreezes || 0,
         );
-        if (gap >= 1) {
-          // Arada bos gun varsa seri koruma harcanir (bkz. streak.ts).
-          const next = advanceStreak(
-            user.currentStreak || 0,
-            gap,
-            user.streakFreezes || 0,
-          );
-          user.currentStreak = next.streak;
-          user.streakFreezes = (user.streakFreezes || 0) - next.freezesUsed;
-          user.lastFocusDate = now;
-        }
-      } else {
-        user.currentStreak = 1;
+        user.currentStreak = next.streak;
+        user.streakFreezes = (user.streakFreezes || 0) - next.freezesUsed;
         user.lastFocusDate = now;
       }
-      if (user.currentStreak > user.bestStreak)
-        user.bestStreak = user.currentStreak;
-
-      // COIN HESAPLAMASI (Örn: Streak başına %10 bonus, max %50)
-      streakMultiplier = Math.min(user.currentStreak, 5) * 0.1;
-      const earnedCoins = Math.floor(minutes * (1 + streakMultiplier));
-      user.coins = (user.coins || 0) + earnedCoins;
-
-      // ROZETLER (kurallar badges.ts'de)
-      user.badges = this.normalizeBadges(user.badges);
-      const newBadges: string[] = [];
-      for (const badge of focusBadges({
-        totalFocusMinutes: user.totalFocusMinutes,
-        currentStreak: user.currentStreak,
-        sessionMinutes: minutes,
-        endHour: currentHour,
-      })) {
-        if (!user.badges.includes(badge)) {
-          user.badges.push(badge);
-          newBadges.push(badge);
-        }
-      }
-
-      await this.usersRepository.save(user);
-
-      // Günlük analitik tablosuna da ekle
-      const today = todayString;
-      let daily = await this.dailyAnalyticsRepository.findOne({
-        where: { user: { id: userId }, date: today },
-      });
-
-      if (!daily) {
-        daily = this.dailyAnalyticsRepository.create({
-          user: user,
-          date: today,
-          focusMinutes: minutes,
-          hourlyDistribution: Array<number>(24).fill(0),
-        });
-      } else {
-        daily.focusMinutes += minutes;
-        if (
-          !daily.hourlyDistribution ||
-          daily.hourlyDistribution.length !== 24
-        ) {
-          daily.hourlyDistribution = Array<number>(24).fill(0);
-        }
-      }
-
-      daily.hourlyDistribution[currentHour] += minutes;
-
-      await this.dailyAnalyticsRepository.save(daily);
-
-      console.log(
-        `${user.fullName} için ${minutes} dakika eklendi. Yeni Toplam: ${user.totalFocusMinutes}`,
-      );
-      // Bu oturumda yeni kazanılan rozetler (kaydedilmez; çağıran bildirmek için kullanır).
-      return Object.assign(user, { newBadges });
+    } else {
+      user.currentStreak = 1;
+      user.lastFocusDate = now;
     }
-    return null;
+    if (user.currentStreak > user.bestStreak)
+      user.bestStreak = user.currentStreak;
+
+    // COIN HESAPLAMASI (Örn: Streak başına %10 bonus, max %50)
+    streakMultiplier = Math.min(user.currentStreak, 5) * 0.1;
+    const earnedCoins = Math.floor(minutes * (1 + streakMultiplier));
+    user.coins = (user.coins || 0) + earnedCoins;
+
+    // ROZETLER (kurallar badges.ts'de)
+    user.badges = this.normalizeBadges(user.badges);
+    const newBadges: string[] = [];
+    for (const badge of focusBadges({
+      totalFocusMinutes: user.totalFocusMinutes,
+      currentStreak: user.currentStreak,
+      sessionMinutes: minutes,
+      endHour: currentHour,
+    })) {
+      if (!user.badges.includes(badge)) {
+        user.badges.push(badge);
+        newBadges.push(badge);
+      }
+    }
+
+    await em.save(user);
+    return { user, todayString, currentHour, newBadges };
   }
 
   // YENİ: HAFTALIK ANALİTİK VERİSİ
@@ -489,13 +607,13 @@ export class UsersService implements OnModuleInit {
     return records;
   }
 
-  /** Odak dışı olaylarla kazanılan rozeti (düello, hedef, lig) ekler. Yeni kazanıldıysa true. */
+  /** Odak dışı olaylarla kazanılan rozeti (hedef, lig) ekler. Yeni kazanıldıysa true. */
   async awardBadge(userId: number, badge: string): Promise<boolean> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
       select: { id: true, badges: true },
     });
-    if (!user) return false;
+    if (!user || !KNOWN_BADGES.has(badge)) return false;
     const badges = this.normalizeBadges(user.badges);
     if (badges.includes(badge)) return false;
     badges.push(badge);
@@ -569,7 +687,8 @@ export class UsersService implements OnModuleInit {
         end: addDaysToKey(weekStart, 6),
       })
       .getRawOne<{ minutes: string }>();
-    const { bannedAt: _bannedAt, ...publicUser } = user;
+    const publicUser: Partial<User> = { ...user };
+    delete publicUser.bannedAt;
     return {
       ...publicUser,
       badges: this.getVisibleBadges(user),
@@ -604,6 +723,7 @@ export class UsersService implements OnModuleInit {
   // ── 5. LİDERLİK TABLOSU (Avatar Eklendi) ──
   async getLeaderboard(): Promise<User[]> {
     return this.usersRepository.find({
+      where: { bannedAt: IsNull() },
       order: {
         totalFocusMinutes: 'DESC',
       },
@@ -635,7 +755,7 @@ export class UsersService implements OnModuleInit {
         equippedProfileFrame: currentUser.equippedProfileFrame,
         isOnline: currentUser.isOnline,
         currentRoom: currentUser.currentRoom,
-      } as any);
+      });
     }
 
     return friends.sort(
@@ -675,12 +795,25 @@ export class UsersService implements OnModuleInit {
         { sender: { id: sender.id }, receiver: { id: receiver.id } },
         { sender: { id: receiver.id }, receiver: { id: sender.id } },
       ],
+      relations: { sender: true },
     });
 
     if (existingRequest) {
-      throw new BadRequestException(
-        'Bu kişiyle zaten arkadaşsınız veya bekleyen bir isteğiniz var.',
-      );
+      if (existingRequest.status === 'accepted') {
+        throw new BadRequestException('Bu kişiyle zaten arkadaşsınız.');
+      }
+      if (existingRequest.status === 'pending') {
+        throw new BadRequestException(
+          existingRequest.sender.id === sender.id
+            ? 'Bu kişiye zaten bir arkadaşlık isteği gönderdin.'
+            : 'Bu kişi sana zaten istek göndermiş; gelen isteklerden kabul edebilirsin.',
+        );
+      }
+      // Reddedilmiş istek yeniden gönderilebilir: kayıt bekleyene döner, yön gönderene göre güncellenir.
+      existingRequest.status = 'pending';
+      existingRequest.sender = sender;
+      existingRequest.receiver = receiver;
+      return this.friendshipRepository.save(existingRequest);
     }
 
     const friendship = this.friendshipRepository.create({
@@ -719,6 +852,7 @@ export class UsersService implements OnModuleInit {
   ) {
     const request = await this.friendshipRepository.findOne({
       where: { id: requestId, receiver: { id: receiverId }, status: 'pending' },
+      relations: { sender: true, receiver: true },
     });
 
     if (!request) {
@@ -729,6 +863,34 @@ export class UsersService implements OnModuleInit {
 
     request.status = status;
     return this.friendshipRepository.save(request);
+  }
+
+  /** İki kullanıcı arkadaş mı (kabul edilmiş kayıt var mı)? */
+  async areFriends(a: number, b: number): Promise<boolean> {
+    if (a === b) return false;
+    const found = await this.friendshipRepository.findOne({
+      where: [
+        { sender: { id: a }, receiver: { id: b }, status: 'accepted' },
+        { sender: { id: b }, receiver: { id: a }, status: 'accepted' },
+      ],
+      select: { id: true },
+    });
+    return !!found;
+  }
+
+  /** Arkadaşlıktan çıkarır (iki yönlü). Arkadaş değillerse 404. */
+  async removeFriend(userId: number, friendId: number): Promise<void> {
+    const found = await this.friendshipRepository.find({
+      where: [
+        { sender: { id: userId }, receiver: { id: friendId }, status: 'accepted' },
+        { sender: { id: friendId }, receiver: { id: userId }, status: 'accepted' },
+      ],
+      select: { id: true },
+    });
+    if (found.length === 0) {
+      throw new NotFoundException('Bu kişi arkadaş listende değil.');
+    }
+    await this.friendshipRepository.delete(found.map((f) => f.id));
   }
 
   // ── 9. ARKADAŞLARIMI LİSTELE (Avatar Eklendi) ──
@@ -787,10 +949,27 @@ export class UsersService implements OnModuleInit {
     return this.stripPassword(updated);
   }
 
+  /** Hesapta şifre var mı (Google ile açılmış hesapta yok)? Hash'in kendisi dönmez. */
+  async hasPassword(userId: number): Promise<boolean> {
+    const row = await this.usersRepository
+      .createQueryBuilder('user')
+      .select('user.id')
+      .addSelect('user.password')
+      .where('user.id = :id', { id: userId })
+      .getOne();
+    return !!row?.password;
+  }
+
+  /**
+   * Hesap ayarlarını günceller. Şifresi olan hesapta e-posta, kullanıcı adı ya da şifre
+   * değişirken mevcut şifre HER ZAMAN doğrulanır. Yalnızca Google ile açılmış hesap
+   * (şifresiz) ad ve kullanıcı adını değiştirebilir; e-postası ve şifresi değiştirilemez.
+   * E-posta değişirse doğrulama sıfırlanır ve yeni adres için kod üretilir.
+   */
   async updateAccountSettings(
     userId: number,
     settings: UpdateAccountSettingsDto,
-  ) {
+  ): Promise<AccountSettingsResult> {
     // Mevcut sifre kontrolu icin sifre ozeti acikca secilir.
     const user = await this.usersRepository
       .createQueryBuilder('user')
@@ -801,39 +980,95 @@ export class UsersService implements OnModuleInit {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (settings.username && settings.username !== user.username) {
+    const newEmail = settings.email?.trim().toLowerCase();
+    const emailChanged = !!newEmail && newEmail !== user.email.toLowerCase();
+    const usernameChanged =
+      !!settings.username && settings.username !== user.username;
+    const passwordChanged = !!settings.newPassword;
+    const hasPassword = !!user.password;
+
+    if (!hasPassword && emailChanged) {
+      throw new BadRequestException(
+        'Google ile açılmış hesabın e-postası değiştirilemez.',
+      );
+    }
+    if (!hasPassword && passwordChanged) {
+      throw new BadRequestException(
+        'Google ile açılmış hesapta şifre belirlenemez.',
+      );
+    }
+    if (hasPassword && (emailChanged || usernameChanged || passwordChanged)) {
+      if (
+        !settings.currentPassword ||
+        !(await bcrypt.compare(settings.currentPassword, user.password!))
+      ) {
+        throw new BadRequestException('Mevcut şifre hatalı.');
+      }
+    }
+
+    const changes: QueryDeepPartialEntity<User> = {};
+    if (usernameChanged) {
       const existingUsername = await this.usersRepository.findOne({
         where: { username: settings.username },
       });
       if (existingUsername && existingUsername.id !== userId) {
         throw new BadRequestException('Bu kullanıcı adı zaten kullanılıyor.');
       }
-      user.username = settings.username;
+      changes.username = settings.username;
+    }
+    if (settings.fullName && settings.fullName !== user.fullName) {
+      changes.fullName = settings.fullName;
     }
 
-    if (settings.email && settings.email !== user.email) {
-      const existingEmail = await this.usersRepository.findOne({
-        where: { email: settings.email },
-      });
+    let verificationCode: string | null = null;
+    if (emailChanged) {
+      const existingEmail = await this.findByEmailInsensitive(newEmail);
       if (existingEmail && existingEmail.id !== userId) {
         throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor.');
       }
-      user.email = settings.email;
+      verificationCode = generateVerificationCode();
+      changes.email = newEmail;
+      changes.isEmailVerified = false;
+      changes.emailVerificationToken = verificationCode;
+      changes.emailVerificationExpires = new Date(
+        Date.now() + VERIFICATION_CODE_TTL_MS,
+      );
+      changes.codeAttempts = 0;
+    }
+    if (passwordChanged) {
+      changes.password = await bcrypt.hash(settings.newPassword!, 10);
+      // Eski token'lar (diğer cihazlar) geçersiz olur; yanıttaki yeni token geçerlidir.
+      changes.tokenVersion = () => '"tokenVersion" + 1';
     }
 
-    if (settings.newPassword) {
-      if (
-        !settings.currentPassword ||
-        !user.password ||
-        !(await bcrypt.compare(settings.currentPassword, user.password))
-      ) {
-        throw new BadRequestException('Mevcut şifre hatalı.');
+    if (Object.keys(changes).length > 0) {
+      try {
+        await this.usersRepository
+          .createQueryBuilder()
+          .update(User)
+          .set(changes)
+          .where('id = :id', { id: userId })
+          .execute();
+      } catch (e) {
+        // Es zamanli istekte benzersiz kisit devreye girer.
+        if ((e as { code?: string }).code === '23505') {
+          throw new BadRequestException(
+            'Bu kullanıcı adı ya da e-posta zaten kullanılıyor.',
+          );
+        }
+        throw e;
       }
-      user.password = await bcrypt.hash(settings.newPassword, 10);
     }
 
-    const updatedUser = await this.usersRepository.save(user);
-    return this.stripPassword(updatedUser);
+    // Yanit /users/me ile ayni acik alanlari tasir; gizli (select: false) alanlar yuklenmez.
+    const updated = await this.findById(userId);
+    if (!updated) throw new NotFoundException('Kullanıcı bulunamadı');
+    return {
+      user: Object.assign(updated, { hasPassword }),
+      emailChanged,
+      passwordChanged,
+      verificationCode,
+    };
   }
 
   // ── 12. PUSH TOKEN GÜNCELLEME (YENİ EKLENDİ) ──
@@ -922,33 +1157,56 @@ export class UsersService implements OnModuleInit {
   }
 
   // ── AŞAMA 3: MAĞAZA İŞLEMLERİ ──
+  /**
+   * Satın alma: kullanıcı satırı kilitlenir, bakiye ve sahiplik kontrol edilir, düşüm
+   * `coins >= fiyat` koşullu tek UPDATE ile yapılır. Aynı anda gelen istekler sırayla işlenir;
+   * ödenebilenden fazlası başarılı olmaz.
+   */
   async buyItem(userId: number, itemType: ShopItemType, itemId: string) {
     const item = findShopItem(itemType, itemId);
     if (!item) throw new BadRequestException('Mağazada böyle bir ürün yok');
     const price = item.price;
 
-    const user = await this.findById(userId);
-    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    return this.usersRepository.manager.transaction(async (em) => {
+      const user = await em.findOne(User, {
+        where: { id: userId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    if (user.coins < price) {
-      throw new BadRequestException('Yetersiz Odak Puanı (Coin)');
-    }
+      if ((user.coins || 0) < price) {
+        throw new BadRequestException('Yetersiz Odak Puanı (Coin)');
+      }
 
-    if (itemType === 'streakFreeze') {
-      if ((user.streakFreezes || 0) >= MAX_STREAK_FREEZES)
-        throw new BadRequestException(
-          `En fazla ${MAX_STREAK_FREEZES} seri koruma tutabilirsin`,
-        );
-      user.streakFreezes = (user.streakFreezes || 0) + 1;
-    } else {
-      const owned = ownedList(user, itemType);
-      if (owned.includes(itemId))
-        throw new BadRequestException('Bu ürüne zaten sahipsiniz');
-      owned.push(itemId);
-    }
+      const changes: QueryDeepPartialEntity<User> = {};
+      if (itemType === 'streakFreeze') {
+        if ((user.streakFreezes || 0) >= MAX_STREAK_FREEZES)
+          throw new BadRequestException(
+            `En fazla ${MAX_STREAK_FREEZES} seri koruma tutabilirsin`,
+          );
+        changes.streakFreezes = (user.streakFreezes || 0) + 1;
+      } else {
+        const owned = ownedList(user, itemType);
+        if (owned.includes(itemId))
+          throw new BadRequestException('Bu ürüne zaten sahipsiniz');
+        owned.push(itemId);
+        changes[ownedColumn(itemType)] = owned;
+      }
 
-    user.coins -= price;
-    return await this.usersRepository.save(user);
+      const result = await em
+        .createQueryBuilder()
+        .update(User)
+        .set({ ...changes, coins: () => '"coins" - :price' })
+        .where('id = :id AND "coins" >= :price', { id: userId, price })
+        .execute();
+      if (result.affected !== 1) {
+        throw new BadRequestException('Yetersiz Odak Puanı (Coin)');
+      }
+
+      const fresh = await em.findOne(User, { where: { id: userId } });
+      if (!fresh) throw new NotFoundException('Kullanıcı bulunamadı');
+      return this.stripPassword(fresh);
+    });
   }
 
   getShopCatalog() {
@@ -968,11 +1226,13 @@ export class UsersService implements OnModuleInit {
     if (item.price > 0 && !ownedList(user, itemType).includes(itemId)) {
       throw new BadRequestException('Bu ürüne sahip değilsiniz');
     }
+    // Yalnızca kuşanılan sütun yazılır; tüm satırı kaydetmek eşzamanlı coin değişimini ezerdi.
+    const equipped: Partial<User> = {};
+    setEquipped(equipped, itemType, itemId);
+    await this.usersRepository.update(userId, equipped);
     setEquipped(user, itemType, itemId);
-
-    return await this.usersRepository.save(user);
-  }
-}
+    return this.stripPassword(user);
+  }}
 
 /** Kullanıcının bu türde sahip olduğu ürünler (dizi yerinde değiştirilebilir). */
 function ownedList(user: User, type: ShopItemType): string[] {
@@ -992,7 +1252,25 @@ function ownedList(user: User, type: ShopItemType): string[] {
   }
 }
 
-function setEquipped(user: User, type: ShopItemType, id: string) {
+/** Satın alınan ürünün sahiplik sütunu. */
+function ownedColumn(type: ShopItemType) {
+  switch (type) {
+    case 'color':
+      return 'ownedColors';
+    case 'icon':
+      return 'ownedIcons';
+    case 'soundPack':
+      return 'ownedSoundPacks';
+    case 'profileCover':
+      return 'ownedProfileCovers';
+    case 'lampColor':
+      return 'ownedLampColors';
+    default:
+      return 'ownedProfileFrames';
+  }
+}
+
+function setEquipped(user: Partial<User>, type: ShopItemType, id: string) {
   switch (type) {
     case 'color':
       user.equippedBubbleColor = id;

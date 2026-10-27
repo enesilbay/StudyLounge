@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { bestSlot, calendarWeeks, changePercent, groupByDay, lastDays, localKey, longestRun, peakHour, periodTotals, rhythmGrid } from './analytics';
+import { bestSlot, calendarWeeks, changePercent, groupByDay, istanbulHour, lastDays, localKey, longestRun, peakHour, periodStart, periodTotals, rhythmGrid } from './analytics';
 
-const today = new Date(2026, 9, 22, 15, 0); // Perşembe
+// Testler çalıştırıcının saat diliminden bağımsız olmalı: tarihler açıkça İstanbul (+03:00) ile verilir.
+const today = new Date('2026-10-22T15:00:00+03:00'); // Perşembe
 
 describe('analytics', () => {
   it('fills missing days with zero and ends on today', () => {
@@ -27,7 +28,7 @@ describe('analytics', () => {
 
   it('splits a session across the hours it covers', () => {
     const grid = rhythmGrid([
-      { startedAt: new Date(2026, 9, 20, 21, 40).toISOString(), endedAt: new Date(2026, 9, 20, 22, 20).toISOString(), minutes: 40 },
+      { startedAt: '2026-10-20T21:40:00+03:00', endedAt: '2026-10-20T22:20:00+03:00', minutes: 40 },
     ]);
     // 20 Ekim 2026 Salı → satır 1
     expect(Math.round(grid[1][21])).toBe(20);
@@ -38,7 +39,7 @@ describe('analytics', () => {
 
   it('scales split minutes down when the session had pauses', () => {
     const grid = rhythmGrid([
-      { startedAt: new Date(2026, 9, 20, 10, 0).toISOString(), endedAt: new Date(2026, 9, 20, 12, 0).toISOString(), minutes: 60 },
+      { startedAt: '2026-10-20T10:00:00+03:00', endedAt: '2026-10-20T12:00:00+03:00', minutes: 60 },
     ]);
     expect(Math.round(grid[1][10])).toBe(30);
     expect(Math.round(grid[1][11])).toBe(30);
@@ -54,14 +55,31 @@ describe('analytics', () => {
 
   it('groups sessions by day, newest first, and finds the longest run', () => {
     const groups = groupByDay([
-      { startedAt: new Date(2026, 9, 21, 9).toISOString() },
-      { startedAt: new Date(2026, 9, 22, 9).toISOString() },
-      { startedAt: new Date(2026, 9, 22, 20).toISOString() },
+      { startedAt: '2026-10-21T09:00:00+03:00' },
+      { startedAt: '2026-10-22T09:00:00+03:00' },
+      { startedAt: '2026-10-22T20:00:00+03:00' },
     ]);
     expect(groups.map((group) => [group.key, group.items.length])).toEqual([
       ['2026-10-22', 2],
       ['2026-10-21', 1],
     ]);
     expect(longestRun(lastDays([{ date: '2026-10-20', minutes: 5 }, { date: '2026-10-21', minutes: 5 }], 5, today))).toBe(2);
+  });
+
+  it('uses Istanbul day boundaries regardless of the browser time zone', () => {
+    // 22 Ekim 23:30 İstanbul = 20:30 UTC; 23 Ekim 00:30 İstanbul = 21:30 UTC (aynı UTC günü, farklı İstanbul günü).
+    expect(localKey(new Date('2026-10-22T20:30:00Z'))).toBe('2026-10-22');
+    expect(localKey(new Date('2026-10-22T21:30:00Z'))).toBe('2026-10-23');
+    expect(istanbulHour(new Date('2026-10-22T21:30:00Z'))).toBe(0);
+    const groups = groupByDay([{ startedAt: '2026-10-22T20:30:00Z' }, { startedAt: '2026-10-22T21:30:00Z' }]);
+    expect(groups.map((group) => group.key)).toEqual(['2026-10-23', '2026-10-22']);
+    // "Bugün" gece yarısından hemen sonra bile İstanbul gününe göre hesaplanır.
+    expect(lastDays([], 2, new Date('2026-10-22T21:05:00Z')).map((day) => day.key)).toEqual(['2026-10-22', '2026-10-23']);
+  });
+
+  it('starts a period at Istanbul midnight of its first day', () => {
+    // Bugün 22 Ekim 15:00 İstanbul; 7 günlük dönem 16 Ekim 00:00 (+03:00) ile başlar.
+    expect(periodStart(7, today).toISOString()).toBe('2026-10-15T21:00:00.000Z');
+    expect(periodStart(1, today).toISOString()).toBe('2026-10-21T21:00:00.000Z');
   });
 });

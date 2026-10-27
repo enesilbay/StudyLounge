@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   INestApplication,
   NotFoundException,
   ValidationPipe,
@@ -31,6 +33,8 @@ import { FeedbackService } from '../src/feedback/feedback.service';
 import { RolesGuard } from '../src/moderation/roles.guard';
 import { UsersService } from '../src/users/users.service';
 import { ModerationService } from '../src/moderation/moderation.service';
+import { RealtimeService } from '../src/realtime/realtime.service';
+import { AdminAuditService } from '../src/admin-audit/admin-audit.service';
 
 jest.mock('expo-server-sdk', () => ({
   Expo: class {
@@ -87,15 +91,25 @@ describe('StudyLounge API (e2e)', () => {
         AuthService,
         GoogleTokenService,
         FeedbackService,
+        RealtimeService,
         RolesGuard,
         { provide: getRepositoryToken(Feedback), useValue: feedbackRepository },
         {
           provide: StorageService,
-          useValue: { put: jest.fn(), removeByUrl: jest.fn() },
+          useValue: {
+            put: jest.fn(),
+            removeByUrl: jest.fn(),
+            reserveUploadQuota: jest.fn(),
+            createKey: jest.fn(),
+          },
         },
+        { provide: AdminAuditService, useValue: { record: jest.fn() } },
         JwtStrategy,
         { provide: UsersService, useValue: usersService },
-        { provide: LobbiesService, useClass: InMemoryLobbiesService },
+        {
+          provide: LobbiesService,
+          useFactory: () => new InMemoryLobbiesService(usersService),
+        },
         {
           provide: MailService,
           useValue: {
@@ -112,6 +126,8 @@ describe('StudyLounge API (e2e)', () => {
           provide: ModerationService,
           useValue: {
             assertNotBlocked: jest.fn().mockResolvedValue(undefined),
+            blockedIdsFor: jest.fn().mockResolvedValue([]),
+            isBlockedBy: jest.fn().mockResolvedValue(false),
           },
         },
         {
@@ -253,18 +269,28 @@ describe('StudyLounge API (e2e)', () => {
     await request(getServer(app)).get('/admin/feedback').set(auth).expect(403);
   });
 
-  it('logs in and creates a lobby', async () => {
+  it('lets only Premium users create a lobby', async () => {
     const token = await registerUser('ada', 'ada@example.com');
+    const auth = { Authorization: `Bearer ${token}` };
+    const payload = {
+      name: 'Deep Work',
+      icon: 'book',
+      description: 'Focus room',
+      maxUsers: 12,
+    };
 
+    // Oda kurmak Premium ister.
+    await request(getServer(app))
+      .post('/lobbies')
+      .set(auth)
+      .send(payload)
+      .expect(403);
+
+    usersService.upgradeToPremium(1);
     const response = await request(getServer(app))
       .post('/lobbies')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        name: 'Deep Work',
-        icon: 'book',
-        description: 'Focus room',
-        maxUsers: 12,
-      })
+      .set(auth)
+      .send(payload)
       .expect(201);
 
     const body = response.body as unknown as {
@@ -275,6 +301,13 @@ describe('StudyLounge API (e2e)', () => {
     expect(body.id).toBe(1);
     expect(body.name).toBe('Deep Work');
     expect(body.owner.id).toBe(1);
+
+    // Aynı ad (büyük/küçük harf duyarsız) ikinci kez kullanılamaz.
+    await request(getServer(app))
+      .post('/lobbies')
+      .set(auth)
+      .send({ ...payload, name: 'deep work' })
+      .expect(409);
   });
 
   it('sends and accepts a friend request', async () => {
@@ -306,6 +339,17 @@ describe('StudyLounge API (e2e)', () => {
     expect(friendsResponse.body).toEqual([
       expect.objectContaining({ id: 1, username: 'ada' }),
     ]);
+
+    // Arkadaşlıktan çıkarma iki yönlü çalışır.
+    await request(getServer(app))
+      .delete('/users/friends/1')
+      .set('Authorization', `Bearer ${graceToken}`)
+      .expect(200);
+    const afterRemoval = await request(getServer(app))
+      .get('/users/friends/1')
+      .set('Authorization', `Bearer ${adaToken}`)
+      .expect(200);
+    expect(afterRemoval.body).toEqual([]);
   });
 
   it('does not let a path userId update another user profile', async () => {
@@ -327,27 +371,102 @@ describe('StudyLounge API (e2e)', () => {
 
   it('updates account settings and returns a fresh token payload', async () => {
     const token = await registerUser('ada', 'ada@example.com');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    // Kullanıcı adı/e-posta değişimi mevcut şifreyi ister.
+    await request(getServer(app))
+      .put('/users/me/settings')
+      .set(auth)
+      .send({ email: 'ada.new@example.com' })
+      .expect(400);
+    await request(getServer(app))
+      .put('/users/me/settings')
+      .set(auth)
+      .send({ email: 'ada.new@example.com', currentPassword: 'yanlis-sifre' })
+      .expect(400);
+    await request(getServer(app))
+      .put('/users/me/settings')
+      .set(auth)
+      .send({ username: 'ada_new', currentPassword: 'yanlis-sifre' })
+      .expect(400);
+    expect(usersService.findRawById(1)?.email).toBe('ada@example.com');
 
     const settingsResponse = await request(getServer(app))
       .put('/users/me/settings')
-      .set('Authorization', `Bearer ${token}`)
+      .set(auth)
       .send({
         username: 'ada_new',
-        email: 'ada.new@example.com',
+        email: 'Ada.New@Example.com',
+        currentPassword: 'secret123',
       })
       .expect(200);
     const settingsBody = settingsResponse.body as unknown as AuthResponse & {
       user: User;
+      emailVerificationRequired: boolean;
     };
 
     expect(settingsBody.user.username).toBe('ada_new');
+    // E-posta küçük harfe çevrilir ve yeniden doğrulama istenir.
     expect(settingsBody.user.email).toBe('ada.new@example.com');
+    expect(settingsBody.emailVerificationRequired).toBe(true);
     expect(settingsBody.access_token).toEqual(expect.any(String));
+    // Yanıtta gizli alan yok.
+    for (const secret of [
+      'password',
+      'emailVerificationToken',
+      'resetPasswordToken',
+      'googleId',
+      'expoPushToken',
+    ]) {
+      expect(settingsBody.user).not.toHaveProperty(secret);
+    }
 
+    // Yeni adres doğrulanana kadar giriş doğrulama ister; doğrulanınca girilir.
+    const pending = await request(getServer(app))
+      .post('/auth/login')
+      .send({ email: 'ada_new', password: 'secret123' })
+      .expect(201);
+    expect(pending.body).toEqual(
+      expect.objectContaining({ success: false, requiresVerification: true }),
+    );
+    await request(getServer(app))
+      .post('/auth/verify-email')
+      .send({ email: 'ada.new@example.com', token: '123456' })
+      .expect(201);
     await request(getServer(app))
       .post('/auth/login')
       .send({ email: 'ada.new@example.com', password: 'secret123' })
       .expect(201);
+  });
+
+  it('changes the password only with the current one and revokes old tokens', async () => {
+    const token = await registerUser('ada', 'ada@example.com');
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(getServer(app))
+      .put('/users/me/settings')
+      .set(auth)
+      .send({ newPassword: 'yenisifre123', currentPassword: 'yanlis' })
+      .expect(400);
+    await request(getServer(app))
+      .put('/users/me/settings')
+      .set(auth)
+      .send({ newPassword: 'kisa', currentPassword: 'secret123' })
+      .expect(400);
+
+    const response = await request(getServer(app))
+      .put('/users/me/settings')
+      .set(auth)
+      .send({ newPassword: 'yenisifre123', currentPassword: 'secret123' })
+      .expect(200);
+    const fresh = (response.body as AuthResponse).access_token;
+
+    // Eski token artık geçersiz, yenisi geçerli.
+    await request(getServer(app)).get('/users/me').set(auth).expect(401);
+    await request(getServer(app))
+      .get('/users/me')
+      .set('Authorization', `Bearer ${fresh}`)
+      .expect(200);
   });
 
   async function registerUser(username: string, email: string) {
@@ -395,6 +514,7 @@ class InMemoryUsersService {
       totalFocusMinutes: 0,
       avatarUrl: '',
       expoPushToken: '',
+      tokenVersion: 0,
       resetPasswordToken: null,
       resetPasswordExpires: null,
     } as TestUser;
@@ -454,9 +574,38 @@ class InMemoryUsersService {
     return user ? this.sanitize(user) : null;
   }
 
+  // Gerçek findById doğrulama/sıfırlama tokenlarını seçmez.
   findById(id: number) {
     const user = this.users.find((candidate) => candidate.id === id);
-    return user ? this.sanitize(user) : null;
+    return user ? this.publicView(user) : null;
+  }
+
+  hasPassword(userId: number) {
+    return Promise.resolve(!!this.findRawById(userId)?.password);
+  }
+
+  areFriends(a: number, b: number) {
+    return Promise.resolve(
+      this.friendships.some(
+        (f) =>
+          f.status === 'accepted' &&
+          ((f.sender.id === a && f.receiver.id === b) ||
+            (f.sender.id === b && f.receiver.id === a)),
+      ),
+    );
+  }
+
+  removeFriend(userId: number, friendId: number) {
+    const before = this.friendships.length;
+    this.friendships = this.friendships.filter(
+      (f) =>
+        !(
+          f.status === 'accepted' &&
+          ((f.sender.id === userId && f.receiver.id === friendId) ||
+            (f.sender.id === friendId && f.receiver.id === userId))
+        ),
+    );
+    if (this.friendships.length === before) throw new NotFoundException();
   }
 
   touchLastSeen() {
@@ -533,21 +682,62 @@ class InMemoryUsersService {
     return this.sanitize(user);
   }
 
+  // Gerçek servisle aynı sözleşme: değişimde mevcut şifre zorunlu, sonuç { user, ... }.
   updateAccountSettings(
     userId: number,
-    settings: { username?: string; email?: string },
+    settings: {
+      username?: string;
+      email?: string;
+      fullName?: string;
+      currentPassword?: string;
+      newPassword?: string;
+    },
   ) {
     const user = this.users.find((candidate) => candidate.id === userId);
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundException();
     }
-    user.username = settings.username ?? user.username;
-    user.email = settings.email ?? user.email;
-    return this.sanitize(user);
+    const emailChanged = !!settings.email && settings.email !== user.email;
+    const usernameChanged =
+      !!settings.username && settings.username !== user.username;
+    const passwordChanged = !!settings.newPassword;
+    if (
+      (emailChanged || usernameChanged || passwordChanged) &&
+      settings.currentPassword !== user.password
+    ) {
+      throw new BadRequestException('Mevcut şifre hatalı.');
+    }
+    if (usernameChanged) user.username = settings.username!;
+    if (settings.fullName) user.fullName = settings.fullName;
+    let verificationCode: string | null = null;
+    if (emailChanged) {
+      user.email = settings.email!;
+      user.isEmailVerified = false;
+      verificationCode = '123456';
+      user.emailVerificationToken = verificationCode;
+    }
+    if (passwordChanged) {
+      user.password = settings.newPassword;
+      user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+    }
+    return Promise.resolve({
+      user: this.publicView(user),
+      emailChanged,
+      passwordChanged,
+      verificationCode,
+    });
   }
 
   findRawById(id: number) {
     return this.users.find((candidate) => candidate.id === id);
+  }
+
+  private publicView(user: TestUser): User {
+    const safeUser = this.sanitize(user) as Partial<User>;
+    delete safeUser.emailVerificationToken;
+    delete safeUser.resetPasswordToken;
+    delete safeUser.expoPushToken;
+    return safeUser as User;
   }
 
   private sanitize(user: TestUser): User {
@@ -561,11 +751,22 @@ class InMemoryLobbiesService {
   private lobbies: Array<Record<string, unknown>> = [];
   private nextLobbyId = 1;
 
+  constructor(private readonly users: InMemoryUsersService) {}
+
   findAll() {
     return this.lobbies;
   }
 
   create(lobbyData: Record<string, unknown>, ownerId: number) {
+    // Gerçek servis kuralları: Premium şart, oda adı benzersiz (büyük/küçük harf duyarsız).
+    if (!this.users.findById(ownerId)?.isPremium) {
+      throw new ForbiddenException('Oda kurmak için Premium gereklidir.');
+    }
+    const taken = this.lobbies.some(
+      (l) =>
+        String(l.name).toLowerCase() === String(lobbyData.name).toLowerCase(),
+    );
+    if (taken) throw new ConflictException('Bu adla bir oda zaten var.');
     const lobby = {
       id: this.nextLobbyId,
       ...lobbyData,

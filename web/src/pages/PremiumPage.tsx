@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m, useReducedMotion } from 'framer-motion';
 import { BarChart3, Check, Crown, FileUp, Loader2, LockKeyhole, UsersRound, Video } from 'lucide-react';
@@ -23,9 +23,22 @@ const shortDate = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium' });
 
 const OUTCOME_MESSAGES: Record<PaymentOutcome, { tone: 'success' | 'danger' | 'info'; text: string }> = {
   basarili: { tone: 'success', text: 'Ödemen alındı, Premium hesabında açıldı. İyi çalışmalar!' },
-  basarisiz: { tone: 'danger', text: 'Ödeme tamamlanamadı ve kartından para çekilmedi. Bilgilerini kontrol edip tekrar deneyebilirsin.' },
-  beklemede: { tone: 'info', text: 'Ödemenin sonucunu henüz doğrulayamadık. Birkaç dakika sonra bu sayfayı yenile; sorun sürerse geri bildirim gönder.' },
+  basarisiz: { tone: 'danger', text: 'Ödeme tamamlanamadı. Kartından para çekildiyse birkaç gün içinde iade edilir; sorun sürerse bize yaz.' },
+  beklemede: { tone: 'info', text: 'Ödemen doğrulanıyor, birkaç dakika içinde otomatik güncellenecek.' },
 };
+
+/** Bekleyen ödeme varken durum bu aralıkla yeniden sorulur. */
+const PENDING_POLL_MS = 30_000;
+/** Sonuç beklenirken en fazla bu kadar yoklanır (30 sn x 20 = 10 dk); sonrası sunucudaki mutabakata kalır. */
+const PENDING_POLL_LIMIT = 20;
+
+async function fetchStatus(): Promise<PremiumStatus | null> {
+  try {
+    return (await api.get<PremiumStatus>('/payments/status')).data;
+  } catch {
+    return null;
+  }
+}
 
 export default function PremiumPage() {
   const reduce = useReducedMotion();
@@ -39,7 +52,18 @@ export default function PremiumPage() {
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // iyzico'dan dönüşteki sonuç bir kez okunur, sonra adres temizlenir.
-  const [outcome] = useState<PaymentOutcome | null>(() => parsePaymentOutcome(searchParams.get('odeme')));
+  const [returnedOutcome] = useState<PaymentOutcome | null>(() => parsePaymentOutcome(searchParams.get('odeme')));
+  // Bekleyen ödeme yoklamayla çözülünce gösterilen sonuç, dönüşteki sonucun yerine geçer.
+  const [resolvedOutcome, setResolvedOutcome] = useState<PaymentOutcome | null>(null);
+  const [pollCount, setPollCount] = useState(0);
+  const outcome = resolvedOutcome ?? returnedOutcome;
+
+  /** Ödeme durumunu çeker ve ekrana yansıtır; ulaşılamazsa `null` döner. */
+  const loadStatus = useCallback(async () => {
+    const next = await fetchStatus();
+    if (next) setStatus(next);
+    return next;
+  }, []);
 
   useEffect(() => {
     api
@@ -49,17 +73,34 @@ export default function PremiumPage() {
         setPaymentsEnabled(response.data.enabled);
       })
       .catch((loadError: unknown) => setError(getApiErrorMessage(loadError)));
-    api
-      .get<PremiumStatus>('/payments/status')
-      .then((response) => setStatus(response.data))
-      .catch(() => undefined);
+    void fetchStatus().then((next) => next && setStatus(next));
   }, []);
 
+  // iyzico'dan dönünce adres temizlenir; ödeme geçmişi ve kullanıcı yeniden çekilir (ilk istek sonuç işlenmeden gitmiş olabilir).
   useEffect(() => {
-    if (!outcome) return;
+    if (!returnedOutcome) return;
     setSearchParams({}, { replace: true });
-    if (outcome === 'basarili') void refreshUser();
-  }, [outcome, setSearchParams, refreshUser]);
+    void fetchStatus().then((next) => next && setStatus(next));
+    if (returnedOutcome === 'basarili') void refreshUser();
+  }, [returnedOutcome, setSearchParams, refreshUser]);
+
+  // Beklemede olan ödeme: sayfa açıkken 30 sn'de bir durum sorulur, çözülünce otomatik güncellenir.
+  const hasPending = Boolean(status?.payments.some((payment) => (payment.status as string) === 'pending')) || (returnedOutcome === 'beklemede' && !status?.isPremium);
+  useEffect(() => {
+    if (!hasPending || pollCount >= PENDING_POLL_LIMIT) return;
+    const timer = setTimeout(async () => {
+      const next = await loadStatus();
+      setPollCount((count) => count + 1);
+      if (!next) return;
+      if (next.isPremium) {
+        setResolvedOutcome('basarili');
+        void refreshUser();
+      } else if (next.payments[0] && (next.payments[0].status as string) === 'failure' && !next.payments.some((payment) => (payment.status as string) === 'pending')) {
+        setResolvedOutcome('basarisiz');
+      }
+    }, PENDING_POLL_MS);
+    return () => clearTimeout(timer);
+  }, [hasPending, pollCount, loadStatus, refreshUser]);
 
   const checkout = async () => {
     setRedirecting(true);
@@ -227,8 +268,12 @@ export default function PremiumPage() {
                           <span className="block text-[13px] text-mb-body">{shortDate.format(new Date(payment.createdAt))}</span>
                         </span>
                         <span className="tabular-nums text-mb-ink">{formatTry(payment.amount)}</span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${payment.status === 'success' ? 'bg-mb-tint text-mb-action-ink' : 'bg-softDanger text-danger'}`}>
-                          {payment.status === 'success' ? 'Ödendi' : 'Başarısız'}
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            payment.status === 'success' ? 'bg-mb-tint text-mb-action-ink' : (payment.status as string) === 'pending' ? 'bg-mb-band text-mb-body' : 'bg-mb-live-soft text-mb-live-ink'
+                          }`}
+                        >
+                          {payment.status === 'success' ? 'Ödendi' : (payment.status as string) === 'pending' ? 'Beklemede' : 'Başarısız'}
                         </span>
                       </li>
                     ))}

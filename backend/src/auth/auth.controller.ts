@@ -6,6 +6,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 
 const MINUTE = 60_000;
 
@@ -35,7 +36,7 @@ export class AuthController {
 
   @Throttle({ default: { limit: 10, ttl: MINUTE } })
   @Post('verify-email')
-  async verifyEmail(@Body() body: { email: string; token: string }) {
+  async verifyEmail(@Body() body: VerifyEmailDto) {
     return this.authService.verifyEmail(body.email, body.token);
   }
 

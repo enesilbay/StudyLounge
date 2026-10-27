@@ -16,16 +16,17 @@ import { User } from '../users/user.entity';
 import { CheckoutDto } from './dto/checkout.dto';
 import { PaymentsService } from './payments.service';
 
-@UseGuards(JwtAuthGuard)
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  // Herkese acik: acilis sayfasi fiyatlari girissiz ziyaretciye de gosterir.
   @Get('plans')
   plans() {
     return this.paymentsService.plans();
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('status')
   status(@CurrentUser() user: User) {
     return this.paymentsService.status(user.id);
@@ -33,6 +34,7 @@ export class PaymentsController {
 
   // Kullanici basina 10 dakikada 10 odeme baslatma.
   @Throttle({ default: { limit: 10, ttl: 10 * 60_000 } })
+  @UseGuards(JwtAuthGuard)
   @Post('checkout')
   checkout(
     @CurrentUser() user: User,

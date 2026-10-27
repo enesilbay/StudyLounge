@@ -1,7 +1,7 @@
 /**
  * Rozet kataloğu ve odak oturumundan kazanılan rozetlerin kuralları.
  * Rozetler kullanıcıda adıyla saklanır (eski kayıtlar ve mobil uygulama adları kullanır),
- * bu yüzden `name` değiştirilmemeli.
+ * bu yüzden `name` değiştirilmemeli. Katalogda olmayan (kaldırılmış) rozet adları sunucuda yok sayılır.
  */
 export interface BadgeDefinition {
   name: string;
@@ -20,7 +20,6 @@ export const BADGE_NAMES = {
   earlyBird: 'Sabahçı',
   longHaul: 'Uzun Soluklu',
   goalHunter: 'Hedef Avcısı',
-  duelWinner: 'Düello Galibi',
   subjectMaster: 'Ders Ustası',
   weeklyChampion: 'Haftanın Şampiyonu',
 } as const;
@@ -35,7 +34,6 @@ export const BADGES: BadgeDefinition[] = [
   { name: BADGE_NAMES.earlyBird, description: 'Sabah 05:00–08:00 arasında en az 1 saatlik oturum yap.', icon: 'sunrise' },
   { name: BADGE_NAMES.longHaul, description: 'Tek seferde 2 saat odaklan.', icon: 'mountain' },
   { name: BADGE_NAMES.goalHunter, description: 'Günlük hedefini 7 gün tuttur.', icon: 'target' },
-  { name: BADGE_NAMES.duelWinner, description: 'Bir düello kazan.', icon: 'swords' },
   { name: BADGE_NAMES.subjectMaster, description: 'Tek bir derste 10 saat odaklan.', icon: 'book-open' },
   { name: BADGE_NAMES.weeklyChampion, description: 'Haftalık ligi birinci bitir.', icon: 'trophy' },
 ];

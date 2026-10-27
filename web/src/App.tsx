@@ -13,7 +13,7 @@ function App() {
 
   if (isInitializing) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-mb-bg">
         <LampMark className="h-14 w-14 animate-pulse" />
       </div>
     );

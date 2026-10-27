@@ -55,12 +55,12 @@ export default function SubjectPicker({ onError }: { onError: (message: string) 
           maxLength={40}
           placeholder="Ders adı, ör. Fizik 2"
           aria-label="Yeni ders adı"
-          className="min-h-9 w-48 rounded-lg border border-border bg-sunken px-3 text-sm text-textDark outline-none focus:border-accent"
+          className="min-h-10 w-48 rounded-lg border border-mb-line bg-mb-surface px-3 text-sm text-mb-ink outline-none focus:border-mb-action"
         />
-        <button type="submit" disabled={saving || !name.trim()} aria-label="Dersi ekle" className="grid h-9 w-9 place-items-center rounded-lg text-primary hover:bg-softIndigo disabled:opacity-50">
+        <button type="submit" disabled={saving || !name.trim()} aria-label="Dersi ekle" className="grid h-10 w-10 place-items-center rounded-lg text-mb-action hover:bg-mb-tint disabled:opacity-50">
           <Check className="h-4 w-4" />
         </button>
-        <button type="button" onClick={() => setAdding(false)} aria-label="Vazgeç" className="grid h-9 w-9 place-items-center rounded-lg text-textMuted hover:bg-sunken">
+        <button type="button" onClick={() => setAdding(false)} aria-label="Vazgeç" className="grid h-10 w-10 place-items-center rounded-lg text-mb-body hover:bg-mb-surface">
           <X className="h-4 w-4" />
         </button>
       </form>
@@ -69,7 +69,7 @@ export default function SubjectPicker({ onError }: { onError: (message: string) 
 
   return (
     <div className="mt-2 flex items-center gap-2">
-      <label htmlFor={selectId} className="flex items-center gap-1.5 text-sm font-semibold text-textMuted">
+      <label htmlFor={selectId} className="flex items-center gap-1.5 text-sm font-semibold text-mb-body">
         {selected ? <span className={`h-2.5 w-2.5 rounded-full ${dotClassFor(selected.color)}`} aria-hidden="true" /> : <BookOpen className="h-3.5 w-3.5" />}
         Ders
       </label>
@@ -83,7 +83,7 @@ export default function SubjectPicker({ onError }: { onError: (message: string) 
           }
           selectSubject(userId, event.target.value ? Number(event.target.value) : null);
         }}
-        className="min-h-9 max-w-56 rounded-lg border border-border bg-surface px-2 text-sm font-semibold text-textDark outline-none focus:border-accent"
+        className="min-h-10 max-w-56 rounded-lg border border-mb-line bg-mb-card px-2 text-sm font-semibold text-mb-ink outline-none focus:border-mb-action"
       >
         <option value="">Derssiz</option>
         {subjects.map((subject) => (

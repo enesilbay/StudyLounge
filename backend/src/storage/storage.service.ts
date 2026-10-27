@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DeleteObjectCommand,
@@ -15,6 +15,9 @@ import { Readable } from 'stream';
 
 /** Dosya anahtari: yalnizca harf, rakam, nokta, alt cizgi ve tire (dizin gezintisi olmaz). */
 export const STORAGE_KEY_PATTERN = /^[\w-]+(\.[a-z0-9]+)?$/i;
+
+/** Kullanici basina gunluk yukleme kotasi (bayt). */
+export const DAILY_UPLOAD_QUOTA_BYTES = 200 * 1024 * 1024;
 
 /** Uzantidan icerik tipi. Yukleyenin gonderdigi tipe guvenilmez. */
 const CONTENT_TYPES: Record<string, string> = {
@@ -59,6 +62,8 @@ export class StorageService {
   private readonly s3: S3Client | null = null;
   private readonly bucket: string | undefined;
   private readonly localDir = join(process.cwd(), 'uploads');
+  /** Kullanici -> bugun yuklenen bayt (bellekte; yeniden baslayinca sifirlanir). */
+  private readonly uploadUsage = new Map<number, { day: string; bytes: number }>();
 
   constructor(configService: ConfigService) {
     this.bucket = configService.get<string>('S3_BUCKET') || undefined;
@@ -79,6 +84,27 @@ export class StorageService {
       this.logger.warn(
         'S3_BUCKET tanimli degil: dosyalar yerel ./uploads klasorune yaziliyor (deploy sonrasi kalici degil).',
       );
+    }
+  }
+
+  /**
+   * Kullanicinin gunluk yukleme kotasindan `bytes` kadar ayirir; asarsa 413 firlatir.
+   * Yuklemeyi depoya yazmadan once cagrilir.
+   */
+  reserveUploadQuota(userId: number, bytes: number): void {
+    const day = new Date().toISOString().slice(0, 10);
+    const current = this.uploadUsage.get(userId);
+    const used = current && current.day === day ? current.bytes : 0;
+    if (used + bytes > DAILY_UPLOAD_QUOTA_BYTES) {
+      throw new HttpException(
+        `Günlük yükleme sınırına (${DAILY_UPLOAD_QUOTA_BYTES / (1024 * 1024)} MB) ulaştın. Yarın tekrar deneyebilirsin.`,
+        HttpStatus.PAYLOAD_TOO_LARGE,
+      );
+    }
+    this.uploadUsage.set(userId, { day, bytes: used + bytes });
+    // Eski günlerin kayıtları birikmesin.
+    if (this.uploadUsage.size > 5000) {
+      for (const [id, usage] of this.uploadUsage) if (usage.day !== day) this.uploadUsage.delete(id);
     }
   }
 

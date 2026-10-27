@@ -44,9 +44,13 @@ export class RtcService {
     userId: number,
     socketId: string,
     allowVideo: boolean,
-  ): { peers: RtcParticipant[]; previousRoom: string | null } {
+  ): {
+    peers: RtcParticipant[];
+    previousRoom: string | null;
+    previousSocketId: string | null;
+  } {
     if (!allowVideo) {
-      throw new ForbiddenException('Bu odada kamera ve ekran paylasimi kapali.');
+      throw new ForbiddenException('Bu odada kamera ve ekran paylaşımı kapalı.');
     }
 
     let previousRoom: string | null = null;
@@ -61,6 +65,9 @@ export class RtcService {
 
     const peers = Array.from(room.values()).filter((p) => p.userId !== userId);
     const existing = room.get(userId);
+    // Ayni kisi baska bir soketle yeniden katildiysa eski soketin esleri haberdar edilmeli.
+    const previousSocketId =
+      existing && existing.socketId !== socketId ? existing.socketId : null;
     room.set(userId, {
       userId,
       socketId,
@@ -68,7 +75,7 @@ export class RtcService {
     });
     this.userRoom.set(userId, roomName);
 
-    return { peers, previousRoom };
+    return { peers, previousRoom, previousSocketId };
   }
 
   /** Kullaniciyi aramadan cikarir; ciktigi odanin adini dondurur. */

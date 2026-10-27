@@ -16,6 +16,37 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+/** Oturum geçersiz olduğunda çalışacak ortak çıkış akışı (lib/session.ts kaydeder; döngüsel içe aktarmayı önler). */
+type SessionEndHandler = (reason?: string) => void;
+let sessionEndHandler: SessionEndHandler | null = null;
+
+export function setSessionEndHandler(handler: SessionEndHandler | null) {
+  sessionEndHandler = handler;
+}
+
+/** Oturumun artık geçersiz olduğunu bildirir (401, `force_logout`, sunucu kaynaklı kopuş). */
+export function reportSessionEnded(reason?: string) {
+  sessionEndHandler?.(reason);
+}
+
+/**
+ * 401 kesicisi: oturumdaki token ile gönderilmiş bir istek 401 alırsa oturum biter.
+ * Token'sız istekler (yanlış şifre ile giriş vb.) ve artık geçersiz sayılan eski token'la gidenler yok sayılır;
+ * böylece ayarlarda yeni token alındıktan sonra gecikmeli gelen eski 401 yeni oturumu kapatmaz.
+ */
+export function handleResponseError(error: unknown) {
+  if (axios.isAxiosError(error) && error.response?.status === 401) {
+    const sent = String(error.config?.headers?.Authorization ?? '').replace(/^Bearer\s+/i, '');
+    const current = localStorage.getItem('access_token');
+    if (sent && current && sent === current) {
+      reportSessionEnded();
+    }
+  }
+  return Promise.reject(error);
+}
+
+api.interceptors.response.use((response) => response, handleResponseError);
+
 export function apiUrl(path: string): string {
   return `${BACKEND_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }

@@ -17,7 +17,7 @@ interface IncomingDm {
 /**
  * Uygulama genelindeki bildirimler: okunmamış DM ve arkadaşlık isteği sayıları,
  * hangi sayfada olunursa olunsun gelen DM ve dürtmeler için kısa bildirim (toast),
- * sekme arka plandaysa tarayıcı bildirimi. Odak odası kendi dürtme/düello bildirimlerini gösterir.
+ * sekme arka plandaysa tarayıcı bildirimi. Odak odası kendi dürtme bildirimlerini gösterir.
  */
 export function useAppNotifications() {
   const userId = useAuthStore((state) => state.user?.id);
@@ -65,26 +65,37 @@ export function useAppNotifications() {
       notifyInBackground('Çalışma daveti', body, () => navigate('/app/lobbies'));
     };
 
-    // Odadayken düello daveti odanın kendi kutusunda görünür; burada yalnızca arka plan bildirimi verilir.
-    const onDuel = (payload: { challengerName?: string; betAmount?: number }) => {
-      notifyInBackground('Düello daveti', `${payload.challengerName ?? 'Biri'} seni ${payload.betAmount ?? ''} puanlık düelloya çağırıyor.`);
-    };
-
     socket.on('receive_dm', onReceiveDm);
     socket.on('nudge_received', onNudge);
-    socket.on('duel_received', onDuel);
     const onBadge = (payload: { badge?: string }) => {
       if (!payload.badge) return;
       useInboxStore.getState().pushToast({ title: 'Yeni rozet kazandın', body: payload.badge, to: `/app/u/${userId}` });
       void useAuthStore.getState().refreshUser();
     };
     socket.on('badge_earned', onBadge);
-    return () => {
+
+    // Arkadaşlık isteği ve kabulü anında gelir; 60 sn'lik yoklamayı beklemez.
+    const onFriendRequest = (payload: { fromUsername?: string }) => {
+      void useInboxStore.getState().refresh();
+      const name = payload.fromUsername ? '@' + payload.fromUsername : 'Biri';
+      useInboxStore.getState().pushToast({ title: 'Yeni arkadaşlık isteği', body: name + ' seni eklemek istiyor.', to: '/app/dm' });
+    };
+    const onFriendAccepted = (payload: { username?: string }) => {
+      void useInboxStore.getState().refresh();
+      useInboxStore.getState().bumpFriendsVersion();
+      const name = payload.username ? '@' + payload.username : 'Biri';
+      useInboxStore.getState().pushToast({ title: 'İstek kabul edildi', body: name + ' artık arkadaşın.', to: '/app/dm' });
+    };
+    socket.on('friend_request', onFriendRequest);
+    socket.on('friend_accepted', onFriendAccepted);
+    // Bağlantı koparsa o sırada gelen mesaj ve istekler kaçmış olabilir; yeniden bağlanınca sayaçlar tazelenir.
+    const onReconnect = () => void useInboxStore.getState().refresh();
+    socket.on('connect', onReconnect);    return () => {
       socket.off('badge_earned', onBadge);
-      socket.off('receive_dm', onReceiveDm);
+      socket.off('friend_request', onFriendRequest);
+      socket.off('friend_accepted', onFriendAccepted);
+      socket.off('connect', onReconnect);      socket.off('receive_dm', onReceiveDm);
       socket.off('nudge_received', onNudge);
-      socket.off('duel_received', onDuel);
     };
   }, [userId, inRoom, navigate]);
-
 }

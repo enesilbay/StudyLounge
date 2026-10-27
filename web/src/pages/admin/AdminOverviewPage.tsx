@@ -56,7 +56,7 @@ export default function AdminOverviewPage() {
         description={data ? `${dayShort.format(parseDay(data.from))} – bugün · Türkiye saati` : undefined}
         action={
           <>
-            <div className="flex gap-1 rounded-lg bg-sunken p-1" role="radiogroup" aria-label="Dönem">
+            <div className="flex gap-1 rounded-lg bg-mb-surface p-1" role="radiogroup" aria-label="Dönem">
               {OVERVIEW_PERIODS.map((option) => (
                 <button
                   key={option}
@@ -64,7 +64,7 @@ export default function AdminOverviewPage() {
                   role="radio"
                   aria-checked={period === option}
                   onClick={() => choosePeriod(option)}
-                  className={`min-h-9 rounded-md px-3.5 text-sm font-semibold tabular-nums transition ${period === option ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
+                  className={`min-h-9 rounded-md px-3.5 text-sm font-semibold tabular-nums transition ${period === option ? 'bg-mb-card text-mb-ink shadow-sm' : 'text-mb-body hover:text-mb-ink'}`}
                 >
                   {option} gün
                 </button>
@@ -81,7 +81,7 @@ export default function AdminOverviewPage() {
         <div className="mb-5">
           <Notice tone="danger">
             Genel bakış alınamadı: {error}{' '}
-            <button type="button" onClick={() => void load()} className="font-semibold text-textDark underline underline-offset-2">
+            <button type="button" onClick={() => void load()} className="font-semibold text-mb-ink underline underline-offset-2">
               Tekrar dene
             </button>
           </Notice>
@@ -94,7 +94,7 @@ export default function AdminOverviewPage() {
         <div className={`space-y-5 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
           <PendingStrip pending={data.pending} />
 
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-border bg-border xl:grid-cols-5">
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-mb-line bg-mb-line xl:grid-cols-5">
             <Kpi label="Yeni kullanıcı" value={numberFormatter.format(data.newUsers.current)} footer={<Delta value={data.newUsers} period={period} />} note={`Toplam ${numberFormatter.format(data.totals.users)} kullanıcı`} />
             <Kpi label="Aktif kullanıcı" value={numberFormatter.format(data.activeUsers.period)} footer={<span>Bugün {numberFormatter.format(data.activeUsers.today)} kişi</span>} note="Uygulamayı açan herkes" />
             <Kpi label="Odaklanan" value={numberFormatter.format(data.focusUsers.current)} footer={<Delta value={data.focusUsers} period={period} />} note="En az bir oturum bitiren" />
@@ -111,8 +111,8 @@ export default function AdminOverviewPage() {
           <Surface className="p-5">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl text-textDark">Günlük eğilim</h2>
-                <p className="text-sm tabular-nums text-textMuted">
+                <h2 className="text-xl text-mb-ink">Günlük eğilim</h2>
+                <p className="text-sm tabular-nums text-mb-body">
                   Son {period} günde toplam{' '}
                   {series === 'focusMinutes'
                     ? formatMinutes(data.daily.reduce((sum, day) => sum + day.focusMinutes, 0))
@@ -121,7 +121,7 @@ export default function AdminOverviewPage() {
                       : `${numberFormatter.format(data.focusUsers.current)} farklı kişi`}
                 </p>
               </div>
-              <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-sunken p-1 sm:flex sm:w-auto" role="radiogroup" aria-label="Grafikte gösterilen">
+              <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-mb-surface p-1 sm:flex sm:w-auto" role="radiogroup" aria-label="Grafikte gösterilen">
                 {TREND_SERIES.map((item) => (
                   <button
                     key={item.key}
@@ -129,7 +129,7 @@ export default function AdminOverviewPage() {
                     role="radio"
                     aria-checked={series === item.key}
                     onClick={() => setSeries(item.key)}
-                    className={`min-h-9 rounded-md px-2 text-sm font-semibold transition sm:px-3 ${series === item.key ? 'bg-surface text-textDark shadow-sm' : 'text-textMuted hover:text-textDark'}`}
+                    className={`min-h-9 rounded-md px-2 text-sm font-semibold transition sm:px-3 ${series === item.key ? 'bg-mb-card text-mb-ink shadow-sm' : 'text-mb-body hover:text-mb-ink'}`}
                   >
                     {item.label}
                   </button>
@@ -141,25 +141,25 @@ export default function AdminOverviewPage() {
 
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <Surface className="p-5">
-              <h2 className="text-xl text-textDark">Onboarding</h2>
-              <p className="mb-5 text-sm text-textMuted">Son {period} günde kayıt olanlar "Masanı hazırla" adımlarında nereye kadar geldi.</p>
+              <h2 className="text-xl text-mb-ink">Onboarding</h2>
+              <p className="mb-5 text-sm text-mb-body">Son {period} günde kayıt olanlar "Masanı hazırla" adımlarında nereye kadar geldi.</p>
               <OnboardingFunnel funnel={data.funnel} />
             </Surface>
             <Surface className="p-5">
-              <h2 className="text-xl text-textDark">Elde tutma</h2>
-              <p className="mb-5 text-sm text-textMuted">Son 90 günde kayıt olanlardan, kayıttan en az şu kadar gün sonra yeniden odaklananlar.</p>
+              <h2 className="text-xl text-mb-ink">Elde tutma</h2>
+              <p className="mb-5 text-sm text-mb-body">Son 90 günde kayıt olanlardan, kayıttan en az şu kadar gün sonra yeniden odaklananlar.</p>
               <Retention retention={data.retention} />
             </Surface>
           </div>
 
           <Surface className="p-5">
-            <h2 className="text-xl text-textDark">Yoğun saatler</h2>
-            <p className="mb-5 text-sm text-textMuted">Son {period} günün odak süresi; oturumun başladığı gün ve saate göre.</p>
+            <h2 className="text-xl text-mb-ink">Yoğun saatler</h2>
+            <p className="mb-5 text-sm text-mb-body">Son {period} günün odak süresi; oturumun başladığı gün ve saate göre.</p>
             <Heatmap cells={data.heatmap} />
           </Surface>
 
-          <details className="group rounded-[14px] border border-border px-5 py-4 text-sm text-textMuted">
-            <summary className="cursor-pointer font-semibold text-textDark">Bu sayılar nasıl hesaplanıyor?</summary>
+          <details className="group rounded-[14px] border border-mb-line px-5 py-4 text-sm text-mb-body">
+            <summary className="cursor-pointer font-semibold text-mb-ink">Bu sayılar nasıl hesaplanıyor?</summary>
             <ul className="mt-3 max-w-3xl list-disc space-y-1.5 pl-5 leading-6">
               <li>Dönem, bugün dahil son {period} takvim günüdür (Türkiye saati). Değişim oranları hemen önceki {period} günle karşılaştırılır.</li>
               <li>Aktif kullanıcı: dönem içinde uygulamayı açan (giriş yapmış olarak istek gönderen ya da canlı bağlantı kuran) kişi. Son görülme bu sürümle tutulmaya başladı; bu yüzden önceki dönemle karşılaştırılmaz.</li>
@@ -185,30 +185,30 @@ function PendingStrip({ pending }: { pending: AdminOverview['pending'] }) {
 
   if (!items.length) {
     return (
-      <p className="flex items-center gap-2 rounded-[14px] border border-border bg-surface px-5 py-3.5 text-[15px] text-textMuted">
-        <CheckCircle2 className="h-[18px] w-[18px] text-success" />
+      <p className="flex items-center gap-2 rounded-[14px] border border-mb-line bg-mb-card px-5 py-3.5 text-[15px] text-mb-body">
+        <CheckCircle2 className="h-[18px] w-[18px] text-mb-success" />
         Bekleyen iş yok.
       </p>
     );
   }
 
   return (
-    <section aria-label="Bekleyenler" className="flex flex-wrap items-stretch gap-px overflow-hidden rounded-[14px] border border-border bg-border">
-      <h2 className="flex w-full items-center bg-surface px-5 py-3.5 text-[15px] font-semibold text-textDark sm:w-auto">Bekleyenler</h2>
+    <section aria-label="Bekleyenler" className="flex flex-wrap items-stretch gap-px overflow-hidden rounded-[14px] border border-mb-line bg-mb-line">
+      <h2 className="flex w-full items-center bg-mb-card px-5 py-3.5 text-[15px] font-semibold text-mb-ink sm:w-auto">Bekleyenler</h2>
       {items.map((item) => {
         const content = (
           <>
-            <span className="font-display text-2xl tabular-nums text-textDark">{numberFormatter.format(item.count)}</span>
-            <span className="text-[15px] text-textMuted">{item.label}</span>
-            {item.to ? <ArrowRight className="ml-auto h-4 w-4 text-textMuted transition group-hover:translate-x-0.5 group-hover:text-primary" /> : null}
+            <span className="font-mb-display text-2xl tabular-nums text-mb-ink">{numberFormatter.format(item.count)}</span>
+            <span className="text-[15px] text-mb-body">{item.label}</span>
+            {item.to ? <ArrowRight className="ml-auto h-4 w-4 text-mb-body transition group-hover:translate-x-0.5 group-hover:text-mb-action" /> : null}
           </>
         );
         return item.to ? (
-          <Link key={item.label} to={item.to} className="group flex min-w-56 flex-1 items-center gap-2.5 bg-surface px-5 py-3 transition hover:bg-sunken">
+          <Link key={item.label} to={item.to} className="group flex min-w-56 flex-1 items-center gap-2.5 bg-mb-card px-5 py-3 transition hover:bg-mb-surface">
             {content}
           </Link>
         ) : (
-          <div key={item.label} className="flex min-w-56 flex-1 items-center gap-2.5 bg-surface px-5 py-3">
+          <div key={item.label} className="flex min-w-56 flex-1 items-center gap-2.5 bg-mb-card px-5 py-3">
             {content}
           </div>
         );
@@ -219,12 +219,12 @@ function PendingStrip({ pending }: { pending: AdminOverview['pending'] }) {
 
 function Kpi({ label, value, footer, note, wide = false }: { label: string; value: string; footer: React.ReactNode; note: string; wide?: boolean }) {
   return (
-    <div className={`bg-surface px-4 py-4 sm:px-5 ${wide ? 'col-span-2 xl:col-span-1' : ''}`}>
-      <dt className="text-sm font-semibold text-textMuted" title={note}>
+    <div className={`bg-mb-card px-4 py-4 sm:px-5 ${wide ? 'col-span-2 xl:col-span-1' : ''}`}>
+      <dt className="text-sm font-semibold text-mb-body" title={note}>
         {label}
       </dt>
-      <dd className="mt-1 font-display text-2xl tabular-nums text-textDark sm:text-3xl">{value}</dd>
-      <dd className="mt-1 text-sm text-textMuted">{footer}</dd>
+      <dd className="mt-1 font-mb-display text-2xl tabular-nums text-mb-ink sm:text-3xl">{value}</dd>
+      <dd className="mt-1 text-sm text-mb-body">{footer}</dd>
     </div>
   );
 }
@@ -247,7 +247,7 @@ function Delta({ value, period }: { value: Comparison; period: OverviewPeriod })
   const Icon = up ? TrendingUp : TrendingDown;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-1">
-      <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${up ? 'text-success' : 'text-danger'}`}>
+      <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${up ? 'text-mb-success' : 'text-mb-live-ink'}`}>
         <Icon className="h-3.5 w-3.5" />
         {up ? '+' : '−'}
         {numberFormatter.format(Math.abs(change))}%

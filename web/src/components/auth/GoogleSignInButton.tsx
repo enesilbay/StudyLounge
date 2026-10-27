@@ -92,10 +92,10 @@ export function GoogleSignInButton({ onCredential, onError }: { onCredential: (c
 
   return (
     <div>
-      <div className="my-5 flex items-center gap-3 text-sm text-textMuted" aria-hidden="true">
-        <span className="h-px flex-1 bg-border" />
+      <div className="my-5 flex items-center gap-3 text-sm text-mb-body" aria-hidden="true">
+        <span className="h-px flex-1 bg-mb-line" />
         ya da
-        <span className="h-px flex-1 bg-border" />
+        <span className="h-px flex-1 bg-mb-line" />
       </div>
       <div ref={containerRef} className="flex min-h-11 justify-center" />
     </div>
