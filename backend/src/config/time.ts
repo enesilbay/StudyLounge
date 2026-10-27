@@ -49,3 +49,13 @@ export function localWeekStartKey(date: Date): string {
   const weekday = new Date(`${key}T00:00:00Z`).getUTCDay();
   return addDaysToKey(key, -((weekday + 6) % 7));
 }
+
+/** Gün anahtarının Türkiye saatiyle 00:00 anı (Türkiye sabit UTC+3; yaz saati yok). */
+export function localDayStart(key: string): Date {
+  return new Date(`${key}T00:00:00+03:00`);
+}
+
+/** Gün anahtarının Türkiye saatiyle son anı (ertesi günün başlangıcından 1 ms önce). */
+export function localDayEnd(key: string): Date {
+  return new Date(localDayStart(addDaysToKey(key, 1)).getTime() - 1);
+}

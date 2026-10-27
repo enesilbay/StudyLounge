@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../users/user.entity';
-import { CreateSubjectDto, SessionsQueryDto, SummaryQueryDto, UpdateGoalsDto, UpdateSubjectDto } from './dto/study.dto';
+import { CreateSubjectDto, SessionsQueryDto, UpdateSubjectDto } from './dto/study.dto';
 import { StudyService } from './study.service';
 
 @UseGuards(JwtAuthGuard)
@@ -30,23 +31,15 @@ export class StudyController {
     return this.studyService.deleteSubject(user.id, id);
   }
 
+  /** Dizi döner; 1000'den fazlaysa kesilir ve X-Truncated: true başlığı eklenir. */
   @Get('sessions')
-  listSessions(@CurrentUser() user: User, @Query() query: SessionsQueryDto) {
-    return this.studyService.listSessions(user.id, query.from, query.to);
-  }
-
-  @Get('summary')
-  summary(@CurrentUser() user: User, @Query() query: SummaryQueryDto) {
-    return this.studyService.summary(user.id, query.days ?? 30);
-  }
-
-  @Get('goals')
-  goals(@CurrentUser() user: User) {
-    return this.studyService.getGoalProgress(user.id);
-  }
-
-  @Put('goals')
-  updateGoals(@CurrentUser() user: User, @Body() body: UpdateGoalsDto) {
-    return this.studyService.updateGoals(user.id, body);
+  async listSessions(
+    @CurrentUser() user: User,
+    @Query() query: SessionsQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { sessions, truncated } = await this.studyService.listSessions(user.id, query.from, query.to);
+    if (truncated) res.setHeader('X-Truncated', 'true');
+    return sessions;
   }
 }

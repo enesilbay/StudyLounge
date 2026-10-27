@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { User } from '../users/user.entity';
@@ -13,8 +14,8 @@ export class LobbiesController {
   constructor(private readonly lobbiesService: LobbiesService) {}
 
   @Get()
-  async getAllLobbies() {
-    return this.lobbiesService.findAll();
+  async getAllLobbies(@CurrentUser() user: User) {
+    return this.lobbiesService.findAll(user.id);
   }
 
   @Post()
@@ -35,7 +36,9 @@ export class LobbiesController {
     return this.lobbiesService.update(user.id, id, body);
   }
 
+  // Şifre denemesi: dakikada 10 (kaba kuvvet engeli).
   @Post('verify-password')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async verifyPassword(
     @CurrentUser() user: User,
     @Body() body: VerifyLobbyPasswordDto,

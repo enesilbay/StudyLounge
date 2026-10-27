@@ -62,7 +62,7 @@ export class RoomTimerService {
       rest > MAX_BREAK_MINUTES
     ) {
       throw new BadRequestException(
-        `Odak ${MIN_FOCUS_MINUTES}-${MAX_FOCUS_MINUTES} dk, mola ${MIN_BREAK_MINUTES}-${MAX_BREAK_MINUTES} dk olabilir.`,
+        `Odak süresi ${MIN_FOCUS_MINUTES}-${MAX_FOCUS_MINUTES} dakika, mola süresi ${MIN_BREAK_MINUTES}-${MAX_BREAK_MINUTES} dakika arasında olmalı.`,
       );
     }
     const state: RoomTimerState = {

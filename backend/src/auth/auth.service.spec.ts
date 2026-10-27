@@ -6,6 +6,7 @@ import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { GoogleTokenService } from './google-token.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -29,6 +30,7 @@ describe('AuthService', () => {
     sendPasswordChangeCodeEmail: jest.Mock;
   };
   let jwtService: { sign: jest.Mock };
+  let realtime: { disconnectUser: jest.Mock };
 
   const user: User = {
     id: 7,
@@ -66,6 +68,7 @@ describe('AuthService', () => {
       sendPasswordChangeCodeEmail: jest.fn().mockResolvedValue(true),
     };
     jwtService = { sign: jest.fn().mockReturnValue('signed.jwt') };
+    realtime = { disconnectUser: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -74,6 +77,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: MailService, useValue: mailService },
         { provide: GoogleTokenService, useValue: googleTokenService },
+        { provide: RealtimeService, useValue: realtime },
       ],
     }).compile();
 
@@ -121,6 +125,7 @@ describe('AuthService', () => {
       sub: 7,
       email: 'ada@example.com',
       username: 'ada',
+      tv: 0,
     });
     expect(result).toEqual({
       success: true,
@@ -160,7 +165,7 @@ describe('AuthService', () => {
     await expect(
       service.verifyEmail('ada@example.com', '000000'),
     ).rejects.toThrow('Geçersiz veya hatalı doğrulama kodu.');
-    expect(usersService.registerFailedCodeAttempt).toHaveBeenCalledWith(7, 2);
+    expect(usersService.registerFailedCodeAttempt).toHaveBeenCalledWith(7);
     expect(usersService.markEmailAsVerified).not.toHaveBeenCalled();
   });
 
@@ -207,7 +212,7 @@ describe('AuthService', () => {
     expect(mailService.sendVerificationEmail).not.toHaveBeenCalled();
   });
 
-  it('resends the pending code to an unverified account', async () => {
+  it('resend issues a fresh code and saves it before mailing it', async () => {
     usersService.findByEmailWithSecrets.mockResolvedValue({
       ...user,
       isEmailVerified: false,
@@ -215,10 +220,66 @@ describe('AuthService', () => {
     });
 
     await service.resendVerification('ada@example.com');
+    const [, savedCode] = usersService.updateVerificationToken.mock
+      .calls[0] as [number, string];
+    expect(savedCode).toMatch(/^\d{6}$/);
     expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
       'ada@example.com',
-      '654321',
+      savedCode,
     );
+  });
+
+  it('rejects an expired verification code without counting an attempt', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      emailVerificationToken: '123456',
+      emailVerificationExpires: new Date(Date.now() - 1000),
+    });
+
+    await expect(
+      service.verifyEmail('ada@example.com', '123456'),
+    ).rejects.toThrow('süresi doldu');
+    expect(usersService.markEmailAsVerified).not.toHaveBeenCalled();
+    expect(usersService.registerFailedCodeAttempt).not.toHaveBeenCalled();
+  });
+
+  it('accepts a verification code that has not expired yet', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      emailVerificationToken: '123456',
+      emailVerificationExpires: new Date(Date.now() + 60_000),
+    });
+    usersService.findById.mockResolvedValue(user);
+
+    await expect(
+      service.verifyEmail('ada@example.com', '123456'),
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  it('puts the token version into the session token', async () => {
+    usersService.login.mockResolvedValue({ ...user, tokenVersion: 3 });
+
+    await service.login('ada@example.com', 'secret123');
+
+    expect(jwtService.sign).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: 7, tv: 3 }),
+    );
+  });
+
+  it('resets the password, then drops the live sockets of that user', async () => {
+    usersService.findByEmailWithSecrets.mockResolvedValue({
+      ...user,
+      resetPasswordToken: '111222',
+      resetPasswordExpires: new Date(Date.now() + 60_000),
+    });
+
+    await service.resetPassword('ada@example.com', '111222', 'new-secret-1');
+
+    expect(usersService.updatePassword).toHaveBeenCalledWith(
+      7,
+      expect.any(String),
+    );
+    expect(realtime.disconnectUser).toHaveBeenCalledWith(7);
   });
 
   it('signs in with a verified Google account', async () => {

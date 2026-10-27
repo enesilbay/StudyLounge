@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   assertCanManage,
+  assertRoleChange,
   csvCell,
   escapeLike,
   toCsv,
@@ -62,5 +63,31 @@ describe('csv', () => {
 describe('escapeLike', () => {
   it('joker karakterleri kaçırır', () => {
     expect(escapeLike('50%_a\\b')).toBe('50\\%\\_a\\\\b');
+  });
+});
+
+describe('assertRoleChange', () => {
+  it('rolü düşürmek gerekçe ister', () => {
+    expect(() => assertRoleChange({ role: 'admin' }, 'user')).toThrow(BadRequestException);
+    expect(() => assertRoleChange({ role: 'admin' }, 'user', '  ')).toThrow(
+      'Yönetici yetkisini almak için gerekçe yaz.',
+    );
+    expect(() => assertRoleChange({ role: 'admin' }, 'user', 'Görevi bıraktı')).not.toThrow();
+  });
+
+  it('yönetici yapmak gerekçe ister', () => {
+    expect(() => assertRoleChange({ role: 'user' }, 'admin')).toThrow(
+      'Yönetici yapmak için gerekçe yaz.',
+    );
+  });
+
+  it('yasaklı hesap yönetici yapılamaz ama rolü düşürülebilir', () => {
+    const banned = { role: 'user', bannedAt: new Date() };
+    expect(() => assertRoleChange(banned, 'admin', 'Yeni ekip üyesi')).toThrow(
+      'Yasaklı bir hesap yönetici yapılamaz.',
+    );
+    expect(() =>
+      assertRoleChange({ role: 'admin', bannedAt: new Date() }, 'user', 'Yasaklandı'),
+    ).not.toThrow();
   });
 });

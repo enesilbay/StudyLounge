@@ -1,7 +1,5 @@
 import { Transform, Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
-  IsArray,
   IsBoolean,
   IsDateString,
   IsIn,
@@ -68,24 +66,6 @@ export class SummaryQueryDto {
   days?: number;
 }
 
-export class UpdateGoalsDto {
-  /** Günlük hedef (dakika), 0 = kapalı, en fazla 12 saat. */
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(720)
-  dailyGoalMinutes?: number;
-
-  /** Haftalık hedef (dakika), 0 = kapalı, en fazla 84 saat. */
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(5040)
-  weeklyGoalMinutes?: number;
-}
-
 export class CreateTaskDto {
   @Transform(trim)
   @IsString()
@@ -123,38 +103,4 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsInt()
   subjectId?: number | null;
-}
-
-export class CreateScheduledSessionDto {
-  @Transform(trim)
-  @IsString()
-  @MinLength(1)
-  @MaxLength(80)
-  title: string;
-
-  @IsDateString()
-  startsAt: string;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(10)
-  @Max(240)
-  durationMinutes: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  lobbyId?: number;
-
-  /** Davet edilecek arkadaşlar (en fazla 10). */
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @IsInt({ each: true })
-  inviteeIds?: number[];
-}
-
-export class RespondInviteDto {
-  @IsIn(['accepted', 'declined'])
-  status: 'accepted' | 'declined';
 }

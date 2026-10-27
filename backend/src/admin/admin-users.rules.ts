@@ -50,6 +50,29 @@ export function assertCanManage(
 }
 
 /**
+ * Rol değişikliği kuralları: rolü düşürmek (yöneticiyi kullanıcı yapmak) gerekçe ister;
+ * yönetici yapmak da gerekçe ister; askıya alınmış (yasaklı) hesap yönetici yapılamaz.
+ */
+export function assertRoleChange(
+  target: { role: string; bannedAt?: Date | null },
+  role: UserRole,
+  reason?: string,
+) {
+  if ((reason?.trim().length ?? 0) < 3) {
+    throw new BadRequestException(
+      role === 'admin'
+        ? 'Yönetici yapmak için gerekçe yaz.'
+        : 'Yönetici yetkisini almak için gerekçe yaz.',
+    );
+  }
+  if (role === 'admin' && target.bannedAt) {
+    throw new BadRequestException(
+      'Yasaklı bir hesap yönetici yapılamaz. Önce yasağı kaldır.',
+    );
+  }
+}
+
+/**
  * CSV hücresi: `;` ayraçlı (Türkçe Excel), tırnak kaçışlı. `=`, `+`, `-`, `@` ile başlayan
  * metinler formül olarak çalışmasın diye başına `'` eklenir (CSV enjeksiyonu).
  */

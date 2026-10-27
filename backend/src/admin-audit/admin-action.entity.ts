@@ -20,6 +20,8 @@ export const ADMIN_ACTIONS = [
   'delete_user',
   'report_resolve',
   'report_dismiss',
+  'feedback_done',
+  'feedback_reopen',
   'export_users',
   'room_lock',
   'room_unlock',

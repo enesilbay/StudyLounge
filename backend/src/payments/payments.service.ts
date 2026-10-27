@@ -9,7 +9,7 @@ import * as Sentry from '@sentry/nestjs';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
-import { DataSource, LessThan, Not, Repository } from 'typeorm';
+import { DataSource, In, IsNull, LessThan, Not, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { IyzicoClient, IyzicoResponse } from './iyzico.client';
 import { Payment, PaymentStatus } from './payment.entity';
@@ -41,6 +41,21 @@ const PLACEHOLDER_IDENTITY_NUMBER = '11111111111';
 const PLACEHOLDER_CITY = 'Istanbul';
 const PLACEHOLDER_COUNTRY = 'Turkey';
 const PLACEHOLDER_ADDRESS = 'Dijital hizmet, adres gerekmez';
+
+/** Bu süreyi aşan ve iyzico'dan sonuç alınamayan bekleyen ödeme başarısız sayılır. */
+export const PENDING_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+/** Callback'i hiç gelmemiş (form terk edilmiş olabilir) ödeme bu süre sonra kapatılır. */
+const ABANDONED_AFTER_MS = 60 * 60 * 1000;
+/** Fraud incelemesindeki ya da sonucu henüz alınamayan ödemenin işaret nedeni. */
+const REVIEW_REASON = 'Ödeme incelemede';
+const UNREACHABLE_REASON = 'Ödeme sonucu henüz doğrulanamadı';
+/** Mutabakat turunda en fazla bu kadar ödeme sorgulanır. */
+const RECONCILE_BATCH = 50;
+
+type DetailVerdict =
+  | { kind: 'ok' }
+  | { kind: 'pending'; reason: string }
+  | { kind: 'failure'; reason: string };
 
 @Injectable()
 export class PaymentsService {
@@ -193,23 +208,52 @@ export class PaymentsService {
     });
     if (!payment) return 'failure';
     if (payment.status !== 'pending') return payment.status;
+    // Callback kesin sonuc bildirir: basarisiz yanit hemen kapatilir.
+    return this.resolvePending(payment, true);
+  }
+
+  /**
+   * Bekleyen bir odemeyi iyzico'dan yeniden sorgulayip sonuclandirir.
+   * - Basarili: Premium verilir.
+   * - Fraud incelemesi / iyzico'ya ulasilamadi: "pending" kalir (48 saati asarsa failure).
+   * - Basarisiz: callback'ten geldiyse (final) ya da odeme uzun suredir bekliyorsa failure;
+   *   aksi halde kullanici hala odeme formunda olabilir, dokunulmaz.
+   */
+  private async resolvePending(
+    payment: Payment,
+    final: boolean,
+  ): Promise<PaymentStatus> {
+    const age = payment.createdAt
+      ? Date.now() - new Date(payment.createdAt).getTime()
+      : 0;
+    const expired = age > PENDING_MAX_AGE_MS;
 
     let detail: CheckoutDetailResponse;
     try {
       detail = await this.iyzico.post<CheckoutDetailResponse>(
         '/payment/iyzipos/checkoutform/auth/ecom/detail',
-        { locale: 'tr', conversationId: payment.conversationId, token },
+        {
+          locale: 'tr',
+          conversationId: payment.conversationId,
+          token: payment.token,
+        },
       );
     } catch {
-      // iyzico'ya ulasilamadi; odeme bekliyor olarak kalir, kullanici yeniden deneyebilir.
-      return 'pending';
+      // iyzico'ya ulasilamadi; odeme bekliyor olarak kalir.
+      return this.keepPending(payment, UNREACHABLE_REASON, expired);
     }
 
-    const failure = this.verifyDetail(payment, detail);
-    if (failure) {
-      this.logger.warn(`Odeme ${payment.id} reddedildi: ${failure}`);
-      await this.markFailed(payment.id, failure);
-      return 'failure';
+    const verdict = this.verifyDetail(payment, detail);
+    if (verdict.kind === 'pending') {
+      return this.keepPending(payment, verdict.reason, expired);
+    }
+    if (verdict.kind === 'failure') {
+      if (final || expired || age > ABANDONED_AFTER_MS) {
+        this.logger.warn(`Odeme ${payment.id} reddedildi: ${verdict.reason}`);
+        await this.markFailed(payment.id, verdict.reason);
+        return 'failure';
+      }
+      return 'pending';
     }
 
     const plan = PREMIUM_PLANS[payment.planId as PremiumPlanId];
@@ -245,26 +289,53 @@ export class PaymentsService {
     });
   }
 
-  /** Dogrulama hatasi varsa nedenini, yoksa null dondurur. */
+  /** Sonucu belli olmayan odemeyi "beklemede" isaretler; 48 saati gectiyse kapatir. */
+  private async keepPending(
+    payment: Payment,
+    reason: string,
+    expired: boolean,
+  ): Promise<PaymentStatus> {
+    if (expired) {
+      this.logger.warn(`Odeme ${payment.id} 48 saati asti, kapatiliyor.`);
+      await this.markFailed(payment.id, `${reason} (48 saat doldu)`);
+      return 'failure';
+    }
+    // failureReason dolu bekleyen odeme kullanici listesinde "beklemede" gorunur.
+    await this.paymentsRepository.update(
+      { id: payment.id, status: 'pending' },
+      { failureReason: reason.slice(0, 300) },
+    );
+    return 'pending';
+  }
+
+  /** Iyzico yanitini degerlendirir: tamam, beklemede (fraud incelemesi) ya da basarisiz. */
   private verifyDetail(
     payment: Payment,
     detail: CheckoutDetailResponse,
-  ): string | null {
+  ): DetailVerdict {
+    const fail = (reason: string): DetailVerdict => ({
+      kind: 'failure',
+      reason,
+    });
     if (detail.status !== 'success')
-      return detail.errorMessage ?? 'Ödeme sorgusu başarısız';
+      return fail(detail.errorMessage ?? 'Ödeme sorgusu başarısız');
     if (detail.paymentStatus !== 'SUCCESS')
-      return `Ödeme durumu: ${detail.paymentStatus ?? 'bilinmiyor'}`;
+      return fail(`Ödeme durumu: ${detail.paymentStatus ?? 'bilinmiyor'}`);
     if (detail.conversationId !== payment.conversationId)
-      return 'Eşleştirme kimliği tutmuyor';
+      return fail('Eşleştirme kimliği tutmuyor');
     if (String(detail.basketId) !== String(payment.id))
-      return 'Sepet numarası tutmuyor';
+      return fail('Sepet numarası tutmuyor');
     if (Math.abs(Number(detail.paidPrice) - Number(payment.amount)) > 0.009)
-      return 'Tutar tutmuyor';
+      return fail('Tutar tutmuyor');
     if (detail.currency && detail.currency !== payment.currency)
-      return 'Para birimi tutmuyor';
-    if (detail.fraudStatus !== undefined && detail.fraudStatus !== 1)
-      return 'Ödeme incelemede';
-    return null;
+      return fail('Para birimi tutmuyor');
+    if (detail.fraudStatus !== undefined && detail.fraudStatus !== 1) {
+      // 0 = inceleniyor (sonuc sonradan belli olur), -1 = reddedildi.
+      return detail.fraudStatus === 0
+        ? { kind: 'pending', reason: REVIEW_REASON }
+        : fail('Ödeme güvenlik incelemesinde reddedildi');
+    }
+    return { kind: 'ok' };
   }
 
   private async markFailed(id: number, reason: string) {
@@ -278,15 +349,42 @@ export class PaymentsService {
     );
   }
 
-  /** Kullanicinin Premium durumu ve odeme gecmisi. */
+  /**
+   * Kullanicinin Premium durumu ve odeme gecmisi. Bekleyen odemeler once iyzico'dan
+   * yeniden dogrulanir; hala sonuclanmamislar listede "pending" olarak gorunur.
+   */
   async status(userId: number) {
+    const open = await this.paymentsRepository.find({
+      where: { user: { id: userId }, status: 'pending', token: Not(IsNull()) },
+      relations: { user: true },
+      order: { createdAt: 'DESC' },
+      take: 5,
+    });
+    for (const payment of open) {
+      try {
+        await this.resolvePending(payment, false);
+      } catch (error) {
+        this.logger.warn(
+          `Bekleyen odeme ${payment.id} dogrulanamadi: ${String(error)}`,
+        );
+      }
+    }
+
     const user = await this.usersRepository
       .createQueryBuilder('user')
       .addSelect('user.premiumUntil')
       .where('user.id = :id', { id: userId })
       .getOne();
     const payments = await this.paymentsRepository.find({
-      where: { user: { id: userId }, status: Not('pending') },
+      where: [
+        { user: { id: userId }, status: In(['success', 'failure']) },
+        // Callback'i gelmis ama sonuclanmamis (failureReason dolu) odemeler.
+        {
+          user: { id: userId },
+          status: 'pending',
+          failureReason: Not(IsNull()),
+        },
+      ],
       select: {
         id: true,
         planId: true,
@@ -304,6 +402,50 @@ export class PaymentsService {
       premiumUntil: user?.premiumUntil ?? null,
       payments,
     };
+  }
+
+  /**
+   * 10 dakikada bir: sonuclanmamis odemeleri iyzico'dan sorgular (callback'i kaybolan
+   * basarili odemeler de boylece Premium'u alir). 48 saati gecen bekleyen "failure" olur.
+   */
+  @Cron('*/10 * * * *')
+  async reconcilePending() {
+    // Odeme formu hic baslatilamamis (token yok) eski kayitlar.
+    await this.paymentsRepository.update(
+      {
+        status: 'pending',
+        token: IsNull(),
+        createdAt: LessThan(new Date(Date.now() - ABANDONED_AFTER_MS)),
+      },
+      {
+        status: 'failure',
+        failureReason: 'Ödeme formu açılmadı',
+        completedAt: new Date(),
+      },
+    );
+
+    const open = await this.paymentsRepository.find({
+      where: {
+        status: 'pending',
+        token: Not(IsNull()),
+        // Yeni acilmis formlar, kullanici hala odeme yaparken sorgulanmaz.
+        createdAt: LessThan(new Date(Date.now() - 2 * 60 * 1000)),
+      },
+      relations: { user: true },
+      order: { createdAt: 'ASC' },
+      take: RECONCILE_BATCH,
+    });
+    for (const payment of open) {
+      try {
+        await this.resolvePending(payment, false);
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { context: 'iyzico_reconcile' },
+        });
+      }
+    }
+    if (open.length)
+      this.logger.log(`${open.length} bekleyen odeme mutabakata alindi.`);
   }
 
   /** Suresi dolan Premium'lari kapatir. Bitis tarihi olmayan (elle verilen) Premium'a dokunmaz. */

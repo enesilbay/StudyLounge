@@ -67,7 +67,7 @@ export class WhiteboardService {
   ): BoardState {
     if (typeof fileUrl !== 'string' || !UPLOADED_PDF.test(fileUrl)) {
       throw new BadRequestException(
-        'Tahtada yalnizca odaya yuklenmis PDF dosyalari acilabilir.',
+        'Tahtada yalnızca odaya yüklenmiş PDF dosyaları açılabilir.',
       );
     }
     const name =

@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
-/** `blocker`, `blocked` kişisini engelledi. Etki iki yönlüdür: DM, düello, dürtme ve istek kapanır. */
+/** `blocker`, `blocked` kişisini engelledi. Etki iki yönlüdür: DM, dürtme ve arkadaşlık isteği kapanır. */
 @Entity('blocks')
 @Unique(['blocker', 'blocked'])
 export class Block {

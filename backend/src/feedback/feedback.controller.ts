@@ -47,14 +47,19 @@ export class AdminFeedbackController {
 
   @Get()
   list(@Query() query: FeedbackQueryDto) {
-    return this.feedbackService.list(query.status ?? 'open');
+    return this.feedbackService.list(
+      query.status ?? 'open',
+      query.page,
+      query.pageSize,
+    );
   }
 
   @Patch(':id')
   update(
+    @CurrentUser() admin: User,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateFeedbackDto,
   ) {
-    return this.feedbackService.setStatus(id, body.status);
+    return this.feedbackService.setStatus(admin.id, id, body.status);
   }
 }

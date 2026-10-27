@@ -4,15 +4,16 @@ import {
   Controller,
   ForbiddenException,
   Get,
-  MaxFileSizeValidator,
   Param,
   ParseFilePipe,
+  ParseIntPipe,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
 import { extname } from 'path';
 import { StorageService } from '../storage/storage.service';
@@ -21,6 +22,7 @@ import {
   CHAT_UPLOAD_TYPES,
   createUploadFileFilter,
 } from '../common/upload-filter';
+import { fileSizeMessage, LimitedFileInterceptor } from '../common/upload-interceptor';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LobbiesService } from '../lobbies/lobbies.service';
 import { ModerationService } from '../moderation/moderation.service';
@@ -54,7 +56,7 @@ export class MessagesController {
 
   private async assertRoomAccess(roomName: string, userId: number) {
     if (!(await this.lobbiesService.canAccessRoom(roomName, userId))) {
-      throw new ForbiddenException('Bu odanin sohbetine erisimin yok.');
+      throw new ForbiddenException('Bu odanın sohbetine erişimin yok.');
     }
   }
 
@@ -69,9 +71,11 @@ export class MessagesController {
     );
   }
 
+  // Yükleme pahalı: dakikada 10 dosya ve günlük kota (StorageService).
   @Post('upload')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseInterceptors(
-    FileInterceptor('file', {
+    LimitedFileInterceptor('file', {
       // Dosya once bellekte tutulur; kontrollerden gecerse depoya yazilir.
       storage: memoryStorage(),
       limits: {
@@ -84,7 +88,8 @@ export class MessagesController {
     @CurrentUser() user: User,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: MAX_PDF_BYTES })],
+        // Boyutu Multer sınırı denetler (Türkçe mesaj LimitedFileInterceptor'da).
+        exceptionFactory: () => new BadRequestException('Dosya seçilmedi.'),
       }),
     )
     file: Express.Multer.File,
@@ -95,10 +100,11 @@ export class MessagesController {
 
     if (!isPdf(file) && file.size > MAX_FILE_BYTES) {
       throw new BadRequestException(
-        "Dosya en fazla 5 MB olabilir. PDF'ler 20 MB'a kadar yüklenebilir.",
+        `${fileSizeMessage(MAX_FILE_BYTES)} PDF'ler 20 MB'a kadar yüklenebilir.`,
       );
     }
 
+    this.storageService.reserveUploadQuota(user.id, file.size);
     const fileUrl = await this.storageService.put(
       this.storageService.createKey('file', file.originalname),
       file.buffer,
@@ -122,12 +128,17 @@ export class MessagesController {
   @Get('dm/:userId')
   async getDirectMessages(
     @CurrentUser() user: User,
-    @Param('userId') targetId: string,
+    @Param('userId', ParseIntPipe) targetId: number,
+    @Query('before', new ParseIntPipe({ optional: true })) before?: number,
   ) {
-    await this.messagesService.markAsRead(Number(targetId), user.id);
+    // Eski mesajlara bakarken (before) okundu işaretlenmez; yalnızca sohbet açılışında.
+    if (before === undefined) {
+      await this.messagesService.markAsRead(targetId, user.id);
+    }
     return await this.messagesService.getDirectMessages(
       user.id,
-      Number(targetId),
+      targetId,
+      before,
     );
   }
 
@@ -135,27 +146,27 @@ export class MessagesController {
   @Post('dm/:userId/read')
   async markDirectMessagesRead(
     @CurrentUser() user: User,
-    @Param('userId') senderId: string,
+    @Param('userId', ParseIntPipe) senderId: number,
   ) {
-    await this.messagesService.markAsRead(Number(senderId), user.id);
+    await this.messagesService.markAsRead(senderId, user.id);
     return { success: true };
   }
 
   @Post('dm/:userId')
   async sendDirectMessage(
     @CurrentUser() user: User,
-    @Param('userId') targetId: string,
+    @Param('userId', ParseIntPipe) targetId: number,
     @Body() body: CreateDirectMessageDto,
   ) {
     await this.moderationService.assertCanChat(user.id);
     await this.moderationService.assertNotBlocked(
       user.id,
-      Number(targetId),
+      targetId,
       'Bu kullanıcıya mesaj gönderemezsin.',
     );
     return await this.messagesService.createDirectMessage(
       user.id,
-      Number(targetId),
+      targetId,
       body.text,
     );
   }

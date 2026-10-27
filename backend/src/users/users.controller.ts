@@ -2,7 +2,7 @@ import {
   Body,
   Controller,
   Delete,
-  FileTypeValidator,
+  BadRequestException,
   ForbiddenException,
   Get,
   MaxFileSizeValidator,
@@ -20,11 +20,15 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getConfigBoolean } from '../config/env';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { LimitedFileInterceptor } from '../common/upload-interceptor';
 import { memoryStorage } from 'multer';
 import { StorageService } from '../storage/storage.service';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { AVATAR_UPLOAD_TYPES, createUploadFileFilter } from '../common/upload-filter';
+import { createUploadFileFilter } from '../common/upload-filter';
+import { AVATAR_UPLOAD_TYPES, hasImageSignature } from './avatar-upload';
+import { buildJwtPayload } from '../auth/jwt-payload.interface';
+import { MailService } from '../mail/mail.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import { AvatarCharacterDto } from './dto/avatar-character.dto';
@@ -52,6 +56,8 @@ export class UsersController {
     private readonly moderationService: ModerationService,
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
+    private readonly mailService: MailService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   @Get('leaderboard')
@@ -67,7 +73,11 @@ export class UsersController {
   @Get('me')
   async getMe(@CurrentUser() user: User) {
     const currentUser = await this.usersService.findById(user.id);
-    return { success: true, user: currentUser };
+    const hasPassword = await this.usersService.hasPassword(user.id);
+    return {
+      success: true,
+      user: currentUser ? Object.assign(currentUser, { hasPassword }) : currentUser,
+    };
   }
 
   /** Hesabi kalici olarak siler (kullanici adi + varsa sifre ile onaylanir). */
@@ -80,6 +90,8 @@ export class UsersController {
       body.password,
     );
     await this.storageService.removeByUrl(user.avatarUrl);
+    // Açık sekmeler kapanır; token'ı olan biri soketle bağlanamaz (kullanıcı artık yok).
+    this.realtime.disconnectUser(user.id);
     return { success: true, message: 'Hesabın ve verilerin silindi.' };
   }
 
@@ -97,10 +109,17 @@ export class UsersController {
       body.receiverUsername,
     );
 
+    // Alıcının açık sekmelerine anında haber ver (eski istemciler olayı yok sayar).
+    this.realtime.emitToUser(request.receiver.id, 'friend_request', {
+      fromUserId: user.id,
+      fromUsername: user.username,
+    });
+
     return {
       success: true,
-      message: 'Arkadaslik istegi basariyla gonderildi.',
-      data: request,
+      message: 'Arkadaşlık isteği başarıyla gönderildi.',
+      // Yalnızca kimlik ve durum; iki kullanıcının tüm alanları yanıta girmesin.
+      data: { id: request.id, status: request.status },
     };
   }
 
@@ -120,10 +139,17 @@ export class UsersController {
       body.status,
     );
 
+    if (result.status === 'accepted') {
+      this.realtime.emitToUser(result.sender.id, 'friend_accepted', {
+        userId: user.id,
+        username: user.username,
+      });
+    }
+
     return {
       success: true,
-      message: `Istek ${body.status === 'accepted' ? 'kabul edildi' : 'reddedildi'}.`,
-      data: result,
+      message: `İstek ${body.status === 'accepted' ? 'kabul edildi' : 'reddedildi'}.`,
+      data: { id: result.id, status: result.status },
     };
   }
 
@@ -132,14 +158,26 @@ export class UsersController {
     return this.usersService.getFriends(user.id);
   }
 
+  /** Arkadaşlıktan çıkarır (iki yönlü). */
+  @Delete('friends/:id')
+  async removeFriend(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) friendId: number,
+  ) {
+    await this.usersService.removeFriend(user.id, friendId);
+    return { success: true, message: 'Arkadaşlıktan çıkarıldı.' };
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('avatar/:id')
   @UseInterceptors(
-    FileInterceptor('file', {
+    LimitedFileInterceptor('file', {
       // Dosya once bellekte tutulur, dogrulamadan sonra depoya yazilir.
       storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
+      // Uzantı + MIME listesi (SVG/HEIC yok); içerik imzası aşağıda ayrıca doğrulanır.
       fileFilter: createUploadFileFilter(AVATAR_UPLOAD_TYPES),
     }),
   )
@@ -154,6 +192,13 @@ export class UsersController {
     )
     file: Express.Multer.File,
   ) {
+    // Uzantı ve MIME istemciden gelir; dosyanın gerçek içeriği beyan edilen türle uyuşmalı.
+    if (!hasImageSignature(file.buffer, file.originalname)) {
+      throw new BadRequestException(
+        'Geçerli bir resim yükle (PNG, JPG, WEBP veya GIF).',
+      );
+    }
+    this.storageService.reserveUploadQuota(user.id, file.size);
     const avatarUrl = await this.storageService.put(
       this.storageService.createKey(`avatar-${user.id}`, file.originalname),
       file.buffer,
@@ -205,18 +250,26 @@ export class UsersController {
     @CurrentUser() user: User,
     @Body() body: UpdateAccountSettingsDto,
   ) {
-    const updatedUser = await this.usersService.updateAccountSettings(
+    const result = await this.usersService.updateAccountSettings(
       user.id,
       body,
     );
+    if (result.emailChanged && result.verificationCode) {
+      // Gönderilemezse kullanıcı giriş ekranında "Kodu tekrar gönder" ile yeni kod alabilir.
+      await this.mailService.sendVerificationEmail(
+        result.user.email,
+        result.verificationCode,
+      );
+    }
+    if (result.passwordChanged) {
+      // Diğer cihazlardaki soketler kapanır; bu istemci yanıttaki yeni token ile bağlanır.
+      this.realtime.disconnectUser(user.id);
+    }
     return {
       success: true,
-      user: updatedUser,
-      access_token: this.jwtService.sign({
-        sub: updatedUser.id,
-        email: updatedUser.email,
-        username: updatedUser.username,
-      }),
+      user: result.user,
+      access_token: this.jwtService.sign(buildJwtPayload(result.user)),
+      emailVerificationRequired: result.emailChanged,
     };
   }
 
@@ -249,11 +302,18 @@ export class UsersController {
     return { success: true, user: updatedUser };
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('nudge/:id')
-  async nudgeFriend(@CurrentUser() user: User, @Param('id') targetId: string) {
-    await this.moderationService.assertNotBlocked(user.id, Number(targetId));
+  async nudgeFriend(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) targetId: number,
+  ) {
+    if (!(await this.usersService.areFriends(user.id, targetId))) {
+      throw new ForbiddenException('Yalnızca arkadaşlarını dürtebilirsin.');
+    }
+    await this.moderationService.assertNotBlocked(user.id, targetId);
     const sender = await this.usersService.findById(user.id);
-    const tokens = await this.usersService.getUserPushTokens([Number(targetId)]);
+    const tokens = await this.usersService.getUserPushTokens([targetId]);
     tokens.forEach((token) => {
       void this.notificationsService.sendNotification(
         token,
